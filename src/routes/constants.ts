@@ -6,6 +6,7 @@ export const ROUTES = {
   TRANSPORT: "/transport",
   HR: "/hr",
   FINANCE: "/finance",
+  OPERATIONS: "/operations",
   REPORTS: "/reports",
   SETTINGS: "/settings",
   BILLING: "/billing",

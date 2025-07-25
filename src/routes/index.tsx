@@ -13,10 +13,15 @@ import { HROverview } from "@/components/hr/HROverview";
 import { HRDepartments } from "@/components/hr/HRDepartments";
 import HR from "@/pages/HR";
 import Finance from "@/pages/Finance";
+import Operations from "@/pages/Operations";
 import { RevenueTrendDetail } from "@/components/finance/detail/RevenueTrendDetail";
 import { ClientRevenueDetail } from "@/components/finance/detail/ClientRevenueDetail";
 import { CashFlowDetail } from "@/components/finance/detail/CashFlowDetail";
 import { ExpenseDetail } from "@/components/finance/detail/ExpenseDetail";
+import { JobOrdersTrendDetail } from "@/components/operations/detail/JobOrdersTrendDetail";
+import { RegionalFillRateDetail } from "@/components/operations/detail/RegionalFillRateDetail";
+import { TimeToFillTrendDetail } from "@/components/operations/detail/TimeToFillTrendDetail";
+import { JobTypesDistributionDetail } from "@/components/operations/detail/JobTypesDistributionDetail";
 
 // Define all application routes
 export const routes: RouteObject[] = [
@@ -99,6 +104,26 @@ export const routes: RouteObject[] = [
       {
         path: "/finance/expenses",
         element: <ExpenseDetail />,
+      },
+      {
+        path: "/operations",
+        element: <Operations />,
+      },
+      {
+        path: "/operations/job-orders-trend",
+        element: <JobOrdersTrendDetail />,
+      },
+      {
+        path: "/operations/regional-performance",
+        element: <RegionalFillRateDetail />,
+      },
+      {
+        path: "/operations/time-to-fill",
+        element: <TimeToFillTrendDetail />,
+      },
+      {
+        path: "/operations/job-types",
+        element: <JobTypesDistributionDetail />,
       },
       {
         path: "*",

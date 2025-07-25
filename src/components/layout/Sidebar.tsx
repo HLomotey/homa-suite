@@ -15,7 +15,8 @@ import {
   Home,
   Bus,
   FileBarChart2,
-  DollarSign
+  DollarSign,
+  ClipboardList
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/routes/constants';
@@ -56,6 +57,12 @@ const navigationItems = [
     label: 'Finance',
     icon: DollarSign,
     href: ROUTES.FINANCE,
+    active: false
+  },
+  {
+    label: 'Operations',
+    icon: ClipboardList,
+    href: ROUTES.OPERATIONS,
     active: false
   },
   {
