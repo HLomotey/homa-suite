@@ -48,11 +48,8 @@ export const routes: RouteObject[] = [
 // Create and export the router
 export const router = createBrowserRouter(routes);
 
-// Export route paths as constants for use throughout the app
-export const ROUTES = {
-  DASHBOARD: "/dashboard",
-  PROPERTIES: "/properties",
-  HOUSING: "/housing",
-  BILLING: "/billing",
-  TRANSPORT: "/transport",
-};
+// Import route constants
+import { ROUTES } from "./constants";
+
+// Re-export route constants
+export { ROUTES };

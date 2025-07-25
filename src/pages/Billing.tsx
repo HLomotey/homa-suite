@@ -15,7 +15,7 @@ interface Bill {
   staffId: string;
   amount: number;
   type: string;
-  status: 'default' | 'secondary' | 'destructive' | 'outline';
+  status: 'paid' | 'pending' | 'overdue' | 'default' | 'secondary' | 'destructive' | 'outline';
   dueDate: string;
 }
 
@@ -80,8 +80,8 @@ export default function Billing() {
   };
 
   return (
-    <main className="flex-1 p-6">
-      <div className="flex flex-col gap-4">
+    <main className="flex-1 h-full p-4 md:p-6">
+      <div className="flex flex-col h-full">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -196,9 +196,9 @@ export default function Billing() {
                       <p className="text-white/60">{staff.department}</p>
                     </div>
                     <Badge
-                      variant={bill.status}
+                      variant={bill.status === 'paid' ? 'default' : bill.status === 'pending' ? 'secondary' : 'destructive'}
                     >
-                      {bill.status === 'default' ? 'Paid' : bill.status === 'secondary' ? 'Pending' : 'Overdue'}
+                      {bill.status === 'paid' ? 'Paid' : bill.status === 'pending' ? 'Pending' : 'Overdue'}
                     </Badge>
                   </div>
                   <div className="space-y-2">
@@ -246,9 +246,9 @@ export default function Billing() {
                       <TableCell>{bill.dueDate}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={bill.status}
+                          variant={bill.status === 'paid' ? 'default' : bill.status === 'pending' ? 'secondary' : 'destructive'}
                         >
-                          {bill.status === 'default' ? 'Paid' : bill.status === 'secondary' ? 'Pending' : 'Overdue'}
+                          {bill.status === 'paid' ? 'Paid' : bill.status === 'pending' ? 'Pending' : 'Overdue'}
                         </Badge>
                       </TableCell>
                     </TableRow>

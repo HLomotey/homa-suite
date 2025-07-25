@@ -13,7 +13,7 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { ROUTES } from '@/routes';
+import { ROUTES } from '@/routes/constants';
 
 const navigationItems = [
   {
@@ -78,7 +78,7 @@ export const Sidebar = () => {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 z-40 h-screen w-64 bg-card border-r border-border transition-transform duration-200 ease-in-out",
+        "h-screen w-64 bg-card border-r border-border transition-transform duration-200 ease-in-out sticky top-0 z-40",
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         <div className="flex h-full flex-col">
