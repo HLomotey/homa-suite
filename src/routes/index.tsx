@@ -4,6 +4,7 @@ import Properties from "@/pages/Properties";
 import Housing from "@/pages/Housing";
 import Billing from "@/pages/Billing";
 import Transport from "@/pages/Transport";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/layout";
 
@@ -52,6 +53,10 @@ export const routes: RouteObject[] = [
       {
         path: "transport",
         element: <Transport />,
+      },
+      {
+        path: "settings",
+        element: <Settings />,
       },
       {
         path: "hr",
