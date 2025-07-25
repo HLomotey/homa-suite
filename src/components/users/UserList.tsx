@@ -241,24 +241,24 @@ export function UserList() {
               />
             </div>
             <div className="flex gap-2">
-              <Select onValueChange={(value) => setRoleFilter(value || null)}>
+              <Select onValueChange={(value) => setRoleFilter(value === "all" ? null : value)}>
                 <SelectTrigger className="w-[150px] bg-black/40 border-white/10 text-white">
                   <SelectValue placeholder="Filter by role" />
                 </SelectTrigger>
                 <SelectContent className="bg-black/90 border-white/10 text-white">
-                  <SelectItem value="">All Roles</SelectItem>
+                  <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
                   <SelectItem value="guest">Guest</SelectItem>
                 </SelectContent>
               </Select>
-              <Select onValueChange={(value) => setStatusFilter(value || null)}>
+              <Select onValueChange={(value) => setStatusFilter(value === "all" ? null : value)}>
                 <SelectTrigger className="w-[150px] bg-black/40 border-white/10 text-white">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent className="bg-black/90 border-white/10 text-white">
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
