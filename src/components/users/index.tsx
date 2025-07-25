@@ -38,7 +38,7 @@ export function Users() {
         setIsSheetOpen(open);
         if (!open) handleSheetClose();
       }}>
-        <SheetContent side="right" className="w-full sm:w-[540px] md:w-[640px] bg-black/40 backdrop-blur-md border-white/10 text-white overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-[500px] md:w-[500px] bg-black/40 backdrop-blur-md border-white/10 text-white overflow-y-auto">
           {isUserDetailPage && <UserDetail />}
         </SheetContent>
       </Sheet>

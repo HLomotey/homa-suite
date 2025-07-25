@@ -309,79 +309,85 @@ export function UserList() {
                         {new Date(user.lastActive).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-black/90 border-white/10 text-white">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/10" />
-                            <DropdownMenuItem 
-                              className="cursor-pointer flex items-center gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditUser(user.id);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="cursor-pointer flex items-center gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/users/${user.id}/permissions`);
-                              }}
-                            >
-                              <Shield className="h-4 w-4" /> Permissions
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="cursor-pointer flex items-center gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Simulate sending email invitation
-                                toast({
-                                  title: "Invitation sent",
-                                  description: `An invitation email has been sent to ${user.email}.`,
-                                });
-                              }}
-                            >
-                              <Mail className="h-4 w-4" /> Send Invitation
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/10" />
-                            {user.status === "active" ? (
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditUser(user.id);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 text-blue-400" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteConfirm(user);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-black/90 border-white/10 text-white">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator className="bg-white/10" />
                               <DropdownMenuItem 
-                                className="cursor-pointer flex items-center gap-2 text-amber-500"
+                                className="cursor-pointer flex items-center gap-2"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleStatusChange(user.id, "inactive");
+                                  navigate(`/users/${user.id}/permissions`);
                                 }}
                               >
-                                <UserMinus className="h-4 w-4" /> Deactivate
+                                <Shield className="h-4 w-4" /> Permissions
                               </DropdownMenuItem>
-                            ) : (
                               <DropdownMenuItem 
-                                className="cursor-pointer flex items-center gap-2 text-green-500"
+                                className="cursor-pointer flex items-center gap-2"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleStatusChange(user.id, "active");
+                                  // Simulate sending email invitation
+                                  toast({
+                                    title: "Invitation sent",
+                                    description: `An invitation email has been sent to ${user.email}.`,
+                                  });
                                 }}
                               >
-                                <UserPlus className="h-4 w-4" /> Activate
+                                <Mail className="h-4 w-4" /> Send Invitation
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem 
-                              className="cursor-pointer flex items-center gap-2 text-red-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteConfirm(user);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <DropdownMenuSeparator className="bg-white/10" />
+                              {user.status === "active" ? (
+                                <DropdownMenuItem 
+                                  className="cursor-pointer flex items-center gap-2 text-amber-500"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(user.id, "inactive");
+                                  }}
+                                >
+                                  <UserMinus className="h-4 w-4" /> Deactivate
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  className="cursor-pointer flex items-center gap-2 text-green-500"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(user.id, "active");
+                                  }}
+                                >
+                                  <UserPlus className="h-4 w-4" /> Activate
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
