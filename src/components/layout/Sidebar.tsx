@@ -9,33 +9,41 @@ import {
   BarChart3, 
   Settings,
   Menu,
-  X
+  X,
+  LayoutDashboard
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { ROUTES } from '@/routes';
 
 const navigationItems = [
   {
-    label: 'Properties',
-    icon: Building2,
+    label: 'Dashboard',
+    icon: LayoutDashboard,
     href: '/',
     active: true
   },
   {
+    label: 'Properties',
+    icon: Building2,
+    href: ROUTES.PROPERTIES,
+    active: false
+  },
+  {
     label: 'Housing',
     icon: Users,
-    href: '/housing',
+    href: ROUTES.HOUSING,
     active: false
   },
   {
     label: 'Billing',
     icon: Calculator,
-    href: '/billing',
+    href: ROUTES.BILLING,
     active: false
   },
   {
     label: 'Transport',
     icon: Truck,
-    href: '/transport',
+    href: ROUTES.TRANSPORT,
     active: false
   },
   {
