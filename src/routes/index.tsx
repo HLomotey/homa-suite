@@ -12,6 +12,11 @@ import { HRDiversity } from "@/components/hr/HRDiversity";
 import { HROverview } from "@/components/hr/HROverview";
 import { HRDepartments } from "@/components/hr/HRDepartments";
 import HR from "@/pages/HR";
+import Finance from "@/pages/Finance";
+import { RevenueTrendDetail } from "@/components/finance/detail/RevenueTrendDetail";
+import { ClientRevenueDetail } from "@/components/finance/detail/ClientRevenueDetail";
+import { CashFlowDetail } from "@/components/finance/detail/CashFlowDetail";
+import { ExpenseDetail } from "@/components/finance/detail/ExpenseDetail";
 
 // Define all application routes
 export const routes: RouteObject[] = [
@@ -48,34 +53,53 @@ export const routes: RouteObject[] = [
         element: <HR />,
       },
       {
-        path: "hr/recruitment",
+        path: "/hr/recruitment",
         element: <HRRecruitment />,
       },
       {
-        path: "hr/diversity",
+        path: "/hr/diversity",
         element: <HRDiversity />,
       },
       {
-        path: "hr/overview",
+        path: "/hr/overview",
         element: <HROverview />,
       },
       {
-        path: "hr/overview/headcount",
+        path: "/hr/overview/headcount",
         element: <HRDepartments />,
       },
       {
-        path: "hr/overview/retention",
+        path: "/hr/overview/retention",
         element: <HROverview />,
       },
       {
-        path: "hr/overview/gender",
+        path: "/hr/overview/gender",
         element: <HRDiversity />,
       },
       {
-        path: "hr/overview/hiring",
+        path: "/hr/overview/hiring",
         element: <HRRecruitment />,
       },
-
+      {
+        path: "/finance",
+        element: <Finance />,
+      },
+      {
+        path: "/finance/revenue-trend",
+        element: <RevenueTrendDetail />,
+      },
+      {
+        path: "/finance/client-revenue",
+        element: <ClientRevenueDetail />,
+      },
+      {
+        path: "/finance/cash-flow",
+        element: <CashFlowDetail />,
+      },
+      {
+        path: "/finance/expenses",
+        element: <ExpenseDetail />,
+      },
       {
         path: "*",
         element: <NotFound />,

@@ -11,7 +11,11 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  UserRound
+  UserRound,
+  Home,
+  Bus,
+  FileBarChart2,
+  DollarSign
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/routes/constants';
@@ -29,12 +33,7 @@ const navigationItems = [
     href: ROUTES.PROPERTIES,
     active: false
   },
-  {
-    label: 'Housing',
-    icon: Users,
-    href: ROUTES.HOUSING,
-    active: false
-  },
+
   {
     label: 'Billing',
     icon: Calculator,
@@ -51,6 +50,12 @@ const navigationItems = [
     label: 'HR',
     icon: UserRound,
     href: ROUTES.HR,
+    active: false
+  },
+  {
+    label: 'Finance',
+    icon: DollarSign,
+    href: ROUTES.FINANCE,
     active: false
   },
   {
