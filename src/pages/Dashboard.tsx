@@ -1,7 +1,28 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, CreditCard, DollarSign, Home, LineChart, Users } from "lucide-react";
+import {
+  CalendarDays,
+  CreditCard,
+  DollarSign,
+  Home,
+  LineChart,
+  Users,
+} from "lucide-react";
+import { HRAnalytics } from "@/components/dashboard/HRAnalytics";
+import { FinanceAnalytics } from "@/components/dashboard/FinanceAnalytics";
+import { OperationsAnalytics } from "@/components/dashboard/OperationsAnalytics";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { ReportsList } from "@/components/dashboard/ReportsList";
+import { AnalyticsTab } from "@/components/dashboard/AnalyticsTab";
+import { ReportsTab } from "@/components/dashboard/ReportsTab";
 
 export default function Dashboard() {
   return (
@@ -12,136 +33,89 @@ export default function Dashboard() {
           <Button>Download Report</Button>
         </div>
       </div>
-      
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="overview" className="space-y-4">
+
+        <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/20 border-slate-800/30">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
-                <Home className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  Total Properties
+                </CardTitle>
+                <Home className="h-4 w-4 text-amber-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">24</div>
-                <p className="text-xs text-muted-foreground">+2 from last month</p>
+                <p className="text-xs text-green-500">+2 from last month</p>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/20 border-slate-800/30">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  Total Revenue
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">$45,231.89</div>
-                <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                <p className="text-xs text-green-500">+20.1% from last month</p>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/20 border-slate-800/30">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Tenants</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  Active Tenants
+                </CardTitle>
+                <Users className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">573</div>
-                <p className="text-xs text-muted-foreground">+201 since last quarter</p>
+                <p className="text-xs text-green-500">
+                  +201 since last quarter
+                </p>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/20 border-slate-800/30">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  Pending Payments
+                </CardTitle>
+                <CreditCard className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-muted-foreground">-3 from last week</p>
+                <p className="text-xs text-green-500">-3 from last week</p>
               </CardContent>
             </Card>
           </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Revenue Overview</CardTitle>
-                <CardDescription>Monthly revenue breakdown for all properties</CardDescription>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <div className="h-[300px] flex items-center justify-center bg-muted/20 rounded-md">
-                  <p className="text-muted-foreground">Revenue Chart Placeholder</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Recent Activities</CardTitle>
-                <CardDescription>Latest transactions and updates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center gap-4">
-                      <div className="rounded-full p-2 bg-muted">
-                        {i % 2 === 0 ? <Home className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {i % 2 === 0 ? "New property added" : "Payment received"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {i % 2 === 0 ? "Property #1234" : "$1,999.00"}
-                        </p>
-                      </div>
-                      <div className="ml-auto text-xs text-muted-foreground">
-                        {`${i}h ago`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline" className="w-full">View all activities</Button>
-              </CardFooter>
-            </Card>
+
+          <HRAnalytics />
+
+          <FinanceAnalytics />
+
+          <OperationsAnalytics />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* <ActivityFeed />
+            <ReportsList /> */}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Analytics</CardTitle>
-              <CardDescription>Detailed analytics for all properties</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[450px] flex items-center justify-center bg-muted/20 rounded-md">
-              <div className="text-center space-y-2">
-                <LineChart className="h-10 w-10 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Analytics content will be displayed here</p>
-              </div>
-            </CardContent>
-          </Card>
+          <AnalyticsTab />
         </TabsContent>
-        
+
         <TabsContent value="reports" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Generated Reports</CardTitle>
-              <CardDescription>Access and download your reports</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[450px] flex items-center justify-center bg-muted/20 rounded-md">
-              <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Reports will be displayed here</p>
-                <Button>Generate New Report</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <ReportsTab />
         </TabsContent>
       </Tabs>
     </div>
