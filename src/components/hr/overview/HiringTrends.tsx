@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function HiringTrends() {
+  const navigate = useNavigate();
+  
   return (
     <Card className="col-span-4 bg-background border-border">
       <CardHeader>
@@ -11,7 +14,12 @@ export function HiringTrends() {
             <CardTitle>Hiring Trends</CardTitle>
             <CardDescription>Monthly hires and time to hire</CardDescription>
           </div>
-          <Button variant="ghost" size="sm" className="h-8">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8"
+            onClick={() => navigate('/hr/overview/hiring')}
+          >
             View Details <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>

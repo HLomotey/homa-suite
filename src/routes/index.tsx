@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout";
 import { HRRecruitment } from "@/components/hr/HRRecruitment";
 import { HRDiversity } from "@/components/hr/HRDiversity";
 import { HROverview } from "@/components/hr/HROverview";
+import { HRDepartments } from "@/components/hr/HRDepartments";
 import HR from "@/pages/HR";
 
 // Define all application routes
@@ -57,6 +58,22 @@ export const routes: RouteObject[] = [
       {
         path: "hr/overview",
         element: <HROverview />,
+      },
+      {
+        path: "hr/overview/headcount",
+        element: <HRDepartments />,
+      },
+      {
+        path: "hr/overview/retention",
+        element: <HROverview />,
+      },
+      {
+        path: "hr/overview/gender",
+        element: <HRDiversity />,
+      },
+      {
+        path: "hr/overview/hiring",
+        element: <HRRecruitment />,
       },
 
       {

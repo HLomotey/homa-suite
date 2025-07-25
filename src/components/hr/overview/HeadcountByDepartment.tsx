@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function HeadcountByDepartment() {
   const [timeRange, setTimeRange] = useState("6m");
+  const navigate = useNavigate();
   
   return (
     <Card className="col-span-4 bg-background border-border">
@@ -64,7 +66,12 @@ export function HeadcountByDepartment() {
             </div>
             <div className="h-8 flex items-center px-4 text-xs text-muted-foreground">
               <div className="flex-1">Departments</div>
-              <Button variant="ghost" size="sm" className="h-6 text-xs">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 text-xs"
+                onClick={() => navigate('/hr/overview/headcount')}
+              >
                 View Details <ChevronRight className="ml-1 h-3 w-3" />
               </Button>
             </div>
