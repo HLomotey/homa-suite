@@ -1,4 +1,4 @@
-// Import modular HRDepartments component
+// Import modular HRDiversity component
 import { HRDiversity } from "./diversity";
 
 // Re-export the component

@@ -5,6 +5,7 @@ export const ROUTES = {
   HOUSING: "/housing",
   BILLING: "/billing",
   TRANSPORT: "/transport",
+  HR: "/hr",
   REPORTS: "/reports",
   SETTINGS: "/settings",
 };

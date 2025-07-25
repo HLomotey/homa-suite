@@ -178,10 +178,10 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
                 <TableCell>{department.turnoverRate}</TableCell>
                 <TableCell>
                   <Badge variant={
-                    department.status === "Growing" ? "success" : 
-                    department.status === "Stable" ? "default" : 
+                    department.status === "Growing" ? "default" : 
+                    department.status === "Stable" ? "outline" : 
                     "destructive"
-                  }>
+                  } className={department.status === "Growing" ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
                     {department.status}
                   </Badge>
                 </TableCell>

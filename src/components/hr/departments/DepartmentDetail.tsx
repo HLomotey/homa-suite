@@ -42,10 +42,10 @@ export function DepartmentDetail({ department, onClose }: DepartmentDetailProps)
             <CardDescription>Detailed department metrics and personnel</CardDescription>
           </div>
           <Badge variant={
-            department.status === "Growing" ? "success" : 
-            department.status === "Stable" ? "default" : 
+            department.status === "Growing" ? "default" : 
+            department.status === "Stable" ? "outline" : 
             "destructive"
-          }>
+          } className={department.status === "Growing" ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
             {department.status}
           </Badge>
         </div>

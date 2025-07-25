@@ -7,6 +7,11 @@ import Transport from "@/pages/Transport";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/layout";
 
+import { HRRecruitment } from "@/components/hr/HRRecruitment";
+import { HRDiversity } from "@/components/hr/HRDiversity";
+import { HROverview } from "@/components/hr/HROverview";
+import HR from "@/pages/HR";
+
 // Define all application routes
 export const routes: RouteObject[] = [
   {
@@ -37,6 +42,23 @@ export const routes: RouteObject[] = [
         path: "transport",
         element: <Transport />,
       },
+      {
+        path: "hr",
+        element: <HR />,
+      },
+      {
+        path: "hr/recruitment",
+        element: <HRRecruitment />,
+      },
+      {
+        path: "hr/diversity",
+        element: <HRDiversity />,
+      },
+      {
+        path: "hr/overview",
+        element: <HROverview />,
+      },
+
       {
         path: "*",
         element: <NotFound />,

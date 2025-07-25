@@ -10,7 +10,8 @@ import {
   Settings,
   Menu,
   X,
-  LayoutDashboard
+  LayoutDashboard,
+  UserRound
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/routes/constants';
@@ -44,6 +45,12 @@ const navigationItems = [
     label: 'Transport',
     icon: Truck,
     href: ROUTES.TRANSPORT,
+    active: false
+  },
+  {
+    label: 'HR',
+    icon: UserRound,
+    href: ROUTES.HR,
     active: false
   },
   {
