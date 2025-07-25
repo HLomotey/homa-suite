@@ -16,7 +16,9 @@ import {
   Bus,
   FileBarChart2,
   DollarSign,
-  ClipboardList
+  ClipboardList,
+  Upload,
+  FileUp
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/routes/constants';
@@ -34,7 +36,6 @@ const navigationItems = [
     href: ROUTES.PROPERTIES,
     active: false
   },
-
   {
     label: 'Billing',
     icon: Calculator,
@@ -66,6 +67,12 @@ const navigationItems = [
     active: false
   },
   {
+    label: 'Users',
+    icon: Users,
+    href: ROUTES.USERS,
+    active: false
+  },
+  {
     label: 'Reports',
     icon: BarChart3,
     href: '/reports',
@@ -75,6 +82,24 @@ const navigationItems = [
     label: 'Settings',
     icon: Settings,
     href: '/settings',
+    active: false
+  },
+  {
+    label: 'Upload HR',
+    icon: FileUp,
+    href: ROUTES.UPLOAD.HR,
+    active: false
+  },
+  {
+    label: 'Upload Finance',
+    icon: FileUp,
+    href: ROUTES.UPLOAD.FINANCE,
+    active: false
+  },
+  {
+    label: 'Upload Operations',
+    icon: FileUp,
+    href: ROUTES.UPLOAD.OPERATIONS,
     active: false
   }
 ];

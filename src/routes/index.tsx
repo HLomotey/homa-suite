@@ -5,6 +5,10 @@ import Housing from "@/pages/Housing";
 import Billing from "@/pages/Billing";
 import Transport from "@/pages/Transport";
 import Settings from "@/pages/Settings";
+import Users from "@/pages/Users";
+import UploadHR from "@/pages/UploadHR";
+import UploadFinance from "@/pages/UploadFinance";
+import UploadOperations from "@/pages/UploadOperations";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/layout";
 
@@ -57,6 +61,26 @@ export const routes: RouteObject[] = [
       {
         path: "settings",
         element: <Settings />,
+      },
+      {
+        path: "users",
+        element: <Users />,
+      },
+      {
+        path: "users/:userId",
+        element: <Users />,
+      },
+      {
+        path: "upload/hr",
+        element: <UploadHR />,
+      },
+      {
+        path: "upload/finance",
+        element: <UploadFinance />,
+      },
+      {
+        path: "upload/operations",
+        element: <UploadOperations />,
       },
       {
         path: "hr",

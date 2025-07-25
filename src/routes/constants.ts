@@ -14,4 +14,10 @@ export const ROUTES = {
   NOTIFICATIONS: "/notifications",
   HELP: "/help",
   NOT_FOUND: "/404",
+  USERS: "/users",
+  UPLOAD: {
+    HR: "/upload/hr",
+    OPERATIONS: "/upload/operations",
+    FINANCE: "/upload/finance"
+  }
 };
