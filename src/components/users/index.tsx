@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { UserList } from "./UserList";
 import { UserDetail } from "./UserDetail";
+import { UserPermissions } from "./UserPermissions";
 import {
   Sheet,
   SheetContent,
@@ -19,10 +20,13 @@ export function Users() {
   // Check if we're on a user detail page
   const isUserDetailPage = path.includes("/users/new") || !!path.match(/\/users\/[^/]+$/);
   
+  // Check if we're on a user permissions page
+  const isUserPermissionsPage = !!path.match(/\/users\/[^/]+\/permissions$/);
+  
   // Effect to open/close sheet based on URL
   useEffect(() => {
-    setIsSheetOpen(isUserDetailPage);
-  }, [isUserDetailPage]);
+    setIsSheetOpen(isUserDetailPage || isUserPermissionsPage);
+  }, [isUserDetailPage, isUserPermissionsPage]);
   
   // Handle sheet close
   const handleSheetClose = () => {
@@ -40,6 +44,7 @@ export function Users() {
       }}>
         <SheetContent side="right" className="w-full sm:w-[500px] md:w-[500px] bg-black/40 backdrop-blur-md border-white/10 text-white overflow-y-auto">
           {isUserDetailPage && <UserDetail />}
+          {isUserPermissionsPage && <UserPermissions />}
         </SheetContent>
       </Sheet>
     </div>

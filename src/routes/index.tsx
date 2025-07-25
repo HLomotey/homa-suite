@@ -71,6 +71,10 @@ export const routes: RouteObject[] = [
         element: <Users />,
       },
       {
+        path: "users/:userId/permissions",
+        element: <Users />,
+      },
+      {
         path: "upload/hr",
         element: <UploadHR />,
       },
