@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
+import { AuthProvider, ProtectedRoute } from "@/components/auth";
 import { router } from "./routes";
 import { useEffect } from "react";
 
@@ -23,11 +24,15 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" forcedTheme="dark" storageKey="homa-suite-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <RouterProvider router={router} />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <ProtectedRoute>
+              <RouterProvider router={router} />
+            </ProtectedRoute>
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

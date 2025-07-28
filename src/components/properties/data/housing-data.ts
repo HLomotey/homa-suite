@@ -1,4 +1,8 @@
-// Property Interface
+// Property types
+export type PropertyType = 'Apartment' | 'House' | 'Condo' | 'Studio' | 'Loft';
+export type PropertyStatus = 'Available' | 'Pending' | 'Sold' | 'Rented';
+
+// Property Interface  
 export interface Property {
   id: string;
   title: string;
@@ -7,12 +11,15 @@ export interface Property {
   bedrooms: number;
   bathrooms: number;
   area: number;
-  type: string;
-  status: string;
+  type: PropertyType;
+  status: PropertyStatus;
   image: string;
   description: string;
   dateAdded: string;
 }
+
+// Frontend Property Interface (alias for compatibility)
+export type FrontendProperty = Property;
 
 // Mock data for properties
 export const mockProperties: Property[] = [

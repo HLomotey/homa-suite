@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/auth';
 import { 
   Building2, 
   Users, 
@@ -18,7 +19,8 @@ import {
   DollarSign,
   ClipboardList,
   Upload,
-  FileUp
+  FileUp,
+  LogOut
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/routes/constants';
@@ -107,6 +109,7 @@ const navigationItems = [
 export const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <>
@@ -159,16 +162,25 @@ export const Sidebar = () => {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border p-4 space-y-3">
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                PM
+                {user?.email?.[0]?.toUpperCase() || 'U'}
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-foreground">Property Manager</p>
-                <p className="text-xs text-muted-foreground">property@bohconcepts.com</p>
+              <div className="ml-3 flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Signed in as</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start"
+              onClick={signOut}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>

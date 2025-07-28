@@ -144,7 +144,7 @@ export function JobListings({ department }: JobListingsProps) {
               <CardTitle>{selectedJob.title}</CardTitle>
               <CardDescription>{selectedJob.department} • {selectedJob.location}</CardDescription>
             </div>
-            <Badge variant={selectedJob.status === "Open" ? "success" : "default"}>
+            <Badge variant={selectedJob.status === "Open" ? "secondary" : "default"}>
               {selectedJob.status}
             </Badge>
           </div>
@@ -369,7 +369,7 @@ export function JobListings({ department }: JobListingsProps) {
                   <TableCell>{job.postedDate}</TableCell>
                   <TableCell>{job.applications}</TableCell>
                   <TableCell>
-                    <Badge variant={job.status === "Open" ? "success" : "default"}>
+                    <Badge variant={job.status === "Open" ? "secondary" : "default"}>
                       {job.status}
                     </Badge>
                   </TableCell>
