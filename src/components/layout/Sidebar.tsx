@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/components/auth';
-import { 
-  Building2, 
-  Users, 
-  Calculator, 
-  Truck, 
-  BarChart3, 
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth";
+import {
+  Building2,
+  Users,
+  Calculator,
+  Truck,
+  BarChart3,
   Settings,
   Menu,
   X,
@@ -20,90 +20,92 @@ import {
   ClipboardList,
   Upload,
   FileUp,
-  LogOut
-} from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { ROUTES } from '@/routes/constants';
+  LogOut,
+} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ROUTES } from "@/routes/constants";
 
 const navigationItems = [
   {
-    label: 'Dashboard',
+    label: "Dashboard",
     icon: LayoutDashboard,
-    href: '/',
-    active: true
+    href: "/",
+    active: true,
   },
   {
-    label: 'Properties',
-    icon: Building2,
-    href: ROUTES.PROPERTIES,
-    active: false
-  },
-  {
-    label: 'Billing',
-    icon: Calculator,
-    href: ROUTES.BILLING,
-    active: false
-  },
-  {
-    label: 'Transport',
-    icon: Truck,
-    href: ROUTES.TRANSPORT,
-    active: false
-  },
-  {
-    label: 'HR',
+    label: "HR",
     icon: UserRound,
     href: ROUTES.HR,
-    active: false
+    active: false,
   },
   {
-    label: 'Finance',
+    label: "Finance",
     icon: DollarSign,
     href: ROUTES.FINANCE,
-    active: false
+    active: false,
   },
   {
-    label: 'Operations',
+    label: "Operations",
     icon: ClipboardList,
     href: ROUTES.OPERATIONS,
-    active: false
+    active: false,
   },
   {
-    label: 'Users',
+    label: "Properties",
+    icon: Building2,
+    href: ROUTES.PROPERTIES,
+    active: false,
+  },
+  {
+    label: "Billing",
+    icon: Calculator,
+    href: ROUTES.BILLING,
+    active: false,
+  },
+  {
+    label: "Transport",
+    icon: Truck,
+    href: ROUTES.TRANSPORT,
+    active: false,
+  },
+
+  {
+    label: "Users",
     icon: Users,
     href: ROUTES.USERS,
-    active: false
+    active: false,
   },
+
   {
-    label: 'Reports',
-    icon: BarChart3,
-    href: '/reports',
-    active: false
-  },
-  {
-    label: 'Settings',
-    icon: Settings,
-    href: '/settings',
-    active: false
-  },
-  {
-    label: 'Upload HR',
+    label: "Upload HR",
     icon: FileUp,
     href: ROUTES.UPLOAD.HR,
-    active: false
+    active: false,
   },
   {
-    label: 'Upload Finance',
+    label: "Upload Finance",
     icon: FileUp,
     href: ROUTES.UPLOAD.FINANCE,
-    active: false
+    active: false,
   },
   {
-    label: 'Upload Operations',
+    label: "Upload Operations",
     icon: FileUp,
     href: ROUTES.UPLOAD.OPERATIONS,
-    active: false
-  }
+    active: false,
+  },
+  {
+    label: "Reports",
+    icon: BarChart3,
+    href: "/reports",
+    active: false,
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    href: "/settings",
+    active: false,
+  },
 ];
 
 export const Sidebar = () => {
@@ -124,16 +126,20 @@ export const Sidebar = () => {
       </Button>
 
       {/* Sidebar */}
-      <div className={cn(
-        "h-screen w-64 bg-card border-r border-border transition-transform duration-200 ease-in-out sticky top-0 z-40",
-        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-      )}>
+      <div
+        className={cn(
+          "h-screen w-64 bg-card border-r border-border transition-transform duration-200 ease-in-out sticky top-0 z-40",
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex h-16 items-center border-b border-border px-6">
             <Building2 className="h-8 w-8 text-primary" />
             <div className="ml-3">
-              <h1 className="text-lg font-semibold text-foreground">HOMA Suite</h1>
+              <h1 className="text-lg font-semibold text-foreground">
+                HOMA Suite
+              </h1>
               <p className="text-xs text-muted-foreground">BOH Concepts ERP</p>
             </div>
           </div>
@@ -165,11 +171,15 @@ export const Sidebar = () => {
           <div className="border-t border-border p-4 space-y-3">
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                {user?.email?.[0]?.toUpperCase() || 'U'}
+                {user?.email?.[0]?.toUpperCase() || "U"}
               </div>
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">Signed in as</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                <p className="text-sm font-medium text-foreground">
+                  Signed in as
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email}
+                </p>
               </div>
             </div>
             <Button
@@ -187,7 +197,7 @@ export const Sidebar = () => {
 
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm md:hidden"
           onClick={() => setIsOpen(false)}
         />

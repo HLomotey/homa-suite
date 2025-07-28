@@ -13,8 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
-import { FrontendUser } from "@/integration/supabase/types";
+import { FrontendUser, FrontendRole } from "@/integration/supabase/types";
 import { useUser, useUpdateUser } from "@/hooks/user-profile";
+import { useRoles } from "@/hooks/role";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Permission {
   id: string;
@@ -23,12 +25,13 @@ interface Permission {
   checked: boolean;
 }
 
+// Default permissions as fallback if API fails
 const defaultPermissions: Permission[] = [
   {
     id: "view-dashboard",
     name: "View Dashboard",
     description: "Can view the main dashboard and analytics",
-    checked: true,
+    checked: false,
   },
   {
     id: "manage-users",
@@ -40,33 +43,21 @@ const defaultPermissions: Permission[] = [
     id: "view-reports",
     name: "View Reports",
     description: "Can view and download reports",
-    checked: true,
-  },
-  {
-    id: "manage-properties",
-    name: "Manage Properties",
-    description: "Can create, edit, and delete properties",
-    checked: false,
-  },
-  {
-    id: "manage-billing",
-    name: "Manage Billing",
-    description: "Can view and process billing information",
-    checked: false,
-  },
-  {
-    id: "system-settings",
-    name: "System Settings",
-    description: "Can modify system settings and configurations",
-    checked: false,
-  },
-  {
-    id: "api-access",
-    name: "API Access",
-    description: "Can access and use the API",
     checked: false,
   },
 ];
+
+// Helper function to convert roles to permissions format
+const rolesToPermissions = (roles: FrontendRole[], userPermissions: string[] = []): Permission[] => {
+  if (!roles || roles.length === 0) return defaultPermissions;
+  
+  return roles.map(role => ({
+    id: role.id,
+    name: role.name,
+    description: role.description || `Permission for ${role.name}`,
+    checked: userPermissions.includes(role.id)
+  }));
+};
 
 export function UserPermissions() {
   const { userId } = useParams();
@@ -77,13 +68,20 @@ export function UserPermissions() {
   const { user, loading: fetchingUser, error: fetchError, refetch } = useUser(userId || "");
   const { update, loading: updatingUser, error: updateError } = useUpdateUser();
   
-  const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
-  const isLoading = fetchingUser || updatingUser;
+  // Fetch roles data (which will be used as permissions)
+  const { roles, loading: fetchingRoles, error: rolesError } = useRoles();
   
-  // Load user permissions when user data is available
+  const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
+  const isLoading = fetchingUser || updatingUser || fetchingRoles;
+  
+  // Load roles and user permissions when data is available
   useEffect(() => {
-    if (user && user.permissions) {
-      // Map user permissions to the permissions state
+    if (roles && roles.length > 0 && user) {
+      // Convert roles to permissions format and check which ones the user has
+      const mappedPermissions = rolesToPermissions(roles, user.permissions);
+      setPermissions(mappedPermissions);
+    } else if (user && user.permissions) {
+      // Fallback to default permissions if roles aren't available
       setPermissions(prevPermissions => 
         prevPermissions.map(permission => ({
           ...permission,
@@ -91,19 +89,31 @@ export function UserPermissions() {
         }))
       );
     }
-  }, [user]);
+  }, [user, roles]);
   
   // Handle fetch errors
   useEffect(() => {
     if (fetchError) {
       toast({
         title: "Error loading user",
-        description: "Could not load user permissions. Please try again.",
+        description: "Could not load user data. Please try again.",
         variant: "destructive"
       });
       navigate("/users");
     }
   }, [fetchError, navigate, toast]);
+  
+  // Handle role fetch errors
+  useEffect(() => {
+    if (rolesError) {
+      toast({
+        title: "Error loading permissions",
+        description: "Could not load permissions data. Using default permissions instead.",
+        variant: "destructive"
+      });
+      // Don't navigate away, just use default permissions
+    }
+  }, [rolesError, toast]);
   
   const handlePermissionChange = (permissionId: string, checked: boolean) => {
     setPermissions(permissions.map(permission => 
@@ -186,31 +196,54 @@ export function UserPermissions() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {permissions.map((permission) => (
-            <div 
-              key={permission.id} 
-              className="flex items-start space-x-2 rounded-md border border-white/10 p-4"
-            >
-              <Checkbox
-                id={permission.id}
-                checked={permission.checked}
-                onCheckedChange={(checked) => 
-                  handlePermissionChange(permission.id, checked === true)
-                }
-              />
-              <div className="space-y-1 leading-none">
-                <Label
-                  htmlFor={permission.id}
-                  className="text-sm font-medium leading-none text-white cursor-pointer"
+          {fetchingRoles ? (
+            // Show loading skeletons while fetching roles
+            <>
+              {[1, 2, 3].map((i) => (
+                <div 
+                  key={i} 
+                  className="flex items-start space-x-2 rounded-md border border-white/10 p-4"
                 >
-                  {permission.name}
-                </Label>
-                <p className="text-sm text-white/60">
-                  {permission.description}
-                </p>
-              </div>
+                  <Skeleton className="h-4 w-4 rounded-sm bg-white/10" />
+                  <div className="space-y-1 leading-none w-full">
+                    <Skeleton className="h-4 w-1/3 bg-white/10" />
+                    <Skeleton className="h-3 w-full mt-2 bg-white/10" />
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : permissions.length === 0 ? (
+            <div className="text-center py-4 text-white/60">
+              No permissions available
             </div>
-          ))}
+          ) : (
+            // Show actual permissions
+            permissions.map((permission) => (
+              <div 
+                key={permission.id} 
+                className="flex items-start space-x-2 rounded-md border border-white/10 p-4"
+              >
+                <Checkbox
+                  id={permission.id}
+                  checked={permission.checked}
+                  onCheckedChange={(checked) => 
+                    handlePermissionChange(permission.id, checked === true)
+                  }
+                />
+                <div className="space-y-1 leading-none">
+                  <Label
+                    htmlFor={permission.id}
+                    className="text-sm font-medium leading-none text-white cursor-pointer"
+                  >
+                    {permission.name}
+                  </Label>
+                  <p className="text-sm text-white/60">
+                    {permission.description}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
