@@ -3,18 +3,25 @@ import { BillingStats } from "./BillingStats";
 import { BillingList } from "./BillingList";
 import { BillingDetail } from "./BillingDetail";
 import { BillingForm } from "./BillingForm";
-import { Bill, Staff, mockBills, mockStaff } from "./data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { useBills, useBillingStaff, useCreateBill } from "../../hooks/billing";
+import { FrontendBill, FrontendBillingStaff, BillStatus } from "../../integration/supabase/types/billing";
 
 export function Billing() {
-  const [bills, setBills] = useState<Bill[]>(mockBills);
-  const [staff] = useState<Staff[]>(mockStaff);
-  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const { bills, loading: billsLoading, error: billsError, refetch: refetchBills } = useBills();
+  const { staff, loading: staffLoading, error: staffError } = useBillingStaff();
+  
+  console.log('Billing index - staff data:', staff);
+  console.log('Billing index - staffLoading:', staffLoading);
+  console.log('Billing index - staffError:', staffError);
+  const { create: createBill, loading: createLoading } = useCreateBill();
+  
+  const [selectedBill, setSelectedBill] = useState<FrontendBill | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
 
-  const handleSelectBill = (bill: Bill) => {
+  const handleSelectBill = (bill: FrontendBill) => {
     setSelectedBill(bill);
   };
 
@@ -26,35 +33,29 @@ export function Billing() {
     setIsFormOpen(true);
   };
 
-  const handleSubmitForm = (formData: any) => {
-    // Create a new bill with the form data
-    const newBill: Bill = {
-      id: (bills.length + 1).toString(),
-      staffId: formData.staffId,
-      amount: formData.amount,
-      type: formData.type,
-      status: "pending",
-      dueDate: formData.dueDate,
-    };
+  const handleSubmitForm = async (formData: any) => {
+    try {
+      // Create a new bill with the form data
+      const newBill: Omit<FrontendBill, 'id'> = {
+        staffId: formData.staffId,
+        amount: formData.amount,
+        type: formData.type,
+        status: 'pending' as BillStatus,
+        dueDate: formData.dueDate,
+        description: formData.description || null
+      };
 
-    // Add the new bill to the list
-    setBills([...bills, newBill]);
+      // Add the new bill to the database
+      await createBill(newBill);
+      
+      // Refresh the bills list
+      refetchBills();
+    } catch (error) {
+      console.error("Error creating bill:", error);
+    }
   };
 
-  const handleAddBill = (formData: any) => {
-    // Create a new bill with the form data
-    const newBill: Bill = {
-      id: (bills.length + 1).toString(),
-      staffId: formData.staffId,
-      amount: formData.amount,
-      type: formData.type,
-      status: "pending",
-      dueDate: formData.dueDate,
-    };
-
-    // Add the new bill to the list
-    setBills([...bills, newBill]);
-  };
+  const handleAddBill = handleSubmitForm;
 
   const filteredBillsByTab = () => {
     if (activeTab === "all") return bills;
@@ -68,41 +69,58 @@ export function Billing() {
         <p className="text-white/60">Manage staff billing and payments</p>
 
         {/* Stats always visible */}
-        <BillingStats bills={bills} />
+        {billsLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <p>Loading billing statistics...</p>
+          </div>
+        ) : billsError ? (
+          <div className="flex justify-center items-center h-32 text-red-500">
+            <p>Error loading billing statistics</p>
+          </div>
+        ) : (
+          <BillingStats bills={bills} />
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent
             value={activeTab}
             className="bg-black/40 border border-white/10 rounded-lg p-0"
           >
-            {selectedBill ? (
+            {billsLoading || staffLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <p>Loading billing data...</p>
+              </div>
+            ) : billsError || staffError ? (
+              <div className="flex justify-center items-center h-64 text-red-500">
+                <p>Error loading billing data</p>
+              </div>
+            ) : selectedBill ? (
               <BillingDetail
                 bill={selectedBill}
-                staff={
-                  staff.find((s) => s.id === selectedBill.staffId) ||
-                  mockStaff[0]
-                }
-                onBack={() => setSelectedBill(null)}
+                staff={staff.find((s) => s.id === selectedBill.staffId) || staff[0]}
+                onBack={handleCloseBillDetail}
               />
             ) : (
-              <BillingList
-                bills={filteredBillsByTab()}
-                staff={staff}
-                onOpenForm={() => setIsFormOpen(true)}
-                onSelectBill={setSelectedBill}
-                activeTab={activeTab}
-                onChangeTab={setActiveTab}
-              />
+              <>
+                <BillingList
+                  bills={filteredBillsByTab()}
+                  staff={staff}
+                  onOpenForm={handleOpenForm}
+                  onSelectBill={handleSelectBill}
+                  activeTab={activeTab}
+                  onChangeTab={setActiveTab}
+                />
+                <BillingForm
+                  open={isFormOpen}
+                  onOpenChange={setIsFormOpen}
+                  staff={staff}
+                  onSubmit={handleAddBill}
+                  isLoading={createLoading}
+                />
+              </>
             )}
           </TabsContent>
         </Tabs>
-
-        <BillingForm
-          open={isFormOpen}
-          onOpenChange={setIsFormOpen}
-          onSubmit={handleAddBill}
-          staff={staff}
-        />
       </div>
     </div>
   );

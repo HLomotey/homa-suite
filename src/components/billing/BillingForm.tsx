@@ -4,23 +4,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Staff } from "./data";
+import { FrontendBillingStaff, BillType } from "../../integration/supabase/types/billing";
 
 interface BillingFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  staff: Staff[];
+  staff: FrontendBillingStaff[];
   onSubmit: (formData: any) => void;
+  isLoading?: boolean;
 }
 
-export function BillingForm({ open, onOpenChange, staff, onSubmit }: BillingFormProps) {
+export function BillingForm({ open, onOpenChange, staff, onSubmit, isLoading = false }: BillingFormProps) {
+  console.log('BillingForm - staff data:', staff);
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // Get form data
     const formData = new FormData(e.currentTarget);
     const data = {
-      staffId: formData.get('staff') as string,
+      staffId: formData.get('staffId') as string,
       amount: parseFloat(formData.get('amount') as string),
       type: formData.get('type') as string,
       dueDate: formData.get('dueDate') as string,
@@ -34,7 +36,7 @@ export function BillingForm({ open, onOpenChange, staff, onSubmit }: BillingForm
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent className="max-w-[500px] sm:max-w-[500px]">
         <SheetHeader>
           <SheetTitle>New Bill</SheetTitle>
           <SheetDescription>
@@ -43,17 +45,21 @@ export function BillingForm({ open, onOpenChange, staff, onSubmit }: BillingForm
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="staff">Staff Member</Label>
-            <Select name="staff">
-              <SelectTrigger>
+            <Label htmlFor="staffId">Staff Member</Label>
+            <Select name="staffId" defaultValue="">
+              <SelectTrigger id="staffId">
                 <SelectValue placeholder="Select staff member" />
               </SelectTrigger>
               <SelectContent>
-                {staff.map((staffMember) => (
-                  <SelectItem key={staffMember.id} value={staffMember.id}>
-                    {staffMember.name}
-                  </SelectItem>
-                ))}
+                {staff && staff.length > 0 ? (
+                  staff.map((staffMember) => (
+                    <SelectItem key={staffMember.id} value={staffMember.id}>
+                      {staffMember.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="placeholder" disabled>No staff members found</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -71,6 +77,7 @@ export function BillingForm({ open, onOpenChange, staff, onSubmit }: BillingForm
                 <SelectItem value="rent">Rent</SelectItem>
                 <SelectItem value="utilities">Utilities</SelectItem>
                 <SelectItem value="transport">Transport</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -82,8 +89,8 @@ export function BillingForm({ open, onOpenChange, staff, onSubmit }: BillingForm
             <Label htmlFor="description">Description</Label>
             <Input type="text" id="description" name="description" />
           </div>
-          <Button type="submit" className="w-full">
-            Create Bill
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Creating..." : "Create Bill"}
           </Button>
         </form>
       </SheetContent>

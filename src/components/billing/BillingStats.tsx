@@ -1,8 +1,9 @@
-import { Bill } from "./data";
 import { FileText, CreditCard, DollarSign, Users } from "lucide-react";
+import { FrontendBill } from "../../integration/supabase/types/billing";
+import { useBillingStats } from "../../hooks/billing";
 
 interface BillingStatsProps {
-  bills: Bill[];
+  bills: FrontendBill[];
 }
 
 export function BillingStats({ bills }: BillingStatsProps) {

@@ -28,15 +28,15 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Bill, Staff } from "./data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { FrontendBill, FrontendBillingStaff } from "../../integration/supabase/types/billing";
 
 interface BillingListProps {
-  bills: Bill[];
-  staff: Staff[];
+  bills: FrontendBill[];
+  staff: FrontendBillingStaff[];
   onOpenForm: () => void;
-  onSelectBill?: (bill: Bill) => void;
+  onSelectBill?: (bill: FrontendBill) => void;
   activeTab?: string;
   onChangeTab?: (tab: string) => void;
 }

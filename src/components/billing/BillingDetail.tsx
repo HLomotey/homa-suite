@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, DollarSign, Receipt, CreditCard, Calendar, User, Building } from "lucide-react";
-import { Bill, Staff } from "./data";
+import { FrontendBill, FrontendBillingStaff } from "../../integration/supabase/types/billing";
 
 interface BillingDetailProps {
-  bill: Bill;
-  staff: Staff;
+  bill: FrontendBill;
+  staff: FrontendBillingStaff;
   onBack: () => void;
 }
 
