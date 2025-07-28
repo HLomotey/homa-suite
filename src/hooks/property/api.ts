@@ -17,17 +17,30 @@ import {
  * @returns Promise with array of properties
  */
 export const fetchProperties = async (): Promise<FrontendProperty[]> => {
+  console.log("Fetching properties from Supabase...");
+  
   const { data, error } = await supabase
     .from("properties")
     .select("*")
     .order("created_at", { ascending: false });
+
+  console.log("Supabase properties query result:", { data, error });
 
   if (error) {
     console.error("Error fetching properties:", error);
     throw new Error(error.message);
   }
 
-  return (data as Property[]).map(mapDatabasePropertyToFrontend);
+  // Check if data is null or empty
+  if (!data || data.length === 0) {
+    console.warn("No properties found in database");
+    return [];
+  }
+
+  const mappedData = (data as Property[]).map(mapDatabasePropertyToFrontend);
+  console.log("Mapped properties data:", mappedData);
+  
+  return mappedData;
 };
 
 /**

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import { FrontendRoom, RoomStatus, RoomType } from "@/integration/supabase/types";
+import { SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 // Room Form Component
 export interface RoomFormProps {
@@ -19,6 +20,11 @@ export const RoomForm: React.FC<RoomFormProps> = ({
   onCancel,
   properties,
 }) => {
+  // Debug properties data
+  React.useEffect(() => {
+    console.log("RoomForm - Properties received:", properties);
+  }, [properties]);
+
   const [formData, setFormData] = React.useState<Omit<FrontendRoom, "id">>({
     name: room?.name || "",
     propertyId: room?.propertyId || (properties[0]?.id || ""),
@@ -65,9 +71,14 @@ export const RoomForm: React.FC<RoomFormProps> = ({
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-6 border-b border-border">
-        <h2 className="text-lg font-semibold">
-          {room ? "Edit Room" : "Add New Room"}
-        </h2>
+        <div>
+          <SheetTitle className="text-lg font-semibold">
+            {room ? "Edit Room" : "Add New Room"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            {room ? "Update the details for this room." : "Fill in the details to create a new room."}
+          </SheetDescription>
+        </div>
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="h-4 w-4" />
         </Button>
@@ -108,11 +119,15 @@ export const RoomForm: React.FC<RoomFormProps> = ({
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
                 required
               >
-                {properties.map(property => (
-                  <option key={property.id} value={property.id}>
-                    {property.title}
-                  </option>
-                ))}
+                {properties && properties.length > 0 ? (
+                  properties.map(property => (
+                    <option key={property.id} value={property.id}>
+                      {property.title}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No properties available</option>
+                )}
               </select>
             </div>
 

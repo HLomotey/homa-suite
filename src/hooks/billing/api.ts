@@ -88,9 +88,7 @@ export const fetchBillById = async (
  * @param bill Bill data to create
  * @returns Promise with created bill data
  */
-export const createBill = async (
-  bill: FrontendBill
-): Promise<FrontendBill> => {
+export const createBill = async (bill: Omit<FrontendBill, "id">): Promise<FrontendBill> => {
   console.log('Creating bill using RPC:', bill);
   
   // Use the RPC function to bypass RLS

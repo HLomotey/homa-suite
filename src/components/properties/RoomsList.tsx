@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,102 +6,43 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/custom-ui";
 import { Plus, Search, Filter, DoorOpen, Building2, Users, Calendar, Edit, Trash2, Square } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import RoomForm from "./RoomForm";
-import { Room, mockProperties } from "./data/housing-data";
+import { FrontendRoom, RoomStatus, RoomType } from "@/integration/supabase/types";
+import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, useRoomsByStatus, useRoomsByProperty } from "@/hooks/room";
+import { useProperties } from "@/hooks/property";
 
-// Mock data for rooms
-const mockRooms: Room[] = [
-  {
-    id: "1",
-    name: "Room 101",
-    propertyId: "1",
-    propertyName: "Modern Downtown Apartment",
-    type: "Studio",
-    status: "Occupied",
-    area: 350,
-    occupants: 1,
-    maxOccupants: 1,
-    price: 800,
-    dateAvailable: "2024-08-15"
-  },
-  {
-    id: "2",
-    name: "Room 102",
-    propertyId: "1",
-    propertyName: "Modern Downtown Apartment",
-    type: "Single",
-    status: "Available",
-    area: 300,
-    occupants: 0,
-    maxOccupants: 1,
-    price: 750,
-    dateAvailable: "2024-07-30"
-  },
-  {
-    id: "3",
-    name: "Master Bedroom",
-    propertyId: "2",
-    propertyName: "Suburban Family Home",
-    type: "Master",
-    status: "Occupied",
-    area: 450,
-    occupants: 2,
-    maxOccupants: 2,
-    price: 1200,
-    dateAvailable: "2024-09-01"
-  },
-  {
-    id: "4",
-    name: "Guest Room",
-    propertyId: "2",
-    propertyName: "Suburban Family Home",
-    type: "Single",
-    status: "Available",
-    area: 350,
-    occupants: 0,
-    maxOccupants: 1,
-    price: 900,
-    dateAvailable: "2024-08-01"
-  },
-  {
-    id: "5",
-    name: "Penthouse Suite",
-    propertyId: "3",
-    propertyName: "Luxury Penthouse",
-    type: "Master",
-    status: "Occupied",
-    area: 550,
-    occupants: 2,
-    maxOccupants: 2,
-    price: 1800,
-    dateAvailable: "2024-10-15"
-  },
-  {
-    id: "6",
-    name: "Guest Suite",
-    propertyId: "3",
-    propertyName: "Luxury Penthouse",
-    type: "Suite",
-    status: "Maintenance",
-    area: 400,
-    occupants: 0,
-    maxOccupants: 2,
-    price: 1500,
-    dateAvailable: "2024-08-10"
-  },
-];
+
 
 // Rooms List Component
 export const RoomsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [propertyFilter, setPropertyFilter] = useState("all");
-  const [rooms, setRooms] = useState<Room[]>(mockRooms);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingRoom, setEditingRoom] = useState<Room | undefined>();
+  const [editingRoom, setEditingRoom] = useState<FrontendRoom | undefined>();
+  
+  // Toast notifications
+  const { toast } = useToast();
+  
+  // Fetch rooms using hooks
+  const { rooms, loading: roomsLoading, error: roomsError, refetch: refetchRooms } = useRooms();
+  const { create, loading: createLoading } = useCreateRoom();
+  const { update, loading: updateLoading } = useUpdateRoom();
+  const { deleteRoom, loading: deleteLoading } = useDeleteRoom();
+  
+  // Fetch properties for the form
+  const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
+  
+  // Debug properties data
+  React.useEffect(() => {
+    console.log("RoomsList - Properties loaded:", properties);
+    console.log("RoomsList - Properties loading:", propertiesLoading);
+    console.log("RoomsList - Properties error:", propertiesError);
+  }, [properties, propertiesLoading, propertiesError]);
 
   // Filter rooms based on search query, status filter, and property filter
-  const filteredRooms = rooms.filter((room) => {
+  const filteredRooms = rooms ? rooms.filter((room) => {
     const matchesSearch = 
       room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       room.propertyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -116,10 +57,10 @@ export const RoomsList = () => {
       room.propertyId === propertyFilter;
     
     return matchesSearch && matchesStatus && matchesProperty;
-  });
+  }) : [];
 
   // Get unique properties for the filter dropdown
-  const uniqueProperties = Array.from(
+  const uniqueProperties = rooms ? Array.from(
     new Set(rooms.map(room => room.propertyId))
   ).map(propertyId => {
     const room = rooms.find(r => r.propertyId === propertyId);
@@ -127,29 +68,61 @@ export const RoomsList = () => {
       id: propertyId,
       name: room ? room.propertyName : ""
     };
-  });
+  }) : [];
 
   const handleAddRoom = () => {
     setIsFormOpen(true);
     setEditingRoom(undefined);
   };
 
-  const handleEditRoom = (room: Room) => {
+  const handleEditRoom = (room: FrontendRoom) => {
     setIsFormOpen(true);
     setEditingRoom(room);
   };
 
-  const handleDeleteRoom = (roomId: string) => {
-    setRooms(rooms.filter(room => room.id !== roomId));
+  const handleDeleteRoom = async (roomId: string) => {
+    try {
+      await deleteRoom(roomId);
+      toast({
+        title: "Room deleted",
+        description: "Room has been successfully deleted.",
+      });
+      refetchRooms();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete room. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error deleting room:", error);
+    }
   };
 
-  const handleSaveRoom = (room: Room) => {
-    if (editingRoom) {
-      setRooms(rooms.map(r => r.id === room.id ? room : r));
-    } else {
-      setRooms([...rooms, room]);
+  const handleSaveRoom = async (roomData: Omit<FrontendRoom, "id">) => {
+    try {
+      if (editingRoom) {
+        await update(editingRoom.id, roomData);
+        toast({
+          title: "Room updated",
+          description: "Room has been successfully updated.",
+        });
+      } else {
+        await create(roomData);
+        toast({
+          title: "Room created",
+          description: "New room has been successfully created.",
+        });
+      }
+      refetchRooms();
+      setIsFormOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${editingRoom ? "update" : "create"} room. Please try again.`,
+        variant: "destructive",
+      });
+      console.error(`Error ${editingRoom ? "updating" : "creating"} room:`, error);
     }
-    setIsFormOpen(false);
   };
 
   return (
@@ -168,27 +141,31 @@ export const RoomsList = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard 
           title="Total Rooms" 
-          value={mockRooms.length.toString()} 
+          value={rooms ? rooms.length.toString() : "0"} 
           icon={<DoorOpen className="h-5 w-5" />}
           color="blue"
+          loading={roomsLoading}
         />
         <StatsCard 
           title="Available Rooms" 
-          value={mockRooms.filter(r => r.status === "Available").length.toString()} 
+          value={rooms ? rooms.filter(r => r.status === "Available").length.toString() : "0"} 
           icon={<Building2 className="h-5 w-5" />}
           color="green"
+          loading={roomsLoading}
         />
         <StatsCard 
           title="Occupied Rooms" 
-          value={mockRooms.filter(r => r.status === "Occupied").length.toString()} 
+          value={rooms ? rooms.filter(r => r.status === "Occupied").length.toString() : "0"} 
           icon={<Users className="h-5 w-5" />}
           color="amber"
+          loading={roomsLoading}
         />
         <StatsCard 
           title="Maintenance" 
-          value={mockRooms.filter(r => r.status === "Maintenance").length.toString()} 
+          value={rooms ? rooms.filter(r => r.status === "Maintenance").length.toString() : "0"} 
           icon={<Square className="h-5 w-5" />}
           color="purple"
+          loading={roomsLoading}
         />
       </div>
 
@@ -245,7 +222,19 @@ export const RoomsList = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRooms.map((room) => (
+            {roomsLoading ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-4">Loading rooms...</TableCell>
+              </TableRow>
+            ) : roomsError ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-4 text-red-500">Error loading rooms</TableCell>
+              </TableRow>
+            ) : filteredRooms.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-4">No rooms found</TableCell>
+              </TableRow>
+            ) : filteredRooms.map((room) => (
               <TableRow key={room.id}>
                 <TableCell className="font-medium">{room.name}</TableCell>
                 <TableCell>{room.propertyName}</TableCell>
@@ -288,7 +277,7 @@ export const RoomsList = () => {
             room={editingRoom}
             onSave={handleSaveRoom}
             onCancel={() => setIsFormOpen(false)}
-            properties={mockProperties.map(p => ({ id: p.id, title: p.title }))}
+            properties={properties ? properties.map(p => ({ id: p.id, title: p.title })) : []}
           />
         </SheetContent>
       </Sheet>
@@ -302,9 +291,10 @@ interface StatsCardProps {
   value: string;
   icon: React.ReactNode;
   color: "blue" | "green" | "amber" | "purple";
+  loading?: boolean;
 }
 
-const StatsCard = ({ title, value, icon, color }: StatsCardProps) => {
+const StatsCard = ({ title, value, icon, color, loading = false }: StatsCardProps) => {
   const colorClasses = {
     blue: "bg-blue-950/40 border-blue-800/30 text-blue-500",
     green: "bg-green-950/40 border-green-800/30 text-green-500",
@@ -318,14 +308,20 @@ const StatsCard = ({ title, value, icon, color }: StatsCardProps) => {
         <span className="text-sm text-white/60">{title}</span>
         <div className="p-2 rounded-full bg-white/5">{icon}</div>
       </div>
-      <div className="text-2xl font-bold text-white">{value}</div>
+      <div className="text-2xl font-bold text-white">
+        {loading ? (
+          <div className="h-8 w-16 bg-white/10 animate-pulse rounded"></div>
+        ) : (
+          value
+        )}
+      </div>
     </div>
   );
 };
 
 // Status Badge Component
-const StatusBadge = ({ status }: { status: string }) => {
-  const getStatusColor = (status: string) => {
+const StatusBadge = ({ status }: { status: RoomStatus }) => {
+  const getStatusColor = (status: RoomStatus) => {
     switch (status.toLowerCase()) {
       case 'available':
         return 'bg-green-500/20 text-green-500 border-green-500/30';
