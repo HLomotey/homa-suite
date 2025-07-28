@@ -1,4 +1,4 @@
-import { Vehicle, Staff } from "./data";
+import { FrontendVehicle, FrontendTransportStaff } from "@/integration/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 
 interface TransportDetailProps {
-  vehicle: Vehicle;
-  staff: Staff;
+  vehicle: FrontendVehicle;
+  staff: FrontendTransportStaff | undefined;
   onBack: () => void;
 }
 
@@ -25,7 +25,7 @@ export function TransportDetail({
   onBack,
 }: TransportDetailProps) {
   // Get status badge variant
-  const getStatusBadge = (status: Vehicle["status"]) => {
+  const getStatusBadge = (status: FrontendVehicle["status"]) => {
     switch (status) {
       case "active":
         return "default";
@@ -41,7 +41,7 @@ export function TransportDetail({
   };
 
   // Get vehicle icon
-  const getVehicleIcon = (type: Vehicle["type"]) => {
+  const getVehicleIcon = (type: FrontendVehicle["type"]) => {
     switch (type) {
       case "car":
         return <Car className="h-5 w-5" />;
@@ -91,8 +91,8 @@ export function TransportDetail({
                 <User className="h-6 w-6 text-white/60" />
               </div>
               <div>
-                <p className="font-medium text-white">{staff.name}</p>
-                <p className="text-sm text-white/60">{staff.department}</p>
+                <p className="font-medium text-white">{staff?.name || "Unassigned"}</p>
+                <p className="text-sm text-white/60">{staff?.department || "N/A"}</p>
               </div>
             </div>
           </CardContent>

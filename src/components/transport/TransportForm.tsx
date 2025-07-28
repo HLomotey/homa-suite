@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Staff, Vehicle } from "./data";
+import { useState, useEffect } from "react";
+import { FrontendVehicle, FrontendTransportStaff } from "@/integration/supabase/types";
+import { useCreateVehicle, useUpdateVehicle, useTransportStaff } from "@/hooks/transport";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,32 +29,109 @@ import { CalendarIcon, Car, Truck, Bus } from "lucide-react";
 interface TransportFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (vehicle: Omit<Vehicle, "id">) => void;
-  staff: Staff[];
+  onSuccess: () => void;
+  editingVehicle?: FrontendVehicle | null;
 }
 
-export function TransportForm({ open, onOpenChange, onSubmit, staff }: TransportFormProps) {
+export function TransportForm({ open, onOpenChange, onSuccess, editingVehicle }: TransportFormProps) {
+  // Fetch staff using hook
+  const { staff, loading: staffLoading, error: staffError } = useTransportStaff();
+  
+  // Create and update hooks
+  const { create, loading: createLoading, error: createError } = useCreateVehicle();
+  const { update, loading: updateLoading, error: updateError } = useUpdateVehicle();
+  
+  const isEditing = !!editingVehicle;
   const [model, setModel] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
   const [staffId, setStaffId] = useState("");
-  const [vehicleType, setVehicleType] = useState<Vehicle["type"]>("car");
-  const [status, setStatus] = useState<Vehicle["status"]>("active");
+  const [vehicleType, setVehicleType] = useState<FrontendVehicle["type"]>("car");
+  const [status, setStatus] = useState<FrontendVehicle["status"]>("active");
   const [lastService, setLastService] = useState<Date>(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Populate form when editing
+  useEffect(() => {
+    if (editingVehicle) {
+      setModel(editingVehicle.model);
+      setPlateNumber(editingVehicle.plateNumber);
+      setStaffId(editingVehicle.staffId);
+      setVehicleType(editingVehicle.type);
+      setStatus(editingVehicle.status);
+      setLastService(new Date(editingVehicle.lastService));
+    } else {
+      resetForm();
+    }
+  }, [editingVehicle]);
+  
+  // Handle errors
+  useEffect(() => {
+    if (createError) {
+      console.error("Error creating vehicle:", createError);
+      toast({
+        title: "Error",
+        description: "Failed to create vehicle. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    if (updateError) {
+      console.error("Error updating vehicle:", updateError);
+      toast({
+        title: "Error",
+        description: "Failed to update vehicle. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    if (staffError) {
+      console.error("Error fetching staff:", staffError);
+      toast({
+        title: "Error",
+        description: "Failed to load staff data.",
+        variant: "destructive",
+      });
+    }
+  }, [createError, updateError, staffError]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    const newVehicle = {
-      staffId,
-      model,
-      plateNumber,
-      status,
-      lastService: lastService.toISOString().split('T')[0],
-      type: vehicleType
-    };
-    
-    onSubmit(newVehicle);
-    resetForm();
+    try {
+      const vehicleData = {
+        staffId,
+        model,
+        plateNumber,
+        status,
+        lastService: lastService.toISOString().split('T')[0],
+        type: vehicleType
+      };
+      
+      if (isEditing && editingVehicle) {
+        // Update existing vehicle
+        await update(editingVehicle.id, vehicleData);
+        toast({
+          title: "Success",
+          description: "Vehicle updated successfully",
+        });
+      } else {
+        // Create new vehicle
+        await create(vehicleData);
+        toast({
+          title: "Success",
+          description: "Vehicle created successfully",
+        });
+      }
+      
+      onSuccess();
+      onOpenChange(false);
+      resetForm();
+    } catch (error) {
+      console.error("Error submitting vehicle:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -68,9 +147,9 @@ export function TransportForm({ open, onOpenChange, onSubmit, staff }: Transport
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="bg-black/90 border-white/10 text-white">
         <SheetHeader>
-          <SheetTitle className="text-white">Add New Vehicle</SheetTitle>
+          <SheetTitle className="text-white">{isEditing ? 'Edit Vehicle' : 'Add New Vehicle'}</SheetTitle>
           <SheetDescription className="text-white/60">
-            Fill in the details to add a new vehicle to the fleet.
+            {isEditing ? 'Update the vehicle details.' : 'Fill in the details to add a new vehicle to the fleet.'}
           </SheetDescription>
         </SheetHeader>
         
@@ -101,7 +180,7 @@ export function TransportForm({ open, onOpenChange, onSubmit, staff }: Transport
           
           <div className="space-y-2">
             <Label htmlFor="vehicleType">Vehicle Type</Label>
-            <Select value={vehicleType} onValueChange={(value: Vehicle["type"]) => setVehicleType(value)}>
+            <Select value={vehicleType} onValueChange={(value) => setVehicleType(value as FrontendVehicle["type"])}>
               <SelectTrigger className="bg-black/40 border-white/10">
                 <SelectValue placeholder="Select vehicle type" />
               </SelectTrigger>
@@ -124,7 +203,7 @@ export function TransportForm({ open, onOpenChange, onSubmit, staff }: Transport
           
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <Select value={status} onValueChange={(value: Vehicle["status"]) => setStatus(value)}>
+            <Select value={status} onValueChange={(value) => setStatus(value as FrontendVehicle["status"])}>
               <SelectTrigger className="bg-black/40 border-white/10">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -138,15 +217,15 @@ export function TransportForm({ open, onOpenChange, onSubmit, staff }: Transport
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="staffId">Assign to Staff</Label>
+            <Label htmlFor="staff">Assigned To</Label>
             <Select value={staffId} onValueChange={setStaffId}>
-              <SelectTrigger className="bg-black/40 border-white/10">
-                <SelectValue placeholder="Select staff member" />
+              <SelectTrigger className="bg-black/40 border-white/10" disabled={staffLoading}>
+                <SelectValue placeholder={staffLoading ? "Loading staff..." : "Select staff member"} />
               </SelectTrigger>
               <SelectContent className="bg-black/90 border-white/10 text-white">
-                {staff.map((staffMember) => (
+                {staff?.map((staffMember) => (
                   <SelectItem key={staffMember.id} value={staffMember.id}>
-                    {staffMember.name} - {staffMember.department}
+                    {staffMember.name} ({staffMember.department})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -179,12 +258,23 @@ export function TransportForm({ open, onOpenChange, onSubmit, staff }: Transport
           
           <SheetFooter className="pt-4">
             <SheetClose asChild>
-              <Button type="button" variant="outline" className="w-full sm:w-auto">
+              <Button variant="outline" className="border-white/10 text-white" disabled={isSubmitting}>
                 Cancel
               </Button>
             </SheetClose>
-            <Button type="submit" className="w-full sm:w-auto">
-              Add Vehicle
+            <Button 
+              type="submit" 
+              className="bg-white text-black hover:bg-white/90" 
+              disabled={isSubmitting || createLoading || updateLoading}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-t-black/60 border-black/10 rounded-full animate-spin mr-2"></div>
+                  {isEditing ? 'Updating...' : 'Saving...'}
+                </>
+              ) : (
+                isEditing ? 'Update Vehicle' : 'Save Vehicle'
+              )}
             </Button>
           </SheetFooter>
         </form>

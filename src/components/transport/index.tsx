@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Vehicle, Staff, mockVehicles, mockStaff } from "./data";
+import { useState, useEffect } from "react";
+import { FrontendVehicle, FrontendTransportStaff } from "@/integration/supabase/types";
+import { useVehicles, useTransportStaff, useVehiclesByStatus } from "@/hooks/transport";
+import { toast } from "@/components/ui/use-toast";
 import { TransportStats } from "./TransportStats";
 import { TransportList } from "./TransportList";
 import { TransportDetail } from "./TransportDetail";
@@ -7,26 +9,53 @@ import { TransportForm } from "./TransportForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function Transport() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
-  const [staff] = useState<Staff[]>(mockStaff);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  // Fetch vehicles and staff using hooks
+  const { vehicles, loading: vehiclesLoading, error: vehiclesError, refetch: refetchVehicles } = useVehicles();
+  const { staff, loading: staffLoading, error: staffError } = useTransportStaff();
+  
+  const [selectedVehicle, setSelectedVehicle] = useState<FrontendVehicle | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [editingVehicle, setEditingVehicle] = useState<FrontendVehicle | null>(null);
+  
+  // Handle errors
+  useEffect(() => {
+    if (vehiclesError) {
+      console.error("Error fetching vehicles:", vehiclesError);
+      toast({
+        title: "Error",
+        description: "Failed to load vehicles. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    if (staffError) {
+      console.error("Error fetching staff:", staffError);
+      toast({
+        title: "Error",
+        description: "Failed to load staff data. Some information may be incomplete.",
+        variant: "destructive",
+      });
+    }
+  }, [vehiclesError, staffError]);
 
   // Filter vehicles based on active tab
   const filteredVehiclesByTab = () => {
+    if (!vehicles) return [];
     if (activeTab === "all") return vehicles;
     return vehicles.filter(vehicle => vehicle.status === activeTab);
   };
 
-  // Handle adding a new vehicle
-  const handleAddVehicle = (newVehicle: Omit<Vehicle, "id">) => {
-    const vehicle: Vehicle = {
-      ...newVehicle,
-      id: (vehicles.length + 1).toString(),
-    };
-    setVehicles([...vehicles, vehicle]);
-    setIsFormOpen(false);
+  // Handle opening form for editing
+  const handleEditVehicle = (vehicle: FrontendVehicle) => {
+    setEditingVehicle(vehicle);
+    setIsFormOpen(true);
+  };
+  
+  // Handle form success (create or update)
+  const handleFormSuccess = () => {
+    refetchVehicles();
+    setEditingVehicle(null);
   };
 
   return (
@@ -36,7 +65,7 @@ export function Transport() {
         <p className="text-white/60">Manage staff vehicles and transportation</p>
       
         {/* Stats always visible */}
-        <TransportStats vehicles={vehicles} />
+        <TransportStats vehicles={vehicles || []} />
       
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-black/40 border border-white/10 mb-4">
@@ -51,16 +80,17 @@ export function Transport() {
               <div className="p-6">
                 <TransportDetail 
                   vehicle={selectedVehicle} 
-                  staff={staff.find(s => s.id === selectedVehicle.staffId) || mockStaff[0]} 
+                  staff={staff?.find(s => s.id === selectedVehicle.staffId)} 
                   onBack={() => setSelectedVehicle(null)} 
                 />
               </div>
             ) : (
               <div className="p-6">
                 <TransportList 
-                  vehicles={filteredVehiclesByTab()} 
-                  staff={staff} 
-                  onOpenForm={() => setIsFormOpen(true)} 
+                  onOpenForm={() => {
+                    setEditingVehicle(null);
+                    setIsFormOpen(true);
+                  }} 
                   onSelectVehicle={setSelectedVehicle}
                   activeTab={activeTab}
                   onChangeTab={setActiveTab}
@@ -73,8 +103,8 @@ export function Transport() {
         <TransportForm 
           open={isFormOpen} 
           onOpenChange={setIsFormOpen} 
-          onSubmit={handleAddVehicle} 
-          staff={staff} 
+          onSuccess={handleFormSuccess}
+          editingVehicle={editingVehicle}
         />
       </div>
     </div>

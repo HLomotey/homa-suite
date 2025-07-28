@@ -23,6 +23,11 @@ export const RoomForm: React.FC<RoomFormProps> = ({
   // Debug properties data
   React.useEffect(() => {
     console.log("RoomForm - Properties received:", properties);
+    console.log("RoomForm - Properties length:", properties?.length || 0);
+    console.log("RoomForm - Properties array is array?", Array.isArray(properties));
+    if (properties && properties.length > 0) {
+      console.log("RoomForm - First property:", properties[0]);
+    }
   }, [properties]);
 
   const [formData, setFormData] = React.useState<Omit<FrontendRoom, "id">>({

@@ -1,11 +1,14 @@
-import { Vehicle } from "./data";
+import { FrontendVehicle } from "@/integration/supabase/types";
+import { useTransportStats } from "@/hooks/transport";
 import { Car, Truck, Bus, Wrench } from "lucide-react";
 
 interface TransportStatsProps {
-  vehicles: Vehicle[];
+  vehicles: FrontendVehicle[];
 }
 
 export function TransportStats({ vehicles }: TransportStatsProps) {
+  // Optional: Use the stats hook if you want to get more detailed stats from the backend
+  // const { stats, loading, error } = useTransportStats();
   // Calculate stats
   const totalVehicles = vehicles.length;
   const activeVehicles = vehicles.filter(v => v.status === 'active').length;

@@ -2,12 +2,13 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
-import { Assignment } from "./data/housing-data";
+import { FrontendAssignment, AssignmentStatus, PaymentStatus } from "@/integration/supabase/types";
+import { useToast } from "@/components/ui/use-toast";
 
 // Assignment Form Component
 export interface AssignmentFormProps {
-  assignment?: Assignment;
-  onSave: (assignment: Omit<Assignment, "id">) => void;
+  assignment?: FrontendAssignment;
+  onSave: (assignment: Omit<FrontendAssignment, "id">) => void;
   onCancel: () => void;
   properties: { id: string; title: string }[];
   rooms: { id: string; name: string; propertyId: string }[];
@@ -20,22 +21,31 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   properties,
   rooms,
 }) => {
-  const [formData, setFormData] = React.useState<Omit<Assignment, "id">>({
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = React.useState<Omit<FrontendAssignment, "id">>({
     tenantName: assignment?.tenantName || "",
     tenantId: assignment?.tenantId || "",
     propertyId: assignment?.propertyId || (properties[0]?.id || ""),
     propertyName: assignment?.propertyName || (properties[0]?.title || ""),
     roomId: assignment?.roomId || "",
     roomName: assignment?.roomName || "",
-    status: assignment?.status || "Active",
+    status: assignment?.status || "Active" as AssignmentStatus,
     startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
     endDate: assignment?.endDate || "",
     rentAmount: assignment?.rentAmount || 0,
-    paymentStatus: assignment?.paymentStatus || "Paid",
+    paymentStatus: assignment?.paymentStatus || "Paid" as PaymentStatus,
   });
 
   // Filter rooms based on selected property
   const filteredRooms = rooms.filter(room => room.propertyId === formData.propertyId);
+
+  // Debug logs
+  React.useEffect(() => {
+    console.log("AssignmentForm - Properties:", properties);
+    console.log("AssignmentForm - Rooms:", rooms);
+    console.log("AssignmentForm - Filtered Rooms:", filteredRooms);
+  }, [properties, rooms, filteredRooms]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -71,7 +81,37 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Validate form
+    if (!formData.propertyId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a property",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!formData.roomId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a room",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Submit form
+    try {
+      onSave(formData);
+    } catch (error) {
+      console.error("Error saving assignment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save assignment. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

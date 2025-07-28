@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Vehicle, Staff } from "./data";
+import { useState, useEffect } from "react";
+import { FrontendVehicle, FrontendTransportStaff } from "@/integration/supabase/types";
+import { useVehicles, useTransportStaff } from "@/hooks/transport";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,40 +25,61 @@ import {
 } from "lucide-react";
 
 interface TransportListProps {
-  vehicles: Vehicle[];
-  staff: Staff[];
   onOpenForm: () => void;
-  onSelectVehicle: (vehicle: Vehicle) => void;
+  onSelectVehicle: (vehicle: FrontendVehicle) => void;
   activeTab?: string;
   onChangeTab?: (value: string) => void;
 }
 
 export function TransportList({
-  vehicles,
-  staff,
   onOpenForm,
   onSelectVehicle,
   activeTab = "all",
   onChangeTab,
 }: TransportListProps) {
+  // Fetch vehicles and staff using hooks
+  const { vehicles, loading: vehiclesLoading, error: vehiclesError, refetch: refetchVehicles } = useVehicles();
+  const { staff, loading: staffLoading, error: staffError } = useTransportStaff();
+  
+  // Handle errors
+  useEffect(() => {
+    if (vehiclesError) {
+      console.error("Error fetching vehicles:", vehiclesError);
+      toast({
+        title: "Error",
+        description: "Failed to load vehicles. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    if (staffError) {
+      console.error("Error fetching staff:", staffError);
+      toast({
+        title: "Error",
+        description: "Failed to load staff data. Some information may be incomplete.",
+        variant: "destructive",
+      });
+    }
+  }, [vehiclesError, staffError]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter vehicles based on search query
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const staffMember = staff.find((s) => s.id === vehicle.staffId);
-    if (!staffMember) return false;
-
+  const filteredVehicles = vehicles?.filter((vehicle) => {
+    const staffMember = staff?.find((s) => s.id === vehicle.staffId);
+    
+    if (searchQuery === "") return true;
+    
     return (
       vehicle.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vehicle.plateNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      staffMember.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      staffMember.department.toLowerCase().includes(searchQuery.toLowerCase())
+      staffMember?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      staffMember?.department.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  });
+  }) || [];
 
   // Get status badge variant
-  const getStatusBadge = (status: Vehicle["status"]) => {
+  const getStatusBadge = (status: FrontendVehicle["status"]) => {
     switch (status) {
       case "active":
         return "default";
@@ -72,7 +95,7 @@ export function TransportList({
   };
 
   // Get vehicle icon
-  const getVehicleIcon = (type: Vehicle["type"]) => {
+  const getVehicleIcon = (type: FrontendVehicle["type"]) => {
     switch (type) {
       case "car":
         return <Car className="h-4 w-4" />;
@@ -88,7 +111,7 @@ export function TransportList({
   };
 
   // Get card background based on status
-  const getCardBackground = (status: Vehicle["status"]) => {
+  const getCardBackground = (status: FrontendVehicle["status"]) => {
     switch (status) {
       case "active":
         return "bg-gradient-to-br from-green-900/40 to-green-950/80";
@@ -141,7 +164,17 @@ export function TransportList({
         </div>
       </div>
 
-      {filteredVehicles.length === 0 ? (
+      {vehiclesLoading || staffLoading ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
+          <div className="h-12 w-12 border-2 border-t-white/60 border-white/10 rounded-full animate-spin mb-4"></div>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            Loading...
+          </h3>
+          <p className="text-white/60">
+            Fetching transport data
+          </p>
+        </div>
+      ) : filteredVehicles.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-8 text-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
           <Car className="h-12 w-12 text-white/20 mb-4" />
           <h3 className="text-xl font-semibold text-white mb-2">

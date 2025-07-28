@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,122 +7,67 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/custom-ui";
 import { Plus, Search, Filter, Users, Calendar, Edit, Trash2, DoorOpen, Building2, Clock } from "lucide-react";
 import AssignmentForm from "./AssignmentForm";
-import { Assignment, mockProperties } from "./data/housing-data";
+import { useToast } from "@/components/ui/use-toast";
+import { useAssignments, useCreateAssignment, useUpdateAssignment, useDeleteAssignment } from "@/hooks/assignment/useAssignment";
+import { useProperties } from "@/hooks/property/useProperty";
+import { useRooms } from "@/hooks/room/useRoom";
+import { FrontendAssignment } from "@/integration/supabase/types";
 
-// Mock data for rooms for the form
-const mockRooms = [
-  {
-    id: "1",
-    name: "Room 101",
-    propertyId: "1"
-  },
-  {
-    id: "2",
-    name: "Room 102",
-    propertyId: "1"
-  },
-  {
-    id: "3",
-    name: "Master Bedroom",
-    propertyId: "2"
-  },
-  {
-    id: "4",
-    name: "Guest Room",
-    propertyId: "2"
-  },
-  {
-    id: "5",
-    name: "Penthouse Suite",
-    propertyId: "3"
-  }
-];
 
-// Mock data for assignments
-const mockAssignments: Assignment[] = [
-  {
-    id: "1",
-    tenantName: "John Doe",
-    tenantId: "T001",
-    propertyId: "1",
-    propertyName: "Modern Downtown Apartment",
-    roomId: "1",
-    roomName: "Room 101",
-    status: "Active",
-    startDate: "2024-01-15",
-    endDate: "2024-12-31",
-    rentAmount: 800,
-    paymentStatus: "Paid"
-  },
-  {
-    id: "2",
-    tenantName: "Jane Smith",
-    tenantId: "T002",
-    propertyId: "2",
-    propertyName: "Suburban Family Home",
-    roomId: "3",
-    roomName: "Master Bedroom",
-    status: "Active",
-    startDate: "2024-02-01",
-    endDate: "2025-01-31",
-    rentAmount: 1200,
-    paymentStatus: "Paid"
-  },
-  {
-    id: "3",
-    tenantName: "Michael Johnson",
-    tenantId: "T003",
-    propertyId: "3",
-    propertyName: "Luxury Penthouse",
-    roomId: "5",
-    roomName: "Penthouse Suite",
-    status: "Active",
-    startDate: "2024-03-01",
-    endDate: "2024-08-31",
-    rentAmount: 1800,
-    paymentStatus: "Overdue"
-  },
-  {
-    id: "4",
-    tenantName: "Emily Wilson",
-    tenantId: "T004",
-    propertyId: "1",
-    propertyName: "Modern Downtown Apartment",
-    roomId: "2",
-    roomName: "Room 102",
-    status: "Pending",
-    startDate: "2024-08-01",
-    endDate: "2025-07-31",
-    rentAmount: 750,
-    paymentStatus: "Not Due"
-  },
-  {
-    id: "5",
-    tenantName: "Robert Brown",
-    tenantId: "T005",
-    propertyId: "2",
-    propertyName: "Suburban Family Home",
-    roomId: "4",
-    roomName: "Guest Room",
-    status: "Expired",
-    startDate: "2023-06-01",
-    endDate: "2024-05-31",
-    rentAmount: 900,
-    paymentStatus: "Paid"
-  }
-];
 
 // Assignments List Component
 export const AssignmentsList = () => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [propertyFilter, setPropertyFilter] = useState("all");
-  const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState<Assignment | undefined>();
+  const [editingAssignment, setEditingAssignment] = useState<FrontendAssignment | undefined>();
+  
+  // Fetch data using hooks
+  const { assignments, loading: assignmentsLoading, error: assignmentsError, refetch: refetchAssignments } = useAssignments();
+  const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
+  const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
+  const { create, loading: createLoading } = useCreateAssignment();
+  const { update, loading: updateLoading } = useUpdateAssignment();
+  const { deleteAssignment, loading: deleteLoading } = useDeleteAssignment();
+  
+  // Debug logs
+  useEffect(() => {
+    console.log("AssignmentsList - Assignments:", assignments);
+    console.log("AssignmentsList - Properties:", properties);
+    console.log("AssignmentsList - Rooms:", rooms);
+  }, [assignments, properties, rooms]);
+  
+  // Show errors if any
+  useEffect(() => {
+    if (assignmentsError) {
+      toast({
+        title: "Error loading assignments",
+        description: assignmentsError.message,
+        variant: "destructive",
+      });
+    }
+    
+    if (propertiesError) {
+      toast({
+        title: "Error loading properties",
+        description: propertiesError.message,
+        variant: "destructive",
+      });
+    }
+    
+    if (roomsError) {
+      toast({
+        title: "Error loading rooms",
+        description: roomsError.message,
+        variant: "destructive",
+      });
+    }
+  }, [assignmentsError, propertiesError, roomsError, toast]);
 
   // Filter assignments based on search query, status filter, and property filter
-  const filteredAssignments = assignments.filter((assignment) => {
+  const filteredAssignments = assignments ? assignments.filter((assignment) => {
     const matchesSearch = 
       assignment.tenantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       assignment.propertyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -138,57 +83,74 @@ export const AssignmentsList = () => {
       assignment.propertyId === propertyFilter;
     
     return matchesSearch && matchesStatus && matchesProperty;
-  });
+  }) : [];
 
   // Get unique properties for the filter dropdown
-  const uniqueProperties = Array.from(
-    new Set(assignments.map(assignment => assignment.propertyId))
-  ).map(propertyId => {
-    const assignment = assignments.find(a => a.propertyId === propertyId);
-    return {
-      id: propertyId,
-      name: assignment ? assignment.propertyName : ""
-    };
-  });
+  const uniqueProperties = properties ? properties.map(property => ({
+    id: property.id,
+    name: property.title
+  })) : [];
 
   // Count assignments by status
-  const activeCount = assignments.filter(a => a.status === "Active").length;
-  const pendingCount = assignments.filter(a => a.status === "Pending").length;
-  const expiredCount = assignments.filter(a => a.status === "Expired").length;
+  const activeCount = assignments ? assignments.filter(a => a.status === "Active").length : 0;
+  const pendingCount = assignments ? assignments.filter(a => a.status === "Pending").length : 0;
+  const expiredCount = assignments ? assignments.filter(a => a.status === "Expired").length : 0;
   
   const handleAddAssignment = () => {
     setEditingAssignment(undefined);
     setIsFormOpen(true);
   };
 
-  const handleEditAssignment = (assignment: Assignment) => {
+  const handleEditAssignment = (assignment: FrontendAssignment) => {
     setEditingAssignment(assignment);
     setIsFormOpen(true);
   };
 
-  const handleDeleteAssignment = (id: string) => {
-    setAssignments((prev) => prev.filter((a) => a.id !== id));
+  const handleDeleteAssignment = async (id: string) => {
+    try {
+      await deleteAssignment(id);
+      toast({
+        title: "Success",
+        description: "Assignment deleted successfully",
+      });
+      refetchAssignments();
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete assignment",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSaveAssignment = (assignmentData: Omit<Assignment, "id">) => {
-    if (editingAssignment) {
-      // Update existing assignment
-      setAssignments((prev) =>
-        prev.map((a) =>
-          a.id === editingAssignment.id
-            ? { ...assignmentData, id: editingAssignment.id }
-            : a
-        )
-      );
-    } else {
-      // Add new assignment
-      const newAssignment = {
-        ...assignmentData,
-        id: `${assignments.length + 1}`,
-      };
-      setAssignments((prev) => [...prev, newAssignment]);
+  const handleSaveAssignment = async (assignmentData: Omit<FrontendAssignment, "id">) => {
+    try {
+      if (editingAssignment) {
+        // Update existing assignment
+        await update(editingAssignment.id, assignmentData);
+        toast({
+          title: "Success",
+          description: "Assignment updated successfully",
+        });
+      } else {
+        // Add new assignment
+        await create(assignmentData);
+        toast({
+          title: "Success",
+          description: "Assignment created successfully",
+        });
+      }
+      refetchAssignments();
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error("Error saving assignment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save assignment",
+        variant: "destructive",
+      });
     }
-    setIsFormOpen(false);
   };
 
   return (
@@ -209,7 +171,7 @@ export const AssignmentsList = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard 
           title="Total Assignments" 
-          value={mockAssignments.length.toString()} 
+          value={assignments ? assignments.length.toString() : "0"} 
           icon={<Users className="h-5 w-5" />}
           color="blue"
         />
@@ -271,6 +233,15 @@ export const AssignmentsList = () => {
 
       {/* Assignments Table */}
       <div className="rounded-md border border-border overflow-hidden">
+        {assignmentsLoading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading assignments...</div>
+        ) : filteredAssignments.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">
+            {searchQuery || statusFilter !== "all" || propertyFilter !== "all" 
+              ? "No assignments match your filters"
+              : "No assignments found. Create your first assignment!"}
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -322,6 +293,7 @@ export const AssignmentsList = () => {
             ))}
           </TableBody>
         </Table>
+        )}
       </div>
 
       {/* Assignment Form Sheet */}
@@ -331,8 +303,8 @@ export const AssignmentsList = () => {
             assignment={editingAssignment}
             onSave={handleSaveAssignment}
             onCancel={() => setIsFormOpen(false)}
-            properties={mockProperties.map(p => ({ id: p.id, title: p.title }))}
-            rooms={mockRooms}
+            properties={properties ? properties.map(p => ({ id: p.id, title: p.title })) : []}
+            rooms={rooms ? rooms.map(r => ({ id: r.id, name: r.name, propertyId: r.propertyId })) : []}
           />
         </SheetContent>
       </Sheet>
