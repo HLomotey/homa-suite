@@ -25,8 +25,24 @@ import {
   ClientSatisfaction, 
   JobOrderTrend, 
   TimeToFillTrend, 
-  JobType 
+  JobType as OperationsJobType 
 } from './operations';
+import {
+  Bill,
+  BillingStaff,
+  BillingStats
+} from './billing';
+import {
+  Vehicle,
+  TransportStaff,
+  TransportStats
+} from './transport';
+import {
+  HRDepartment,
+  JobListing,
+  Employee,
+  DiversityMetrics
+} from './hr';
 
 // Database interface using the imported types
 export interface Database {
@@ -98,9 +114,59 @@ export interface Database {
         Update: Partial<Omit<TimeToFillTrend, "id" | "created_at">>;
       };
       job_types: {
-        Row: JobType;
-        Insert: Omit<JobType, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<JobType, "id" | "created_at">>;
+        Row: OperationsJobType;
+        Insert: Omit<OperationsJobType, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<OperationsJobType, "id" | "created_at">>;
+      };
+      bills: {
+        Row: Bill;
+        Insert: Omit<Bill, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Bill, "id" | "created_at">>;
+      };
+      billing_staff: {
+        Row: BillingStaff;
+        Insert: Omit<BillingStaff, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<BillingStaff, "id" | "created_at">>;
+      };
+      billing_stats: {
+        Row: BillingStats;
+        Insert: Omit<BillingStats, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<BillingStats, "id" | "created_at">>;
+      };
+      vehicles: {
+        Row: Vehicle;
+        Insert: Omit<Vehicle, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Vehicle, "id" | "created_at">>;
+      };
+      transport_staff: {
+        Row: TransportStaff;
+        Insert: Omit<TransportStaff, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<TransportStaff, "id" | "created_at">>;
+      };
+      transport_stats: {
+        Row: TransportStats;
+        Insert: Omit<TransportStats, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<TransportStats, "id" | "created_at">>;
+      };
+      hr_departments: {
+        Row: HRDepartment;
+        Insert: Omit<HRDepartment, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<HRDepartment, "id" | "created_at">>;
+      };
+      hr_job_listings: {
+        Row: JobListing;
+        Insert: Omit<JobListing, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<JobListing, "id" | "created_at">>;
+      };
+      hr_employees: {
+        Row: Employee;
+        Insert: Omit<Employee, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Employee, "id" | "created_at">>;
+      };
+      hr_diversity_metrics: {
+        Row: DiversityMetrics;
+        Insert: Omit<DiversityMetrics, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<DiversityMetrics, "id" | "created_at">>;
       };
     };
     Views: {
@@ -119,6 +185,14 @@ export interface Database {
       assignment_status: "Active" | "Pending" | "Expired" | "Terminated";
       payment_status: "Paid" | "Pending" | "Overdue" | "Partial";
       job_order_status: "filled" | "pending";
+      bill_status: "paid" | "pending" | "overdue";
+      bill_type: "rent" | "utilities" | "transport" | "maintenance";
+      vehicle_status: "active" | "maintenance" | "repair" | "retired";
+      vehicle_type: "car" | "truck" | "bus" | "van";
+      department_status: "Growing" | "Stable" | "Downsizing";
+      job_status: "Open" | "Closed" | "Filled";
+      hr_job_type: "Full-time" | "Part-time" | "Contract" | "Temporary" | "Internship";
+      employee_status: "Active" | "On Leave" | "Terminated";
     };
   };
 };

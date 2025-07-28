@@ -67,6 +67,46 @@ export type {
   FrontendJobType
 } from './types/operations';
 
+// Re-export billing types
+export type {
+  Bill,
+  BillStatus,
+  BillType,
+  BillingStaff,
+  BillingStats,
+  FrontendBill,
+  FrontendBillingStaff,
+  FrontendBillingStats
+} from './types/billing';
+
+// Re-export transport types
+export type {
+  Vehicle,
+  VehicleStatus,
+  VehicleType,
+  TransportStaff,
+  TransportStats,
+  FrontendVehicle,
+  FrontendTransportStaff,
+  FrontendTransportStats
+} from './types/transport';
+
+// Re-export HR types
+export type {
+  HRDepartment,
+  DepartmentStatus,
+  JobListing,
+  JobStatus,
+  HRJobType,
+  Employee,
+  EmployeeStatus,
+  DiversityMetrics,
+  FrontendHRDepartment,
+  FrontendJobListing,
+  FrontendEmployee,
+  FrontendDiversityMetrics
+} from './types/hr';
+
 // Re-export helper functions
 export { 
   mapDatabaseUserToFrontend,
@@ -87,5 +127,24 @@ export {
   mapDatabaseTimeToFillTrendToFrontend,
   mapDatabaseJobTypeToFrontend
 } from './types/operations';
+
+export {
+  mapDatabaseBillToFrontend,
+  mapDatabaseBillingStaffToFrontend,
+  mapDatabaseBillingStatsToFrontend
+} from './types/billing';
+
+export {
+  mapDatabaseVehicleToFrontend,
+  mapDatabaseTransportStaffToFrontend,
+  mapDatabaseTransportStatsToFrontend
+} from './types/transport';
+
+export {
+  mapDatabaseHRDepartmentToFrontend,
+  mapDatabaseJobListingToFrontend,
+  mapDatabaseEmployeeToFrontend,
+  mapDatabaseDiversityMetricsToFrontend
+} from './types/hr';
 
 
