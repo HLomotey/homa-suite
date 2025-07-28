@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -42,7 +42,8 @@ import {
   DialogTitle 
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { User, mockUsers } from "./data";
+import { FrontendUser, UserRole, UserStatus } from "@/integration/supabase/types";
+import { useUsers, useUsersByRole, useUsersByStatus, useDeleteUser, useUpdateUserStatus } from "@/hooks/user-profile";
 import { 
   Search, 
   Plus, 
@@ -63,26 +64,64 @@ import { useNavigate } from "react-router-dom";
 export function UserList() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  
+  // State for filters and UI
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<UserRole | null>(null);
+  const [statusFilter, setStatusFilter] = useState<UserStatus | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<FrontendUser | null>(null);
+  
+  // Fetch users based on filters
+  const { users: allUsers, loading: loadingAllUsers, error: errorAllUsers, refetch: refetchUsers } = useUsers();
+  const { users: roleFilteredUsers, loading: loadingRoleUsers } = useUsersByRole(roleFilter as UserRole);
+  const { users: statusFilteredUsers, loading: loadingStatusUsers } = useUsersByStatus(statusFilter as UserStatus);
+  
+  // Delete user hook
+  const { deleteUser, loading: deleteLoading, error: deleteError } = useDeleteUser();
+  
+  // Update user status hook
+  const { updateStatus, loading: updateStatusLoading, error: updateStatusError } = useUpdateUserStatus();
+  
+  // Determine which user list to use based on filters
+  const usersToShow = roleFilter ? roleFilteredUsers : statusFilter ? statusFilteredUsers : allUsers || [];
+  
+  // Handle errors
+  useEffect(() => {
+    if (errorAllUsers) {
+      toast({
+        title: "Error",
+        description: "Failed to load users. Please try again.",
+        variant: "destructive"
+      });
+    }
+    
+    if (deleteError) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again.",
+        variant: "destructive"
+      });
+    }
+    
+    if (updateStatusError) {
+      toast({
+        title: "Error",
+        description: "Failed to update user status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [errorAllUsers, deleteError, updateStatusError, toast]);
+  
+  // Loading state
+  const isLoading = loadingAllUsers || loadingRoleUsers || loadingStatusUsers || deleteLoading || updateStatusLoading;
 
-  // Filter users based on search query and filters
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      searchQuery === "" || 
+  // Filter users based on search query
+  const filteredUsers = usersToShow.filter(user => {
+    return searchQuery === "" || 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.department.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = roleFilter === null || user.role === roleFilter;
-    const matchesStatus = statusFilter === null || user.status === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
+      (user.department && user.department.toLowerCase().includes(searchQuery.toLowerCase()));
   });
 
   // Handle user creation
@@ -96,53 +135,43 @@ export function UserList() {
   };
 
   // Handle user deletion confirmation
-  const handleDeleteConfirm = (user: User) => {
+  const handleDeleteConfirm = (user: FrontendUser) => {
     setUserToDelete(user);
     setDeleteDialogOpen(true);
   };
 
   // Handle user deletion
-  const handleDeleteUser = () => {
-    setIsLoading(true);
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
     
-    // Simulate API call
-    setTimeout(() => {
-      setUsers(users.filter(user => user.id !== userToDelete?.id));
+    try {
+      await deleteUser(userToDelete.id);
       setDeleteDialogOpen(false);
       setUserToDelete(null);
-      setIsLoading(false);
+      refetchUsers();
       
       toast({
         title: "User deleted",
-        description: `${userToDelete?.name} has been removed from the system.`,
+        description: `${userToDelete.name} has been deleted successfully.`,
       });
-    }, 1000);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
   };
 
   // Handle user status change
-  const handleStatusChange = (userId: string, newStatus: "active" | "inactive" | "pending") => {
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      ));
-      setIsLoading(false);
-      
-      const statusMessages = {
-        active: "activated",
-        inactive: "deactivated",
-        pending: "set to pending"
-      };
-      
-      const user = users.find(u => u.id === userId);
+  const handleStatusChange = async (userId: string, newStatus: UserStatus) => {
+    try {
+      await updateStatus(userId, newStatus);
+      refetchUsers();
       
       toast({
-        title: "User status updated",
-        description: `${user?.name} has been ${statusMessages[newStatus]}.`,
+        title: "Status updated",
+        description: `User status has been updated to ${newStatus}.`,
       });
-    }, 1000);
+    } catch (error) {
+      console.error("Error updating user status:", error);
+    }
   };
 
   // Get status badge color
@@ -241,7 +270,7 @@ export function UserList() {
               />
             </div>
             <div className="flex gap-2">
-              <Select onValueChange={(value) => setRoleFilter(value === "all" ? null : value)}>
+              <Select value={roleFilter || ""} onValueChange={(value) => setRoleFilter(value as UserRole || null)}>
                 <SelectTrigger className="w-[150px] bg-black/40 border-white/10 text-white">
                   <SelectValue placeholder="Filter by role" />
                 </SelectTrigger>
@@ -253,7 +282,7 @@ export function UserList() {
                   <SelectItem value="guest">Guest</SelectItem>
                 </SelectContent>
               </Select>
-              <Select onValueChange={(value) => setStatusFilter(value === "all" ? null : value)}>
+              <Select value={statusFilter || ""} onValueChange={(value) => setStatusFilter(value as UserStatus || null)}>
                 <SelectTrigger className="w-[150px] bg-black/40 border-white/10 text-white">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -403,7 +432,7 @@ export function UserList() {
           </div>
           
           <div className="mt-4 text-sm text-white/60">
-            Showing {filteredUsers.length} of {users.length} users
+            Showing {filteredUsers.length} of {usersToShow.length} users
           </div>
         </CardContent>
       </Card>

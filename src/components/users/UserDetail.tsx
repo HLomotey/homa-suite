@@ -24,7 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { User, mockUsers, mockDepartments, mockRoles } from "./data";
+import { FrontendUser, UserRole, UserStatus, UserWithProfile } from "@/integration/supabase/types";
+import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from "@/hooks/user-profile";
 import { 
   ArrowLeft, 
   Save, 
@@ -46,11 +47,24 @@ export function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const isNewUser = userId === "new";
   
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   
+  // Fetch user data if editing existing user
+  const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? "" : userId || "");
+  const { userWithProfile, loading: fetchingProfile, error: profileError } = useUserWithProfile(isNewUser ? "" : userId || "");
+  
+  // CRUD hooks
+  const { create, loading: creatingUser, error: createError } = useCreateUser();
+  const { update, loading: updatingUser, error: updateError } = useUpdateUser();
+  const { upsert, loading: upsertingProfile, error: profileUpsertError } = useUpsertProfile();
+  
+  // Initialize delete user hook
+  const { deleteUser: deleteUserFn, loading: deletingUser, error: deleteError } = useDeleteUser();
+  
+  const isLoading = fetchingUser || fetchingProfile || creatingUser || updatingUser || upsertingProfile || deletingUser;
+  
   // User form state
-  const [user, setUser] = useState<User>({
+  const [user, setUser] = useState<Partial<FrontendUser>>({
     id: "",
     name: "",
     email: "",
@@ -64,30 +78,41 @@ export function UserDetail() {
 
   // Load user data if editing existing user
   useEffect(() => {
-    if (!isNewUser) {
-      const foundUser = mockUsers.find(u => u.id === userId);
-      if (foundUser) {
-        setUser(foundUser);
-      } else {
-        toast({
-          title: "User not found",
-          description: "The requested user could not be found.",
-          variant: "destructive"
-        });
-        navigate("/users");
-      }
+    if (!isNewUser && userWithProfile) {
+      setUser({
+        id: userWithProfile.id,
+        name: userWithProfile.name,
+        email: userWithProfile.email,
+        role: userWithProfile.role,
+        department: userWithProfile.department || "",
+        status: userWithProfile.status,
+        lastActive: userWithProfile.lastActive || new Date().toISOString(),
+        createdAt: userWithProfile.createdAt || new Date().toISOString(),
+        permissions: userWithProfile.permissions || []
+      });
     }
-  }, [userId, isNewUser, navigate, toast]);
+  }, [isNewUser, userWithProfile]);
+  
+  // Handle fetch errors
+  useEffect(() => {
+    if (fetchError) {
+      toast({
+        title: "Error loading user",
+        description: "The requested user could not be loaded.",
+        variant: "destructive"
+      });
+      navigate("/users");
+    }
+  }, [fetchError, navigate, toast]);
 
   // Handle input changes
-  const handleInputChange = (field: keyof User, value: string) => {
+  const handleInputChange = (field: keyof FrontendUser, value: string) => {
     setUser(prev => ({ ...prev, [field]: value }));
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
     // Validate form
     if (!user.name || !user.email || !user.role || !user.department) {
@@ -96,40 +121,108 @@ export function UserDetail() {
         description: "Please fill in all required fields.",
         variant: "destructive"
       });
-      setIsLoading(false);
       return;
     }
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      toast({
-        title: isNewUser ? "User Created" : "User Updated",
-        description: isNewUser 
-          ? `${user.name} has been added to the system.` 
-          : `${user.name}'s information has been updated.`
-      });
+    try {
+      if (isNewUser) {
+        // Create new user
+        const newUser = await create({
+          name: user.name || "",
+          email: user.email || "",
+          role: user.role as UserRole,
+          department: user.department || "",
+          status: user.status as UserStatus || 'pending',
+          permissions: user.permissions || []
+        });
+        
+        // Create profile if we have additional profile data
+        if (newUser.id) {
+          await upsert(newUser.id, {
+            bio: "", // Optional: Add bio field to form if needed
+            preferences: {}
+          });
+        }
+        
+        toast({
+          title: "User created",
+          description: `${user.name} has been added successfully.`,
+        });
+      } else {
+        // Update existing user
+        if (user.id) {
+          await update(user.id, {
+            name: user.name,
+            email: user.email,
+            role: user.role as UserRole,
+            department: user.department,
+            status: user.status as UserStatus,
+            permissions: user.permissions
+          });
+          
+          // Update profile if needed
+          await upsert(user.id, {
+            bio: "", // Optional: Add bio field to form if needed
+            preferences: {}
+          });
+        }
+        
+        toast({
+          title: "User updated",
+          description: `${user.name}'s information has been updated.`,
+        });
+      }
       
       navigate("/users");
-    }, 1500);
+    } catch (error) {
+      console.error("Error saving user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save user. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
+  // Handle permission toggle
+  const togglePermission = (permission: string) => {
+    setUser((prev: Partial<FrontendUser>) => {
+      const permissions = [...(prev.permissions || [])];
+      const index = permissions.indexOf(permission);
+      
+      if (index === -1) {
+        permissions.push(permission);
+      } else {
+        permissions.splice(index, 1);
+      }
+      
+      return { ...prev, permissions };
+    });
+  };    
+  
+  // Delete user handler
+  
   // Handle user deletion
-  const handleDelete = () => {
-    setIsLoading(true);
+  const handleDelete = async () => {
+    if (!user.id) return;
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Use the deleteUser function from the hook
+      await deleteUserFn(user.id);
       
       toast({
-        title: "User Deleted",
-        description: `${user.name} has been removed from the system.`
+        title: "User deleted",
+        description: `${user.name} has been removed from the system.`,
       });
-      
       navigate("/users");
-    }, 1000);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Get status badge
@@ -281,11 +374,13 @@ export function UserDetail() {
                             <SelectValue placeholder="Select department" />
                           </SelectTrigger>
                           <SelectContent className="bg-black/90 border-white/10 text-white">
-                            {mockDepartments.map((dept) => (
-                              <SelectItem key={dept.id} value={dept.name}>
-                                {dept.name}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="engineering">Engineering</SelectItem>
+                            <SelectItem value="marketing">Marketing</SelectItem>
+                            <SelectItem value="sales">Sales</SelectItem>
+                            <SelectItem value="support">Support</SelectItem>
+                            <SelectItem value="hr">HR</SelectItem>
+                            <SelectItem value="finance">Finance</SelectItem>
+                            <SelectItem value="operations">Operations</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -338,11 +433,10 @@ export function UserDetail() {
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent className="bg-black/90 border-white/10 text-white">
-                          {mockRoles.map((role) => (
-                            <SelectItem key={role.id} value={role.name}>
-                              {role.name.charAt(0).toUpperCase() + role.name.slice(1)} - {role.description}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="guest">Guest</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

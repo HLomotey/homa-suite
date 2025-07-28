@@ -13,7 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
-import { mockUsers } from "./data";
+import { FrontendUser } from "@/integration/supabase/types";
+import { useUser, useUpdateUser } from "@/hooks/user-profile";
 
 interface Permission {
   id: string;
@@ -72,15 +73,37 @@ export function UserPermissions() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [user, setUser] = useState(mockUsers.find(u => u.id === userId));
-  const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
-  const [isLoading, setIsLoading] = useState(false);
+  // Fetch user data
+  const { user, loading: fetchingUser, error: fetchError, refetch } = useUser(userId || "");
+  const { update, loading: updatingUser, error: updateError } = useUpdateUser();
   
-  // Simulate loading user permissions
+  const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
+  const isLoading = fetchingUser || updatingUser;
+  
+  // Load user permissions when user data is available
   useEffect(() => {
-    // In a real app, you would fetch the user's permissions from an API
-    console.log(`Loading permissions for user ID: ${userId}`);
-  }, [userId]);
+    if (user && user.permissions) {
+      // Map user permissions to the permissions state
+      setPermissions(prevPermissions => 
+        prevPermissions.map(permission => ({
+          ...permission,
+          checked: user.permissions?.includes(permission.id) || false
+        }))
+      );
+    }
+  }, [user]);
+  
+  // Handle fetch errors
+  useEffect(() => {
+    if (fetchError) {
+      toast({
+        title: "Error loading user",
+        description: "Could not load user permissions. Please try again.",
+        variant: "destructive"
+      });
+      navigate("/users");
+    }
+  }, [fetchError, navigate, toast]);
   
   const handlePermissionChange = (permissionId: string, checked: boolean) => {
     setPermissions(permissions.map(permission => 
@@ -88,12 +111,19 @@ export function UserPermissions() {
     ));
   };
   
-  const handleSave = () => {
-    setIsLoading(true);
+  const handleSave = async () => {
+    if (!user || !user.id) return;
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Extract permission IDs that are checked
+      const selectedPermissions = permissions
+        .filter(p => p.checked)
+        .map(p => p.id);
+      
+      // Update user permissions
+      await update(user.id, {
+        permissions: selectedPermissions
+      });
       
       toast({
         title: "Permissions updated",
@@ -102,7 +132,14 @@ export function UserPermissions() {
       
       // Navigate back to the user list
       navigate("/users");
-    }, 1000);
+    } catch (error) {
+      console.error("Error updating permissions:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update permissions. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleBack = () => {
