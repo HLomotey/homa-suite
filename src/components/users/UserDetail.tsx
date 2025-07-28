@@ -67,8 +67,8 @@ export function UserDetail() {
   // Use isLoading for disabling form inputs during any loading operation
   const isLoading = fetchingUser || fetchingProfile || isSubmitting;
   
-  // User form state
-  const [user, setUser] = useState<Partial<FrontendUser>>({
+  // User form state with default values for all fields to prevent controlled/uncontrolled warnings
+  const [user, setUser] = useState<FrontendUser>({
     id: "",
     name: "",
     email: "",
@@ -77,22 +77,25 @@ export function UserDetail() {
     status: "pending",
     lastActive: new Date().toISOString(),
     permissions: [],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    avatar: ""
   });
 
   // Load user data if editing existing user
   useEffect(() => {
     if (!isNewUser && userWithProfile) {
+      // Ensure all fields have values to prevent controlled/uncontrolled input warnings
       setUser({
-        id: userWithProfile.id,
-        name: userWithProfile.name,
-        email: userWithProfile.email,
-        role: userWithProfile.role,
+        id: userWithProfile.id || "",
+        name: userWithProfile.name || "",
+        email: userWithProfile.email || "",
+        role: userWithProfile.role || "staff",
         department: userWithProfile.department || "",
-        status: userWithProfile.status,
+        status: userWithProfile.status || "pending",
         lastActive: userWithProfile.lastActive || new Date().toISOString(),
         createdAt: userWithProfile.createdAt || new Date().toISOString(),
-        permissions: userWithProfile.permissions || []
+        permissions: userWithProfile.permissions || [],
+        avatar: userWithProfile.avatar || ""
       });
     }
   }, [isNewUser, userWithProfile]);
@@ -111,7 +114,10 @@ export function UserDetail() {
 
   // Handle input changes
   const handleInputChange = (field: keyof FrontendUser, value: string) => {
-    setUser(prev => ({ ...prev, [field]: value }));
+    setUser(prev => {
+      const updatedUser: FrontendUser = { ...prev, [field]: value };
+      return updatedUser;
+    });
   };
 
   // Handle form submission
@@ -190,7 +196,7 @@ export function UserDetail() {
 
   // Handle permission toggle
   const togglePermission = (permission: string) => {
-    setUser((prev: Partial<FrontendUser>) => {
+    setUser((prev: FrontendUser) => {
       const permissions = [...(prev.permissions || [])];
       const index = permissions.indexOf(permission);
       
@@ -200,7 +206,9 @@ export function UserDetail() {
         permissions.splice(index, 1);
       }
       
-      return { ...prev, permissions };
+      // Return a complete FrontendUser object
+      const updatedUser: FrontendUser = { ...prev, permissions };
+      return updatedUser;
     });
   };    
   

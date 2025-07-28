@@ -233,13 +233,15 @@ export function UserList() {
   };
 
   // Get user initials for avatar fallback
-  const getUserInitials = (name: string): string => {
+  const getUserInitials = (name?: string): string => {
+    if (!name) return "U"; // Default to "U" for User if no name is provided
+    
     return name
       .split(" ")
-      .map(part => part[0])
+      .map(part => part[0] || "")
       .join("")
       .toUpperCase()
-      .substring(0, 2);
+      .substring(0, 2) || "U";
   };
 
   return (

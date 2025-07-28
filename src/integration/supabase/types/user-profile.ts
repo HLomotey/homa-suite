@@ -59,6 +59,7 @@ export interface FrontendUser {
   permissions?: string[];
   createdAt?: string;
   avatar?: string;
+  bio?: string;
 }
 
 /**
