@@ -43,6 +43,16 @@ import {
   Employee,
   DiversityMetrics
 } from './hr';
+import {
+  Transaction,
+  Budget,
+  RevenueMetric,
+  ExpenseCategory,
+  ClientRevenue,
+  FinancialMetric,
+  CashFlow,
+  RevenueProfitData
+} from './finance';
 
 // Database interface using the imported types
 export interface Database {
@@ -168,6 +178,46 @@ export interface Database {
         Insert: Omit<DiversityMetrics, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<DiversityMetrics, "id" | "created_at">>;
       };
+      finance_transactions: {
+        Row: Transaction;
+        Insert: Omit<Transaction, "created_at" | "updated_at">;
+        Update: Partial<Omit<Transaction, "created_at">>;
+      };
+      finance_budgets: {
+        Row: Budget;
+        Insert: Omit<Budget, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Budget, "id" | "created_at">>;
+      };
+      finance_revenue_metrics: {
+        Row: RevenueMetric;
+        Insert: Omit<RevenueMetric, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<RevenueMetric, "id" | "created_at">>;
+      };
+      finance_expense_categories: {
+        Row: ExpenseCategory;
+        Insert: Omit<ExpenseCategory, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ExpenseCategory, "id" | "created_at">>;
+      };
+      finance_client_revenue: {
+        Row: ClientRevenue;
+        Insert: Omit<ClientRevenue, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ClientRevenue, "id" | "created_at">>;
+      };
+      finance_metrics: {
+        Row: FinancialMetric;
+        Insert: Omit<FinancialMetric, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<FinancialMetric, "id" | "created_at">>;
+      };
+      finance_cash_flow: {
+        Row: CashFlow;
+        Insert: Omit<CashFlow, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<CashFlow, "id" | "created_at">>;
+      };
+      finance_revenue_profit: {
+        Row: RevenueProfitData;
+        Insert: Omit<RevenueProfitData, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<RevenueProfitData, "id" | "created_at">>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -193,6 +243,9 @@ export interface Database {
       job_status: "Open" | "Closed" | "Filled";
       hr_job_type: "Full-time" | "Part-time" | "Contract" | "Temporary" | "Internship";
       employee_status: "Active" | "On Leave" | "Terminated";
+      transaction_type: "income" | "expense";
+      transaction_status: "completed" | "pending" | "cancelled";
+      budget_status: "on-track" | "warning" | "critical";
     };
   };
 };

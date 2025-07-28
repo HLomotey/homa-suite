@@ -107,6 +107,29 @@ export type {
   FrontendDiversityMetrics
 } from './types/hr';
 
+// Re-export Finance types
+export type {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+  Budget,
+  BudgetStatus,
+  RevenueMetric,
+  ExpenseCategory,
+  ClientRevenue,
+  FinancialMetric,
+  CashFlow,
+  RevenueProfitData,
+  FrontendTransaction,
+  FrontendBudget,
+  FrontendRevenueMetric,
+  FrontendExpenseCategory,
+  FrontendClientRevenue,
+  FrontendFinancialMetric,
+  FrontendCashFlow,
+  FrontendRevenueProfitData
+} from './types/finance';
+
 // Re-export helper functions
 export { 
   mapDatabaseUserToFrontend,
@@ -146,5 +169,16 @@ export {
   mapDatabaseEmployeeToFrontend,
   mapDatabaseDiversityMetricsToFrontend
 } from './types/hr';
+
+export {
+  mapDatabaseTransactionToFrontend,
+  mapDatabaseBudgetToFrontend,
+  mapDatabaseRevenueMetricToFrontend,
+  mapDatabaseExpenseCategoryToFrontend,
+  mapDatabaseClientRevenueToFrontend,
+  mapDatabaseFinancialMetricToFrontend,
+  mapDatabaseCashFlowToFrontend,
+  mapDatabaseRevenueProfitDataToFrontend
+} from './types/finance';
 
 
