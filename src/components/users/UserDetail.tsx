@@ -61,7 +61,11 @@ export function UserDetail() {
   // Initialize delete user hook
   const { deleteUser: deleteUserFn, loading: deletingUser, error: deleteError } = useDeleteUser();
   
-  const isLoading = fetchingUser || fetchingProfile || creatingUser || updatingUser || upsertingProfile || deletingUser;
+  // Only consider mutation loading states for button loading, not data fetching
+  const isSubmitting = creatingUser || updatingUser || upsertingProfile || deletingUser;
+  
+  // Use isLoading for disabling form inputs during any loading operation
+  const isLoading = fetchingUser || fetchingProfile || isSubmitting;
   
   // User form state
   const [user, setUser] = useState<Partial<FrontendUser>>({
@@ -314,7 +318,7 @@ export function UserDetail() {
             </TabsList>
             
             <TabsContent value="profile">
-              <form onSubmit={handleSubmit}>
+              <form id="userForm" onSubmit={handleSubmit}>
                 <div className="space-y-6">
                   {/* Avatar Section */}
                   <div className="flex flex-col items-center justify-center p-6 border border-dashed border-white/10 rounded-lg bg-black/20">
@@ -560,10 +564,11 @@ export function UserDetail() {
               Cancel
             </Button>
             <Button 
-              onClick={handleSubmit}
+              type="submit"
+              form="userForm"
               disabled={isLoading}
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                   {isNewUser ? "Creating..." : "Saving..."}
