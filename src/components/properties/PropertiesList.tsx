@@ -28,21 +28,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Property interface
-interface Property {
-  id: string;
-  title: string;
-  address: string;
-  price: number;
-  bedrooms: number;
-  bathrooms: number;
-  area: number;
-  type: string;
-  status: string;
-  image: string;
-  description: string;
-  dateAdded: string;
-}
+// Import FrontendProperty from Supabase types
+import { FrontendProperty } from "../../integration/supabase/types";
 
 // Properties List Component
 export const PropertiesList = ({
@@ -51,8 +38,8 @@ export const PropertiesList = ({
   onDelete,
   onAddProperty,
 }: {
-  properties: Property[];
-  onEdit: (property: Property) => void;
+  properties: FrontendProperty[];
+  onEdit: (property: FrontendProperty) => void;
   onDelete: (id: string) => void;
   onAddProperty: () => void;
 }) => {
@@ -222,7 +209,7 @@ const PropertyCard = ({
   onEdit,
   onDelete,
 }: {
-  property: Property;
+  property: FrontendProperty;
   onEdit: () => void;
   onDelete: () => void;
 }) => {
