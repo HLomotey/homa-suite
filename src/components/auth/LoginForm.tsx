@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Lock, Mail, Building } from 'lucide-react';
-import { supabase } from '@/integration/supabase/client';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Eye, EyeOff, Lock, Mail, Building } from "lucide-react";
+import { supabase } from "@/integration/supabase/client";
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -13,8 +19,8 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,9 +28,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Clear error when user starts typing
     if (error) setError(null);
@@ -50,7 +56,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         onLoginSuccess();
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -68,14 +74,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               <Building className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">HOMA Suite</h1>
-          <p className="text-muted-foreground mt-2">Housing & Transportation ERP</p>
+          <h1 className="text-3xl font-bold text-foreground">BoH EPR</h1>
+          <p className="text-muted-foreground mt-2">ERP System</p>
         </div>
 
         {/* Login Card */}
         <Card className="backdrop-blur-sm bg-card/95 border-border/50 shadow-xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-semibold text-center">Sign In</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-center">
+              Sign In
+            </CardTitle>
             <CardDescription className="text-center">
               Enter your credentials to access the system
             </CardDescription>
@@ -116,7 +124,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   <Input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleInputChange}
@@ -153,7 +161,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                     Signing In...
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </Button>
             </form>
