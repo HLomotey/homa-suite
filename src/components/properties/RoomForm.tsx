@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
-import { Room } from "./data/housing-data";
+import { FrontendRoom, RoomStatus, RoomType } from "@/integration/supabase/types";
 
 // Room Form Component
 export interface RoomFormProps {
-  room?: Room;
-  onSave: (room: Omit<Room, "id">) => void;
+  room?: FrontendRoom;
+  onSave: (room: Omit<FrontendRoom, "id">) => void;
   onCancel: () => void;
   properties: { id: string; title: string }[];
 }
@@ -19,7 +19,7 @@ export const RoomForm: React.FC<RoomFormProps> = ({
   onCancel,
   properties,
 }) => {
-  const [formData, setFormData] = React.useState<Omit<Room, "id">>({
+  const [formData, setFormData] = React.useState<Omit<FrontendRoom, "id">>({
     name: room?.name || "",
     propertyId: room?.propertyId || (properties[0]?.id || ""),
     propertyName: room?.propertyName || (properties[0]?.title || ""),
@@ -131,10 +131,9 @@ export const RoomForm: React.FC<RoomFormProps> = ({
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
                 >
-                  <option value="Single">Single</option>
-                  <option value="Double">Double</option>
-                  <option value="Suite">Suite</option>
-                  <option value="Studio">Studio</option>
+                  {(['Single', 'Double', 'Suite', 'Studio'] as RoomType[]).map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -151,10 +150,9 @@ export const RoomForm: React.FC<RoomFormProps> = ({
                   onChange={handleChange}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
                 >
-                  <option value="Available">Available</option>
-                  <option value="Occupied">Occupied</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Reserved">Reserved</option>
+                  {(['Available', 'Occupied', 'Maintenance', 'Reserved'] as RoomStatus[]).map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </div>
             </div>
