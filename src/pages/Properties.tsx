@@ -5,14 +5,21 @@ import OccupancyDashboard from "@/components/properties/Dashboard";
 import PropertiesList from "@/components/properties/PropertiesList";
 import RoomsList from "@/components/properties/RoomsList";
 import AssignmentsList from "@/components/properties/AssignmentsList";
+import TenantsList from "@/components/properties/TenantsList";
 import PropertyForm from "@/components/properties/PropertyForm";
+import TenantForm from "@/components/properties/TenantForm";
 import { mockProperties, Property } from "@/components/properties/data/housing-data";
+import { FrontendTenant } from "@/integration/supabase/types/tenant";
 
 // Main Housing Page Component
 const HousingPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | undefined>();
   const [properties, setProperties] = useState<Property[]>(mockProperties);
+  
+  // Tenant form state
+  const [isTenantFormOpen, setIsTenantFormOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<FrontendTenant | undefined>();
 
   const handleAddProperty = () => {
     setEditingProperty(undefined);
@@ -49,6 +56,28 @@ const HousingPage: React.FC = () => {
     setIsFormOpen(false);
   };
 
+  // Tenant handlers
+  const handleAddTenant = () => {
+    setEditingTenant(undefined);
+    setIsTenantFormOpen(true);
+  };
+
+  const handleEditTenant = (tenant: FrontendTenant) => {
+    setEditingTenant(tenant);
+    setIsTenantFormOpen(true);
+  };
+
+  const handleDeleteTenant = (id: string) => {
+    // Placeholder - will be connected to API later
+    console.log("Delete tenant:", id);
+  };
+
+  const handleSaveTenant = (tenantData: Omit<FrontendTenant, "id" | "dateAdded">) => {
+    // Placeholder - will be connected to API later
+    console.log("Save tenant:", tenantData);
+    setIsTenantFormOpen(false);
+  };
+
   return (
     <div className="h-full p-4 md:p-6">
       <h1 className="text-3xl font-bold text-white mb-6">Housing Management</h1>
@@ -60,6 +89,7 @@ const HousingPage: React.FC = () => {
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="tenants">Tenant Profiles</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-4">
@@ -82,6 +112,14 @@ const HousingPage: React.FC = () => {
         <TabsContent value="assignments">
           <AssignmentsList />
         </TabsContent>
+        
+        <TabsContent value="tenants">
+          <TenantsList 
+            onEdit={handleEditTenant}
+            onDelete={handleDeleteTenant}
+            onAddTenant={handleAddTenant}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Property Form Sheet */}
@@ -91,6 +129,17 @@ const HousingPage: React.FC = () => {
             property={editingProperty}
             onSave={handleSaveProperty}
             onCancel={() => setIsFormOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Tenant Form Sheet */}
+      <Sheet open={isTenantFormOpen} onOpenChange={setIsTenantFormOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-auto">
+          <TenantForm
+            tenant={editingTenant}
+            onSave={handleSaveTenant}
+            onCancel={() => setIsTenantFormOpen(false)}
           />
         </SheetContent>
       </Sheet>

@@ -53,6 +53,9 @@ import {
   CashFlow,
   RevenueProfitData
 } from './finance';
+import {
+  Tenant
+} from './tenant';
 
 // Database interface using the imported types
 export interface Database {
@@ -218,6 +221,11 @@ export interface Database {
         Insert: Omit<RevenueProfitData, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<RevenueProfitData, "id" | "created_at">>;
       };
+      tenants: {
+        Row: Tenant;
+        Insert: Omit<Tenant, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Tenant, "id" | "created_at">>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -246,6 +254,7 @@ export interface Database {
       transaction_type: "income" | "expense";
       transaction_status: "completed" | "pending" | "cancelled";
       budget_status: "on-track" | "warning" | "critical";
+      tenant_status: "Active" | "Pending" | "Former" | "Blacklisted";
     };
   };
 };
