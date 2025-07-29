@@ -15,9 +15,9 @@ export function HRAnalytics() {
 
       <div className="grid grid-cols-2 gap-4">
         {/* Head Count Card */}
-        <Card className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border-blue-800/30">
+        <Card className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-100">Head Count</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-100">Head Count</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{hrAnalytics.headCount.toLocaleString()}</div>
@@ -35,9 +35,9 @@ export function HRAnalytics() {
         </Card>
 
         {/* Retention Rate Card */}
-        <Card className="bg-gradient-to-br from-green-900/40 to-green-800/20 border-green-800/30">
+        <Card className="bg-gradient-to-br from-pink-900/40 to-pink-800/20 border-pink-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-100">Retention Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-pink-100">Retention Rate</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{hrAnalytics.retentionRate}%</div>
@@ -55,9 +55,9 @@ export function HRAnalytics() {
         </Card>
 
         {/* Terminations Card */}
-        <Card className="bg-gradient-to-br from-red-900/40 to-red-800/20 border-red-800/30">
+        <Card className="bg-gradient-to-br from-fuchsia-900/40 to-fuchsia-800/20 border-fuchsia-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-100">Terminations</CardTitle>
+            <CardTitle className="text-sm font-medium text-fuchsia-100">Terminations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{hrAnalytics.terminations}</div>
@@ -97,9 +97,9 @@ export function HRAnalytics() {
 
       <div className="grid grid-cols-2 gap-4">
         {/* Avg Daily Hours Card */}
-        <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/20 border-slate-800/30">
+        <Card className="bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-100">Avg Daily Hours</CardTitle>
+            <CardTitle className="text-sm font-medium text-violet-100">Avg Daily Hours</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{hrAnalytics.avgDailyHours}</div>
@@ -107,9 +107,9 @@ export function HRAnalytics() {
         </Card>
 
         {/* Employee Satisfaction Card */}
-        <Card className="bg-gradient-to-br from-amber-900/40 to-amber-800/20 border-amber-800/30">
+        <Card className="bg-gradient-to-br from-rose-900/40 to-rose-800/20 border-rose-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-amber-100">Employee Satisfaction</CardTitle>
+            <CardTitle className="text-sm font-medium text-rose-100">Employee Satisfaction</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{hrAnalytics.employeeSatisfaction}%</div>
