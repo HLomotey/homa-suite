@@ -1,8 +1,10 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { FrontendAssignment, AssignmentStatus, PaymentStatus } from "@/integration/supabase/types";
+import { FrontendTenant } from "@/integration/supabase/types/tenant";
+import { useTenants } from "@/hooks/tenant";
 import { useToast } from "@/components/ui/use-toast";
 
 // Assignment Form Component
@@ -22,6 +24,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   rooms,
 }) => {
   const { toast } = useToast();
+  const { tenants, loading: loadingTenants } = useTenants();
   
   const [formData, setFormData] = React.useState<Omit<FrontendAssignment, "id">>({
     tenantName: assignment?.tenantName || "",
@@ -130,36 +133,48 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
           <div className="space-y-4">
             <div>
               <label
-                htmlFor="tenantName"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Tenant Name
-              </label>
-              <Input
-                id="tenantName"
-                name="tenantName"
-                value={formData.tenantName}
-                onChange={handleChange}
-                className="mt-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label
                 htmlFor="tenantId"
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                Tenant ID
+                Tenant
               </label>
-              <Input
-                id="tenantId"
-                name="tenantId"
-                value={formData.tenantId}
-                onChange={handleChange}
-                className="mt-2"
-                required
-              />
+              {loadingTenants ? (
+                <div className="flex items-center space-x-2 mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading tenants...</span>
+                </div>
+              ) : (
+                <select
+                  id="tenantId"
+                  name="tenantId"
+                  value={formData.tenantId}
+                  onChange={(e) => {
+                    const selectedTenant = tenants.find(t => t.id === e.target.value);
+                    if (selectedTenant) {
+                      setFormData(prev => ({
+                        ...prev,
+                        tenantId: selectedTenant.id,
+                        tenantName: `${selectedTenant.firstName} ${selectedTenant.lastName}`
+                      }));
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        tenantId: "",
+                        tenantName: ""
+                      }));
+                    }
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+                  required
+                >
+                  <option value="">Select Tenant</option>
+                  {tenants.map(tenant => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.firstName} {tenant.lastName} - {tenant.email}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>

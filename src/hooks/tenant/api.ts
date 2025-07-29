@@ -17,7 +17,7 @@ import {
  */
 export const fetchTenants = async (): Promise<FrontendTenant[]> => {
   console.log("Fetching tenants from Supabase...");
-  
+
   try {
     const { data, error } = await supabase
       .from("tenants")
@@ -40,7 +40,7 @@ export const fetchTenants = async (): Promise<FrontendTenant[]> => {
     const mappedData = (data as Tenant[]).map(mapDatabaseTenantToFrontend);
     console.log("Mapped tenants data:", mappedData);
     console.log("Tenant count:", mappedData.length);
-    
+
     return mappedData;
   } catch (err) {
     console.error("Exception in fetchTenants:", err);
@@ -53,9 +53,7 @@ export const fetchTenants = async (): Promise<FrontendTenant[]> => {
  * @param id Tenant ID
  * @returns Promise with tenant data
  */
-export const fetchTenantById = async (
-  id: string
-): Promise<FrontendTenant> => {
+export const fetchTenantById = async (id: string): Promise<FrontendTenant> => {
   const { data, error } = await supabase
     .from("tenants")
     .select("*")
@@ -78,8 +76,42 @@ export const fetchTenantById = async (
 export const createTenant = async (
   tenant: Omit<FrontendTenant, "id" | "dateAdded">
 ): Promise<FrontendTenant> => {
-  // Convert frontend tenant to database format
-  const dbTenant = {
+  // Sanitize UUID fields to prevent empty string UUIDs
+  const sanitizeUUID = (value: string | null | undefined): string | null => {
+    if (!value || value.trim() === "") {
+      return null;
+    }
+    return value;
+  };
+
+  // Define the type with both required and optional fields
+  type DbTenantData = {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    date_of_birth: string;
+    occupation: string;
+    employer: string;
+    emergency_contact_name: string;
+    emergency_contact_phone: string;
+    emergency_contact_relationship: string;
+    monthly_income: number;
+    previous_address: string;
+    status: string;
+    profile_image: string | null;
+    documents: any | null;
+    notes: string | null;
+    lease_start_date?: string;
+    lease_end_date?: string;
+    security_deposit?: number;
+    monthly_rent?: number;
+    property_id?: string | null;
+    room_id?: string | null;
+  };
+
+  // Create the base tenant object
+  const dbTenant: DbTenantData = {
     first_name: tenant.firstName,
     last_name: tenant.lastName,
     email: tenant.email,
@@ -92,17 +124,25 @@ export const createTenant = async (
     emergency_contact_relationship: tenant.emergencyContactRelationship,
     monthly_income: tenant.monthlyIncome,
     previous_address: tenant.previousAddress,
-    lease_start_date: tenant.leaseStartDate,
-    lease_end_date: tenant.leaseEndDate,
-    security_deposit: tenant.securityDeposit,
-    monthly_rent: tenant.monthlyRent,
-    property_id: tenant.propertyId,
-    room_id: tenant.roomId,
     status: tenant.status,
     profile_image: tenant.profileImage,
     documents: tenant.documents,
     notes: tenant.notes,
   };
+
+  // Add deprecated lease fields if they exist (will be moved to assignments table in future)
+  if (tenant.leaseStartDate) dbTenant.lease_start_date = tenant.leaseStartDate;
+  if (tenant.leaseEndDate) dbTenant.lease_end_date = tenant.leaseEndDate;
+  if (tenant.securityDeposit !== undefined) dbTenant.security_deposit = tenant.securityDeposit;
+  if (tenant.monthlyRent !== undefined) dbTenant.monthly_rent = tenant.monthlyRent;
+  if (tenant.propertyId) dbTenant.property_id = sanitizeUUID(tenant.propertyId);
+  if (tenant.roomId) dbTenant.room_id = sanitizeUUID(tenant.roomId);
+
+  // Log the sanitized tenant data for debugging
+  console.log("Creating tenant with sanitized data:", {
+    property_id: dbTenant.property_id || null,
+    room_id: dbTenant.room_id || null,
+  });
 
   const { data, error } = await supabase
     .from("tenants")
@@ -128,9 +168,43 @@ export const updateTenant = async (
   id: string,
   tenant: Partial<Omit<FrontendTenant, "id" | "dateAdded">>
 ): Promise<FrontendTenant> => {
-  // Convert frontend tenant to database format
-  const dbTenant: any = {};
+  // Sanitize UUID fields to prevent empty string UUIDs
+  const sanitizeUUID = (value: string | null | undefined): string | null => {
+    if (!value || value.trim() === "") {
+      return null;
+    }
+    return value;
+  };
 
+  // Define the type with all optional fields for updates
+  type DbTenantUpdateData = {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    date_of_birth?: string;
+    occupation?: string;
+    employer?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+    emergency_contact_relationship?: string;
+    monthly_income?: number;
+    previous_address?: string;
+    status?: string;
+    profile_image?: string | null;
+    documents?: any | null;
+    notes?: string | null;
+    lease_start_date?: string;
+    lease_end_date?: string;
+    security_deposit?: number;
+    monthly_rent?: number;
+    property_id?: string | null;
+    room_id?: string | null;
+  };
+
+  const dbTenant: DbTenantUpdateData = {};
+
+  // Only update fields that are provided
   if (tenant.firstName !== undefined) dbTenant.first_name = tenant.firstName;
   if (tenant.lastName !== undefined) dbTenant.last_name = tenant.lastName;
   if (tenant.email !== undefined) dbTenant.email = tenant.email;
@@ -143,16 +217,24 @@ export const updateTenant = async (
   if (tenant.emergencyContactRelationship !== undefined) dbTenant.emergency_contact_relationship = tenant.emergencyContactRelationship;
   if (tenant.monthlyIncome !== undefined) dbTenant.monthly_income = tenant.monthlyIncome;
   if (tenant.previousAddress !== undefined) dbTenant.previous_address = tenant.previousAddress;
-  if (tenant.leaseStartDate !== undefined) dbTenant.lease_start_date = tenant.leaseStartDate;
-  if (tenant.leaseEndDate !== undefined) dbTenant.lease_end_date = tenant.leaseEndDate;
-  if (tenant.securityDeposit !== undefined) dbTenant.security_deposit = tenant.securityDeposit;
-  if (tenant.monthlyRent !== undefined) dbTenant.monthly_rent = tenant.monthlyRent;
-  if (tenant.propertyId !== undefined) dbTenant.property_id = tenant.propertyId;
-  if (tenant.roomId !== undefined) dbTenant.room_id = tenant.roomId;
   if (tenant.status !== undefined) dbTenant.status = tenant.status;
   if (tenant.profileImage !== undefined) dbTenant.profile_image = tenant.profileImage;
   if (tenant.documents !== undefined) dbTenant.documents = tenant.documents;
   if (tenant.notes !== undefined) dbTenant.notes = tenant.notes;
+
+  // Add deprecated lease fields if they exist (will be moved to assignments table in future)
+  if (tenant.leaseStartDate !== undefined) dbTenant.lease_start_date = tenant.leaseStartDate;
+  if (tenant.leaseEndDate !== undefined) dbTenant.lease_end_date = tenant.leaseEndDate;
+  if (tenant.securityDeposit !== undefined) dbTenant.security_deposit = tenant.securityDeposit;
+  if (tenant.monthlyRent !== undefined) dbTenant.monthly_rent = tenant.monthlyRent;
+  if (tenant.propertyId !== undefined) dbTenant.property_id = sanitizeUUID(tenant.propertyId);
+  if (tenant.roomId !== undefined) dbTenant.room_id = sanitizeUUID(tenant.roomId);
+
+  // Log the sanitized tenant data for debugging
+  console.log("Updating tenant with sanitized data:", {
+    property_id: dbTenant.property_id || null,
+    room_id: dbTenant.room_id || null,
+  });
 
   const { data, error } = await supabase
     .from("tenants")

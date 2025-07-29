@@ -22,18 +22,20 @@ export interface Tenant {
   emergency_contact_relationship: string;
   monthly_income: number;
   previous_address: string;
-  lease_start_date: string;
-  lease_end_date: string;
-  security_deposit: number;
-  monthly_rent: number;
-  property_id: string;
-  room_id: string | null;
   status: string;
   profile_image: string | null;
   documents: Json | null;
   notes: string | null;
   created_at: string;
   updated_at: string | null;
+  
+  // Deprecated: These fields should be accessed from assignments table instead
+  lease_start_date?: string;
+  lease_end_date?: string;
+  security_deposit?: number;
+  monthly_rent?: number;
+  property_id?: string;
+  room_id?: string | null;
 }
 
 /**
@@ -58,17 +60,19 @@ export interface FrontendTenant {
   emergencyContactRelationship: string;
   monthlyIncome: number;
   previousAddress: string;
-  leaseStartDate: string;
-  leaseEndDate: string;
-  securityDeposit: number;
-  monthlyRent: number;
-  propertyId: string;
-  roomId: string | null;
   status: TenantStatus;
   profileImage: string | null;
   documents: any[] | null;
   notes: string | null;
   dateAdded: string;
+  
+  // Deprecated: These fields should be accessed from assignments instead
+  leaseStartDate?: string;
+  leaseEndDate?: string;
+  securityDeposit?: number;
+  monthlyRent?: number;
+  propertyId?: string;
+  roomId?: string | null;
 }
 
 /**
@@ -89,16 +93,18 @@ export const mapDatabaseTenantToFrontend = (dbTenant: Tenant): FrontendTenant =>
     emergencyContactRelationship: dbTenant.emergency_contact_relationship,
     monthlyIncome: dbTenant.monthly_income,
     previousAddress: dbTenant.previous_address,
+    status: dbTenant.status as TenantStatus,
+    profileImage: dbTenant.profile_image,
+    documents: dbTenant.documents as any[] | null,
+    notes: dbTenant.notes,
+    dateAdded: dbTenant.created_at,
+    
+    // Deprecated fields - will be removed in future
     leaseStartDate: dbTenant.lease_start_date,
     leaseEndDate: dbTenant.lease_end_date,
     securityDeposit: dbTenant.security_deposit,
     monthlyRent: dbTenant.monthly_rent,
     propertyId: dbTenant.property_id,
-    roomId: dbTenant.room_id,
-    status: dbTenant.status as TenantStatus,
-    profileImage: dbTenant.profile_image,
-    documents: dbTenant.documents as any[] | null,
-    notes: dbTenant.notes,
-    dateAdded: dbTenant.created_at
+    roomId: dbTenant.room_id
   };
 };
