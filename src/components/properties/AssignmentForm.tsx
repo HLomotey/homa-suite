@@ -2,7 +2,11 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Loader2 } from "lucide-react";
-import { FrontendAssignment, AssignmentStatus, PaymentStatus } from "@/integration/supabase/types";
+import {
+  FrontendAssignment,
+  AssignmentStatus,
+  PaymentStatus,
+} from "@/integration/supabase/types";
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
 import { useTenants } from "@/hooks/tenant";
 import { useToast } from "@/components/ui/use-toast";
@@ -25,23 +29,27 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { tenants, loading: loadingTenants } = useTenants();
-  
-  const [formData, setFormData] = React.useState<Omit<FrontendAssignment, "id">>({
+
+  const [formData, setFormData] = React.useState<
+    Omit<FrontendAssignment, "id">
+  >({
     tenantName: assignment?.tenantName || "",
     tenantId: assignment?.tenantId || "",
-    propertyId: assignment?.propertyId || (properties[0]?.id || ""),
-    propertyName: assignment?.propertyName || (properties[0]?.title || ""),
+    propertyId: assignment?.propertyId || properties[0]?.id || "",
+    propertyName: assignment?.propertyName || properties[0]?.title || "",
     roomId: assignment?.roomId || "",
     roomName: assignment?.roomName || "",
-    status: assignment?.status || "Active" as AssignmentStatus,
+    status: assignment?.status || ("Active" as AssignmentStatus),
     startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
     endDate: assignment?.endDate || "",
     rentAmount: assignment?.rentAmount || 0,
-    paymentStatus: assignment?.paymentStatus || "Paid" as PaymentStatus,
+    paymentStatus: assignment?.paymentStatus || ("Paid" as PaymentStatus),
   });
 
   // Filter rooms based on selected property
-  const filteredRooms = rooms.filter(room => room.propertyId === formData.propertyId);
+  const filteredRooms = rooms.filter(
+    (room) => room.propertyId === formData.propertyId
+  );
 
   // Debug logs
   React.useEffect(() => {
@@ -56,10 +64,10 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     >
   ) => {
     const { name, value } = e.target;
-    
+
     if (name === "propertyId") {
-      const selectedProperty = properties.find(p => p.id === value);
-      setFormData(prev => ({
+      const selectedProperty = properties.find((p) => p.id === value);
+      setFormData((prev) => ({
         ...prev,
         propertyId: value,
         propertyName: selectedProperty?.title || "",
@@ -68,14 +76,14 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
         roomName: "",
       }));
     } else if (name === "roomId") {
-      const selectedRoom = rooms.find(r => r.id === value);
-      setFormData(prev => ({
+      const selectedRoom = rooms.find((r) => r.id === value);
+      setFormData((prev) => ({
         ...prev,
         roomId: value,
         roomName: selectedRoom?.name || "",
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         [name]: name === "rentAmount" ? Number(value) : value,
       }));
@@ -84,7 +92,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!formData.propertyId) {
       toast({
@@ -94,7 +102,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       });
       return;
     }
-    
+
     if (!formData.roomId) {
       toast({
         title: "Validation Error",
@@ -103,7 +111,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       });
       return;
     }
-    
+
     // Submit form
     try {
       onSave(formData);
@@ -149,18 +157,20 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   name="tenantId"
                   value={formData.tenantId}
                   onChange={(e) => {
-                    const selectedTenant = tenants.find(t => t.id === e.target.value);
+                    const selectedTenant = tenants.find(
+                      (t) => t.id === e.target.value
+                    );
                     if (selectedTenant) {
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
                         tenantId: selectedTenant.id,
-                        tenantName: `${selectedTenant.firstName} ${selectedTenant.lastName}`
+                        tenantName: `${selectedTenant.firstName} ${selectedTenant.lastName}`,
                       }));
                     } else {
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
                         tenantId: "",
-                        tenantName: ""
+                        tenantName: "",
                       }));
                     }
                   }}
@@ -168,7 +178,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   required
                 >
                   <option value="">Select Tenant</option>
-                  {tenants.map(tenant => (
+                  {tenants.map((tenant) => (
                     <option key={tenant.id} value={tenant.id}>
                       {tenant.firstName} {tenant.lastName} - {tenant.email}
                     </option>
@@ -193,7 +203,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                 required
               >
                 <option value="">Select Property</option>
-                {properties.map(property => (
+                {properties.map((property) => (
                   <option key={property.id} value={property.id}>
                     {property.title}
                   </option>
@@ -218,7 +228,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                 disabled={!formData.propertyId}
               >
                 <option value="">Select Room</option>
-                {filteredRooms.map(room => (
+                {filteredRooms.map((room) => (
                   <option key={room.id} value={room.id}>
                     {room.name}
                   </option>

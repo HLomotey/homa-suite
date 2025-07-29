@@ -98,11 +98,11 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <HRAnalytics />
-
-          <FinanceAnalytics />
-
-          <OperationsAnalytics />
+          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+            <HRAnalytics />
+            <FinanceAnalytics />
+            <OperationsAnalytics />
+          </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             {/* <ActivityFeed />
