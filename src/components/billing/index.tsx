@@ -3,6 +3,7 @@ import { BillingStats } from "./BillingStats";
 import { BillingList } from "./BillingList";
 import { BillingDetail } from "./BillingDetail";
 import { BillingForm } from "./BillingForm";
+import { StaffList } from "./StaffList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useBills, useBillingStaff, useCreateBill } from "../../hooks/billing";
@@ -20,6 +21,7 @@ export function Billing() {
   const [selectedBill, setSelectedBill] = useState<FrontendBill | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [activeMainTab, setActiveMainTab] = useState("bills");
 
   const handleSelectBill = (bill: FrontendBill) => {
     setSelectedBill(bill);
@@ -81,11 +83,18 @@ export function Billing() {
           <BillingStats bills={bills} />
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsContent
-            value={activeTab}
-            className="bg-black/40 border border-white/10 rounded-lg p-0"
-          >
+        <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
+          <TabsList className="bg-black/40 backdrop-blur-md border border-white/10 mb-4">
+            <TabsTrigger value="bills">Bills</TabsTrigger>
+            <TabsTrigger value="staff">Staff</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="bills" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsContent
+                value={activeTab}
+                className="bg-black/40 border border-white/10 rounded-lg p-0"
+              >
             {billsLoading || staffLoading ? (
               <div className="flex justify-center items-center h-64">
                 <p>Loading billing data...</p>
@@ -119,6 +128,28 @@ export function Billing() {
                 />
               </>
             )}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+          
+          <TabsContent value="staff" className="w-full">
+            <div className="bg-black/40 border border-white/10 rounded-lg p-6">
+              {staffLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <p>Loading staff data...</p>
+                </div>
+              ) : staffError ? (
+                <div className="flex justify-center items-center h-64 text-red-500">
+                  <p>Error loading staff data</p>
+                </div>
+              ) : (
+                <StaffList 
+                  staff={staff} 
+                  isLoading={staffLoading} 
+                  onAddStaff={() => console.log('Add staff clicked - feature to be implemented')} 
+                />
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
