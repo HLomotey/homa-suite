@@ -5,7 +5,7 @@ import { operationsAnalytics } from "./data";
 
 export function OperationsAnalytics() {
   return (
-    <div className="grid gap-4 grid-cols-1">
+    <div className="grid gap-4 grid-cols-1 h-full">
       <div className="flex items-center gap-2 mb-2">
         <ClipboardList className="h-5 w-5 text-purple-500" />
         <h3 className="text-lg font-semibold">Field Operations</h3>
@@ -13,7 +13,7 @@ export function OperationsAnalytics() {
         <p className="text-sm text-muted-foreground ml-auto">Job orders and placement performance</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {/* Total Job Orders Card */}
         <Card className="bg-gradient-to-br from-red-900/40 to-red-800/20 border-red-800/30">
           <CardHeader className="pb-2">

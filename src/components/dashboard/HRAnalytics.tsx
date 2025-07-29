@@ -5,7 +5,7 @@ import { hrAnalytics } from "./data";
 
 export function HRAnalytics() {
   return (
-    <div className="grid gap-4 grid-cols-1">
+    <div className="grid gap-4 grid-cols-1 h-full">
       <div className="flex items-center gap-2 mb-2">
         <Users className="h-5 w-5 text-blue-500" />
         <h3 className="text-lg font-semibold">Human Resources</h3>
@@ -13,7 +13,7 @@ export function HRAnalytics() {
         <p className="text-sm text-muted-foreground ml-auto">Employee management and satisfaction metrics</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {/* Head Count Card */}
         <Card className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border-blue-800/30">
           <CardHeader className="pb-2">

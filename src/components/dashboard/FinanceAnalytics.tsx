@@ -16,7 +16,7 @@ export function FinanceAnalytics() {
   };
 
   return (
-    <div className="grid gap-4 grid-cols-1">
+    <div className="grid gap-4 grid-cols-1 h-full">
       <div className="flex items-center gap-2 mb-2">
         <DollarSign className="h-5 w-5 text-green-500" />
         <h3 className="text-lg font-semibold">Finance & Accounting</h3>
@@ -24,7 +24,7 @@ export function FinanceAnalytics() {
         <p className="text-sm text-muted-foreground ml-auto">Financial performance and revenue analytics</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {/* Daily Revenue Card */}
         <Card className="bg-gradient-to-br from-green-900/40 to-green-800/20 border-green-800/30">
           <CardHeader className="pb-2">

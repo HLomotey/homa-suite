@@ -98,10 +98,16 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-            <HRAnalytics />
-            <FinanceAnalytics />
-            <OperationsAnalytics />
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+            <div className="bg-card/20 rounded-lg p-4 border border-border/50">
+              <HRAnalytics />
+            </div>
+            <div className="bg-card/20 rounded-lg p-4 border border-border/50">
+              <FinanceAnalytics />
+            </div>
+            <div className="bg-card/20 rounded-lg p-4 border border-border/50">
+              <OperationsAnalytics />
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
