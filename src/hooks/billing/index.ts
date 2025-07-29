@@ -17,7 +17,14 @@ export {
   fetchBillingStats
 } from './api';
 
-// Re-export hooks
+// Re-export staff API functions
+export {
+  createStaff,
+  updateStaff,
+  deleteStaff
+} from './staffApi';
+
+// Re-export billing hooks
 export {
   useBills,
   useBill,
@@ -30,3 +37,10 @@ export {
   useBillingStaff,
   useBillingStats
 } from './useBilling';
+
+// Re-export staff hooks
+export {
+  useCreateStaff,
+  useUpdateStaff,
+  useDeleteStaff
+} from './useStaff';

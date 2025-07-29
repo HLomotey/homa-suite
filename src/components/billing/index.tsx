@@ -6,12 +6,15 @@ import { BillingForm } from "./BillingForm";
 import { StaffList } from "./StaffList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { useBills, useBillingStaff, useCreateBill } from "../../hooks/billing";
+import { useBills, useBillingStaff, useCreateBill, useCreateStaff, useUpdateStaff, useDeleteStaff } from "../../hooks/billing";
 import { FrontendBill, FrontendBillingStaff, BillStatus } from "../../integration/supabase/types/billing";
 
 export function Billing() {
   const { bills, loading: billsLoading, error: billsError, refetch: refetchBills } = useBills();
-  const { staff, loading: staffLoading, error: staffError } = useBillingStaff();
+  const { staff, loading: staffLoading, error: staffError, refetch: refetchStaff } = useBillingStaff();
+  const { create: createStaff, loading: createStaffLoading } = useCreateStaff();
+  const { update: updateStaff, loading: updateStaffLoading } = useUpdateStaff();
+  const { deleteStaff, loading: deleteStaffLoading } = useDeleteStaff();
   
   console.log('Billing index - staff data:', staff);
   console.log('Billing index - staffLoading:', staffLoading);
@@ -145,8 +148,22 @@ export function Billing() {
               ) : (
                 <StaffList 
                   staff={staff} 
-                  isLoading={staffLoading} 
-                  onAddStaff={() => console.log('Add staff clicked - feature to be implemented')} 
+                  isLoading={staffLoading}
+                  onCreateStaff={async (staffData) => {
+                    await createStaff(staffData);
+                    refetchStaff();
+                  }}
+                  onUpdateStaff={async (id, staffData) => {
+                    await updateStaff(id, staffData);
+                    refetchStaff();
+                  }}
+                  onDeleteStaff={async (id) => {
+                    await deleteStaff(id);
+                    refetchStaff();
+                  }}
+                  isCreating={createStaffLoading}
+                  isUpdating={updateStaffLoading}
+                  isDeleting={deleteStaffLoading}
                 />
               )}
             </div>
