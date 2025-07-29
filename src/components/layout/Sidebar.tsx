@@ -68,30 +68,16 @@ const navigationItems = [
     href: ROUTES.TRANSPORT,
     active: false,
   },
-
   {
     label: "Users",
     icon: Users,
     href: ROUTES.USERS,
     active: false,
   },
-
   {
-    label: "Upload HR",
+    label: "Excel Uploads",
     icon: FileUp,
-    href: ROUTES.UPLOAD.HR,
-    active: false,
-  },
-  {
-    label: "Upload Finance",
-    icon: FileUp,
-    href: ROUTES.UPLOAD.FINANCE,
-    active: false,
-  },
-  {
-    label: "Upload Operations",
-    icon: FileUp,
-    href: ROUTES.UPLOAD.OPERATIONS,
+    href: ROUTES.EXCEL_UPLOADS,
     active: false,
   },
   {
