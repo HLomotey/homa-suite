@@ -46,6 +46,8 @@ export interface FrontendAssignment {
   propertyName: string;
   roomId: string;
   roomName: string;
+  staffId?: string;
+  staffName?: string;
   status: AssignmentStatus;
   startDate: string;
   endDate: string;

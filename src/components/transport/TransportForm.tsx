@@ -145,7 +145,7 @@ export function TransportForm({ open, onOpenChange, onSuccess, editingVehicle }:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="bg-black/90 border-white/10 text-white">
+      <SheetContent className="bg-black/90 border-white/10 text-white w-[500px] max-w-[500px]">
         <SheetHeader>
           <SheetTitle className="text-white">{isEditing ? 'Edit Vehicle' : 'Add New Vehicle'}</SheetTitle>
           <SheetDescription className="text-white/60">

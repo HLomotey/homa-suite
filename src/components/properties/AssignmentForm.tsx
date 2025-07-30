@@ -10,13 +10,15 @@ import {
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
 import { useTenants } from "@/hooks/tenant";
 import { useToast } from "@/components/ui/use-toast";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { useStaff } from "@/hooks/billing/useStaff";
 
 // Assignment Form Component
 export interface AssignmentFormProps {
   assignment?: FrontendAssignment;
   onSave: (assignment: Omit<FrontendAssignment, "id">) => void;
   onCancel: () => void;
-  properties: { id: string; title: string }[];
+  properties: { id: string; title: string; address: string }[];
   rooms: { id: string; name: string; propertyId: string }[];
 }
 
@@ -29,6 +31,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { tenants, loading: loadingTenants } = useTenants();
+  const { staff, loading: loadingStaff } = useStaff();
 
   const [formData, setFormData] = React.useState<
     Omit<FrontendAssignment, "id">
@@ -39,6 +42,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     propertyName: assignment?.propertyName || properties[0]?.title || "",
     roomId: assignment?.roomId || "",
     roomName: assignment?.roomName || "",
+    staffId: assignment?.staffId || "",
+    staffName: assignment?.staffName || "",
     status: assignment?.status || ("Active" as AssignmentStatus),
     startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
     endDate: assignment?.endDate || "",
@@ -152,38 +157,34 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   <span className="text-sm">Loading tenants...</span>
                 </div>
               ) : (
-                <select
-                  id="tenantId"
-                  name="tenantId"
-                  value={formData.tenantId}
-                  onChange={(e) => {
-                    const selectedTenant = tenants.find(
-                      (t) => t.id === e.target.value
-                    );
-                    if (selectedTenant) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        tenantId: selectedTenant.id,
-                        tenantName: `${selectedTenant.firstName} ${selectedTenant.lastName}`,
-                      }));
-                    } else {
-                      setFormData((prev) => ({
-                        ...prev,
-                        tenantId: "",
-                        tenantName: "",
-                      }));
-                    }
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
-                  required
-                >
-                  <option value="">Select Tenant</option>
-                  {tenants.map((tenant) => (
-                    <option key={tenant.id} value={tenant.id}>
-                      {tenant.firstName} {tenant.lastName} - {tenant.email}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-2">
+                  <SearchableSelect
+                    options={tenants.map((tenant): SearchableSelectOption => ({
+                      value: tenant.id,
+                      label: `${tenant.firstName || ''} ${tenant.lastName || ''} - ${tenant.email || ''}`,
+                      searchText: `${tenant.firstName || ''} ${tenant.lastName || ''} ${tenant.email || ''} ${tenant.phone || ''}`
+                    }))}
+                    value={formData.tenantId}
+                    placeholder="Search and select tenant..."
+                    emptyMessage="No tenants found."
+                    onValueChange={(value) => {
+                      const selectedTenant = tenants.find((t) => t.id === value);
+                      if (selectedTenant) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          tenantId: selectedTenant.id,
+                          tenantName: `${selectedTenant.firstName} ${selectedTenant.lastName}`,
+                        }));
+                      } else {
+                        setFormData((prev) => ({
+                          ...prev,
+                          tenantId: "",
+                          tenantName: "",
+                        }));
+                      }
+                    }}
+                  />
+                </div>
               )}
             </div>
 
@@ -194,21 +195,29 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               >
                 Property
               </label>
-              <select
-                id="propertyId"
-                name="propertyId"
-                value={formData.propertyId}
-                onChange={handleChange}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
-                required
-              >
-                <option value="">Select Property</option>
-                {properties.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.title}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2">
+                <SearchableSelect
+                  options={properties.map((property): SearchableSelectOption => ({
+                    value: property.id,
+                    label: `${property.title || ''} - ${property.address || ''}`,
+                    searchText: `${property.title || ''} ${property.address || ''}`
+                  }))}
+                  value={formData.propertyId}
+                  placeholder="Search and select property..."
+                  emptyMessage="No properties found."
+                  onValueChange={(value) => {
+                    const selectedProperty = properties.find((p) => p.id === value);
+                    setFormData((prev) => ({
+                      ...prev,
+                      propertyId: value,
+                      propertyName: selectedProperty?.title || "",
+                      // Clear room selection when property changes
+                      roomId: "",
+                      roomName: "",
+                    }));
+                  }}
+                />
+              </div>
             </div>
 
             <div>
@@ -218,26 +227,62 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               >
                 Room
               </label>
-              <select
-                id="roomId"
-                name="roomId"
-                value={formData.roomId}
-                onChange={handleChange}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
-                required
-                disabled={!formData.propertyId}
+              <div className="mt-2">
+                <SearchableSelect
+                  options={filteredRooms.map((room): SearchableSelectOption => ({
+                    value: room.id,
+                    label: room.name || '',
+                    searchText: room.name || ''
+                  }))}
+                  value={formData.roomId}
+                  placeholder={!formData.propertyId ? "Select a property first..." : "Search and select room..."}
+                  emptyMessage={!formData.propertyId ? "Please select a property first." : "No rooms found."}
+                  disabled={!formData.propertyId}
+                  onValueChange={(value) => {
+                    const selectedRoom = filteredRooms.find((r) => r.id === value);
+                    setFormData((prev) => ({
+                      ...prev,
+                      roomId: value,
+                      roomName: selectedRoom?.name || "",
+                    }));
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="staffId"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                <option value="">Select Room</option>
-                {filteredRooms.map((room) => (
-                  <option key={room.id} value={room.id}>
-                    {room.name}
-                  </option>
-                ))}
-              </select>
-              {!formData.propertyId && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Please select a property first
-                </p>
+                Assigned Staff (Optional)
+              </label>
+              {loadingStaff ? (
+                <div className="flex items-center space-x-2 mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading staff...</span>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <SearchableSelect
+                    options={staff.map((staffMember): SearchableSelectOption => ({
+                      value: staffMember.id,
+                      label: `${staffMember.name || ''} - ${staffMember.department || ''}`,
+                      searchText: `${staffMember.name || ''} ${staffMember.department || ''}`
+                    }))}
+                    value={formData.staffId}
+                    placeholder="Search and select staff member..."
+                    emptyMessage="No staff members found."
+                    onValueChange={(value) => {
+                      const selectedStaff = staff.find((s) => s.id === value);
+                      setFormData((prev) => ({
+                        ...prev,
+                        staffId: value,
+                        staffName: selectedStaff?.name || "",
+                      }));
+                    }}
+                  />
+                </div>
               )}
             </div>
 

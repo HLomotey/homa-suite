@@ -11,7 +11,7 @@ export interface RoomFormProps {
   room?: FrontendRoom;
   onSave: (room: Omit<FrontendRoom, "id">) => void;
   onCancel: () => void;
-  properties: { id: string; title: string }[];
+  properties: { id: string; title: string; address: string }[];
 }
 
 export const RoomForm: React.FC<RoomFormProps> = ({
@@ -127,7 +127,7 @@ export const RoomForm: React.FC<RoomFormProps> = ({
                 {properties && properties.length > 0 ? (
                   properties.map(property => (
                     <option key={property.id} value={property.id}>
-                      {property.title}
+                      {property.title} - {property.address}
                     </option>
                   ))
                 ) : (

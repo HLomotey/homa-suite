@@ -138,3 +138,23 @@ export const deleteStaff = async (id: string): Promise<void> => {
     throw new Error(error.message);
   }
 };
+
+/**
+ * Get all staff members
+ * @returns Promise with array of staff members
+ */
+export const getAllStaff = async (): Promise<FrontendBillingStaff[]> => {
+  console.log('Fetching all staff members');
+  
+  const { data, error } = await supabase
+    .from("billing_staff")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching staff members:", error);
+    throw new Error(error.message);
+  }
+
+  return data.map(mapDatabaseBillingStaffToFrontend);
+};

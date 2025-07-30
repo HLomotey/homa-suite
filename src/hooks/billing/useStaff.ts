@@ -3,7 +3,7 @@
  * These hooks provide data management for staff operations
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FrontendBillingStaff } from "../../integration/supabase/types/billing";
 import * as staffApi from "./staffApi";
 
@@ -96,4 +96,35 @@ export const useDeleteStaff = () => {
   }, []);
 
   return { deleteStaff, loading, error };
+};
+
+/**
+ * Hook for fetching all staff members
+ * @returns Object containing staff array, loading state, error state, and refetch function
+ */
+export const useStaff = () => {
+  const [staff, setStaff] = useState<FrontendBillingStaff[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchStaff = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await staffApi.getAllStaff();
+      setStaff(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("An unknown error occurred")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
+
+  return { staff, loading, error, refetch: fetchStaff };
 };
