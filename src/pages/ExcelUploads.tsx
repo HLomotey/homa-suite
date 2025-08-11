@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Users, DollarSign, ClipboardList, Building2, Download, UserPlus, Calculator } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Users, DollarSign, ClipboardList, Building2, Download, UserPlus, Calculator, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import UploadStaff from "./UploadStaff";
 import UploadPayroll from "./UploadPayroll";
+import UploadAttendance from "./UploadAttendance";
 
 const UploadComponent = ({ 
   title, 
@@ -273,7 +274,7 @@ export default function ExcelUploads() {
       </div>
 
       <Tabs defaultValue="hr" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="hr" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             HR Data
@@ -298,6 +299,10 @@ export default function ExcelUploads() {
             <Calculator className="h-4 w-4" />
             Payroll Data
           </TabsTrigger>
+          <TabsTrigger value="attendance" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Attendance Data
+          </TabsTrigger>
         </TabsList>
 
         {Object.entries(uploadConfigs).map(([key, config]) => (
@@ -321,6 +326,11 @@ export default function ExcelUploads() {
         {/* Payroll Upload Tab */}
         <TabsContent value="payroll" className="space-y-6">
           <UploadPayroll />
+        </TabsContent>
+
+        {/* Attendance Upload Tab */}
+        <TabsContent value="attendance" className="space-y-6">
+          <UploadAttendance />
         </TabsContent>
       </Tabs>
     </div>

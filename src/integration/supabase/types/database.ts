@@ -34,6 +34,9 @@ import {
   Payroll
 } from './billing';
 import {
+  Attendance
+} from './attendance';
+import {
   Vehicle,
   TransportStaff,
   TransportStats
@@ -151,6 +154,11 @@ export interface Database {
         Row: Payroll;
         Insert: Omit<Payroll, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<Payroll, "id" | "created_at">>;
+      };
+      attendance: {
+        Row: Attendance;
+        Insert: Omit<Attendance, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Attendance, "id" | "created_at">>;
       };
       vehicles: {
         Row: Vehicle;

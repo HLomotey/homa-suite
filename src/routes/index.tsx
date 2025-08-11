@@ -4,6 +4,7 @@ import Properties from "@/pages/Properties";
 import Housing from "@/pages/Housing";
 import Billing from "@/pages/Billing";
 import PayrollPage from "@/pages/PayrollPage";
+import { AttendancePage } from "@/pages/AttendancePage";
 import Transport from "@/pages/Transport";
 import Settings from "@/pages/Settings";
 import Users from "@/pages/Users";
@@ -56,6 +57,10 @@ export const routes: RouteObject[] = [
       {
         path: "payroll",
         element: <PayrollPage />,
+      },
+      {
+        path: "attendance",
+        element: <AttendancePage />,
       },
       {
         path: "transport",

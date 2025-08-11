@@ -21,6 +21,7 @@ import {
   Upload,
   FileUp,
   LogOut,
+  Clock,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -66,6 +67,12 @@ const navigationItems = [
     label: "Payroll",
     icon: DollarSign,
     href: "/payroll",
+    active: false,
+  },
+  {
+    label: "Attendance",
+    icon: Clock,
+    href: "/attendance",
     active: false,
   },
   {
