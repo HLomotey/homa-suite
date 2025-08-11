@@ -30,10 +30,20 @@ export const RoomForm: React.FC<RoomFormProps> = ({
     }
   }, [properties]);
 
+  // Find the initial property based on propertyId or use the first property
+  const initialProperty = room?.propertyId 
+    ? properties.find(p => p.id === room.propertyId) || properties[0] 
+    : properties[0];
+  
+  // Create combined property name from title and address
+  const initialPropertyName = initialProperty 
+    ? `${initialProperty.title} - ${initialProperty.address}` 
+    : room?.propertyName || "";
+  
   const [formData, setFormData] = React.useState<Omit<FrontendRoom, "id">>({
     name: room?.name || "",
-    propertyId: room?.propertyId || (properties[0]?.id || ""),
-    propertyName: room?.propertyName || (properties[0]?.title || ""),
+    propertyId: room?.propertyId || (initialProperty?.id || ""),
+    propertyName: initialPropertyName,
     type: room?.type || "Single",
     status: room?.status || "Available",
     area: room?.area || 0,
@@ -52,10 +62,15 @@ export const RoomForm: React.FC<RoomFormProps> = ({
     
     if (name === "propertyId") {
       const selectedProperty = properties.find(p => p.id === value);
+      // Combine property title and address for propertyName
+      const combinedPropertyName = selectedProperty 
+        ? `${selectedProperty.title} - ${selectedProperty.address}` 
+        : "";
+      
       setFormData(prev => ({
         ...prev,
         propertyId: value,
-        propertyName: selectedProperty?.title || "",
+        propertyName: combinedPropertyName,
       }));
     } else {
       setFormData(prev => ({
