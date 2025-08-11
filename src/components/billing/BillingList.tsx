@@ -26,11 +26,14 @@ import {
   Table as TableIcon,
   Search,
   Filter,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FrontendBill, FrontendBillingStaff } from "../../integration/supabase/types/billing";
+import { StaffExcelUpload } from "./StaffExcelUpload";
 
 interface BillingListProps {
   bills: FrontendBill[];
@@ -39,6 +42,7 @@ interface BillingListProps {
   onSelectBill?: (bill: FrontendBill) => void;
   activeTab?: string;
   onChangeTab?: (tab: string) => void;
+  onStaffUploaded?: (staff: Omit<FrontendBillingStaff, "id">[]) => Promise<void>;
 }
 
 export function BillingList({
@@ -48,6 +52,7 @@ export function BillingList({
   onSelectBill,
   activeTab = "all",
   onChangeTab,
+  onStaffUploaded,
 }: BillingListProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [searchQuery, setSearchQuery] = useState("");

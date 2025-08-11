@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, UserPlus, MoreHorizontal, Pencil, Trash2, Loader2, Settings, Eye, EyeOff } from "lucide-react";
+import { Plus, Search, UserPlus, MoreHorizontal, Pencil, Trash2, Loader2, Settings, Eye, EyeOff, Upload } from "lucide-react";
 import { FrontendBillingStaff } from "../../integration/supabase/types/billing";
 import { StaffForm } from "./StaffForm";
+import { StaffExcelUpload } from "./StaffExcelUpload";
 import { useToast } from "@/components/ui/use-toast";
 import ColumnCustomizer, { ColumnOption } from "./ColumnCustomizer";
 
@@ -38,6 +39,7 @@ interface StaffListProps {
   onCreateStaff: (staff: Omit<FrontendBillingStaff, "id">) => Promise<void>;
   onUpdateStaff: (id: string, staff: Partial<Omit<FrontendBillingStaff, "id">>) => Promise<void>;
   onDeleteStaff: (id: string) => Promise<void>;
+  onBulkCreateStaff?: (staff: Omit<FrontendBillingStaff, "id">[]) => Promise<void>;
   isCreating?: boolean;
   isUpdating?: boolean;
   isDeleting?: boolean;
@@ -49,6 +51,7 @@ export function StaffList({
   onCreateStaff,
   onUpdateStaff,
   onDeleteStaff,
+  onBulkCreateStaff,
   isCreating = false,
   isUpdating = false,
   isDeleting = false
@@ -58,6 +61,7 @@ export function StaffList({
   const [selectedStaff, setSelectedStaff] = useState<FrontendBillingStaff | undefined>(undefined);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
   const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
+  const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
   const { toast } = useToast();
 
   // Define all available columns for the staff table
@@ -258,6 +262,16 @@ export function StaffList({
               <Settings className="h-4 w-4 mr-2" />
               Columns
             </Button>
+            {onBulkCreateStaff && (
+              <Button 
+                onClick={() => setIsExcelUploadOpen(true)} 
+                variant="outline" 
+                className="shrink-0"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Excel
+              </Button>
+            )}
             <Button onClick={() => handleOpenForm()} className="shrink-0" disabled={isCreating}>
               {isCreating ? (
                 <>
@@ -385,6 +399,29 @@ export function StaffList({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Excel Upload Sheet */}
+      {onBulkCreateStaff && (
+        <Sheet open={isExcelUploadOpen} onOpenChange={setIsExcelUploadOpen}>
+          <SheetContent className="max-w-[1200px] sm:max-w-[1200px] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Upload Staff Data from Excel</SheetTitle>
+              <SheetDescription>
+                Upload an Excel file containing staff information to add multiple staff members at once.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              <StaffExcelUpload
+                onStaffUploaded={async (staffData) => {
+                  await onBulkCreateStaff(staffData);
+                  setIsExcelUploadOpen(false);
+                }}
+                isUploading={isCreating}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </Card>
   );
 }

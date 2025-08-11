@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Users, DollarSign, ClipboardList, Building2, Download } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Users, DollarSign, ClipboardList, Building2, Download, UserPlus, Calculator } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import UploadStaff from "./UploadStaff";
+import UploadPayroll from "./UploadPayroll";
 
 const UploadComponent = ({ 
   title, 
@@ -271,7 +273,7 @@ export default function ExcelUploads() {
       </div>
 
       <Tabs defaultValue="hr" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="hr" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             HR Data
@@ -288,6 +290,14 @@ export default function ExcelUploads() {
             <Building2 className="h-4 w-4" />
             Room Data
           </TabsTrigger>
+          <TabsTrigger value="staff" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            Staff Data
+          </TabsTrigger>
+          <TabsTrigger value="payroll" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            Payroll Data
+          </TabsTrigger>
         </TabsList>
 
         {Object.entries(uploadConfigs).map(([key, config]) => (
@@ -302,6 +312,16 @@ export default function ExcelUploads() {
             <UploadComponent {...config} />
           </TabsContent>
         ))}
+
+        {/* Staff Upload Tab */}
+        <TabsContent value="staff" className="space-y-6">
+          <UploadStaff />
+        </TabsContent>
+
+        {/* Payroll Upload Tab */}
+        <TabsContent value="payroll" className="space-y-6">
+          <UploadPayroll />
+        </TabsContent>
       </Tabs>
     </div>
   );
