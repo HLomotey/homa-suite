@@ -267,8 +267,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   <SearchableSelect
                     options={staff.map((staffMember): SearchableSelectOption => ({
                       value: staffMember.id,
-                      label: `${staffMember.name || ''} - ${staffMember.department || ''}`,
-                      searchText: `${staffMember.name || ''} ${staffMember.department || ''}`
+                      label: `${staffMember.legalName || ''} - ${staffMember.department || ''}`,
+                      searchText: `${staffMember.legalName || ''} ${staffMember.department || ''}`
                     }))}
                     value={formData.staffId}
                     placeholder="Search and select staff member..."
@@ -278,7 +278,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                       setFormData((prev) => ({
                         ...prev,
                         staffId: value,
-                        staffName: selectedStaff?.name || "",
+                        staffName: selectedStaff?.legalName || "",
                       }));
                     }}
                   />

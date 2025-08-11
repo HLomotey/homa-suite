@@ -303,7 +303,7 @@ export const AssignmentsList = () => {
             assignment={editingAssignment}
             onSave={handleSaveAssignment}
             onCancel={() => setIsFormOpen(false)}
-            properties={properties ? properties.map(p => ({ id: p.id, title: p.title })) : []}
+            properties={properties ? properties.map(p => ({ id: p.id, title: p.title, address: p.address })) : []}
             rooms={rooms ? rooms.map(r => ({ id: r.id, name: r.name, propertyId: r.propertyId })) : []}
           />
         </SheetContent>
