@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePayroll, type PayrollFilters } from '@/hooks/usePayroll';
 import { FrontendPayroll } from '@/integration/supabase/types/billing';
+import { PayrollForm, type PayrollFormData } from './PayrollForm';
 import { 
   Search, 
   Filter, 
@@ -34,8 +35,20 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({ className 
   const [filters, setFilters] = useState<PayrollFilters>({});
   const [selectedRecord, setSelectedRecord] = useState<FrontendPayroll | null>(null);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<FrontendPayroll | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { payrollData, loading, error, stats, refreshData, deletePayrollRecord } = usePayroll(filters);
+  const { 
+    payrollData, 
+    loading, 
+    error, 
+    stats, 
+    refreshData, 
+    createPayrollRecord,
+    updatePayrollRecord,
+    deletePayrollRecord 
+  } = usePayroll(filters);
 
   // Filter payroll data based on search term
   const filteredPayrollData = payrollData.filter((record) => {
@@ -56,6 +69,59 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({ className 
         console.error('Error deleting record:', error);
       }
     }
+  };
+
+  const handleAddRecord = () => {
+    setEditingRecord(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditRecord = (record: FrontendPayroll) => {
+    setEditingRecord(record);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSubmit = async (formData: PayrollFormData) => {
+    setIsSubmitting(true);
+    try {
+      if (editingRecord) {
+        // Update existing record
+        await updatePayrollRecord(editingRecord.id, {
+          staff_id: formData.staffId,
+          regular_hours: formData.regularHours || null,
+          overtime_hours: formData.overtimeHours || null,
+          rent: formData.rent || null,
+          transport: formData.transport || null,
+          penalties: formData.penalties || null,
+          pay_date: formData.payDate,
+          pay_period: formData.payPeriod,
+        });
+      } else {
+        // Create new record
+        await createPayrollRecord({
+          staff_id: formData.staffId,
+          regular_hours: formData.regularHours || null,
+          overtime_hours: formData.overtimeHours || null,
+          rent: formData.rent || null,
+          transport: formData.transport || null,
+          penalties: formData.penalties || null,
+          pay_date: formData.payDate,
+          pay_period: formData.payPeriod,
+        });
+      }
+      setIsFormOpen(false);
+      setEditingRecord(null);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    setEditingRecord(null);
+    setIsSubmitting(false);
   };
 
   const handleApplyFilters = (newFilters: PayrollFilters) => {
@@ -214,6 +280,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({ className 
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button onClick={handleAddRecord} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Record
+              </Button>
               <Button onClick={exportToCSV} variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -326,7 +396,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({ className 
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedRecord(record)}
+                            onClick={() => handleEditRecord(record)}
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -348,6 +418,15 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({ className 
           </div>
         </CardContent>
       </Card>
+
+      {/* Payroll Form */}
+      <PayrollForm
+        isOpen={isFormOpen}
+        onClose={handleFormClose}
+        onSubmit={handleFormSubmit}
+        editingRecord={editingRecord}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };
