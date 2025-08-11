@@ -163,6 +163,43 @@ export interface FrontendBillingStats {
 }
 
 /**
+ * Payroll interface representing the payroll table in Supabase
+ * Based on the upload fields: Employee ID, Regular Hours, Overtime Hours, Rent, Transport, Penalties, Pay Date, Pay Period
+ */
+export interface Payroll {
+  id: string;
+  staff_id: string; // Links to billing_staff.id (instead of employee_id from upload)
+  regular_hours: number | null;
+  overtime_hours: number | null;
+  rent: number | null;
+  transport: number | null;
+  penalties: number | null;
+  pay_date: string;
+  pay_period: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Frontend payroll type that matches the structure for payroll components
+ * Based on the upload fields with camelCase naming
+ */
+export interface FrontendPayroll {
+  id: string;
+  staffId: string; // Links to staff record
+  regularHours?: number;
+  overtimeHours?: number;
+  rent?: number;
+  transport?: number;
+  penalties?: number;
+  payDate: string;
+  payPeriod: string;
+  // Additional computed fields for UI
+  staffName?: string; // Populated from joined staff data
+  employeeId?: string; // Populated from joined staff data
+}
+
+/**
  * Maps a database bill to the frontend bill format
  */
 export const mapDatabaseBillToFrontend = (dbBill: Bill): FrontendBill => {
@@ -237,5 +274,28 @@ export const mapDatabaseBillingStatsToFrontend = (
     overdueAmount: dbStats.overdue_amount,
     month: dbStats.month,
     year: dbStats.year
+  };
+};
+
+/**
+ * Maps a database payroll to the frontend payroll format
+ */
+export const mapDatabasePayrollToFrontend = (
+  dbPayroll: Payroll,
+  staffName?: string,
+  employeeId?: string
+): FrontendPayroll => {
+  return {
+    id: dbPayroll.id,
+    staffId: dbPayroll.staff_id,
+    regularHours: dbPayroll.regular_hours || undefined,
+    overtimeHours: dbPayroll.overtime_hours || undefined,
+    rent: dbPayroll.rent || undefined,
+    transport: dbPayroll.transport || undefined,
+    penalties: dbPayroll.penalties || undefined,
+    payDate: dbPayroll.pay_date,
+    payPeriod: dbPayroll.pay_period,
+    staffName,
+    employeeId,
   };
 };

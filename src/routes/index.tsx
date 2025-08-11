@@ -3,6 +3,7 @@ import Dashboard from "@/pages/Dashboard";
 import Properties from "@/pages/Properties";
 import Housing from "@/pages/Housing";
 import Billing from "@/pages/Billing";
+import PayrollPage from "@/pages/PayrollPage";
 import Transport from "@/pages/Transport";
 import Settings from "@/pages/Settings";
 import Users from "@/pages/Users";
@@ -51,6 +52,10 @@ export const routes: RouteObject[] = [
       {
         path: "billing",
         element: <Billing />,
+      },
+      {
+        path: "payroll",
+        element: <PayrollPage />,
       },
       {
         path: "transport",

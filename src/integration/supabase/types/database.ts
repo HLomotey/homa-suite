@@ -30,7 +30,8 @@ import {
 import {
   Bill,
   BillingStaff,
-  BillingStats
+  BillingStats,
+  Payroll
 } from './billing';
 import {
   Vehicle,
@@ -145,6 +146,11 @@ export interface Database {
         Row: BillingStats;
         Insert: Omit<BillingStats, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<BillingStats, "id" | "created_at">>;
+      };
+      payroll: {
+        Row: Payroll;
+        Insert: Omit<Payroll, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Payroll, "id" | "created_at">>;
       };
       vehicles: {
         Row: Vehicle;

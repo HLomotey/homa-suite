@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, UserPlus, MoreHorizontal, Pencil, Trash2, Loader2, Settings, Eye, EyeOff, Upload } from "lucide-react";
 import { FrontendBillingStaff } from "../../integration/supabase/types/billing";
 import { StaffForm } from "./StaffForm";
-import { StaffExcelUpload } from "./StaffExcelUpload";
+
 import { useToast } from "@/components/ui/use-toast";
 import ColumnCustomizer, { ColumnOption } from "./ColumnCustomizer";
 
@@ -411,13 +411,22 @@ export function StaffList({
               </SheetDescription>
             </SheetHeader>
             <div className="mt-6">
-              <StaffExcelUpload
-                onStaffUploaded={async (staffData) => {
-                  await onBulkCreateStaff(staffData);
-                  setIsExcelUploadOpen(false);
-                }}
-                isUploading={isCreating}
-              />
+              <div className="text-center p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Staff Excel Upload</h3>
+                <p className="text-muted-foreground mb-4">
+                  Staff Excel uploads have been moved to the central Excel uploads page for better organization.
+                </p>
+                <Button 
+                  onClick={() => {
+                    setIsExcelUploadOpen(false);
+                    window.location.href = '/excel-uploads';
+                  }}
+                  className="w-full"
+                >
+                  Go to Excel Uploads Page
+                </Button>
+              </div>
             </div>
           </SheetContent>
         </Sheet>

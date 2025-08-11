@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { FrontendBill, FrontendBillingStaff } from "../../integration/supabase/types/billing";
-import { StaffExcelUpload } from "./StaffExcelUpload";
+
 
 interface BillingListProps {
   bills: FrontendBill[];
