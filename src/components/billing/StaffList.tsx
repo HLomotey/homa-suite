@@ -24,10 +24,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, UserPlus, MoreHorizontal, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, UserPlus, MoreHorizontal, Pencil, Trash2, Loader2, Settings, Eye, EyeOff } from "lucide-react";
 import { FrontendBillingStaff } from "../../integration/supabase/types/billing";
 import { StaffForm } from "./StaffForm";
 import { useToast } from "@/components/ui/use-toast";
+import ColumnCustomizer, { ColumnOption } from "./ColumnCustomizer";
 
 interface StaffListProps {
   staff: FrontendBillingStaff[];
@@ -54,14 +57,130 @@ export function StaffList({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<FrontendBillingStaff | undefined>(undefined);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
+  const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
   const { toast } = useToast();
 
+  // Define all available columns for the staff table
+  const [columns, setColumns] = useState<ColumnOption[]>([
+    // Personal Information
+    { id: "legalName", label: "Legal Name", visible: true },
+    { id: "preferredName", label: "Preferred Name", visible: false },
+    { id: "email", label: "Email", visible: true },
+    { id: "phoneNumber", label: "Phone Number", visible: false },
+    { id: "address", label: "Address", visible: false },
+    { id: "maritalStatus", label: "Marital Status", visible: false },
+    
+    // Emergency Contacts
+    { id: "emergencyContactName", label: "Emergency Contact", visible: false },
+    { id: "emergencyContactPhone", label: "Emergency Phone", visible: false },
+    { id: "emergencyContactRelationship", label: "Emergency Relationship", visible: false },
+    
+    // Work Information
+    { id: "employeeId", label: "Employee ID", visible: true },
+    { id: "jobTitle", label: "Job Title", visible: true },
+    { id: "department", label: "Department", visible: true },
+    { id: "location", label: "Location", visible: false },
+    { id: "employmentStatus", label: "Employment Status", visible: true },
+    { id: "hireDate", label: "Hire Date", visible: true },
+    { id: "terminationDate", label: "Termination Date", visible: false },
+    
+    // EEO Data
+    { id: "gender", label: "Gender", visible: false },
+    { id: "ethnicityRace", label: "Ethnicity/Race", visible: false },
+    { id: "veteranStatus", label: "Veteran Status", visible: false },
+    { id: "disabilityStatus", label: "Disability Status", visible: false },
+    
+    // Compensation
+    { id: "salary", label: "Annual Salary", visible: false },
+    { id: "hourlyRate", label: "Hourly Rate", visible: false },
+  ]);
+
+  // Get visible columns for table rendering
+  const visibleColumns = columns.filter(col => col.visible);
+
+  // Helper function to get cell value for a column
+  const getCellValue = (staffMember: FrontendBillingStaff, columnId: string): React.ReactNode => {
+    switch (columnId) {
+      case "legalName":
+        return staffMember.legalName || "Unknown Staff";
+      case "preferredName":
+        return staffMember.preferredName || "-";
+      case "email":
+        return staffMember.email || "-";
+      case "phoneNumber":
+        return staffMember.phoneNumber || "-";
+      case "address":
+        return staffMember.address ? (
+          <span className="truncate max-w-[200px] block" title={staffMember.address}>
+            {staffMember.address}
+          </span>
+        ) : "-";
+      case "maritalStatus":
+        return staffMember.maritalStatus || "-";
+      case "emergencyContactName":
+        return staffMember.emergencyContactName || "-";
+      case "emergencyContactPhone":
+        return staffMember.emergencyContactPhone || "-";
+      case "emergencyContactRelationship":
+        return staffMember.emergencyContactRelationship || "-";
+      case "employeeId":
+        return staffMember.employeeId || "-";
+      case "jobTitle":
+        return staffMember.jobTitle || "-";
+      case "department":
+        return staffMember.department || "-";
+      case "location":
+        return staffMember.location || "-";
+      case "employmentStatus":
+        return (
+          <Badge variant={staffMember.employmentStatus === "Full-time" ? "default" : "secondary"}>
+            {staffMember.employmentStatus || "-"}
+          </Badge>
+        );
+      case "hireDate":
+        return staffMember.hireDate ? new Date(staffMember.hireDate).toLocaleDateString() : "-";
+      case "terminationDate":
+        return staffMember.terminationDate ? (
+          <Badge variant="destructive">
+            {new Date(staffMember.terminationDate).toLocaleDateString()}
+          </Badge>
+        ) : "-";
+      case "gender":
+        return staffMember.gender || "-";
+      case "ethnicityRace":
+        return staffMember.ethnicityRace || "-";
+      case "veteranStatus":
+        return staffMember.veteranStatus || "-";
+      case "disabilityStatus":
+        return staffMember.disabilityStatus || "-";
+      case "salary":
+        return staffMember.salary ? `$${staffMember.salary.toLocaleString()}` : "-";
+      case "hourlyRate":
+        return staffMember.hourlyRate ? `$${staffMember.hourlyRate}/hr` : "-";
+      default:
+        return "-";
+    }
+  };
+
+  // Enhanced search functionality to search across multiple fields
   const filteredStaff = staff.filter((staffMember) => {
+    const searchTerm = searchQuery.toLowerCase();
     return (
-      (staffMember.legalName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      staffMember.department.toLowerCase().includes(searchQuery.toLowerCase())
+      (staffMember.legalName || "").toLowerCase().includes(searchTerm) ||
+      (staffMember.preferredName || "").toLowerCase().includes(searchTerm) ||
+      (staffMember.email || "").toLowerCase().includes(searchTerm) ||
+      (staffMember.employeeId || "").toLowerCase().includes(searchTerm) ||
+      (staffMember.jobTitle || "").toLowerCase().includes(searchTerm) ||
+      (staffMember.department || "").toLowerCase().includes(searchTerm) ||
+      (staffMember.location || "").toLowerCase().includes(searchTerm)
     );
   });
+
+  // Handle column customizer changes
+  const handleColumnChange = (updatedColumns: ColumnOption[]) => {
+    setColumns(updatedColumns);
+    setIsColumnCustomizerOpen(false);
+  };
   
   const handleOpenForm = (staffMember?: FrontendBillingStaff) => {
     setSelectedStaff(staffMember);
@@ -130,19 +249,29 @@ export function StaffList({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button onClick={() => handleOpenForm()} className="shrink-0" disabled={isCreating}>
-            {isCreating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Staff
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setIsColumnCustomizerOpen(true)} 
+              variant="outline" 
+              className="shrink-0"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Columns
+            </Button>
+            <Button onClick={() => handleOpenForm()} className="shrink-0" disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Staff
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -160,64 +289,72 @@ export function StaffList({
           </div>
         ) : (
           <div className="rounded-md border border-white/10 overflow-hidden">
-            <Table>
-              <TableHeader className="bg-black/40">
-                <TableRow>
-                  <TableHead className="text-white/60">Name</TableHead>
-                  <TableHead className="text-white/60">Department</TableHead>
-                  <TableHead className="text-white/60 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStaff.map((staffMember) => (
-                  <TableRow
-                    key={staffMember.id}
-                    className="hover:bg-white/5"
-                  >
-                    <TableCell className="font-medium">{staffMember.legalName || "Unknown Staff"}</TableCell>
-                    <TableCell>{staffMember.department}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleOpenForm(staffMember)}
-                            disabled={isUpdating}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteStaff(staffMember.id)}
-                            className="text-red-500 focus:text-red-500"
-                            disabled={isDeleting || staffToDelete === staffMember.id}
-                          >
-                            {staffToDelete === staffMember.id ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-black/40">
+                  <TableRow>
+                    {visibleColumns.map((column) => (
+                      <TableHead key={column.id} className="text-white/60 whitespace-nowrap">
+                        {column.label}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-white/60 text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredStaff.map((staffMember) => (
+                    <TableRow
+                      key={staffMember.id}
+                      className="hover:bg-white/5"
+                    >
+                      {visibleColumns.map((column) => (
+                        <TableCell key={column.id} className="whitespace-nowrap">
+                          {getCellValue(staffMember, column.id)}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleOpenForm(staffMember)}
+                              disabled={isUpdating}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteStaff(staffMember.id)}
+                              className="text-red-500 focus:text-red-500"
+                              disabled={isDeleting || staffToDelete === staffMember.id}
+                            >
+                              {staffToDelete === staffMember.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </CardContent>
@@ -230,6 +367,24 @@ export function StaffList({
         isLoading={isCreating || isUpdating}
         staff={selectedStaff}
       />
+
+      {/* Column Customizer Sheet */}
+      <Sheet open={isColumnCustomizerOpen} onOpenChange={setIsColumnCustomizerOpen}>
+        <SheetContent className="max-w-[600px] sm:max-w-[600px]">
+          <SheetHeader>
+            <SheetTitle>Customize Staff Table Columns</SheetTitle>
+            <SheetDescription>
+              Select which columns to display in the staff table. You can show or hide columns based on your needs.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            <ColumnCustomizer
+              columns={columns}
+              onChange={handleColumnChange}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }
