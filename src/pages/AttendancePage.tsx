@@ -1,6 +1,8 @@
 import React from "react";
 import { AttendanceManagement } from "@/components/attendance/AttendanceManagement";
-import { Clock } from "lucide-react";
+import { AttendanceDashboard } from "@/components/attendance/AttendanceDashboard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, BarChart3, Users } from "lucide-react";
 
 export const AttendancePage: React.FC = () => {
   return (
@@ -16,7 +18,26 @@ export const AttendancePage: React.FC = () => {
         </p>
       </div>
 
-      <AttendanceManagement />
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="records" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Attendance Records
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-6 mt-6">
+          <AttendanceDashboard />
+        </TabsContent>
+
+        <TabsContent value="records" className="space-y-6 mt-6">
+          <AttendanceManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
