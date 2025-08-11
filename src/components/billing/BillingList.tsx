@@ -57,7 +57,7 @@ export function BillingList({
     const staffMember = staff.find((s) => s.id === bill.staffId);
     if (!staffMember) return false;
 
-    const matchesSearch = staffMember.name
+    const matchesSearch = (staffMember.legalName || "")
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesStatus =
@@ -184,7 +184,7 @@ export function BillingList({
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white">
-                        {staffMember.name}
+                        {staffMember.legalName || "Unknown Staff"}
                       </h3>
                       <p className="text-white/60">{staffMember.department}</p>
                     </div>
@@ -248,7 +248,7 @@ export function BillingList({
                     onClick={() => onSelectBill && onSelectBill(bill)}
                   >
                     <TableCell className="font-medium">
-                      {staffMember.name}
+                      {staffMember.legalName || "Unknown Staff"}
                     </TableCell>
                     <TableCell>{staffMember.department}</TableCell>
                     <TableCell>${bill.amount}</TableCell>

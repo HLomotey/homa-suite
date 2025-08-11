@@ -58,7 +58,7 @@ export function StaffList({
 
   const filteredStaff = staff.filter((staffMember) => {
     return (
-      staffMember.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (staffMember.legalName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       staffMember.department.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
@@ -174,7 +174,7 @@ export function StaffList({
                     key={staffMember.id}
                     className="hover:bg-white/5"
                   >
-                    <TableCell className="font-medium">{staffMember.name}</TableCell>
+                    <TableCell className="font-medium">{staffMember.legalName || "Unknown Staff"}</TableCell>
                     <TableCell>{staffMember.department}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>

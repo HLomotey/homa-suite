@@ -86,7 +86,7 @@ export function BillingDetail({ bill, staff, onBack }: BillingDetailProps) {
                 <User className="h-5 w-5 text-white/60 mr-3" />
                 <div>
                   <p className="text-white/60 text-sm">Name</p>
-                  <p className="text-white font-medium">{staff.name}</p>
+                  <p className="text-white font-medium">{staff.legalName || "Unknown Staff"}</p>
                 </div>
               </div>
               <div className="flex items-center">

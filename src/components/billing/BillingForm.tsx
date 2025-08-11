@@ -54,7 +54,7 @@ export function BillingForm({ open, onOpenChange, staff, onSubmit, isLoading = f
                 {staff && staff.length > 0 ? (
                   staff.map((staffMember) => (
                     <SelectItem key={staffMember.id} value={staffMember.id}>
-                      {staffMember.name}
+                      {staffMember.legalName || "Unknown Staff"}
                     </SelectItem>
                   ))
                 ) : (
