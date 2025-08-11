@@ -23,7 +23,7 @@ export const createStaff = async (
   // Use the RPC function to bypass RLS if available
   try {
     const { data, error } = await supabase.rpc('insert_billing_staff', {
-      p_name: staff.name,
+      p_legal_name: staff.legalName,
       p_department: staff.department
     });
     
@@ -41,8 +41,29 @@ export const createStaff = async (
   const { data, error } = await supabase
     .from("billing_staff")
     .insert({
-      name: staff.name,
-      department: staff.department
+      legal_name: staff.legalName,
+      preferred_name: staff.preferredName,
+      birth_name: staff.birthName,
+      email: staff.email,
+      phone_number: staff.phoneNumber,
+      address: staff.address,
+      marital_status: staff.maritalStatus,
+      emergency_contact_name: staff.emergencyContactName,
+      emergency_contact_phone: staff.emergencyContactPhone,
+      emergency_contact_relationship: staff.emergencyContactRelationship,
+      employee_id: staff.employeeId,
+      job_title: staff.jobTitle,
+      department: staff.department,
+      location: staff.location,
+      employment_status: staff.employmentStatus,
+      hire_date: staff.hireDate,
+      termination_date: staff.terminationDate,
+      gender: staff.gender,
+      ethnicity_race: staff.ethnicityRace,
+      veteran_status: staff.veteranStatus,
+      disability_status: staff.disabilityStatus,
+      salary: staff.salary,
+      hourly_rate: staff.hourlyRate
     })
     .select()
     .single();
@@ -71,7 +92,7 @@ export const updateStaff = async (
   try {
     const { data, error } = await supabase.rpc('update_billing_staff', {
       p_id: id,
-      p_name: staff.name,
+      p_legal_name: staff.legalName,
       p_department: staff.department
     });
     
@@ -85,14 +106,40 @@ export const updateStaff = async (
     console.log('RPC method not available, falling back to direct update');
   }
   
+  // Create update object with only defined fields
+  const updateData: any = {
+    updated_at: new Date().toISOString()
+  };
+  
+  // Only include fields that are defined
+  if (staff.legalName !== undefined) updateData.legal_name = staff.legalName;
+  if (staff.preferredName !== undefined) updateData.preferred_name = staff.preferredName;
+  if (staff.birthName !== undefined) updateData.birth_name = staff.birthName;
+  if (staff.email !== undefined) updateData.email = staff.email;
+  if (staff.phoneNumber !== undefined) updateData.phone_number = staff.phoneNumber;
+  if (staff.address !== undefined) updateData.address = staff.address;
+  if (staff.maritalStatus !== undefined) updateData.marital_status = staff.maritalStatus;
+  if (staff.emergencyContactName !== undefined) updateData.emergency_contact_name = staff.emergencyContactName;
+  if (staff.emergencyContactPhone !== undefined) updateData.emergency_contact_phone = staff.emergencyContactPhone;
+  if (staff.emergencyContactRelationship !== undefined) updateData.emergency_contact_relationship = staff.emergencyContactRelationship;
+  if (staff.employeeId !== undefined) updateData.employee_id = staff.employeeId;
+  if (staff.jobTitle !== undefined) updateData.job_title = staff.jobTitle;
+  if (staff.department !== undefined) updateData.department = staff.department;
+  if (staff.location !== undefined) updateData.location = staff.location;
+  if (staff.employmentStatus !== undefined) updateData.employment_status = staff.employmentStatus;
+  if (staff.hireDate !== undefined) updateData.hire_date = staff.hireDate;
+  if (staff.terminationDate !== undefined) updateData.termination_date = staff.terminationDate;
+  if (staff.gender !== undefined) updateData.gender = staff.gender;
+  if (staff.ethnicityRace !== undefined) updateData.ethnicity_race = staff.ethnicityRace;
+  if (staff.veteranStatus !== undefined) updateData.veteran_status = staff.veteranStatus;
+  if (staff.disabilityStatus !== undefined) updateData.disability_status = staff.disabilityStatus;
+  if (staff.salary !== undefined) updateData.salary = staff.salary;
+  if (staff.hourlyRate !== undefined) updateData.hourly_rate = staff.hourlyRate;
+  
   // Fallback to direct table update
   const { data, error } = await supabase
     .from("billing_staff")
-    .update({
-      name: staff.name,
-      department: staff.department,
-      updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq("id", id)
     .select()
     .single();
@@ -149,7 +196,7 @@ export const getAllStaff = async (): Promise<FrontendBillingStaff[]> => {
   const { data, error } = await supabase
     .from("billing_staff")
     .select("*")
-    .order("name", { ascending: true });
+    .order("legal_name", { ascending: true });
 
   if (error) {
     console.error("Error fetching staff members:", error);
