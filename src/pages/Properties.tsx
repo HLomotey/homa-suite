@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/custom-ui";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import OccupancyDashboard from "@/components/properties/Dashboard";
-import PropertiesList from "@/components/properties/PropertiesList";
-import RoomsList from "@/components/properties/RoomsList";
-import AssignmentsList from "@/components/properties/AssignmentsList";
-import TenantsList from "@/components/properties/TenantsList";
+import { PropertiesList } from "@/components/properties/PropertiesList";
+import { RoomsList } from "@/components/properties/RoomsList";
+import { AssignmentsList } from "@/components/properties/AssignmentsList";
+import { TenantsList } from "@/components/properties/TenantsList";
+import { StaffTransactionLog } from "@/components/properties/StaffTransactionLog";
 import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
 import { FrontendProperty } from "@/integration/supabase/types";
@@ -116,6 +117,7 @@ const HousingPage: React.FC = () => {
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="staff-transactions">Staff Transactions</TabsTrigger>
           {/* <TabsTrigger value="tenants">Tenant Profiles</TabsTrigger> */}
         </TabsList>
 
@@ -155,6 +157,10 @@ const HousingPage: React.FC = () => {
 
         <TabsContent value="assignments">
           <AssignmentsList />
+        </TabsContent>
+
+        <TabsContent value="staff-transactions">
+          <StaffTransactionLog />
         </TabsContent>
 
         <TabsContent value="tenants">
