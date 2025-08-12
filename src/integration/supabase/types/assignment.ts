@@ -10,12 +10,14 @@ import { Json } from './database';
  */
 export interface Assignment {
   id: string;
-  tenant_name: string;
-  tenant_id: string;
+  tenant_name: string | null;
+  tenant_id: string | null;
   property_id: string;
   property_name: string;
   room_id: string;
   room_name: string;
+  staff_id: string | null;
+  staff_name: string | null;
   status: string;
   start_date: string;
   end_date: string | null;
@@ -61,12 +63,14 @@ export interface FrontendAssignment {
 export const mapDatabaseAssignmentToFrontend = (dbAssignment: Assignment): FrontendAssignment => {
   return {
     id: dbAssignment.id,
-    tenantName: dbAssignment.tenant_name,
-    tenantId: dbAssignment.tenant_id,
+    tenantName: dbAssignment.tenant_name || '',
+    tenantId: dbAssignment.tenant_id || '',
     propertyId: dbAssignment.property_id,
     propertyName: dbAssignment.property_name,
     roomId: dbAssignment.room_id,
     roomName: dbAssignment.room_name,
+    staffId: dbAssignment.staff_id || '',
+    staffName: dbAssignment.staff_name || '',
     status: dbAssignment.status as AssignmentStatus,
     startDate: dbAssignment.start_date,
     endDate: dbAssignment.end_date || '',
