@@ -3,29 +3,19 @@ import { BillingStats } from "./BillingStats";
 import { BillingList } from "./BillingList";
 import { BillingDetail } from "./BillingDetail";
 import { BillingForm } from "./BillingForm";
-import { StaffList } from "./StaffList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { useBills, useBillingStaff, useCreateBill, useCreateStaff, useUpdateStaff, useDeleteStaff } from "../../hooks/billing";
-import { FrontendBill, FrontendBillingStaff, BillStatus } from "../../integration/supabase/types/billing";
+import { useBills, useBillingStaff, useCreateBill } from "../../hooks/billing";
+import { FrontendBill, BillStatus } from "../../integration/supabase/types/billing";
 
 export function Billing() {
   const { bills, loading: billsLoading, error: billsError, refetch: refetchBills } = useBills();
-  const { staff, loading: staffLoading, error: staffError, refetch: refetchStaff } = useBillingStaff();
-  const { create: createStaff, loading: createStaffLoading } = useCreateStaff();
-  const { update: updateStaff, loading: updateStaffLoading } = useUpdateStaff();
-  const { deleteStaff, loading: deleteStaffLoading } = useDeleteStaff();
-  
-  console.log('Billing index - staff data:', staff);
-  console.log('Billing index - staffLoading:', staffLoading);
-  console.log('Billing index - staffError:', staffError);
+  const { staff, loading: staffLoading, error: staffError } = useBillingStaff();
   const { create: createBill, loading: createLoading } = useCreateBill();
   
   const [selectedBill, setSelectedBill] = useState<FrontendBill | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [activeMainTab, setActiveMainTab] = useState("bills");
-
   const handleSelectBill = (bill: FrontendBill) => {
     setSelectedBill(bill);
   };
@@ -86,18 +76,11 @@ export function Billing() {
           <BillingStats bills={bills} />
         )}
 
-        <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
-          <TabsList className="bg-black/40 backdrop-blur-md border border-white/10 mb-4">
-            <TabsTrigger value="bills">Bills</TabsTrigger>
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="bills" className="w-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsContent
-                value={activeTab}
-                className="bg-black/40 border border-white/10 rounded-lg p-0"
-              >
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsContent
+            value={activeTab}
+            className="bg-black/40 border border-white/10 rounded-lg p-0"
+          >
             {billsLoading || staffLoading ? (
               <div className="flex justify-center items-center h-64">
                 <p>Loading billing data...</p>
@@ -119,54 +102,16 @@ export function Billing() {
                   staff={staff}
                   onOpenForm={handleOpenForm}
                   onSelectBill={handleSelectBill}
-                  activeTab={activeTab}
-                  onChangeTab={setActiveTab}
                 />
                 <BillingForm
                   open={isFormOpen}
                   onOpenChange={setIsFormOpen}
-                  staff={staff}
                   onSubmit={handleAddBill}
+                  staff={staff}
                   isLoading={createLoading}
                 />
               </>
             )}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-          
-          <TabsContent value="staff" className="w-full">
-            <div className="bg-black/40 border border-white/10 rounded-lg p-6">
-              {staffLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <p>Loading staff data...</p>
-                </div>
-              ) : staffError ? (
-                <div className="flex justify-center items-center h-64 text-red-500">
-                  <p>Error loading staff data</p>
-                </div>
-              ) : (
-                <StaffList 
-                  staff={staff} 
-                  isLoading={staffLoading}
-                  onCreateStaff={async (staffData) => {
-                    await createStaff(staffData);
-                    refetchStaff();
-                  }}
-                  onUpdateStaff={async (id, staffData) => {
-                    await updateStaff(id, staffData);
-                    refetchStaff();
-                  }}
-                  onDeleteStaff={async (id) => {
-                    await deleteStaff(id);
-                    refetchStaff();
-                  }}
-                  isCreating={createStaffLoading}
-                  isUpdating={updateStaffLoading}
-                  isDeleting={deleteStaffLoading}
-                />
-              )}
-            </div>
           </TabsContent>
         </Tabs>
       </div>

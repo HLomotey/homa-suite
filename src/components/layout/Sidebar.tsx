@@ -64,6 +64,12 @@ const navigationItems = [
     active: false,
   },
   {
+    label: "Staff",
+    icon: Users,
+    href: ROUTES.STAFF,
+    active: false,
+  },
+  {
     label: "Payroll",
     icon: DollarSign,
     href: "/payroll",

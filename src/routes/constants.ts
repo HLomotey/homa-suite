@@ -10,6 +10,7 @@ export const ROUTES = {
   REPORTS: "/reports",
   SETTINGS: "/settings",
   BILLING: "/billing",
+  STAFF: "/staff",
   PROFILE: "/profile",
   NOTIFICATIONS: "/notifications",
   HELP: "/help",
