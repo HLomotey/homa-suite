@@ -69,10 +69,10 @@ export const AssignmentsList = () => {
   // Filter assignments based on search query, status filter, and property filter
   const filteredAssignments = assignments ? assignments.filter((assignment) => {
     const matchesSearch = 
-      assignment.tenantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      assignment.propertyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      assignment.roomName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      assignment.tenantId.toLowerCase().includes(searchQuery.toLowerCase());
+      (assignment.tenantName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (assignment.propertyName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (assignment.roomName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (assignment.tenantId?.toLowerCase() || "").includes(searchQuery.toLowerCase());
     
     const matchesStatus = 
       statusFilter === "all" || 
@@ -263,7 +263,7 @@ export const AssignmentsList = () => {
           <TableBody>
             {filteredAssignments.map((assignment) => (
               <TableRow key={assignment.id}>
-                <TableCell className="font-medium">{assignment.tenantName}</TableCell>
+                <TableCell className="font-medium">{assignment.staffName || 'Unassigned'}</TableCell>
                 <TableCell>{assignment.propertyName}</TableCell>
                 <TableCell>{assignment.roomName}</TableCell>
                 <TableCell>
