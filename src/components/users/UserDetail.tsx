@@ -65,7 +65,8 @@ export function UserDetail() {
   const isSubmitting = creatingUser || updatingUser || upsertingProfile || deletingUser;
   
   // Use isLoading for disabling form inputs during any loading operation
-  const isLoading = fetchingUser || fetchingProfile || isSubmitting;
+  // For new users, don't include fetching states since there's nothing to fetch
+  const isLoading = isNewUser ? isSubmitting : (fetchingUser || fetchingProfile || isSubmitting);
   
   // User form state with default values for all fields to prevent controlled/uncontrolled warnings
   const [user, setUser] = useState<FrontendUser>({
