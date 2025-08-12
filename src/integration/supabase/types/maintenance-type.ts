@@ -21,8 +21,9 @@ export interface MaintenanceType {
 
 /**
  * MaintenanceCategory enum
+ * Must match the database enum values defined in the migration file
  */
-export type MaintenanceCategory = 'Routine' | 'Repair' | 'Emergency' | 'Inspection' | 'Upgrade';
+export type MaintenanceCategory = 'Preventive' | 'Corrective' | 'Predictive';
 
 /**
  * Frontend maintenance type that matches the structure in MaintenanceTypeForm.tsx

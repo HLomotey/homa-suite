@@ -5,6 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import { FrontendVehicle, VehicleStatus } from "@/integration/supabase/types/vehicle";
 import { SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import useLocation from "@/hooks/transport/useLocation";
+import { FrontendLocation } from "@/integration/supabase/types/location";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integration/supabase";
 
 // Vehicle Form Component
 export interface VehicleFormProps {
@@ -19,6 +24,14 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   onCancel,
 }) => {
   const currentYear = new Date().getFullYear();
+  // Use direct import to ensure hook is properly initialized
+  const { locations, loading: locationsLoading, fetchLocations } = useLocation();
+  
+  // Debug locations state
+  React.useEffect(() => {
+    console.log('VehicleForm - locations state updated:', locations);
+  }, [locations]);
+  
   const [formData, setFormData] = React.useState<Omit<FrontendVehicle, "id">>({
     state: vehicle?.state || "",
     address: vehicle?.address || "",
@@ -30,7 +43,39 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     licensePlate: vehicle?.licensePlate || "",
     status: vehicle?.status || "Active",
     purchaseDate: vehicle?.purchaseDate || new Date().toISOString().split("T")[0],
+    locationId: vehicle?.locationId || "",
   });
+  
+  // Fetch locations when component mounts
+  React.useEffect(() => {
+    // Direct call to fetchLocations from useLocation hook
+    const loadLocations = async () => {
+      try {
+        console.log('VehicleForm - Starting direct location fetch');
+        const { data, error } = await supabase
+          .from('company_locations')
+          .select('*')
+          .order('name');
+
+        console.log('VehicleForm - Direct fetch response:', { data, error });
+
+        if (error) {
+          console.error('VehicleForm - Error fetching locations:', error);
+          return;
+        }
+
+        if (data && Array.isArray(data) && data.length > 0) {
+          console.log('VehicleForm - Found locations directly:', data);
+        } else {
+          console.log('VehicleForm - No locations found directly');
+        }
+      } catch (err) {
+        console.error('VehicleForm - Error in direct location fetch:', err);
+      }
+    };
+    
+    loadLocations();
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -50,6 +95,14 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that locationId is not empty before saving
+    if (!formData.locationId) {
+      alert('Please select a company location');
+      return;
+    }
+    
+    console.log('Saving vehicle with data:', formData);
     onSave(formData);
   };
 
@@ -233,22 +286,57 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="purchaseDate"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Purchase Date
-              </label>
-              <Input
-                id="purchaseDate"
-                name="purchaseDate"
-                type="date"
-                value={formData.purchaseDate}
-                onChange={handleChange}
-                className="mt-2"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="purchaseDate"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Purchase Date
+                </label>
+                <Input
+                  id="purchaseDate"
+                  name="purchaseDate"
+                  type="date"
+                  value={formData.purchaseDate}
+                  onChange={handleChange}
+                  className="mt-2"
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="locationId"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Company Location
+                </label>
+                {locationsLoading ? (
+                  <div className="flex items-center justify-center h-10 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
+                  <select
+                    id="locationId"
+                    name="locationId"
+                    value={formData.locationId}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+                    required
+                  >
+                    <option value="">Select a location</option>
+                    {locations && locations.length > 0 ? (
+                      locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No locations available</option>
+                    )}
+                  </select>
+                )}
+              </div>
             </div>
           </div>
         </form>
