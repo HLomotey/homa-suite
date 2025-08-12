@@ -61,13 +61,16 @@ export const createAssignment = async (
   assignment: Omit<FrontendAssignment, "id">
 ): Promise<FrontendAssignment> => {
   // Convert frontend assignment to database format
+  // Convert empty strings to null for UUID fields
   const dbAssignment = {
-    tenant_name: assignment.tenantName,
-    tenant_id: assignment.tenantId,
-    property_id: assignment.propertyId,
-    property_name: assignment.propertyName,
-    room_id: assignment.roomId,
-    room_name: assignment.roomName,
+    tenant_name: assignment.tenantName || null,
+    tenant_id: assignment.tenantId || null,
+    property_id: assignment.propertyId || null,
+    property_name: assignment.propertyName || null,
+    room_id: assignment.roomId || null,
+    room_name: assignment.roomName || null,
+    staff_id: assignment.staffId || null,
+    staff_name: assignment.staffName || null,
     status: assignment.status,
     start_date: assignment.startDate,
     end_date: assignment.endDate || null,
@@ -100,14 +103,17 @@ export const updateAssignment = async (
   assignment: Partial<Omit<FrontendAssignment, "id">>
 ): Promise<FrontendAssignment> => {
   // Convert frontend assignment to database format
+  // Convert empty strings to null for UUID fields
   const dbAssignment: any = {};
   
-  if (assignment.tenantName !== undefined) dbAssignment.tenant_name = assignment.tenantName;
-  if (assignment.tenantId !== undefined) dbAssignment.tenant_id = assignment.tenantId;
-  if (assignment.propertyId !== undefined) dbAssignment.property_id = assignment.propertyId;
-  if (assignment.propertyName !== undefined) dbAssignment.property_name = assignment.propertyName;
-  if (assignment.roomId !== undefined) dbAssignment.room_id = assignment.roomId;
-  if (assignment.roomName !== undefined) dbAssignment.room_name = assignment.roomName;
+  if (assignment.tenantName !== undefined) dbAssignment.tenant_name = assignment.tenantName || null;
+  if (assignment.tenantId !== undefined) dbAssignment.tenant_id = assignment.tenantId || null;
+  if (assignment.propertyId !== undefined) dbAssignment.property_id = assignment.propertyId || null;
+  if (assignment.propertyName !== undefined) dbAssignment.property_name = assignment.propertyName || null;
+  if (assignment.roomId !== undefined) dbAssignment.room_id = assignment.roomId || null;
+  if (assignment.roomName !== undefined) dbAssignment.room_name = assignment.roomName || null;
+  if (assignment.staffId !== undefined) dbAssignment.staff_id = assignment.staffId || null;
+  if (assignment.staffName !== undefined) dbAssignment.staff_name = assignment.staffName || null;
   if (assignment.status !== undefined) dbAssignment.status = assignment.status;
   if (assignment.startDate !== undefined) dbAssignment.start_date = assignment.startDate;
   if (assignment.endDate !== undefined) dbAssignment.end_date = assignment.endDate || null;
