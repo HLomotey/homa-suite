@@ -9,11 +9,6 @@ import {
   mapDatabaseRouteExecutionLogToFrontend,
   mapFrontendRouteExecutionLogToDatabase
 } from '../types/route-assignment';
-import { FrontendBillingStaff } from '../types/billing';
-import { BillingStaff } from '../types/billing';
-import { RouteDriverService } from './routeDriverService';
-
-// Helper functions are now in RouteDriverService
 
 /**
  * Service for managing route assignments in the system
@@ -42,11 +37,7 @@ export const RouteAssignmentService = {
 
       if (!data) return [];
 
-      return data.map((assignment: RouteAssignment & { 
-        combined_routes?: { id: string, name: string },
-        vehicles?: { id: string, make: string, model: string, year: number, registration_number: string },
-        users?: { id: string, raw_user_meta_data: unknown }
-      }) => {
+      return data.map((assignment: any) => {
         const frontendAssignment = mapDatabaseRouteAssignmentToFrontend(assignment);
         
         // Add combined route name
@@ -64,7 +55,7 @@ export const RouteAssignmentService = {
         if (assignment.users && assignment.users.raw_user_meta_data) {
           const userMeta = assignment.users.raw_user_meta_data;
           if (typeof userMeta === 'object' && userMeta !== null) {
-            const metaData = userMeta as { first_name?: string; last_name?: string; };
+            const metaData = userMeta as any;
             frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
           }
         }
@@ -119,7 +110,7 @@ export const RouteAssignmentService = {
       if (data.users && data.users.raw_user_meta_data) {
         const userMeta = data.users.raw_user_meta_data;
         if (typeof userMeta === 'object' && userMeta !== null) {
-          const metaData = userMeta as { first_name?: string; last_name?: string; };
+          const metaData = userMeta as any;
           frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
         }
       }
@@ -198,7 +189,7 @@ export const RouteAssignmentService = {
       if (data.users && data.users.raw_user_meta_data) {
         const userMeta = data.users.raw_user_meta_data;
         if (typeof userMeta === 'object' && userMeta !== null) {
-          const metaData = userMeta as { first_name?: string; last_name?: string; };
+          const metaData = userMeta as any;
           frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
         }
       }
@@ -271,7 +262,7 @@ export const RouteAssignmentService = {
       if (data.users && data.users.raw_user_meta_data) {
         const userMeta = data.users.raw_user_meta_data;
         if (typeof userMeta === 'object' && userMeta !== null) {
-          const metaData = userMeta as { first_name?: string; last_name?: string; };
+          const metaData = userMeta as any;
           frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
         }
       }
@@ -344,11 +335,7 @@ export const RouteAssignmentService = {
 
       if (!data) return [];
 
-      return data.map((assignment: RouteAssignment & { 
-        combined_routes?: { id: string, name: string },
-        vehicles?: { id: string, make: string, model: string, year: number, registration_number: string },
-        users?: { id: string, raw_user_meta_data: unknown }
-      }) => {
+      return data.map((assignment: any) => {
         const frontendAssignment = mapDatabaseRouteAssignmentToFrontend(assignment);
         
         // Add combined route name
@@ -366,7 +353,7 @@ export const RouteAssignmentService = {
         if (assignment.users && assignment.users.raw_user_meta_data) {
           const userMeta = assignment.users.raw_user_meta_data;
           if (typeof userMeta === 'object' && userMeta !== null) {
-            const metaData = userMeta as { first_name?: string; last_name?: string; };
+            const metaData = userMeta as any;
             frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
           }
         }
@@ -404,11 +391,7 @@ export const RouteAssignmentService = {
 
       if (!data) return [];
 
-      return data.map((assignment: RouteAssignment & { 
-        combined_routes?: { id: string, name: string },
-        vehicles?: { id: string, make: string, model: string, year: number, registration_number: string },
-        users?: { id: string, raw_user_meta_data: unknown }
-      }) => {
+      return data.map((assignment: any) => {
         const frontendAssignment = mapDatabaseRouteAssignmentToFrontend(assignment);
         
         // Add combined route name
@@ -426,7 +409,7 @@ export const RouteAssignmentService = {
         if (assignment.users && assignment.users.raw_user_meta_data) {
           const userMeta = assignment.users.raw_user_meta_data;
           if (typeof userMeta === 'object' && userMeta !== null) {
-            const metaData = userMeta as { first_name?: string; last_name?: string; };
+            const metaData = userMeta as any;
             frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
           }
         }
@@ -464,11 +447,7 @@ export const RouteAssignmentService = {
 
       if (!data) return [];
 
-      return data.map((assignment: RouteAssignment & { 
-        combined_routes?: { id: string, name: string },
-        vehicles?: { id: string, make: string, model: string, year: number, registration_number: string },
-        users?: { id: string, raw_user_meta_data: unknown }
-      }) => {
+      return data.map((assignment: any) => {
         const frontendAssignment = mapDatabaseRouteAssignmentToFrontend(assignment);
         
         // Add combined route name
@@ -486,7 +465,7 @@ export const RouteAssignmentService = {
         if (assignment.users && assignment.users.raw_user_meta_data) {
           const userMeta = assignment.users.raw_user_meta_data;
           if (typeof userMeta === 'object' && userMeta !== null) {
-            const metaData = userMeta as { first_name?: string; last_name?: string; };
+            const metaData = userMeta as any;
             frontendAssignment.driverName = `${metaData.first_name || ''} ${metaData.last_name || ''}`.trim();
           }
         }
@@ -494,22 +473,7 @@ export const RouteAssignmentService = {
         return frontendAssignment;
       });
     } catch (err) {
-      console.error(`Error in getRouteAssignmentsByStatus:`, err);
-      throw err;
-    }
-  },
-
-  /**
-   * Get all drivers for the driver dropdown
-   * Fetches staff members with department "driver" from the billing_staff table
-   * @returns Promise with array of drivers
-   */
-  getDriversForDropdown: async () => {
-    try {
-      // Use the RouteDriverService to get drivers from billing_staff database
-      return await RouteDriverService.getDriversForDropdown();
-    } catch (err) {
-      console.error('Error in getDriversForDropdown:', err);
+      console.error(`Error in getRouteAssignmentsByStatus for status ${status}:`, err);
       throw err;
     }
   }

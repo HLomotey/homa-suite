@@ -107,7 +107,7 @@ export const updateStaff = async (
   }
   
   // Create update object with only defined fields
-  const updateData: any = {
+  const updateData: Record<string, string | number | null | undefined> = {
     updated_at: new Date().toISOString()
   };
   
@@ -200,6 +200,27 @@ export const getAllStaff = async (): Promise<FrontendBillingStaff[]> => {
 
   if (error) {
     console.error("Error fetching staff members:", error);
+    throw new Error(error.message);
+  }
+
+  return data.map(mapDatabaseBillingStaffToFrontend);
+};
+
+/**
+ * Get all staff members with department "driver"
+ * @returns Promise with array of driver staff members
+ */
+export const getDrivers = async (): Promise<FrontendBillingStaff[]> => {
+  console.log('Fetching staff members with department "driver"');
+  
+  const { data, error } = await supabase
+    .from("billing_staff")
+    .select("*")
+    .ilike("department", "%driver%") // Case-insensitive search for "driver" in department
+    .order("legal_name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching drivers:", error);
     throw new Error(error.message);
   }
 
