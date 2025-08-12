@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { FrontendUser, UserRole, UserStatus, UserWithProfile } from '@/integration/supabase/types';
 import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from '@/hooks/user-profile';
+import { authUserService } from '@/integration/supabase/auth-user-service';
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
@@ -20,6 +21,7 @@ export function UserDetail() {
   
   const [activeTab, setActiveTab] = useState('profile');
   const [customPermissionsEnabled, setCustomPermissionsEnabled] = useState(false);
+  const [defaultPassword, setDefaultPassword] = useState('');
   
   // Fetch user data if editing existing user
   const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? '' : userId || '');
@@ -123,9 +125,39 @@ export function UserDetail() {
       });
       return;
     }
+
+    // Validate password for new users
+    if (isNewUser && !defaultPassword) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please provide a default password for the new user.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     try {
       if (isNewUser) {
+        // First, create the Supabase Auth user
+        const authResult = await authUserService.createAuthUser({
+          email: user.email,
+          password: defaultPassword,
+          name: user.name,
+          role: user.role as UserRole,
+          department: user.department,
+          requirePasswordChange: true
+        });
+
+        if (!authResult.success) {
+          toast({
+            title: 'Authentication Error',
+            description: `Failed to create auth user: ${authResult.error}`,
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Then create the custom user record
         const newUser = await create({
           name: user.name,
           email: user.email,
@@ -141,10 +173,13 @@ export function UserDetail() {
             preferences: {}
           });
         }
+
+        // Send password reset email so user can set their own password
+        const resetResult = await authUserService.sendPasswordResetEmail(user.email);
         
         toast({
-          title: 'User created',
-          description: `${user.name} has been added successfully.`
+          title: 'User created successfully',
+          description: `${user.name} has been added. ${resetResult.success ? 'A password reset email has been sent.' : 'Please manually send password reset instructions.'}`
         });
       } else {
         if (user.id) {
@@ -279,7 +314,10 @@ export function UserDetail() {
                 <UserProfileForm
                   user={user}
                   onInputChange={handleInputChange}
+                  onPasswordChange={setDefaultPassword}
+                  defaultPassword={defaultPassword}
                   isLoading={isLoading}
+                  isNewUser={isNewUser}
                 />
               </TabsContent>
               
