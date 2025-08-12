@@ -14,12 +14,11 @@ export const RouteDriverService = {
    */
   getDriverName: async (driverId: string): Promise<string | null> => {
     try {
-      // Get the driver details from billing_staff where department is driver
+      // Get the driver details from billing_staff by ID
       const { data, error } = await supabase
         .from('billing_staff')
-        .select('legal_name')
+        .select('legal_name, department')
         .eq('id', driverId)
-        .eq('department', 'driver')
         .single();
       
       if (error) {
@@ -28,7 +27,13 @@ export const RouteDriverService = {
       }
       
       if (data) {
-        return data.legal_name || null;
+        // Verify this staff member is actually a driver
+        if (data.department?.toLowerCase() === 'driver') {
+          return data.legal_name || null;
+        } else {
+          console.warn(`Staff member ${driverId} is not a driver (department: ${data.department})`);
+          return null;
+        }
       }
       
       return null;
