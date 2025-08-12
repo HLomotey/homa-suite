@@ -22,6 +22,7 @@ export function UserDetail() {
   const [activeTab, setActiveTab] = useState('profile');
   const [customPermissionsEnabled, setCustomPermissionsEnabled] = useState(false);
   const [defaultPassword, setDefaultPassword] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   
   // Fetch user data if editing existing user
   const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? '' : userId || '');
@@ -237,6 +238,39 @@ export function UserDetail() {
     }
   };
 
+  // Handle password reset
+  const handlePasswordReset = async () => {
+    if (!user.email) return;
+    
+    setIsResettingPassword(true);
+    
+    try {
+      const result = await authUserService.sendPasswordResetEmail(user.email);
+      
+      if (result.success) {
+        toast({
+          title: 'Password reset email sent',
+          description: `A password reset email has been sent to ${user.email}.`
+        });
+      } else {
+        toast({
+          title: 'Error sending password reset',
+          description: result.error || 'Failed to send password reset email.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error sending password reset:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send password reset email. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   // Handle cancel/back navigation
   const handleCancel = () => {
     navigate('/users');
@@ -343,7 +377,9 @@ export function UserDetail() {
                 onSubmit={handleSubmit}
                 onDelete={handleDelete}
                 onCancel={handleCancel}
+                onPasswordReset={handlePasswordReset}
                 canDelete={!isNewUser && user.role !== 'admin'}
+                isResettingPassword={isResettingPassword}
               />
             </div>
           </form>
