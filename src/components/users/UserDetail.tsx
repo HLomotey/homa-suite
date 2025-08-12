@@ -1,104 +1,71 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
-import { FrontendUser, UserRole, UserStatus, UserWithProfile } from "@/integration/supabase/types";
-import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from "@/hooks/user-profile";
-import { 
-  ArrowLeft, 
-  Save, 
-  Trash2, 
-  Upload, 
-  RefreshCw, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Shield, 
-  User as UserIcon,
-  Key,
-  Calendar
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { FrontendUser, UserRole, UserStatus, UserWithProfile } from '@/integration/supabase/types';
+import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from '@/hooks/user-profile';
+import { UserProfileForm } from './UserProfileForm';
+import { PermissionsGrid } from './PermissionsGrid';
+import { UserActivityTab } from './UserActivityTab';
+import { UserFormActions } from './UserFormActions';
+import { Shield, User as UserIcon, Activity } from 'lucide-react';
 
 export function UserDetail() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
-  const isNewUser = userId === "new";
+  const isNewUser = userId === 'new';
   
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState('profile');
   const [customPermissionsEnabled, setCustomPermissionsEnabled] = useState(false);
   
   // Fetch user data if editing existing user
-  const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? "" : userId || "");
-  const { userWithProfile, loading: fetchingProfile, error: profileError } = useUserWithProfile(isNewUser ? "" : userId || "");
+  const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? '' : userId || '');
+  const { userWithProfile, loading: fetchingProfile, error: profileError } = useUserWithProfile(isNewUser ? '' : userId || '');
   
   // CRUD hooks
   const { create, loading: creatingUser, error: createError } = useCreateUser();
   const { update, loading: updatingUser, error: updateError } = useUpdateUser();
   const { upsert, loading: upsertingProfile, error: profileUpsertError } = useUpsertProfile();
-  
-  // Initialize delete user hook
   const { deleteUser: deleteUserFn, loading: deletingUser, error: deleteError } = useDeleteUser();
   
-  // Only consider mutation loading states for button loading, not data fetching
   const isSubmitting = creatingUser || updatingUser || upsertingProfile || deletingUser;
-  
-  // Use isLoading for disabling form inputs during any loading operation
-  // For new users, don't include fetching states since there's nothing to fetch
   const isLoading = isNewUser ? isSubmitting : (fetchingUser || fetchingProfile || isSubmitting);
   
-  // User form state with default values for all fields to prevent controlled/uncontrolled warnings
+  // User form state
   const [user, setUser] = useState<FrontendUser>({
-    id: "",
-    name: "",
-    email: "",
-    role: "staff",
-    department: "",
-    status: "pending",
+    id: '',
+    name: '',
+    email: '',
+    role: 'staff' as UserRole,
+    department: '',
+    status: 'pending' as UserStatus,
     lastActive: new Date().toISOString(),
     permissions: [],
     createdAt: new Date().toISOString(),
-    avatar: ""
+    avatar: ''
   });
 
   // Load user data if editing existing user
   useEffect(() => {
     if (!isNewUser && userWithProfile) {
-      // Ensure all fields have values to prevent controlled/uncontrolled input warnings
       setUser({
-        id: userWithProfile.id || "",
-        name: userWithProfile.name || "",
-        email: userWithProfile.email || "",
-        role: userWithProfile.role || "staff",
-        department: userWithProfile.department || "",
-        status: userWithProfile.status || "pending",
+        id: userWithProfile.id || '',
+        name: userWithProfile.name || '',
+        email: userWithProfile.email || '',
+        role: (userWithProfile.role as UserRole) || 'staff',
+        department: userWithProfile.department || '',
+        status: (userWithProfile.status as UserStatus) || 'pending',
         lastActive: userWithProfile.lastActive || new Date().toISOString(),
         createdAt: userWithProfile.createdAt || new Date().toISOString(),
         permissions: userWithProfile.permissions || [],
-        avatar: userWithProfile.avatar || ""
+        avatar: userWithProfile.avatar || ''
       });
+      
+      // Enable custom permissions if user has any custom permissions
+      setCustomPermissionsEnabled((userWithProfile.permissions || []).length > 0);
     }
   }, [isNewUser, userWithProfile]);
   
@@ -106,62 +73,80 @@ export function UserDetail() {
   useEffect(() => {
     if (fetchError) {
       toast({
-        title: "Error loading user",
-        description: "The requested user could not be loaded.",
-        variant: "destructive"
+        title: 'Error loading user',
+        description: 'The requested user could not be loaded.',
+        variant: 'destructive'
       });
-      navigate("/users");
+      navigate('/users');
     }
   }, [fetchError, navigate, toast]);
 
   // Handle input changes
   const handleInputChange = (field: keyof FrontendUser, value: string) => {
+    setUser(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Handle permission toggle
+  const handlePermissionToggle = (permission: string) => {
     setUser(prev => {
-      const updatedUser: FrontendUser = { ...prev, [field]: value };
-      return updatedUser;
+      const currentPermissions = prev.permissions || [];
+      const hasPermission = currentPermissions.includes(permission);
+      
+      return {
+        ...prev,
+        permissions: hasPermission
+          ? currentPermissions.filter(p => p !== permission)
+          : [...currentPermissions, permission]
+      };
     });
+  };
+
+  // Handle custom permissions toggle
+  const handleCustomPermissionsToggle = (enabled: boolean) => {
+    setCustomPermissionsEnabled(enabled);
+    
+    // If disabling custom permissions, clear all permissions
+    if (!enabled) {
+      setUser(prev => ({ ...prev, permissions: [] }));
+    }
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
     if (!user.name || !user.email || !user.role || !user.department) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
+        title: 'Validation Error',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive'
       });
       return;
     }
     
     try {
       if (isNewUser) {
-        // Create new user
         const newUser = await create({
-          name: user.name || "",
-          email: user.email || "",
+          name: user.name,
+          email: user.email,
           role: user.role as UserRole,
-          department: user.department || "",
-          status: user.status as UserStatus || 'pending',
-          permissions: user.permissions || []
+          department: user.department,
+          status: (user.status as UserStatus) || 'pending',
+          permissions: customPermissionsEnabled ? (user.permissions || []) : []
         });
         
-        // Create profile if we have additional profile data
         if (newUser.id) {
           await upsert(newUser.id, {
-            bio: "", // Optional: Add bio field to form if needed
+            bio: '',
             preferences: {}
           });
         }
         
         toast({
-          title: "User created",
-          description: `${user.name} has been added successfully.`,
+          title: 'User created',
+          description: `${user.name} has been added successfully.`
         });
       } else {
-        // Update existing user
         if (user.id) {
           await update(user.id, {
             name: user.name,
@@ -169,701 +154,162 @@ export function UserDetail() {
             role: user.role as UserRole,
             department: user.department,
             status: user.status as UserStatus,
-            permissions: user.permissions
+            permissions: customPermissionsEnabled ? (user.permissions || []) : []
           });
           
-          // Update profile if needed
           await upsert(user.id, {
-            bio: "", // Optional: Add bio field to form if needed
+            bio: '',
             preferences: {}
           });
         }
         
         toast({
-          title: "User updated",
-          description: `${user.name}'s information has been updated.`,
+          title: 'User updated',
+          description: `${user.name}'s information has been updated.`
         });
       }
       
-      navigate("/users");
+      navigate('/users');
     } catch (error) {
-      console.error("Error saving user:", error);
+      console.error('Error saving user:', error);
       toast({
-        title: "Error",
-        description: "Failed to save user. Please try again.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to save user. Please try again.',
+        variant: 'destructive'
       });
     }
   };
 
-  // Handle permission toggle
-  const togglePermission = (permission: string) => {
-    setUser((prev: FrontendUser) => {
-      const permissions = [...(prev.permissions || [])];
-      const index = permissions.indexOf(permission);
-      
-      if (index === -1) {
-        permissions.push(permission);
-      } else {
-        permissions.splice(index, 1);
-      }
-      
-      // Return a complete FrontendUser object
-      const updatedUser: FrontendUser = { ...prev, permissions };
-      return updatedUser;
-    });
-  };    
-  
-  // Delete user handler
-  
   // Handle user deletion
   const handleDelete = async () => {
     if (!user.id) return;
     
     try {
-      // Use the deleteUser function from the hook
       await deleteUserFn(user.id);
       
       toast({
-        title: "User deleted",
-        description: `${user.name} has been removed from the system.`,
+        title: 'User deleted',
+        description: `${user.name} has been removed from the system.`
       });
-      navigate("/users");
+      navigate('/users');
     } catch (error) {
-      console.error("Error deleting user:", error);
+      console.error('Error deleting user:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete user. Please try again.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to delete user. Please try again.',
+        variant: 'destructive'
       });
     }
   };
 
-  // Get status badge
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return (
-          <Badge variant="outline" className="bg-green-500/20 text-green-500 border-green-500/20">
-            <CheckCircle className="w-3 h-3 mr-1" /> Active
-          </Badge>
-        );
-      case "inactive":
-        return (
-          <Badge variant="outline" className="bg-red-500/20 text-red-500 border-red-500/20">
-            <XCircle className="w-3 h-3 mr-1" /> Inactive
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-yellow-500/20 text-yellow-500 border-yellow-500/20">
-            <Clock className="w-3 h-3 mr-1" /> Pending
-          </Badge>
-        );
-      default:
-        return <Badge>{status}</Badge>;
-    }
+  // Handle cancel/back navigation
+  const handleCancel = () => {
+    navigate('/users');
   };
 
-  // Get user initials for avatar fallback
-  const getUserInitials = (name: string): string => {
-    return name
-      .split(" ")
-      .map(part => part[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
+  // Get status badge for display
+  const getStatusBadge = (status: string) => {
+    const statusColors = {
+      active: 'bg-green-500/20 text-green-400 border-green-500/30',
+      inactive: 'bg-red-500/20 text-red-400 border-red-500/30',
+      pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      suspended: 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+    };
+    
+    return (
+      <Badge className={statusColors[status as keyof typeof statusColors] || 'bg-gray-500/20 text-gray-400 border-gray-500/30'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => navigate("/users")}
-          className="text-white/60 hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Users
-        </Button>
-      </div>
-      
       <Card className="bg-black/40 backdrop-blur-md border-white/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-white text-xl">
-                {isNewUser ? "Create New User" : "Edit User"}
+                {isNewUser ? 'Create New User' : 'Edit User'}
               </CardTitle>
               <CardDescription className="text-white/60">
                 {isNewUser 
-                  ? "Add a new user to the system" 
-                  : "Update user information and settings"
+                  ? 'Add a new user to the system with appropriate permissions' 
+                  : `Manage ${user.name}'s account and permissions`
                 }
               </CardDescription>
             </div>
-            {!isNewUser && (
-              <div className="flex items-center gap-2">
+            {!isNewUser && user.status && (
+              <div className="flex items-center space-x-2">
                 {getStatusBadge(user.status)}
               </div>
             )}
           </div>
         </CardHeader>
+        
         <CardContent>
-          <Tabs 
-            value={activeTab} 
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <TabsList className="mb-6 bg-black/40 border border-white/10">
-              <TabsTrigger value="profile" className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4" /> Profile
-              </TabsTrigger>
-              <TabsTrigger value="access" className="flex items-center gap-2">
-                <Key className="h-4 w-4" /> Access & Permissions
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="flex items-center gap-2" disabled={isNewUser}>
-                <Calendar className="h-4 w-4" /> Activity
-              </TabsTrigger>
-            </TabsList>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-black/20">
+                <TabsTrigger 
+                  value="profile" 
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  Profile
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="permissions" 
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Access & Permissions
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="activity" 
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  disabled={isNewUser}
+                >
+                  <Activity className="h-4 w-4 mr-2" />
+                  Activity
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="profile" className="space-y-6 mt-6">
+                <UserProfileForm
+                  user={user}
+                  onInputChange={handleInputChange}
+                  isLoading={isLoading}
+                />
+              </TabsContent>
+              
+              <TabsContent value="permissions" className="space-y-6 mt-6">
+                <PermissionsGrid
+                  user={user}
+                  customPermissionsEnabled={customPermissionsEnabled}
+                  onCustomPermissionsToggle={handleCustomPermissionsToggle}
+                  onPermissionToggle={handlePermissionToggle}
+                  isLoading={isLoading}
+                />
+              </TabsContent>
+              
+              <TabsContent value="activity" className="space-y-6 mt-6">
+                <UserActivityTab user={user} />
+              </TabsContent>
+            </Tabs>
             
-            <TabsContent value="profile">
-              <form id="userForm" onSubmit={handleSubmit}>
-                <div className="space-y-6">
-
-                  
-                  {/* Basic Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Basic Information</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name" className="text-white">Full Name</Label>
-                        <Input 
-                          id="name"
-                          value={user.name}
-                          onChange={(e) => handleInputChange("name", e.target.value)}
-                          className="bg-black/40 border-white/10 text-white"
-                          placeholder="Enter full name"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-white">Email Address</Label>
-                        <Input 
-                          id="email"
-                          type="email"
-                          value={user.email}
-                          onChange={(e) => handleInputChange("email", e.target.value)}
-                          className="bg-black/40 border-white/10 text-white"
-                          placeholder="Enter email address"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="department" className="text-white">Department</Label>
-                        <Select 
-                          value={user.department} 
-                          onValueChange={(value) => handleInputChange("department", value)}
-                        >
-                          <SelectTrigger id="department" className="bg-black/40 border-white/10 text-white">
-                            <SelectValue placeholder="Select department" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/90 border-white/10 text-white">
-                            <SelectItem value="engineering">Engineering</SelectItem>
-                            <SelectItem value="marketing">Marketing</SelectItem>
-                            <SelectItem value="sales">Sales</SelectItem>
-                            <SelectItem value="support">Support</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="finance">Finance</SelectItem>
-                            <SelectItem value="operations">Operations</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      {!isNewUser && (
-                        <div className="space-y-2">
-                          <Label htmlFor="status" className="text-white">Status</Label>
-                          <Select 
-                            value={user.status} 
-                            onValueChange={(value: "active" | "inactive" | "pending") => 
-                              handleInputChange("status", value)
-                            }
-                          >
-                            <SelectTrigger id="status" className="bg-black/40 border-white/10 text-white">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black/90 border-white/10 text-white">
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="access">
-              <div className="space-y-6">
-                {/* Role Assignment */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white">Role Assignment</h3>
-                  <p className="text-sm text-white/60">
-                    Assign a role to determine the user's base permissions
-                  </p>
-                  
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="role" className="text-white">User Role</Label>
-                      <Select 
-                        value={user.role} 
-                        onValueChange={(value: "admin" | "manager" | "staff" | "guest") => 
-                          handleInputChange("role", value)
-                        }
-                      >
-                        <SelectTrigger id="role" className="bg-black/40 border-white/10 text-white">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-black/90 border-white/10 text-white">
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
-                          <SelectItem value="guest">Guest</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-                
-                <Separator className="bg-white/10" />
-                
-                {/* Custom Permissions */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-white">Custom Permissions</h3>
-                      <p className="text-sm text-white/60">
-                        Override role-based permissions with custom settings
-                      </p>
-                    </div>
-                    <Switch 
-                      id="custom-permissions" 
-                      checked={customPermissionsEnabled}
-                      onCheckedChange={setCustomPermissionsEnabled}
-                    />
-                  </div>
-                  
-                  <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${customPermissionsEnabled ? 'opacity-100' : 'opacity-50'}`}>
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Dashboard</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-dashboard-view" className="text-white/80 text-sm">View Dashboard</Label>
-                          <Switch 
-                            id="perm-dashboard-view" 
-                            checked={user.permissions?.includes('dashboard:view')}
-                            onCheckedChange={() => togglePermission('dashboard:view')}
-                            disabled={!customPermissionsEnabled}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-dashboard-edit" className="text-white/80 text-sm">Edit Dashboard</Label>
-                          <Switch 
-                            id="perm-dashboard-edit" 
-                            checked={user.permissions?.includes('dashboard:edit')}
-                            onCheckedChange={() => togglePermission('dashboard:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Properties</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-properties-view" className="text-white/80 text-sm">View Properties</Label>
-                          <Switch 
-                            id="perm-properties-view" 
-                            checked={user.permissions?.includes('properties:view')}
-                            onCheckedChange={() => togglePermission('properties:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-properties-edit" className="text-white/80 text-sm">Edit Properties</Label>
-                          <Switch 
-                            id="perm-properties-edit" 
-                            checked={user.permissions?.includes('properties:edit')}
-                            onCheckedChange={() => togglePermission('properties:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Transport</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-transport-view" className="text-white/80 text-sm">View Transport</Label>
-                          <Switch 
-                            id="perm-transport-view" 
-                            checked={user.permissions?.includes('transport:view')}
-                            onCheckedChange={() => togglePermission('transport:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-transport-edit" className="text-white/80 text-sm">Edit Transport</Label>
-                          <Switch 
-                            id="perm-transport-edit" 
-                            checked={user.permissions?.includes('transport:edit')}
-                            onCheckedChange={() => togglePermission('transport:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">HR</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-hr-view" className="text-white/80 text-sm">View HR</Label>
-                          <Switch 
-                            id="perm-hr-view" 
-                            checked={user.permissions?.includes('hr:view')}
-                            onCheckedChange={() => togglePermission('hr:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-hr-edit" className="text-white/80 text-sm">Edit HR</Label>
-                          <Switch 
-                            id="perm-hr-edit" 
-                            checked={user.permissions?.includes('hr:edit')}
-                            onCheckedChange={() => togglePermission('hr:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Finance</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-finance-view" className="text-white/80 text-sm">View Finance</Label>
-                          <Switch 
-                            id="perm-finance-view" 
-                            checked={user.permissions?.includes('finance:view')}
-                            onCheckedChange={() => togglePermission('finance:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-finance-edit" className="text-white/80 text-sm">Edit Finance</Label>
-                          <Switch 
-                            id="perm-finance-edit" 
-                            checked={user.permissions?.includes('finance:edit')}
-                            onCheckedChange={() => togglePermission('finance:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Operations</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-operations-view" className="text-white/80 text-sm">View Operations</Label>
-                          <Switch 
-                            id="perm-operations-view" 
-                            checked={user.permissions?.includes('operations:view')}
-                            onCheckedChange={() => togglePermission('operations:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-operations-edit" className="text-white/80 text-sm">Edit Operations</Label>
-                          <Switch 
-                            id="perm-operations-edit" 
-                            checked={user.permissions?.includes('operations:edit')}
-                            onCheckedChange={() => togglePermission('operations:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Staff</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-staff-view" className="text-white/80 text-sm">View Staff</Label>
-                          <Switch 
-                            id="perm-staff-view" 
-                            checked={user.permissions?.includes('staff:view')}
-                            onCheckedChange={() => togglePermission('staff:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-staff-edit" className="text-white/80 text-sm">Edit Staff</Label>
-                          <Switch 
-                            id="perm-staff-edit" 
-                            checked={user.permissions?.includes('staff:edit')}
-                            onCheckedChange={() => togglePermission('staff:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Billing</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-billing-view" className="text-white/80 text-sm">View Billing</Label>
-                          <Switch 
-                            id="perm-billing-view" 
-                            checked={user.permissions?.includes('billing:view')}
-                            onCheckedChange={() => togglePermission('billing:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-billing-edit" className="text-white/80 text-sm">Edit Billing</Label>
-                          <Switch 
-                            id="perm-billing-edit" 
-                            checked={user.permissions?.includes('billing:edit')}
-                            onCheckedChange={() => togglePermission('billing:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">User Management</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-users-view" className="text-white/80 text-sm">View Users</Label>
-                          <Switch 
-                            id="perm-users-view" 
-                            checked={user.permissions?.includes('users:view')}
-                            onCheckedChange={() => togglePermission('users:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-users-edit" className="text-white/80 text-sm">Edit Users</Label>
-                          <Switch 
-                            id="perm-users-edit" 
-                            checked={user.permissions?.includes('users:edit')}
-                            onCheckedChange={() => togglePermission('users:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Excel Uploads</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-uploads-view" className="text-white/80 text-sm">View Uploads</Label>
-                          <Switch 
-                            id="perm-uploads-view" 
-                            checked={user.permissions?.includes('uploads:view')}
-                            onCheckedChange={() => togglePermission('uploads:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-uploads-create" className="text-white/80 text-sm">Create Uploads</Label>
-                          <Switch 
-                            id="perm-uploads-create" 
-                            checked={user.permissions?.includes('uploads:create')}
-                            onCheckedChange={() => togglePermission('uploads:create')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Attendance</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-attendance-view" className="text-white/80 text-sm">View Attendance</Label>
-                          <Switch 
-                            id="perm-attendance-view" 
-                            checked={user.permissions?.includes('attendance:view')}
-                            onCheckedChange={() => togglePermission('attendance:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-attendance-edit" className="text-white/80 text-sm">Edit Attendance</Label>
-                          <Switch 
-                            id="perm-attendance-edit" 
-                            checked={user.permissions?.includes('attendance:edit')}
-                            onCheckedChange={() => togglePermission('attendance:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Payroll</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-payroll-view" className="text-white/80 text-sm">View Payroll</Label>
-                          <Switch 
-                            id="perm-payroll-view" 
-                            checked={user.permissions?.includes('payroll:view')}
-                            onCheckedChange={() => togglePermission('payroll:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-payroll-edit" className="text-white/80 text-sm">Edit Payroll</Label>
-                          <Switch 
-                            id="perm-payroll-edit" 
-                            checked={user.permissions?.includes('payroll:edit')}
-                            onCheckedChange={() => togglePermission('payroll:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-black/20 border-white/5">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Settings</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-settings-view" className="text-white/80 text-sm">View Settings</Label>
-                          <Switch 
-                            id="perm-settings-view" 
-                            checked={user.permissions?.includes('settings:view')}
-                            onCheckedChange={() => togglePermission('settings:view')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-settings-edit" className="text-white/80 text-sm">Edit Settings</Label>
-                          <Switch 
-                            id="perm-settings-edit" 
-                            checked={user.permissions?.includes('settings:edit')}
-                            onCheckedChange={() => togglePermission('settings:edit')}
-                            disabled={!customPermissionsEnabled} 
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="activity">
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white">User Activity</h3>
-                  <p className="text-sm text-white/60">
-                    Recent activity and login history
-                  </p>
-                  
-                  <Card className="bg-black/20 border-white/10">
-                    <CardContent className="p-4">
-                      <div className="text-center text-white/60 py-8">
-                        Activity history will be available in a future update.
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+            <div className="pt-6 border-t border-white/10">
+              <UserFormActions
+                isNewUser={isNewUser}
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                onDelete={handleDelete}
+                onCancel={handleCancel}
+                canDelete={!isNewUser && user.role !== 'admin'}
+              />
+            </div>
+          </form>
         </CardContent>
-        <CardFooter className="flex justify-between border-t border-white/10 pt-6">
-          <div>
-            {!isNewUser && (
-              <Button 
-                variant="destructive" 
-                onClick={handleDelete}
-                disabled={isLoading}
-              >
-                <Trash2 className="h-4 w-4 mr-2" /> Delete User
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/users")}
-              disabled={isLoading}
-              className="border-white/10"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              form="userForm"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  {isNewUser ? "Creating..." : "Saving..."}
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isNewUser ? "Create User" : "Save Changes"}
-                </>
-              )}
-            </Button>
-          </div>
-        </CardFooter>
       </Card>
     </div>
   );

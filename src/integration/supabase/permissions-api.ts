@@ -451,3 +451,55 @@ export const userPermissionsApi = {
     if (error) throw error;
   }
 };
+
+// Main function to get effective permissions for a user (simplified for the hook)
+export interface UserEffectivePermissions {
+  userId: string;
+  rolePermissions: string[];
+  customPermissions: Array<{
+    permission: string;
+    granted: boolean;
+    expiresAt?: string;
+  }>;
+  effectivePermissions: string[];
+}
+
+export interface PermissionsApiResponse<T> {
+  data: T | null;
+  error: Error | null;
+}
+
+export const getUserEffectivePermissions = async (userId: string): Promise<PermissionsApiResponse<UserEffectivePermissions>> => {
+  try {
+    // Use the existing getUserPermissions function
+    const userPermissions = await userPermissionsApi.getUserPermissions(userId);
+    
+    if (!userPermissions) {
+      return {
+        data: {
+          userId,
+          rolePermissions: [],
+          customPermissions: [],
+          effectivePermissions: []
+        },
+        error: null
+      };
+    }
+
+    return {
+      data: {
+        userId,
+        rolePermissions: userPermissions.role_permissions?.map((p: any) => p.permission_key) || [],
+        customPermissions: userPermissions.custom_permissions?.map((up: any) => ({
+          permission: up.permission?.permission_key || '',
+          granted: up.is_granted,
+          expiresAt: up.expires_at
+        })) || [],
+        effectivePermissions: userPermissions.effective_permissions || []
+      },
+      error: null
+    };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
+};

@@ -1,109 +1,94 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { 
-  Permission, 
-  hasPermission, 
-  hasAnyPermission, 
-  hasAllPermissions, 
-  canViewModule, 
-  canEditModule
-} from '@/utils/permissions';
-import { FrontendUser } from '@/integration/supabase/types';
-import { useUser } from '@/hooks/user-profile';
-import { userPermissionsApi } from '@/integration/supabase/permissions-api';
-import { UserPermissionSummary } from '@/integration/supabase/permissions-types';
+import { getUserEffectivePermissions } from '@/integration/supabase/permissions-api';
 
 interface PermissionsContextType {
-  permissions: Permission[];
+  permissions: string[];
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
   loading: boolean;
-  hasPermission: (permission: Permission) => boolean;
-  hasAnyPermission: (permissions: Permission[]) => boolean;
-  hasAllPermissions: (permissions: Permission[]) => boolean;
-  canViewModule: (module: string) => boolean;
-  canEditModule: (module: string) => boolean;
-  userRole: string;
-  refreshPermissions: () => void;
+  error: string | null;
+  refreshPermissions: () => Promise<void>;
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
 
-export const usePermissions = () => {
-  const context = useContext(PermissionsContext);
-  if (!context) {
-    throw new Error('usePermissions must be used within a PermissionsProvider');
-  }
-  return context;
-};
-
-interface PermissionsProviderProps {
-  children: React.ReactNode;
-}
-
-export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ children }) => {
-  const { user: authUser } = useAuth();
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('guest');
-  const [permissionSummary, setPermissionSummary] = useState<UserPermissionSummary | null>(null);
-  
-  // Fetch user profile data including role and custom permissions
-  const { user: userProfile, loading: userLoading } = useUser(authUser?.id || '');
+  const [error, setError] = useState<string | null>(null);
 
-  const refreshPermissions = async () => {
-    if (!authUser) {
+  const fetchPermissions = async () => {
+    if (!user?.id) {
       setPermissions([]);
-      setUserRole('guest');
-      setPermissionSummary(null);
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
+      setError(null);
       
-      // Fetch user permissions from database
-      const summary = await userPermissionsApi.getUserPermissions(authUser.id);
+      const { data, error: apiError } = await getUserEffectivePermissions(user.id);
       
-      if (summary) {
-        setPermissionSummary(summary);
-        setUserRole(summary.role?.name || 'guest');
-        setPermissions(summary.effective_permissions);
-      } else {
-        // Fallback if no permissions found
-        setUserRole('guest');
+      if (apiError) {
+        console.error('Error fetching permissions:', apiError);
+        setError(apiError.message);
         setPermissions([]);
-        setPermissionSummary(null);
+      } else if (data) {
+        setPermissions(data.effectivePermissions);
+        console.log('Loaded permissions for user:', data.effectivePermissions);
       }
-    } catch (error) {
-      console.error('Error loading user permissions:', error);
-      // Fallback to empty permissions on error
-      setUserRole('guest');
+    } catch (err) {
+      console.error('Error fetching permissions:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
       setPermissions([]);
-      setPermissionSummary(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    refreshPermissions();
-  }, [authUser, userProfile]);
+    fetchPermissions();
+  }, [user?.id]);
 
-  const contextValue: PermissionsContextType = {
-    permissions,
-    loading: loading || userLoading,
-    hasPermission: (permission: Permission) => hasPermission(permissions, permission),
-    hasAnyPermission: (requiredPermissions: Permission[]) => hasAnyPermission(permissions, requiredPermissions),
-    hasAllPermissions: (requiredPermissions: Permission[]) => hasAllPermissions(permissions, requiredPermissions),
-    canViewModule: (module: string) => canViewModule(permissions, module),
-    canEditModule: (module: string) => canEditModule(permissions, module),
-    userRole,
-    refreshPermissions
+  const hasPermission = (permission: string): boolean => {
+    return permissions.includes(permission);
+  };
+
+  const hasAnyPermission = (permissionList: string[]): boolean => {
+    return permissionList.some(permission => permissions.includes(permission));
+  };
+
+  const hasAllPermissions = (permissionList: string[]): boolean => {
+    return permissionList.every(permission => permissions.includes(permission));
+  };
+
+  const refreshPermissions = async () => {
+    await fetchPermissions();
   };
 
   return (
-    <PermissionsContext.Provider value={contextValue}>
+    <PermissionsContext.Provider value={{
+      permissions,
+      hasPermission,
+      hasAnyPermission,
+      hasAllPermissions,
+      loading,
+      error,
+      refreshPermissions
+    }}>
       {children}
     </PermissionsContext.Provider>
   );
+};
+
+export const usePermissions = (): PermissionsContextType => {
+  const context = useContext(PermissionsContext);
+  if (!context) {
+    throw new Error('usePermissions must be used within a PermissionsProvider');
+  }
+  return context;
 };
