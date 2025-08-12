@@ -48,6 +48,7 @@ export function UserDetail() {
   const isNewUser = userId === "new";
   
   const [activeTab, setActiveTab] = useState("profile");
+  const [customPermissionsEnabled, setCustomPermissionsEnabled] = useState(false);
   
   // Fetch user data if editing existing user
   const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? "" : userId || "");
@@ -453,10 +454,14 @@ export function UserDetail() {
                         Override role-based permissions with custom settings
                       </p>
                     </div>
-                    <Switch id="custom-permissions" />
+                    <Switch 
+                      id="custom-permissions" 
+                      checked={customPermissionsEnabled}
+                      onCheckedChange={setCustomPermissionsEnabled}
+                    />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
+                  <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${customPermissionsEnabled ? 'opacity-100' : 'opacity-50'}`}>
                     <Card className="bg-black/20 border-white/5">
                       <CardHeader className="py-3">
                         <CardTitle className="text-sm text-white">Dashboard</CardTitle>
@@ -468,7 +473,7 @@ export function UserDetail() {
                             id="perm-dashboard-view" 
                             checked={user.permissions?.includes('dashboard:view')}
                             onCheckedChange={() => togglePermission('dashboard:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled}
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -477,7 +482,7 @@ export function UserDetail() {
                             id="perm-dashboard-edit" 
                             checked={user.permissions?.includes('dashboard:edit')}
                             onCheckedChange={() => togglePermission('dashboard:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -494,7 +499,7 @@ export function UserDetail() {
                             id="perm-properties-view" 
                             checked={user.permissions?.includes('properties:view')}
                             onCheckedChange={() => togglePermission('properties:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -503,7 +508,7 @@ export function UserDetail() {
                             id="perm-properties-edit" 
                             checked={user.permissions?.includes('properties:edit')}
                             onCheckedChange={() => togglePermission('properties:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -520,7 +525,7 @@ export function UserDetail() {
                             id="perm-transport-view" 
                             checked={user.permissions?.includes('transport:view')}
                             onCheckedChange={() => togglePermission('transport:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -529,7 +534,7 @@ export function UserDetail() {
                             id="perm-transport-edit" 
                             checked={user.permissions?.includes('transport:edit')}
                             onCheckedChange={() => togglePermission('transport:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -546,7 +551,7 @@ export function UserDetail() {
                             id="perm-hr-view" 
                             checked={user.permissions?.includes('hr:view')}
                             onCheckedChange={() => togglePermission('hr:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -555,7 +560,7 @@ export function UserDetail() {
                             id="perm-hr-edit" 
                             checked={user.permissions?.includes('hr:edit')}
                             onCheckedChange={() => togglePermission('hr:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -572,7 +577,7 @@ export function UserDetail() {
                             id="perm-finance-view" 
                             checked={user.permissions?.includes('finance:view')}
                             onCheckedChange={() => togglePermission('finance:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -581,7 +586,7 @@ export function UserDetail() {
                             id="perm-finance-edit" 
                             checked={user.permissions?.includes('finance:edit')}
                             onCheckedChange={() => togglePermission('finance:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -598,7 +603,7 @@ export function UserDetail() {
                             id="perm-operations-view" 
                             checked={user.permissions?.includes('operations:view')}
                             onCheckedChange={() => togglePermission('operations:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -607,7 +612,7 @@ export function UserDetail() {
                             id="perm-operations-edit" 
                             checked={user.permissions?.includes('operations:edit')}
                             onCheckedChange={() => togglePermission('operations:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -624,7 +629,7 @@ export function UserDetail() {
                             id="perm-staff-view" 
                             checked={user.permissions?.includes('staff:view')}
                             onCheckedChange={() => togglePermission('staff:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -633,7 +638,7 @@ export function UserDetail() {
                             id="perm-staff-edit" 
                             checked={user.permissions?.includes('staff:edit')}
                             onCheckedChange={() => togglePermission('staff:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -650,7 +655,7 @@ export function UserDetail() {
                             id="perm-billing-view" 
                             checked={user.permissions?.includes('billing:view')}
                             onCheckedChange={() => togglePermission('billing:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -659,7 +664,7 @@ export function UserDetail() {
                             id="perm-billing-edit" 
                             checked={user.permissions?.includes('billing:edit')}
                             onCheckedChange={() => togglePermission('billing:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -676,7 +681,7 @@ export function UserDetail() {
                             id="perm-users-view" 
                             checked={user.permissions?.includes('users:view')}
                             onCheckedChange={() => togglePermission('users:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -685,7 +690,7 @@ export function UserDetail() {
                             id="perm-users-edit" 
                             checked={user.permissions?.includes('users:edit')}
                             onCheckedChange={() => togglePermission('users:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -702,7 +707,7 @@ export function UserDetail() {
                             id="perm-uploads-view" 
                             checked={user.permissions?.includes('uploads:view')}
                             onCheckedChange={() => togglePermission('uploads:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -711,7 +716,7 @@ export function UserDetail() {
                             id="perm-uploads-create" 
                             checked={user.permissions?.includes('uploads:create')}
                             onCheckedChange={() => togglePermission('uploads:create')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -728,7 +733,7 @@ export function UserDetail() {
                             id="perm-attendance-view" 
                             checked={user.permissions?.includes('attendance:view')}
                             onCheckedChange={() => togglePermission('attendance:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -737,7 +742,7 @@ export function UserDetail() {
                             id="perm-attendance-edit" 
                             checked={user.permissions?.includes('attendance:edit')}
                             onCheckedChange={() => togglePermission('attendance:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -754,7 +759,7 @@ export function UserDetail() {
                             id="perm-payroll-view" 
                             checked={user.permissions?.includes('payroll:view')}
                             onCheckedChange={() => togglePermission('payroll:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -763,7 +768,7 @@ export function UserDetail() {
                             id="perm-payroll-edit" 
                             checked={user.permissions?.includes('payroll:edit')}
                             onCheckedChange={() => togglePermission('payroll:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
@@ -780,7 +785,7 @@ export function UserDetail() {
                             id="perm-settings-view" 
                             checked={user.permissions?.includes('settings:view')}
                             onCheckedChange={() => togglePermission('settings:view')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -789,7 +794,7 @@ export function UserDetail() {
                             id="perm-settings-edit" 
                             checked={user.permissions?.includes('settings:edit')}
                             onCheckedChange={() => togglePermission('settings:edit')}
-                            disabled 
+                            disabled={!customPermissionsEnabled} 
                           />
                         </div>
                       </CardContent>
