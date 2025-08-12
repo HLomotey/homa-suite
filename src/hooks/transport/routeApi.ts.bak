@@ -454,8 +454,7 @@ export async function fetchRouteAssignments(): Promise<FrontendRouteAssignment[]
       .select(`
         *,
         combined_route:combined_routes(name),
-        vehicle:vehicles(make, model, license_plate),
-        driver:users(first_name, last_name)
+        vehicle:vehicles(make, model, license_plate)
       `)
       .order('start_date', { ascending: false });
 
@@ -467,9 +466,7 @@ export async function fetchRouteAssignments(): Promise<FrontendRouteAssignment[]
       vehicle_info: assignment.vehicle ? 
         `${assignment.vehicle.make} ${assignment.vehicle.model} (${assignment.vehicle.license_plate})` : 
         'Unknown Vehicle',
-      driver_name: assignment.driver ? 
-        `${assignment.driver.first_name} ${assignment.driver.last_name}` : 
-        'Unknown Driver'
+      driver_name: `Driver ID: ${assignment.driver_id}`
     }));
   } catch (error) {
     console.error('Error fetching route assignments:', error);
@@ -485,7 +482,7 @@ export async function fetchRouteAssignmentById(id: string): Promise<FrontendRout
         *,
         combined_route:combined_routes(name),
         vehicle:vehicles(make, model, license_plate),
-        driver:users(first_name, last_name)
+        
       `)
       .eq('id', id)
       .single();
@@ -507,9 +504,7 @@ export async function fetchRouteAssignmentById(id: string): Promise<FrontendRout
       vehicle_info: assignment.vehicle ? 
         `${assignment.vehicle.make} ${assignment.vehicle.model} (${assignment.vehicle.license_plate})` : 
         'Unknown Vehicle',
-      driver_name: assignment.driver ? 
-        `${assignment.driver.first_name} ${assignment.driver.last_name}` : 
-        'Unknown Driver'
+      driver_name: `Driver ID: ${assignment.driver_id}`
     });
 
     result.executionLogs = logs.map(log => 
@@ -558,7 +553,7 @@ export async function createRouteAssignment(
         *,
         combined_route:combined_routes(name),
         vehicle:vehicles(make, model, license_plate),
-        driver:users(first_name, last_name)
+        
       `)
       .single();
 
@@ -616,7 +611,7 @@ export async function updateRouteAssignment(
         *,
         combined_route:combined_routes(name),
         vehicle:vehicles(make, model, license_plate),
-        driver:users(first_name, last_name)
+        
       `)
       .single();
 

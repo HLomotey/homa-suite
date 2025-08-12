@@ -7,58 +7,55 @@ import {
   DatabaseRouteAssignment,
   DatabaseRouteExecutionLog,
   FrontendRoute,
+  FrontendRouteSchedule,
   FrontendCombinedRoute,
+  FrontendCombinedRouteDetail,
   FrontendRouteAssignment,
   FrontendRouteExecutionLog,
   mapDatabaseRouteToFrontend,
-  mapDatabaseRouteScheduleToFrontend,
-  mapDatabaseCombinedRouteToFrontend,
   mapDatabaseRouteAssignmentToFrontend,
   mapDatabaseRouteExecutionLogToFrontend
 } from "@/integration/supabase/types/transport-route";
+import { RouteDriverService } from "@/integration/supabase/services/routeDriverService";
 
 // Utility function to validate date format (YYYY-MM-DD)
-function isValidDateFormat(dateString: string): boolean {
+export function isValidDateFormat(dateString: string): boolean {
   if (!dateString) return false;
   
-  // Check format using regex (YYYY-MM-DD)
-  const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateFormatRegex.test(dateString)) return false;
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateString)) return false;
   
-  // Validate as actual date
   const date = new Date(dateString);
   return !isNaN(date.getTime());
 }
 
 // Utility function to validate time format (HH:MM)
-function isValidTimeFormat(timeString: string): boolean {
+export function isValidTimeFormat(timeString: string): boolean {
   if (!timeString) return false;
   
-  // Check format using regex (HH:MM)
-  const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-  return timeFormatRegex.test(timeString);
+  const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  return regex.test(timeString);
 }
 
 // Basic Routes API
 export async function fetchRoutes(): Promise<FrontendRoute[]> {
   try {
-    const { data: routes, error } = await supabase
+    const { data, error } = await supabase
       .from('routes')
-      .select('*')
+      .select(`
+        *,
+        schedules:route_schedules(*)
+      `)
       .order('name');
 
     if (error) throw error;
 
-    const { data: schedules, error: schedulesError } = await supabase
-      .from('route_schedules')
-      .select('*');
+    if (!data) return [];
 
-    if (schedulesError) throw schedulesError;
-
-    return (routes as DatabaseRoute[]).map(route => {
-      const routeSchedules = (schedules as DatabaseRouteSchedule[])
-        .filter(schedule => schedule.route_id === route.id);
-      return mapDatabaseRouteToFrontend(route, routeSchedules);
+    return data.map(route => {
+      const frontendRoute = mapDatabaseRouteToFrontend(route);
+      frontendRoute.schedules = route.schedules || [];
+      return frontendRoute;
     });
   } catch (error) {
     console.error('Error fetching routes:', error);
@@ -68,25 +65,22 @@ export async function fetchRoutes(): Promise<FrontendRoute[]> {
 
 export async function fetchRouteById(id: string): Promise<FrontendRoute> {
   try {
-    const { data: route, error } = await supabase
+    const { data, error } = await supabase
       .from('routes')
-      .select('*')
+      .select(`
+        *,
+        schedules:route_schedules(*)
+      `)
       .eq('id', id)
       .single();
 
     if (error) throw error;
 
-    const { data: schedules, error: schedulesError } = await supabase
-      .from('route_schedules')
-      .select('*')
-      .eq('route_id', id);
+    if (!data) throw new Error(`Route with id ${id} not found`);
 
-    if (schedulesError) throw schedulesError;
-
-    return mapDatabaseRouteToFrontend(
-      route as DatabaseRoute,
-      schedules as DatabaseRouteSchedule[]
-    );
+    const frontendRoute = mapDatabaseRouteToFrontend(data);
+    frontendRoute.schedules = data.schedules || [];
+    return frontendRoute;
   } catch (error) {
     console.error(`Error fetching route with id ${id}:`, error);
     throw error;
@@ -99,34 +93,46 @@ export async function createRoute(
   schedules: { day: string; startTime: string; endTime: string }[]
 ): Promise<FrontendRoute> {
   try {
-    // Insert the route
-    const { data: newRoute, error } = await supabase
+    // Validate inputs
+    if (!name) throw new Error('Route name is required');
+    
+    // Validate schedule times
+    for (const schedule of schedules) {
+      if (!isValidTimeFormat(schedule.startTime)) {
+        throw new Error(`Invalid start time format: ${schedule.startTime}. Expected format: HH:MM`);
+      }
+      if (!isValidTimeFormat(schedule.endTime)) {
+        throw new Error(`Invalid end time format: ${schedule.endTime}. Expected format: HH:MM`);
+      }
+    }
+    
+    // Create route
+    const { data: routeData, error: routeError } = await supabase
       .from('routes')
       .insert([{ name, description }])
       .select()
       .single();
 
-    if (error) throw error;
-
-    // Insert the schedules
-    const schedulesToInsert = schedules.map(schedule => ({
-      route_id: newRoute.id,
-      day: schedule.day,
-      start_time: schedule.startTime,
-      end_time: schedule.endTime
-    }));
-
-    const { data: newSchedules, error: schedulesError } = await supabase
-      .from('route_schedules')
-      .insert(schedulesToInsert)
-      .select();
-
-    if (schedulesError) throw schedulesError;
-
-    return mapDatabaseRouteToFrontend(
-      newRoute as DatabaseRoute,
-      newSchedules as DatabaseRouteSchedule[]
-    );
+    if (routeError) throw routeError;
+    
+    // Create schedules
+    if (schedules.length > 0) {
+      const schedulesWithRouteId = schedules.map(schedule => ({
+        route_id: routeData.id,
+        day: schedule.day,
+        start_time: schedule.startTime,
+        end_time: schedule.endTime
+      }));
+      
+      const { error: schedulesError } = await supabase
+        .from('route_schedules')
+        .insert(schedulesWithRouteId);
+      
+      if (schedulesError) throw schedulesError;
+    }
+    
+    // Fetch the complete route with schedules
+    return await fetchRouteById(routeData.id);
   } catch (error) {
     console.error('Error creating route:', error);
     throw error;
@@ -140,53 +146,84 @@ export async function updateRoute(
   schedules: { id?: string; day: string; startTime: string; endTime: string }[]
 ): Promise<FrontendRoute> {
   try {
-    // Update the route
-    const { data: updatedRoute, error } = await supabase
+    // Validate inputs
+    if (!id) throw new Error('Route ID is required');
+    if (!name) throw new Error('Route name is required');
+    
+    // Validate schedule times
+    for (const schedule of schedules) {
+      if (!isValidTimeFormat(schedule.startTime)) {
+        throw new Error(`Invalid start time format: ${schedule.startTime}. Expected format: HH:MM`);
+      }
+      if (!isValidTimeFormat(schedule.endTime)) {
+        throw new Error(`Invalid end time format: ${schedule.endTime}. Expected format: HH:MM`);
+      }
+    }
+    
+    // Update route
+    const { error: routeError } = await supabase
       .from('routes')
       .update({ name, description })
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
-    if (error) throw error;
-
+    if (routeError) throw routeError;
+    
     // Get existing schedules
     const { data: existingSchedules, error: fetchError } = await supabase
       .from('route_schedules')
       .select('*')
       .eq('route_id', id);
-
+    
     if (fetchError) throw fetchError;
-
-    // Delete existing schedules
-    if (existingSchedules.length > 0) {
+    
+    // Identify schedules to add, update, or delete
+    const existingIds = existingSchedules?.map(s => s.id) || [];
+    const updatedIds = schedules.filter(s => s.id).map(s => s.id as string);
+    
+    // Schedules to delete (exist in DB but not in updated list)
+    const toDelete = existingIds.filter(id => !updatedIds.includes(id));
+    
+    // Delete schedules
+    if (toDelete.length > 0) {
       const { error: deleteError } = await supabase
         .from('route_schedules')
         .delete()
-        .eq('route_id', id);
-
+        .in('id', toDelete);
+      
       if (deleteError) throw deleteError;
     }
-
-    // Insert new schedules
-    const schedulesToInsert = schedules.map(schedule => ({
-      route_id: id,
-      day: schedule.day,
-      start_time: schedule.startTime,
-      end_time: schedule.endTime
-    }));
-
-    const { data: newSchedules, error: insertError } = await supabase
-      .from('route_schedules')
-      .insert(schedulesToInsert)
-      .select();
-
-    if (insertError) throw insertError;
-
-    return mapDatabaseRouteToFrontend(
-      updatedRoute as DatabaseRoute,
-      newSchedules as DatabaseRouteSchedule[]
-    );
+    
+    // Update existing and add new schedules
+    for (const schedule of schedules) {
+      if (schedule.id) {
+        // Update existing schedule
+        const { error: updateError } = await supabase
+          .from('route_schedules')
+          .update({
+            day: schedule.day,
+            start_time: schedule.startTime,
+            end_time: schedule.endTime
+          })
+          .eq('id', schedule.id);
+        
+        if (updateError) throw updateError;
+      } else {
+        // Add new schedule
+        const { error: insertError } = await supabase
+          .from('route_schedules')
+          .insert([{
+            route_id: id,
+            day: schedule.day,
+            start_time: schedule.startTime,
+            end_time: schedule.endTime
+          }]);
+        
+        if (insertError) throw insertError;
+      }
+    }
+    
+    // Fetch the updated route with schedules
+    return await fetchRouteById(id);
   } catch (error) {
     console.error(`Error updating route with id ${id}:`, error);
     throw error;
@@ -200,15 +237,15 @@ export async function deleteRoute(id: string): Promise<void> {
       .from('route_schedules')
       .delete()
       .eq('route_id', id);
-
+    
     if (schedulesError) throw schedulesError;
-
+    
     // Delete route
     const { error } = await supabase
       .from('routes')
       .delete()
       .eq('id', id);
-
+    
     if (error) throw error;
   } catch (error) {
     console.error(`Error deleting route with id ${id}:`, error);
@@ -219,37 +256,50 @@ export async function deleteRoute(id: string): Promise<void> {
 // Combined Routes API
 export async function fetchCombinedRoutes(): Promise<FrontendCombinedRoute[]> {
   try {
-    const { data: combinedRoutes, error } = await supabase
+    const { data, error } = await supabase
       .from('combined_routes')
-      .select('*')
+      .select(`
+        *,
+        routes:combined_route_details(
+          id,
+          route_id,
+          order,
+          route:routes(
+            id,
+            name,
+            description
+          )
+        )
+      `)
       .order('name');
 
     if (error) throw error;
 
-    // Fetch all route details with route names
-    const { data: details, error: detailsError } = await supabase
-      .from('combined_route_details')
-      .select(`
-        *,
-        route_name:routes(name)
-      `)
-      .order('order');
+    if (!data) return [];
 
-    if (detailsError) throw detailsError;
-
-    // Transform the data
-    return (combinedRoutes as DatabaseCombinedRoute[]).map(combinedRoute => {
-      const routeDetails = details.filter(
-        detail => detail.combined_route_id === combinedRoute.id
-      );
+    return data.map(combinedRoute => {
+      const frontendCombinedRoute: FrontendCombinedRoute = {
+        id: combinedRoute.id,
+        name: combinedRoute.name,
+        description: combinedRoute.description || '',
+        status: combinedRoute.status,
+        createdBy: combinedRoute.created_by,
+        createdAt: combinedRoute.created_at,
+        updatedAt: combinedRoute.updated_at,
+        routes: []
+      };
       
-      return mapDatabaseCombinedRouteToFrontend(
-        combinedRoute,
-        routeDetails.map(detail => ({
-          ...detail,
-          route_name: detail.route_name.name
-        }))
-      );
+      // Process routes
+      if (combinedRoute.routes && Array.isArray(combinedRoute.routes)) {
+        frontendCombinedRoute.routes = combinedRoute.routes.map((routeLink: DatabaseCombinedRouteDetail & { route?: { name: string, description?: string } }) => ({
+          id: routeLink.route_id,
+          name: routeLink.route?.name || 'Unknown Route',
+          description: routeLink.route?.description || '',
+          order: routeLink.order
+        })).sort((a, b) => a.order - b.order);
+      }
+      
+      return frontendCombinedRoute;
     });
   } catch (error) {
     console.error('Error fetching combined routes:', error);
@@ -259,33 +309,50 @@ export async function fetchCombinedRoutes(): Promise<FrontendCombinedRoute[]> {
 
 export async function fetchCombinedRouteById(id: string): Promise<FrontendCombinedRoute> {
   try {
-    const { data: combinedRoute, error } = await supabase
+    const { data, error } = await supabase
       .from('combined_routes')
-      .select('*')
+      .select(`
+        *,
+        routes:combined_route_details(
+          id,
+          route_id,
+          order,
+          route:routes(
+            id,
+            name,
+            description
+          )
+        )
+      `)
       .eq('id', id)
       .single();
 
     if (error) throw error;
 
-    // Fetch route details with route names
-    const { data: details, error: detailsError } = await supabase
-      .from('combined_route_details')
-      .select(`
-        *,
-        route_name:routes(name)
-      `)
-      .eq('combined_route_id', id)
-      .order('order');
+    if (!data) throw new Error(`Combined route with id ${id} not found`);
 
-    if (detailsError) throw detailsError;
-
-    return mapDatabaseCombinedRouteToFrontend(
-      combinedRoute as DatabaseCombinedRoute,
-      details.map(detail => ({
-        ...detail,
-        route_name: detail.route_name.name
-      }))
-    );
+    const frontendCombinedRoute: FrontendCombinedRoute = {
+      id: data.id,
+      name: data.name,
+      description: data.description || '',
+      status: data.status,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      routes: []
+    };
+    
+    // Process routes
+    if (data.routes && Array.isArray(data.routes)) {
+      frontendCombinedRoute.routes = data.routes.map((routeLink: DatabaseCombinedRouteDetail & { route?: { name: string, description?: string } }) => ({
+        id: routeLink.route_id,
+        name: routeLink.route?.name || 'Unknown Route',
+        description: routeLink.route?.description || '',
+        order: routeLink.order
+      })).sort((a, b) => a.order - b.order);
+    }
+    
+    return frontendCombinedRoute;
   } catch (error) {
     console.error(`Error fetching combined route with id ${id}:`, error);
     throw error;
@@ -299,56 +366,40 @@ export async function createCombinedRoute(
   routes: { routeId: string; order: number }[]
 ): Promise<FrontendCombinedRoute> {
   try {
-    // Insert the combined route
-    const { data: newCombinedRoute, error } = await supabase
+    // Validate inputs
+    if (!name) throw new Error('Combined route name is required');
+    if (!createdBy) throw new Error('Created by is required');
+    if (!routes || routes.length === 0) throw new Error('At least one route is required');
+    
+    // Create combined route
+    const { data: combinedRouteData, error: combinedRouteError } = await supabase
       .from('combined_routes')
       .insert([{ 
         name, 
         description, 
-        created_by: createdBy,
-        status: 'active'
+        status: 'active',
+        created_by: createdBy
       }])
       .select()
       .single();
 
-    if (error) throw error;
-
-    // Insert the route details
-    const detailsToInsert = routes.map(route => ({
-      combined_route_id: newCombinedRoute.id,
+    if (combinedRouteError) throw combinedRouteError;
+    
+    // Create route links
+    const routeLinks = routes.map(route => ({
+      combined_route_id: combinedRouteData.id,
       route_id: route.routeId,
       order: route.order
     }));
-
-    const { data: newDetails, error: detailsError } = await supabase
-      .from('combined_route_details')
-      .insert(detailsToInsert)
-      .select();
-
-    if (detailsError) throw detailsError;
-
-    // Fetch route names for the details
-    const routeIds = routes.map(route => route.routeId);
-    const { data: routeNames, error: namesError } = await supabase
-      .from('routes')
-      .select('id, name')
-      .in('id', routeIds);
-
-    if (namesError) throw namesError;
-
-    // Map route names to details
-    const detailsWithNames = newDetails.map(detail => {
-      const route = routeNames.find(r => r.id === detail.route_id);
-      return {
-        ...detail,
-        route_name: route ? route.name : 'Unknown Route'
-      };
-    });
-
-    return mapDatabaseCombinedRouteToFrontend(
-      newCombinedRoute as DatabaseCombinedRoute,
-      detailsWithNames
-    );
+    
+    const { error: routeLinksError } = await supabase
+      .from('combined_route_routes')
+      .insert(routeLinks);
+    
+    if (routeLinksError) throw routeLinksError;
+    
+    // Fetch the complete combined route with routes
+    return await fetchCombinedRouteById(combinedRouteData.id);
   } catch (error) {
     console.error('Error creating combined route:', error);
     throw error;
@@ -363,60 +414,42 @@ export async function updateCombinedRoute(
   routes: { routeId: string; order: number }[]
 ): Promise<FrontendCombinedRoute> {
   try {
-    // Update the combined route
-    const { data: updatedCombinedRoute, error } = await supabase
+    // Validate inputs
+    if (!id) throw new Error('Combined route ID is required');
+    if (!name) throw new Error('Combined route name is required');
+    if (!routes || routes.length === 0) throw new Error('At least one route is required');
+    
+    // Update combined route
+    const { error: combinedRouteError } = await supabase
       .from('combined_routes')
       .update({ name, description, status })
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
-    if (error) throw error;
-
-    // Delete existing route details
+    if (combinedRouteError) throw combinedRouteError;
+    
+    // Delete existing route links
     const { error: deleteError } = await supabase
-      .from('combined_route_details')
+      .from('combined_route_routes')
       .delete()
       .eq('combined_route_id', id);
-
+    
     if (deleteError) throw deleteError;
-
-    // Insert new route details
-    const detailsToInsert = routes.map(route => ({
+    
+    // Create new route links
+    const routeLinks = routes.map(route => ({
       combined_route_id: id,
       route_id: route.routeId,
       order: route.order
     }));
-
-    const { data: newDetails, error: detailsError } = await supabase
-      .from('combined_route_details')
-      .insert(detailsToInsert)
-      .select();
-
-    if (detailsError) throw detailsError;
-
-    // Fetch route names for the details
-    const routeIds = routes.map(route => route.routeId);
-    const { data: routeNames, error: namesError } = await supabase
-      .from('routes')
-      .select('id, name')
-      .in('id', routeIds);
-
-    if (namesError) throw namesError;
-
-    // Map route names to details
-    const detailsWithNames = newDetails.map(detail => {
-      const route = routeNames.find(r => r.id === detail.route_id);
-      return {
-        ...detail,
-        route_name: route ? route.name : 'Unknown Route'
-      };
-    });
-
-    return mapDatabaseCombinedRouteToFrontend(
-      updatedCombinedRoute as DatabaseCombinedRoute,
-      detailsWithNames
-    );
+    
+    const { error: routeLinksError } = await supabase
+      .from('combined_route_routes')
+      .insert(routeLinks);
+    
+    if (routeLinksError) throw routeLinksError;
+    
+    // Fetch the updated combined route with routes
+    return await fetchCombinedRouteById(id);
   } catch (error) {
     console.error(`Error updating combined route with id ${id}:`, error);
     throw error;
@@ -425,20 +458,20 @@ export async function updateCombinedRoute(
 
 export async function deleteCombinedRoute(id: string): Promise<void> {
   try {
-    // Delete route details first (foreign key constraint)
-    const { error: detailsError } = await supabase
-      .from('combined_route_details')
+    // Delete route links first (foreign key constraint)
+    const { error: linksError } = await supabase
+      .from('combined_route_routes')
       .delete()
       .eq('combined_route_id', id);
-
-    if (detailsError) throw detailsError;
-
+    
+    if (linksError) throw linksError;
+    
     // Delete combined route
     const { error } = await supabase
       .from('combined_routes')
       .delete()
       .eq('id', id);
-
+    
     if (error) throw error;
   } catch (error) {
     console.error(`Error deleting combined route with id ${id}:`, error);
@@ -449,25 +482,40 @@ export async function deleteCombinedRoute(id: string): Promise<void> {
 // Route Assignments API
 export async function fetchRouteAssignments(): Promise<FrontendRouteAssignment[]> {
   try {
-    const { data: assignments, error } = await supabase
+    const { data, error } = await supabase
       .from('route_assignments')
       .select(`
         *,
         combined_route:combined_routes(name),
-        vehicle:vehicles(make, model, license_plate)
+        vehicle:vehicles(make, model, license_plate),
+        users(id, raw_user_meta_data)
       `)
       .order('start_date', { ascending: false });
 
     if (error) throw error;
 
-    return assignments.map(assignment => mapDatabaseRouteAssignmentToFrontend({
-      ...assignment,
-      combined_route_name: assignment.combined_route ? assignment.combined_route.name : 'Unknown Route',
-      vehicle_info: assignment.vehicle ? 
-        `${assignment.vehicle.make} ${assignment.vehicle.model} (${assignment.vehicle.license_plate})` : 
-        'Unknown Vehicle',
-      driver_name: `Driver ID: ${assignment.driver_id}`
-    }));
+    if (!data) return [];
+
+    // First convert all assignments to frontend format
+    const frontendAssignments = data.map(assignment => mapDatabaseRouteAssignmentToFrontend(assignment));
+    
+    // Then enrich each assignment with driver details from billing_staff
+    const enrichedAssignments = [];
+    for (const assignment of frontendAssignments) {
+      const originalData = data.find(d => d.id === assignment.id);
+      if (originalData) {
+        const enriched = await RouteDriverService.enrichAssignmentWithDriverDetails({
+          ...assignment,
+          driver_id: originalData.driver_id,
+          users: originalData.users
+        });
+        enrichedAssignments.push(enriched);
+      } else {
+        enrichedAssignments.push(assignment);
+      }
+    }
+    
+    return enrichedAssignments;
   } catch (error) {
     console.error('Error fetching route assignments:', error);
     throw error;
@@ -476,42 +524,32 @@ export async function fetchRouteAssignments(): Promise<FrontendRouteAssignment[]
 
 export async function fetchRouteAssignmentById(id: string): Promise<FrontendRouteAssignment> {
   try {
-    const { data: assignment, error } = await supabase
+    const { data, error } = await supabase
       .from('route_assignments')
       .select(`
         *,
         combined_route:combined_routes(name),
         vehicle:vehicles(make, model, license_plate),
-        
+        users(id, raw_user_meta_data)
       `)
       .eq('id', id)
       .single();
 
     if (error) throw error;
 
-    // Fetch execution logs
-    const { data: logs, error: logsError } = await supabase
-      .from('route_execution_logs')
-      .select('*')
-      .eq('route_assignment_id', id)
-      .order('execution_date', { ascending: false });
+    if (!data) throw new Error(`Route assignment with id ${id} not found`);
 
-    if (logsError) throw logsError;
-
-    const result = mapDatabaseRouteAssignmentToFrontend({
-      ...assignment,
-      combined_route_name: assignment.combined_route ? assignment.combined_route.name : 'Unknown Route',
-      vehicle_info: assignment.vehicle ? 
-        `${assignment.vehicle.make} ${assignment.vehicle.model} (${assignment.vehicle.license_plate})` : 
-        'Unknown Vehicle',
-      driver_name: `Driver ID: ${assignment.driver_id}`
+    // First convert to frontend format
+    const frontendAssignment = mapDatabaseRouteAssignmentToFrontend(data);
+    
+    // Then enrich with driver details from billing_staff
+    const enrichedAssignment = await RouteDriverService.enrichAssignmentWithDriverDetails({
+      ...frontendAssignment,
+      driver_id: data.driver_id,
+      users: data.users
     });
-
-    result.executionLogs = logs.map(log => 
-      mapDatabaseRouteExecutionLogToFrontend(log as DatabaseRouteExecutionLog)
-    );
-
-    return result;
+    
+    return enrichedAssignment;
   } catch (error) {
     console.error(`Error fetching route assignment with id ${id}:`, error);
     throw error;
@@ -527,11 +565,14 @@ export async function createRouteAssignment(
   notes: string
 ): Promise<FrontendRouteAssignment> {
   try {
-    // Debug logging for date fields
-    console.log('Creating route assignment with date fields:', { startDate, endDate });
+    // Validate inputs
+    if (!combinedRouteId) throw new Error('Combined route ID is required');
+    if (!vehicleId) throw new Error('Vehicle ID is required');
+    if (!driverId) throw new Error('Driver ID is required');
+    if (!startDate) throw new Error('Start date is required');
     
     // Validate date formats
-    if (startDate && !isValidDateFormat(startDate)) {
+    if (!isValidDateFormat(startDate)) {
       throw new Error(`Invalid start date format: ${startDate}. Expected format: YYYY-MM-DD`);
     }
     
@@ -552,23 +593,28 @@ export async function createRouteAssignment(
       .select(`
         *,
         combined_route:combined_routes(name),
-        vehicle:vehicles(make, model, license_plate),
-        
+        vehicle:vehicles(make, model, license_plate)
       `)
       .single();
 
     if (error) throw error;
 
-    return mapDatabaseRouteAssignmentToFrontend({
+    // First convert to frontend format
+    const frontendAssignment = mapDatabaseRouteAssignmentToFrontend({
       ...newAssignment,
       combined_route_name: newAssignment.combined_route ? newAssignment.combined_route.name : 'Unknown Route',
       vehicle_info: newAssignment.vehicle ? 
         `${newAssignment.vehicle.make} ${newAssignment.vehicle.model} (${newAssignment.vehicle.license_plate})` : 
-        'Unknown Vehicle',
-      driver_name: newAssignment.driver ? 
-        `${newAssignment.driver.first_name} ${newAssignment.driver.last_name}` : 
-        'Unknown Driver'
+        'Unknown Vehicle'
     });
+    
+    // Then enrich with driver details from billing_staff
+    const enrichedAssignment = await RouteDriverService.enrichAssignmentWithDriverDetails({
+      ...frontendAssignment,
+      driver_id: driverId
+    });
+    
+    return enrichedAssignment;
   } catch (error) {
     console.error('Error creating route assignment:', error);
     throw error;
@@ -585,8 +631,12 @@ export async function updateRouteAssignment(
   notes: string
 ): Promise<FrontendRouteAssignment> {
   try {
-    // Debug logging for date fields
-    console.log('Updating route assignment with date fields:', { id, startDate, endDate });
+    // Validate inputs
+    if (!id) throw new Error('Assignment ID is required');
+    if (!vehicleId) throw new Error('Vehicle ID is required');
+    if (!driverId) throw new Error('Driver ID is required');
+    if (!startDate) throw new Error('Start date is required');
+    if (!status) throw new Error('Status is required');
     
     // Validate date formats
     if (startDate && !isValidDateFormat(startDate)) {
@@ -610,23 +660,28 @@ export async function updateRouteAssignment(
       .select(`
         *,
         combined_route:combined_routes(name),
-        vehicle:vehicles(make, model, license_plate),
-        
+        vehicle:vehicles(make, model, license_plate)
       `)
       .single();
 
     if (error) throw error;
 
-    return mapDatabaseRouteAssignmentToFrontend({
+    // First convert to frontend format
+    const frontendAssignment = mapDatabaseRouteAssignmentToFrontend({
       ...updatedAssignment,
       combined_route_name: updatedAssignment.combined_route ? updatedAssignment.combined_route.name : 'Unknown Route',
       vehicle_info: updatedAssignment.vehicle ? 
         `${updatedAssignment.vehicle.make} ${updatedAssignment.vehicle.model} (${updatedAssignment.vehicle.license_plate})` : 
-        'Unknown Vehicle',
-      driver_name: updatedAssignment.driver ? 
-        `${updatedAssignment.driver.first_name} ${updatedAssignment.driver.last_name}` : 
-        'Unknown Driver'
+        'Unknown Vehicle'
     });
+    
+    // Then enrich with driver details from billing_staff
+    const enrichedAssignment = await RouteDriverService.enrichAssignmentWithDriverDetails({
+      ...frontendAssignment,
+      driver_id: driverId
+    });
+    
+    return enrichedAssignment;
   } catch (error) {
     console.error(`Error updating route assignment with id ${id}:`, error);
     throw error;
@@ -648,7 +703,7 @@ export async function deleteRouteAssignment(id: string): Promise<void> {
       .from('route_assignments')
       .delete()
       .eq('id', id);
-
+    
     if (error) throw error;
   } catch (error) {
     console.error(`Error deleting route assignment with id ${id}:`, error);
@@ -667,39 +722,42 @@ export async function createRouteExecutionLog(
   endTime?: string
 ): Promise<FrontendRouteExecutionLog> {
   try {
-    // Debug logging for date fields
-    console.log('Creating route execution log with date fields:', { executionDate, startTime, endTime });
+    // Validate inputs
+    if (!routeAssignmentId) throw new Error('Route assignment ID is required');
+    if (!executionDate) throw new Error('Execution date is required');
+    if (!startTime) throw new Error('Start time is required');
+    if (!status) throw new Error('Status is required');
     
-    // Validate date format
-    if (executionDate && !isValidDateFormat(executionDate)) {
+    // Validate date and time formats
+    if (!isValidDateFormat(executionDate)) {
       throw new Error(`Invalid execution date format: ${executionDate}. Expected format: YYYY-MM-DD`);
     }
     
-    // Validate time format (HH:MM)
-    if (startTime && !isValidTimeFormat(startTime)) {
+    if (!isValidTimeFormat(startTime)) {
       throw new Error(`Invalid start time format: ${startTime}. Expected format: HH:MM`);
     }
     
     if (endTime && !isValidTimeFormat(endTime)) {
       throw new Error(`Invalid end time format: ${endTime}. Expected format: HH:MM`);
     }
-    const { data: newLog, error } = await supabase
+    
+    const { data, error } = await supabase
       .from('route_execution_logs')
       .insert([{
         route_assignment_id: routeAssignmentId,
         execution_date: executionDate,
         start_time: startTime,
-        end_time: endTime,
+        end_time: endTime || null,
         status,
-        delay_reason: delayReason,
-        notes
+        notes,
+        delay_reason: delayReason || null
       }])
       .select()
       .single();
 
     if (error) throw error;
 
-    return mapDatabaseRouteExecutionLogToFrontend(newLog as DatabaseRouteExecutionLog);
+    return mapDatabaseRouteExecutionLogToFrontend(data);
   } catch (error) {
     console.error('Error creating route execution log:', error);
     throw error;
@@ -714,13 +772,23 @@ export async function updateRouteExecutionLog(
   delayReason?: string
 ): Promise<FrontendRouteExecutionLog> {
   try {
-    const { data: updatedLog, error } = await supabase
+    // Validate inputs
+    if (!id) throw new Error('Log ID is required');
+    if (!endTime) throw new Error('End time is required');
+    if (!status) throw new Error('Status is required');
+    
+    // Validate time format
+    if (!isValidTimeFormat(endTime)) {
+      throw new Error(`Invalid end time format: ${endTime}. Expected format: HH:MM`);
+    }
+    
+    const { data, error } = await supabase
       .from('route_execution_logs')
       .update({
         end_time: endTime,
         status,
-        delay_reason: delayReason,
-        notes
+        notes,
+        delay_reason: delayReason || null
       })
       .eq('id', id)
       .select()
@@ -728,7 +796,7 @@ export async function updateRouteExecutionLog(
 
     if (error) throw error;
 
-    return mapDatabaseRouteExecutionLogToFrontend(updatedLog as DatabaseRouteExecutionLog);
+    return mapDatabaseRouteExecutionLogToFrontend(data);
   } catch (error) {
     console.error(`Error updating route execution log with id ${id}:`, error);
     throw error;
@@ -739,7 +807,7 @@ export async function fetchRouteExecutionLogsByAssignment(
   assignmentId: string
 ): Promise<FrontendRouteExecutionLog[]> {
   try {
-    const { data: logs, error } = await supabase
+    const { data, error } = await supabase
       .from('route_execution_logs')
       .select('*')
       .eq('route_assignment_id', assignmentId)
@@ -747,11 +815,11 @@ export async function fetchRouteExecutionLogsByAssignment(
 
     if (error) throw error;
 
-    return (logs as DatabaseRouteExecutionLog[]).map(log => 
-      mapDatabaseRouteExecutionLogToFrontend(log)
-    );
+    if (!data) return [];
+
+    return data.map(log => mapDatabaseRouteExecutionLogToFrontend(log));
   } catch (error) {
-    console.error('Error fetching route execution logs:', error);
+    console.error(`Error fetching execution logs for assignment ${assignmentId}:`, error);
     throw error;
   }
 }
@@ -762,10 +830,10 @@ export async function deleteRouteExecutionLog(id: string): Promise<void> {
       .from('route_execution_logs')
       .delete()
       .eq('id', id);
-
+    
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting route execution log:', error);
+    console.error(`Error deleting route execution log with id ${id}:`, error);
     throw error;
   }
 }
