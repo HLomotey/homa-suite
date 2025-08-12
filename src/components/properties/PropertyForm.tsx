@@ -4,27 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Upload, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Property Interface
-export interface Property {
-  id: string;
-  title: string;
-  address: string;
-  price: number;
-  bedrooms: number;
-  bathrooms: number;
-  area: number;
-  type: string;
-  status: string;
-  image: string;
-  description: string;
-  dateAdded: string;
-}
+import { FrontendProperty, PropertyType, PropertyStatus } from "@/integration/supabase/types";
 
 // Property Form Component
 export interface PropertyFormProps {
-  property?: Property;
-  onSave: (property: Omit<Property, "id">) => void;
+  property?: FrontendProperty;
+  onSave: (property: Omit<FrontendProperty, "id" | "dateAdded">) => void;
   onCancel: () => void;
 }
 
@@ -33,18 +18,17 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [formData, setFormData] = React.useState<Omit<Property, "id">>({
+  const [formData, setFormData] = React.useState<Omit<FrontendProperty, "id" | "dateAdded">>({
     title: property?.title || "",
     address: property?.address || "",
     price: property?.price || 0,
     bedrooms: property?.bedrooms || 1,
     bathrooms: property?.bathrooms || 1,
     area: property?.area || 0,
-    type: property?.type || "Apartment",
-    status: property?.status || "Available",
+    type: property?.type || "Apartment" as PropertyType,
+    status: property?.status || "Available" as PropertyStatus,
     image: property?.image || "",
     description: property?.description || "",
-    dateAdded: property?.dateAdded || new Date().toISOString().split("T")[0],
   });
 
   const handleChange = (

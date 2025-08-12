@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/custom-ui";
 import OccupancyDashboard from "@/components/properties/Dashboard";
 import PropertiesList from "@/components/properties/PropertiesList";
@@ -8,14 +9,21 @@ import AssignmentsList from "@/components/properties/AssignmentsList";
 import TenantsList from "@/components/properties/TenantsList";
 import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
-import { mockProperties, Property } from "@/components/properties/data/housing-data";
+import { FrontendProperty } from "@/integration/supabase/types";
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
+import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty } from "@/hooks/property/useProperty";
+import { Loader2 } from "lucide-react";
 
 // Main Housing Page Component
 const HousingPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingProperty, setEditingProperty] = useState<Property | undefined>();
-  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const [editingProperty, setEditingProperty] = useState<FrontendProperty | undefined>();
+  
+  // Use the real property API hooks
+  const { properties, loading, error, refetch } = useProperties();
+  const { create: createPropertyApi, loading: createLoading } = useCreateProperty();
+  const { update: updatePropertyApi, loading: updateLoading } = useUpdateProperty();
+  const { deleteProperty, loading: deleteLoading } = useDeleteProperty();
   
   // Tenant form state
   const [isTenantFormOpen, setIsTenantFormOpen] = useState(false);
@@ -26,34 +34,36 @@ const HousingPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleEditProperty = (property: Property) => {
+  const handleEditProperty = (property: FrontendProperty) => {
     setEditingProperty(property);
     setIsFormOpen(true);
   };
 
-  const handleDeleteProperty = (id: string) => {
-    setProperties((prev) => prev.filter((p) => p.id !== id));
+  const handleDeleteProperty = async (id: string) => {
+    try {
+      await deleteProperty(id);
+      // Refetch properties to update the list
+      refetch();
+    } catch (error) {
+      console.error("Error deleting property:", error);
+    }
   };
 
-  const handleSaveProperty = (propertyData: Omit<Property, "id">) => {
-    if (editingProperty) {
-      // Update existing property
-      setProperties((prev) =>
-        prev.map((p) =>
-          p.id === editingProperty.id
-            ? { ...propertyData, id: editingProperty.id }
-            : p
-        )
-      );
-    } else {
-      // Add new property
-      const newProperty = {
-        ...propertyData,
-        id: `${properties.length + 1}`,
-      };
-      setProperties((prev) => [...prev, newProperty]);
+  const handleSaveProperty = async (propertyData: Omit<FrontendProperty, "id" | "dateAdded">) => {
+    try {
+      if (editingProperty) {
+        // Update existing property
+        await updatePropertyApi(editingProperty.id, propertyData);
+      } else {
+        // Add new property
+        await createPropertyApi(propertyData);
+      }
+      // Refetch properties to update the list
+      refetch();
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error("Error saving property:", error);
     }
-    setIsFormOpen(false);
   };
 
   // Tenant handlers
@@ -97,12 +107,29 @@ const HousingPage: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="properties">
-          <PropertiesList 
-            properties={properties}
-            onEdit={handleEditProperty}
-            onDelete={handleDeleteProperty}
-            onAddProperty={handleAddProperty}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+              <span className="ml-2 text-white">Loading properties...</span>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <p className="text-red-400 mb-2">Error loading properties:</p>
+                <p className="text-white/60 mb-4">{error.message}</p>
+                <Button onClick={refetch} variant="outline">
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <PropertiesList 
+              properties={properties}
+              onEdit={handleEditProperty}
+              onDelete={handleDeleteProperty}
+              onAddProperty={handleAddProperty}
+            />
+          )}
         </TabsContent>
         
         <TabsContent value="rooms">
