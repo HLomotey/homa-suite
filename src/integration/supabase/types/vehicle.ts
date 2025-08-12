@@ -20,6 +20,7 @@ export interface Vehicle {
   license_plate: string;
   status: string;
   purchase_date: string;
+  location_id: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -44,6 +45,7 @@ export interface FrontendVehicle {
   licensePlate: string;
   status: VehicleStatus;
   purchaseDate: string;
+  locationId: string;
 }
 
 /**
@@ -61,7 +63,8 @@ export const mapDatabaseVehicleToFrontend = (dbVehicle: Vehicle): FrontendVehicl
     color: dbVehicle.color,
     licensePlate: dbVehicle.license_plate,
     status: dbVehicle.status as VehicleStatus,
-    purchaseDate: dbVehicle.purchase_date
+    purchaseDate: dbVehicle.purchase_date,
+    locationId: dbVehicle.location_id
   };
 };
 
@@ -79,6 +82,7 @@ export const mapFrontendVehicleToDatabase = (frontendVehicle: Omit<FrontendVehic
     color: frontendVehicle.color,
     license_plate: frontendVehicle.licensePlate,
     status: frontendVehicle.status,
-    purchase_date: frontendVehicle.purchaseDate
+    purchase_date: frontendVehicle.purchaseDate,
+    location_id: frontendVehicle.locationId
   };
 };

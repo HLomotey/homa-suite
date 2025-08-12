@@ -8,9 +8,11 @@ import {
 } from './routeApi';
 import { FrontendRoute } from '@/integration/supabase/types/transport-route';
 import { v4 as uuidv4 } from 'uuid';
+import { migrateRouteMockData } from './migrateRouteData';
 
 // Mock data for development and testing
-const mockRoutes: FrontendRoute[] = [
+// Exported for use in migration function
+export const mockRoutes: FrontendRoute[] = [
   {
     id: '1',
     name: '75 Polani',
@@ -88,6 +90,7 @@ interface UseRouteReturn {
   editRoute: (id: string, route: Omit<FrontendRoute, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   removeRoute: (id: string) => Promise<void>;
   setSelectedRoute: (route: FrontendRoute | null) => void;
+  migrateToDatabase: () => Promise<void>;
 }
 
 export function useRoute(useMockData = true): UseRouteReturn {
@@ -258,6 +261,24 @@ export function useRoute(useMockData = true): UseRouteReturn {
     }
   }, [useMockData, fetchAllRoutes, selectedRoute]);
 
+  // Migrate mock data to database
+  const migrateToDatabase = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await migrateRouteMockData();
+      
+      // Refresh routes after migration
+      await fetchAllRoutes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to migrate routes to database');
+      console.error('Error migrating routes to database:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchAllRoutes]);
+
   // Load routes on component mount
   useEffect(() => {
     fetchAllRoutes();
@@ -273,6 +294,7 @@ export function useRoute(useMockData = true): UseRouteReturn {
     addRoute,
     editRoute,
     removeRoute,
-    setSelectedRoute
+    setSelectedRoute,
+    migrateToDatabase
   };
 }

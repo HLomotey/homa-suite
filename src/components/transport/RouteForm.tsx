@@ -15,6 +15,8 @@ interface RouteFormProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   editingRoute?: FrontendRoute | null;
+  onAdd?: (route: Omit<FrontendRoute, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onEdit?: (id: string, route: Omit<FrontendRoute, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
 const DAYS_OF_WEEK = [
@@ -27,7 +29,7 @@ const DAYS_OF_WEEK = [
   "Saturday"
 ];
 
-export function RouteForm({ open, onOpenChange, onSuccess, editingRoute }: RouteFormProps) {
+export function RouteForm({ open, onOpenChange, onSuccess, editingRoute, onAdd, onEdit }: RouteFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [schedules, setSchedules] = useState<Array<{
@@ -112,9 +114,34 @@ export function RouteForm({ open, onOpenChange, onSuccess, editingRoute }: Route
     setIsSubmitting(true);
 
     try {
-      // In a real implementation, this would call the API
-      // For now, we just simulate success
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Call the appropriate API function
+      if (editingRoute && onEdit) {
+        await onEdit(editingRoute.id, {
+          name,
+          description,
+          schedules: schedules.map(s => ({
+            id: s.id,
+            routeId: editingRoute.id,
+            day: s.day as "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday",
+            startTime: s.startTime,
+            endTime: s.endTime
+          }))
+        });
+      } else if (onAdd) {
+        await onAdd({
+          name,
+          description,
+          schedules: schedules.map(s => ({
+            id: s.id,
+            routeId: '', // This will be set by the API
+            day: s.day as "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday",
+            startTime: s.startTime,
+            endTime: s.endTime
+          }))
+        });
+      } else {
+        throw new Error('No API function provided for route operation');
+      }
       
       toast({
         title: "Success",

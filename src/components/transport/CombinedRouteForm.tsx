@@ -10,17 +10,11 @@ import {
   FrontendRoute 
 } from "@/integration/supabase/types/transport-route";
 import { Trash2, Plus, ArrowUpDown, Route } from "lucide-react";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { useRoute } from "@/hooks/transport/useRoute";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/components/auth";
 
 interface CombinedRouteFormProps {
@@ -36,7 +30,7 @@ export function CombinedRouteForm({
   onSuccess, 
   editingCombinedRoute 
 }: CombinedRouteFormProps) {
-  const { routes } = useRoute();
+  const { routes, loading, error, fetchAllRoutes } = useRoute(false); // false to use real data from database
   const { user } = useAuth();
   
   const [name, setName] = useState("");
@@ -50,6 +44,13 @@ export function CombinedRouteForm({
   }>>([]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [routeFormOpen, setRouteFormOpen] = useState(false);
+  const [currentRouteIndex, setCurrentRouteIndex] = useState<number | null>(null);
+
+  // Fetch routes when component mounts
+  useEffect(() => {
+    fetchAllRoutes();
+  }, [fetchAllRoutes]);
 
   // Reset form when opened or when editing route changes
   useEffect(() => {
@@ -99,19 +100,44 @@ export function CombinedRouteForm({
       return;
     }
     
+    // Open the RouteForm dialog for selecting a route
+    setCurrentRouteIndex(null); // Indicates we're adding a new route
+    setRouteFormOpen(true);
+  };
+  
+  const handleEditRoute = (index: number) => {
+    setCurrentRouteIndex(index);
+    setRouteFormOpen(true);
+  };
+  
+  const handleRouteFormSuccess = (selectedRoute: FrontendRoute) => {
     const nextOrder = selectedRoutes.length > 0 
       ? Math.max(...selectedRoutes.map(r => r.order)) + 1 
       : 1;
     
-    setSelectedRoutes([
-      ...selectedRoutes, 
-      {
-        id: `temp-${Date.now()}`,
-        routeId: availableRoutes[0].id,
-        routeName: availableRoutes[0].name,
-        order: nextOrder
-      }
-    ]);
+    if (currentRouteIndex !== null) {
+      // Editing an existing route
+      const newRoutes = [...selectedRoutes];
+      newRoutes[currentRouteIndex] = {
+        ...newRoutes[currentRouteIndex],
+        routeId: selectedRoute.id,
+        routeName: selectedRoute.name
+      };
+      setSelectedRoutes(newRoutes);
+    } else {
+      // Adding a new route
+      setSelectedRoutes([
+        ...selectedRoutes, 
+        {
+          id: `temp-${Date.now()}`,
+          routeId: selectedRoute.id,
+          routeName: selectedRoute.name,
+          order: nextOrder
+        }
+      ]);
+    }
+    
+    setRouteFormOpen(false);
   };
 
   const handleRemoveRoute = (index: number) => {
@@ -216,157 +242,216 @@ export function CombinedRouteForm({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>
-            {editingCombinedRoute ? "Edit Combined Route" : "Create Combined Route"}
-          </SheetTitle>
-        </SheetHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6 pt-6">
-          <div className="space-y-2">
-            <Label htmlFor="name">Route Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Morning School Route"
-              disabled={isSubmitting}
-            />
-          </div>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {editingCombinedRoute ? "Edit Combined Route" : "Create Combined Route"}
+            </SheetTitle>
+          </SheetHeader>
           
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Combined route description"
-              disabled={isSubmitting}
-            />
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="status"
-              checked={status === "active"}
-              onCheckedChange={(checked) => setStatus(checked ? "active" : "inactive")}
-              disabled={isSubmitting}
-            />
-            <Label htmlFor="status">Active</Label>
-            <Badge variant={status === "active" ? "default" : "secondary"}>
-              {status === "active" ? "Active" : "Inactive"}
-            </Badge>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Routes</Label>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={handleAddRoute}
+          <form onSubmit={handleSubmit} className="space-y-6 pt-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">Route Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Morning School Route"
                 disabled={isSubmitting}
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add Route
-              </Button>
+              />
             </div>
             
-            {selectedRoutes.length === 0 && (
-              <div className="text-center p-4 border border-dashed rounded-md">
-                <Route className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No routes added yet. Click "Add Route" to start building your combined route.
-                </p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Combined route description"
+                disabled={isSubmitting}
+              />
+            </div>
             
-            {selectedRoutes.map((route, index) => (
-              <div key={route.id} className="space-y-2 p-4 border rounded-md">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Route {index + 1}</h4>
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleMoveUp(index)}
-                      disabled={isSubmitting || index === 0}
-                    >
-                      <ArrowUpDown className="h-4 w-4 rotate-90" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleMoveDown(index)}
-                      disabled={isSubmitting || index === selectedRoutes.length - 1}
-                    >
-                      <ArrowUpDown className="h-4 w-4 -rotate-90" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveRoute(index)}
-                      disabled={isSubmitting}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="status"
+                checked={status === "active"}
+                onCheckedChange={(checked) => setStatus(checked ? "active" : "inactive")}
+                disabled={isSubmitting}
+              />
+              <Label htmlFor="status">Active</Label>
+              <Badge variant={status === "active" ? "default" : "secondary"}>
+                {status === "active" ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Routes</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleAddRoute}
+                  disabled={isSubmitting}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Route
+                </Button>
+              </div>
+              
+              {selectedRoutes.length === 0 && (
+                <div className="text-center p-4 border border-dashed rounded-md">
+                  <Route className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No routes added yet. Click "Add Route" to start building your combined route.
+                  </p>
+                </div>
+              )}
+              
+              {selectedRoutes.map((route, index) => (
+                <div key={route.id} className="space-y-2 p-4 border rounded-md">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Route {index + 1}</h4>
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMoveUp(index)}
+                        disabled={isSubmitting || index === 0}
+                      >
+                        <ArrowUpDown className="h-4 w-4 rotate-90" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMoveDown(index)}
+                        disabled={isSubmitting || index === selectedRoutes.length - 1}
+                      >
+                        <ArrowUpDown className="h-4 w-4 -rotate-90" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveRoute(index)}
+                        disabled={isSubmitting}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Selected Route</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditRoute(index)}
+                        disabled={isSubmitting}
+                      >
+                        Change Route
+                      </Button>
+                    </div>
+                    <div className="p-3 border rounded-md bg-muted/20">
+                      <p className="font-medium">{route.routeName}</p>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`route-${index}`}>Select Route</Label>
-                  <Select
-                    value={route.routeId}
-                    onValueChange={(value) => handleRouteChange(index, value)}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger id={`route-${index}`}>
-                      <SelectValue placeholder="Select a route" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {routes.map((r) => (
-                        <SelectItem 
-                          key={r.id} 
-                          value={r.id}
-                          disabled={selectedRoutes.some(
-                            selected => selected.routeId === r.id && selected.id !== route.id
-                          )}
-                        >
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              ))}
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting 
+                  ? "Saving..." 
+                  : editingCombinedRoute 
+                    ? "Update Combined Route" 
+                    : "Create Combined Route"
+                }
+              </Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      {/* Route Selection Dialog */}
+      <Dialog open={routeFormOpen} onOpenChange={setRouteFormOpen}>
+        <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {currentRouteIndex !== null ? "Change Route" : "Select Route"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto">
+            {/* Route selection UI */}
+            <div className="space-y-4 p-2">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+                  <p className="mt-4 text-sm text-muted-foreground">Loading routes...</p>
                 </div>
-              </div>
-            ))}
+              ) : error ? (
+                <div className="p-4 border border-destructive/50 rounded-md bg-destructive/10">
+                  <p className="text-destructive">Error loading routes: {error}</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-2" 
+                    onClick={() => fetchAllRoutes()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : routes.length === 0 ? (
+                <div className="p-4 border rounded-md">
+                  <p className="text-muted-foreground">No routes available. Please create routes first.</p>
+                </div>
+              ) : routes.map((route) => {
+                const isSelected = selectedRoutes.some(r => r.routeId === route.id);
+                const isDisabled = isSelected && (currentRouteIndex === null || 
+                  selectedRoutes[currentRouteIndex]?.routeId !== route.id);
+                
+                return (
+                  <div 
+                    key={route.id}
+                    className={`p-4 border rounded-md cursor-pointer transition-colors ${isDisabled ? 'opacity-50 cursor-not-allowed' : 
+                      isSelected && currentRouteIndex !== null && selectedRoutes[currentRouteIndex]?.routeId === route.id ? 
+                      'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
+                    onClick={() => {
+                      if (!isDisabled) {
+                        handleRouteFormSuccess(route);
+                      }
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-medium text-lg">{route.name}</h3>
+                      {isSelected && (
+                        <Badge variant="outline" className="ml-2">
+                          {isDisabled ? "Already Selected" : "Current"}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{route.description}</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting 
-                ? "Saving..." 
-                : editingCombinedRoute 
-                  ? "Update Combined Route" 
-                  : "Create Combined Route"
-              }
-            </Button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -17,7 +17,7 @@ interface MaintenanceTypeListProps {
   maintenanceTypes: FrontendMaintenanceType[];
   onEdit: (maintenanceType: FrontendMaintenanceType) => void;
   onDelete: (id: string) => void;
-  onAdd: () => void;
+  onAdd: (maintenanceType: Omit<FrontendMaintenanceType, "id">) => void;
   onSelect: (maintenanceType: FrontendMaintenanceType) => void;
 }
 
@@ -50,7 +50,8 @@ export const MaintenanceTypeList: React.FC<MaintenanceTypeListProps> = ({
   };
 
   const handleAddSave = (maintenanceType: Omit<FrontendMaintenanceType, "id">) => {
-    onAdd();
+    // Pass the maintenance type data to the parent component
+    onAdd(maintenanceType);
     setIsAddOpen(false);
   };
 

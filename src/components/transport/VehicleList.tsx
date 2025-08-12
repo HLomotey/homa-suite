@@ -17,7 +17,7 @@ interface VehicleListProps {
   vehicles: FrontendVehicle[];
   onEdit: (vehicle: FrontendVehicle) => void;
   onDelete: (id: string) => void;
-  onAdd: () => void;
+  onAdd: (vehicle: Omit<FrontendVehicle, "id">) => void;
   onSelect: (vehicle: FrontendVehicle) => void;
 }
 
@@ -50,7 +50,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   };
 
   const handleAddSave = (vehicle: Omit<FrontendVehicle, "id">) => {
-    onAdd();
+    // Pass the vehicle data to the parent component
+    onAdd(vehicle);
     setIsAddOpen(false);
   };
 

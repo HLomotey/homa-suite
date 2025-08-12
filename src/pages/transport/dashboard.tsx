@@ -13,6 +13,7 @@ import { FrontendMaintenanceTransaction } from "@/integration/supabase/types/mai
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Car, CheckCircle2, Clock, MapPin } from "lucide-react";
+import { supabase } from "@/integration/supabase";
 
 export default function TransportDashboard() {
   // Initialize hooks
@@ -47,20 +48,53 @@ export default function TransportDashboard() {
   } = useMaintenanceTransaction();
 
   // Handle vehicle actions
-  const handleAddVehicle = async () => {
+  // Get the first available location for default vehicle creation
+  const [defaultLocationId, setDefaultLocationId] = React.useState<string>("");
+
+  // Fetch locations for default selection
+  React.useEffect(() => {
+    const fetchDefaultLocation = async () => {
+      try {
+        const { data } = await supabase
+          .from('company_locations')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (data) {
+          console.log('Found default location:', data.id);
+          setDefaultLocationId(data.id);
+        } else {
+          console.log('No default location found');
+        }
+      } catch (err) {
+        console.error('Error fetching default location:', err);
+      }
+    };
+    
+    fetchDefaultLocation();
+  }, []);
+
+  const handleAddVehicle = async (vehicleData: Omit<FrontendVehicle, "id">) => {
     try {
-      await addVehicle({
-        state: "",
-        address: "",
-        make: "",
-        model: "",
-        vin: "",
-        year: new Date().getFullYear(),
-        color: "",
-        licensePlate: "",
-        status: "Active",
-        purchaseDate: new Date().toISOString().split("T")[0]
-      });
+      // Check if we have a default location and the vehicle doesn't have one
+      if (!vehicleData.locationId && !defaultLocationId) {
+        toast({
+          title: "Error",
+          description: "No company location available. Please create a location first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use the form data but ensure locationId is set
+      const vehicleToAdd = {
+        ...vehicleData,
+        locationId: vehicleData.locationId || defaultLocationId
+      };
+      
+      console.log('Adding vehicle with data:', vehicleToAdd);
+      await addVehicle(vehicleToAdd);
       toast({
         title: "Success",
         description: "Vehicle added successfully",
@@ -114,15 +148,10 @@ export default function TransportDashboard() {
   };
 
   // Handle maintenance type actions
-  const handleAddMaintenanceType = async () => {
+  const handleAddMaintenanceType = async (maintenanceTypeData: Omit<FrontendMaintenanceType, "id">) => {
     try {
-      await addMaintenanceType({
-        name: "",
-        description: "",
-        category: "Routine",
-        estimatedCost: 0,
-        estimatedDuration: 1
-      });
+      console.log('Adding maintenance type with data:', maintenanceTypeData);
+      await addMaintenanceType(maintenanceTypeData);
       toast({
         title: "Success",
         description: "Maintenance type added successfully",

@@ -102,6 +102,10 @@ export const createMaintenanceTransaction = async (
 ): Promise<FrontendMaintenanceTransaction> => {
   // Convert frontend transaction to database format
   const dbTransaction = mapFrontendMaintenanceTransactionToDatabase(transaction as FrontendMaintenanceTransaction);
+  
+  // Debug logs to track data flow
+  console.log('Creating maintenance transaction with frontend data:', transaction);
+  console.log('Mapped to database format:', dbTransaction);
 
   const { data, error } = await supabase
     .from("maintenance_transactions")
@@ -147,12 +151,20 @@ export const updateMaintenanceTransaction = async (
   const fullTransaction = { ...transaction, id } as FrontendMaintenanceTransaction;
   const dbTransaction = mapFrontendMaintenanceTransactionToDatabase(fullTransaction);
 
-  // Remove id from the update payload
-  delete dbTransaction.id;
+  // Debug logs to track data flow
+  console.log('Updating maintenance transaction with ID:', id);
+  console.log('Frontend data for update:', transaction);
+  console.log('Full transaction after combining with ID:', fullTransaction);
+  console.log('Mapped to database format before ID removal:', dbTransaction);
+
+  // Create a new object without the id property to avoid TypeScript errors
+  const { id: _, ...finalDbTransaction } = { ...dbTransaction, id: undefined };
+  
+  console.log('Final database payload after ID removal:', finalDbTransaction);
 
   const { data, error } = await supabase
     .from("maintenance_transactions")
-    .update(dbTransaction)
+    .update(finalDbTransaction)
     .eq("id", id)
     .select()
     .single();
