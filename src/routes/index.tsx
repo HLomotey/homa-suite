@@ -12,6 +12,7 @@ import Users from "@/pages/Users";
 import ExcelUploads from "@/pages/ExcelUploads";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/layout";
+import { RouteGuard } from "@/components/permissions";
 
 import { HRRecruitment } from "@/components/hr/HRRecruitment";
 import { HRDiversity } from "@/components/hr/HRDiversity";
@@ -37,63 +38,123 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: (
+          <RouteGuard module="dashboard">
+            <Dashboard />
+          </RouteGuard>
+        ),
       },
       {
         path: "dashboard",
-        element: <Dashboard />,
+        element: (
+          <RouteGuard module="dashboard">
+            <Dashboard />
+          </RouteGuard>
+        ),
       },
       {
         path: "properties",
-        element: <Properties />,
+        element: (
+          <RouteGuard module="properties">
+            <Properties />
+          </RouteGuard>
+        ),
       },
       {
         path: "housing",
-        element: <Housing />,
+        element: (
+          <RouteGuard module="properties">
+            <Housing />
+          </RouteGuard>
+        ),
       },
       {
         path: "billing",
-        element: <Billing />,
+        element: (
+          <RouteGuard module="billing">
+            <Billing />
+          </RouteGuard>
+        ),
       },
       {
         path: "staff",
-        element: <Staff />,
+        element: (
+          <RouteGuard module="staff">
+            <Staff />
+          </RouteGuard>
+        ),
       },
       {
         path: "payroll",
-        element: <PayrollPage />,
+        element: (
+          <RouteGuard module="payroll">
+            <PayrollPage />
+          </RouteGuard>
+        ),
       },
       {
         path: "attendance",
-        element: <AttendancePage />,
+        element: (
+          <RouteGuard module="attendance">
+            <AttendancePage />
+          </RouteGuard>
+        ),
       },
       {
         path: "transport",
-        element: <Transport />,
+        element: (
+          <RouteGuard module="transport">
+            <Transport />
+          </RouteGuard>
+        ),
       },
       {
         path: "settings",
-        element: <Settings />,
+        element: (
+          <RouteGuard module="settings">
+            <Settings />
+          </RouteGuard>
+        ),
       },
       {
         path: "users",
-        element: <Users />,
+        element: (
+          <RouteGuard module="users">
+            <Users />
+          </RouteGuard>
+        ),
       },
       {
         path: "users/:userId",
-        element: <Users />,
+        element: (
+          <RouteGuard module="users">
+            <Users />
+          </RouteGuard>
+        ),
       },
       {
         path: "users/:userId/permissions",
-        element: <Users />,
+        element: (
+          <RouteGuard module="users" action="edit">
+            <Users />
+          </RouteGuard>
+        ),
       },
       {
         path: "excel-uploads",
-        element: <ExcelUploads />,
+        element: (
+          <RouteGuard module="uploads">
+            <ExcelUploads />
+          </RouteGuard>
+        ),
       },
       {
         path: "hr",
-        element: <HR />,
+        element: (
+          <RouteGuard module="hr">
+            <HR />
+          </RouteGuard>
+        ),
       },
       {
         path: "/hr/recruitment",
