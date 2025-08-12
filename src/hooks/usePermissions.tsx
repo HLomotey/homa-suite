@@ -6,12 +6,12 @@ import {
   hasAnyPermission, 
   hasAllPermissions, 
   canViewModule, 
-  canEditModule,
-  getRolePermissions,
-  mergePermissions
+  canEditModule
 } from '@/utils/permissions';
 import { FrontendUser } from '@/integration/supabase/types';
 import { useUser } from '@/hooks/user-profile';
+import { userPermissionsApi } from '@/integration/supabase/permissions-api';
+import { UserPermissionSummary } from '@/integration/supabase/permissions-types';
 
 interface PermissionsContextType {
   permissions: Permission[];
@@ -44,6 +44,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('guest');
+  const [permissionSummary, setPermissionSummary] = useState<UserPermissionSummary | null>(null);
   
   // Fetch user profile data including role and custom permissions
   const { user: userProfile, loading: userLoading } = useUser(authUser?.id || '');
@@ -52,6 +53,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
     if (!authUser) {
       setPermissions([]);
       setUserRole('guest');
+      setPermissionSummary(null);
       setLoading(false);
       return;
     }
@@ -59,28 +61,25 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
     try {
       setLoading(true);
       
-      if (userProfile) {
-        const role = userProfile.role || 'guest';
-        setUserRole(role);
-        
-        // Get base role permissions
-        const rolePermissions = getRolePermissions(role);
-        
-        // Merge with custom permissions if they exist
-        const customPermissions = userProfile.permissions || [];
-        const finalPermissions = mergePermissions(rolePermissions, customPermissions);
-        
-        setPermissions(finalPermissions);
+      // Fetch user permissions from database
+      const summary = await userPermissionsApi.getUserPermissions(authUser.id);
+      
+      if (summary) {
+        setPermissionSummary(summary);
+        setUserRole(summary.role?.name || 'guest');
+        setPermissions(summary.effective_permissions);
       } else {
-        // Default to guest permissions if no profile found
+        // Fallback if no permissions found
         setUserRole('guest');
-        setPermissions(getRolePermissions('guest'));
+        setPermissions([]);
+        setPermissionSummary(null);
       }
     } catch (error) {
       console.error('Error loading user permissions:', error);
-      // Fallback to guest permissions on error
+      // Fallback to empty permissions on error
       setUserRole('guest');
-      setPermissions(getRolePermissions('guest'));
+      setPermissions([]);
+      setPermissionSummary(null);
     } finally {
       setLoading(false);
     }
