@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import * as React from "react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Bed, Users, Edit, Eye, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
@@ -8,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import styles from "./PropertyCard.module.css";
 
 interface Property {
   id: string;
@@ -116,8 +118,7 @@ export const PropertyCard = ({ property, onEdit, onView }: PropertyCardProps) =>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${occupancyRate}%` }}
+              className={`${styles.progressBar} ${styles[`width-${Math.round(occupancyRate)}`]}`}
             />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">

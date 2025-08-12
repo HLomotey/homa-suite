@@ -152,6 +152,9 @@ export const TenantForm: React.FC<TenantFormProps> = ({
                 type="file"
                 accept="image/*"
                 className="hidden"
+                aria-label="Upload tenant photo"
+                title="Upload tenant photo"
+                placeholder="Upload tenant photo"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
