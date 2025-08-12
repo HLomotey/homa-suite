@@ -7,7 +7,8 @@ import { ADPTab } from "./ADPTab";
 import { ProfileTab } from "./ProfileTab";
 import { SecurityTab } from "./SecurityTab";
 import { NotificationsTab } from "./NotificationsTab";
-import { Cog, Database, UserCircle, Bell, Lock, Shield } from "lucide-react";
+import { LocationsTab } from "./LocationsTab";
+import { Cog, Database, UserCircle, Bell, Lock, Shield, MapPin } from "lucide-react";
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState("data-sources");
@@ -19,7 +20,7 @@ export function Settings() {
         <p className="text-white/60">Configure system settings and integrations</p>
       
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-black/40 border border-white/10 mb-6 grid grid-cols-5 h-auto">
+          <TabsList className="bg-black/40 border border-white/10 mb-6 grid grid-cols-6 h-auto">
             <TabsTrigger 
               value="data-sources" 
               className="flex items-center gap-2 py-3"
@@ -55,6 +56,13 @@ export function Settings() {
               <Bell className="h-4 w-4" />
               <span>Notifications</span>
             </TabsTrigger>
+            <TabsTrigger 
+              value="locations" 
+              className="flex items-center gap-2 py-3"
+            >
+              <MapPin className="h-4 w-4" />
+              <span>Locations</span>
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="data-sources">
@@ -75,6 +83,10 @@ export function Settings() {
           
           <TabsContent value="notifications">
             <NotificationsTab />
+          </TabsContent>
+          
+          <TabsContent value="locations">
+            <LocationsTab />
           </TabsContent>
         </Tabs>
       </div>

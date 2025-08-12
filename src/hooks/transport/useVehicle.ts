@@ -17,7 +17,7 @@ export const useVehicle = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Use mock data flag - set to false when ready to use real API
-  const useMockData = true;
+  const useMockData = false;
 
   // Fetch all vehicles
   const getVehicles = useCallback(async () => {

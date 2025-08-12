@@ -78,7 +78,7 @@ export function RouteManagement() {
     addRoute,
     editRoute,
     removeRoute
-  } = useRoute();
+  } = useRoute(false); // Set useMockData to false to use real API data
   
   const [routeFormOpen, setRouteFormOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<FrontendRoute | null>(null);
@@ -94,7 +94,7 @@ export function RouteManagement() {
     addCombinedRoute,
     editCombinedRoute,
     removeCombinedRoute
-  } = useCombinedRoute();
+  } = useCombinedRoute(false); // Set useMockData to false to use real API data
   
   const [combinedRouteFormOpen, setCombinedRouteFormOpen] = useState(false);
   const [editingCombinedRoute, setEditingCombinedRoute] = useState<FrontendCombinedRoute | null>(null);
@@ -113,7 +113,7 @@ export function RouteManagement() {
     removeAssignment,
     startRouteExecution,
     completeRouteExecution
-  } = useRouteAssignment();
+  } = useRouteAssignment(false); // Set useMockData to false to use real API data
   
   const [assignmentFormOpen, setAssignmentFormOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<FrontendRouteAssignment | null>(null);
@@ -442,8 +442,8 @@ export function RouteManagement() {
                         </CardDescription>
                       </div>
                       <Badge variant={
-                        assignment.status === 'completed' ? 'success' :
-                        assignment.status === 'in_progress' ? 'warning' :
+                        assignment.status === 'completed' ? 'default' :
+                        assignment.status === 'in_progress' ? 'secondary' :
                         assignment.status === 'cancelled' ? 'destructive' :
                         'outline'
                       }>
@@ -478,9 +478,9 @@ export function RouteManagement() {
                                 <div className="flex justify-between items-center">
                                   <div className="font-medium">{log.executionDate}</div>
                                   <Badge variant={
-                                    log.status === 'completed' ? 'success' :
-                                    log.status === 'started' ? 'warning' :
-                                    log.status === 'delayed' ? 'warning' :
+                                    log.status === 'completed' ? 'default' :
+                                    log.status === 'started' ? 'secondary' :
+                                    log.status === 'delayed' ? 'secondary' :
                                     log.status === 'cancelled' ? 'destructive' :
                                     'outline'
                                   }>
@@ -558,6 +558,8 @@ export function RouteManagement() {
         onOpenChange={setRouteFormOpen}
         onSuccess={fetchAllRoutes}
         editingRoute={editingRoute}
+        onAdd={addRoute}
+        onEdit={editRoute}
       />
       
       <CombinedRouteForm 

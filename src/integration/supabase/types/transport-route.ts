@@ -101,8 +101,10 @@ export interface FrontendCombinedRouteDetail {
 
 export interface FrontendRouteAssignment {
   id: string;
-  combinedRouteId: string;
-  combinedRouteName: string;
+  combinedRouteId?: string;
+  combinedRouteName?: string;
+  routeId?: string;
+  routeName?: string;
   vehicleId: string;
   vehicleInfo?: string; // e.g., "Toyota Hiace (ABC123)"
   driverId: string;

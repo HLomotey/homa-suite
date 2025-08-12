@@ -136,7 +136,7 @@ export const Sidebar = () => {
           <div className="flex h-16 items-center border-b border-border px-6">
             <Building2 className="h-8 w-8 text-primary" />
             <div className="ml-3">
-              <h1 className="text-lg font-semibold text-foreground">BoH EPR</h1>
+              <h1 className="text-lg font-semibold text-foreground">BoH ERP</h1>
               <p className="text-xs text-muted-foreground">BOH Concepts ERP</p>
             </div>
           </div>
