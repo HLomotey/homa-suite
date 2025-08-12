@@ -126,6 +126,8 @@ export const PropertiesList = ({
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter properties by status"
+            title="Filter properties by status"
           >
             <option value="all">All Status</option>
             <option value="available">Available</option>

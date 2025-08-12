@@ -93,7 +93,7 @@ interface UseRouteReturn {
   migrateToDatabase: () => Promise<void>;
 }
 
-export function useRoute(useMockData = true): UseRouteReturn {
+export function useRoute(useMockData = false): UseRouteReturn {
   const [routes, setRoutes] = useState<FrontendRoute[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<FrontendRoute | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

@@ -1,5 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Bed, Users, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, Home, Users } from "lucide-react";
+import styles from "./PropertyStats.module.css";
 
 interface StatsData {
   totalProperties: number;
@@ -73,8 +74,7 @@ export const PropertyStats = ({ stats }: PropertyStatsProps) => {
           </div>
           <div className="mt-1 w-full bg-muted rounded-full h-1">
             <div 
-              className="bg-primary h-1 rounded-full transition-all duration-300"
-              style={{ width: `${stats.occupancyRate}%` }}
+              className={`${styles.progressBar} ${styles[`width-${Math.round(stats.occupancyRate)}`]}`}
             />
           </div>
         </CardContent>

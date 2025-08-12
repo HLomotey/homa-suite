@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/components/auth";
+import { supabase } from "@/integration/supabase/client"; // Import Supabase client
 
 interface CombinedRouteFormProps {
   open: boolean;
@@ -189,6 +190,88 @@ export function CombinedRouteForm({
     setSelectedRoutes(newRoutes);
   };
 
+  // CRUD helper functions
+  async function createCombinedRoute(data: {
+    name: string;
+    description: string;
+    status: "active" | "inactive";
+    routes: Array<{ routeId: string; order: number }>;
+  }) {
+    // Check if user is authenticated
+    if (!user || !user.id) {
+      throw new Error("User not authenticated");
+    }
+    
+    // Insert combined route
+    const { data: combinedRoute, error } = await supabase
+      .from("combined_routes")
+      .insert([
+        {
+          name: data.name,
+          description: data.description,
+          status: data.status,
+          created_by: user.id
+        },
+      ])
+      .select("*")
+      .single();
+
+    if (error || !combinedRoute) throw error || new Error("Failed to create combined route");
+
+    // Insert combined route details
+    const detailsToInsert = data.routes.map((r) => ({
+      combined_route_id: combinedRoute.id,
+      route_id: r.routeId,
+      order: r.order,
+    }));
+
+    const { error: detailsError } = await supabase
+      .from("combined_route_details")
+      .insert(detailsToInsert);
+
+    if (detailsError) throw detailsError;
+
+    return combinedRoute;
+  }
+
+  async function updateCombinedRoute(id: string, data: {
+    name: string;
+    description: string;
+    status: "active" | "inactive";
+    routes: Array<{ routeId: string; order: number }>;
+  }) {
+    // Update combined route
+    const { error } = await supabase
+      .from("combined_routes")
+      .update({
+        name: data.name,
+        description: data.description,
+        status: data.status,
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    // Remove existing details
+    await supabase
+      .from("combined_route_details")
+      .delete()
+      .eq("combined_route_id", id);
+
+    // Insert new details
+    const detailsToInsert = data.routes.map((r) => ({
+      combined_route_id: id,
+      route_id: r.routeId,
+      order: r.order,
+    }));
+
+    const { error: detailsError } = await supabase
+      .from("combined_route_details")
+      .insert(detailsToInsert);
+
+    if (detailsError) throw detailsError;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -214,26 +297,45 @@ export function CombinedRouteForm({
     setIsSubmitting(true);
 
     try {
-      // In a real implementation, this would call the API
-      // For now, we just simulate success
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      if (editingCombinedRoute) {
+        await updateCombinedRoute(editingCombinedRoute.id, {
+          name,
+          description,
+          status,
+          routes: selectedRoutes.map(r => ({
+            routeId: r.routeId,
+            order: r.order,
+          })),
+        });
+      } else {
+        await createCombinedRoute({
+          name,
+          description,
+          status,
+          routes: selectedRoutes.map(r => ({
+            routeId: r.routeId,
+            order: r.order,
+          })),
+        });
+      }
+
       toast({
         title: "Success",
         description: editingCombinedRoute 
           ? "Combined route updated successfully" 
           : "Combined route created successfully",
       });
-      
+
       onOpenChange(false);
       onSuccess();
-    } catch (error) {
-      console.error("Error submitting combined route:", error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Error submitting combined route:", errorMessage);
       toast({
         title: "Error",
         description: editingCombinedRoute 
-          ? "Failed to update combined route" 
-          : "Failed to create combined route",
+          ? `Failed to update combined route: ${errorMessage}`
+          : `Failed to create combined route: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -390,7 +492,13 @@ export function CombinedRouteForm({
 
       {/* Route Selection Dialog */}
       <Dialog open={routeFormOpen} onOpenChange={setRouteFormOpen}>
-        <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl">
+        <DialogContent 
+          className="sm:max-w-md md:max-w-lg lg:max-w-2xl"
+          aria-describedby="route-dialog-description"
+        >
+          <span id="route-dialog-description" className="sr-only">
+            Select a route to add to the combined route.
+          </span>
           <DialogHeader>
             <DialogTitle>
               {currentRouteIndex !== null ? "Change Route" : "Select Route"}

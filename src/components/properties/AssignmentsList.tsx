@@ -212,6 +212,8 @@ export const AssignmentsList = () => {
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
+            title="Filter by status"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -222,6 +224,8 @@ export const AssignmentsList = () => {
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={propertyFilter}
             onChange={(e) => setPropertyFilter(e.target.value)}
+            aria-label="Filter by property"
+            title="Filter by property"
           >
             <option value="all">All Properties</option>
             {uniqueProperties.map(property => (

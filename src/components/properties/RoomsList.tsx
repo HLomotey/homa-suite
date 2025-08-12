@@ -186,6 +186,8 @@ export const RoomsList = () => {
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter rooms by status"
+            title="Filter rooms by status"
           >
             <option value="all">All Status</option>
             <option value="available">Available</option>
@@ -196,6 +198,8 @@ export const RoomsList = () => {
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={propertyFilter}
             onChange={(e) => setPropertyFilter(e.target.value)}
+            aria-label="Filter rooms by property"
+            title="Filter rooms by property"
           >
             <option value="all">All Properties</option>
             {uniqueProperties.map(property => (
@@ -277,7 +281,7 @@ export const RoomsList = () => {
             room={editingRoom}
             onSave={handleSaveRoom}
             onCancel={() => setIsFormOpen(false)}
-            properties={properties ? properties.map(p => ({ id: p.id, title: p.title })) : []}
+            properties={properties ? properties.map(p => ({ id: p.id, title: p.title, address: p.address || '' })) : []}
           />
         </SheetContent>
       </Sheet>

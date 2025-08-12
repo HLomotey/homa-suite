@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { 
   FrontendRouteAssignment, 
-  FrontendCombinedRoute 
+  FrontendCombinedRoute,
+  FrontendRoute
 } from "@/integration/supabase/types/transport-route";
 import { Calendar, Car, User } from "lucide-react";
 import { 
@@ -19,23 +20,29 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { useCombinedRoute } from "@/hooks/transport/useCombinedRoute";
+import { useRoute } from "@/hooks/transport/useRoute";
+import { useRouteAssignment } from "@/hooks/transport/useRouteAssignment";
+import { useVehicle } from "@/hooks/transport/useVehicle";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// Mock data for vehicles and drivers
-const mockVehicles = [
-  { id: "1", info: "Toyota Hiace (ABC123)" },
-  { id: "2", info: "Ford Transit (DEF456)" },
-  { id: "3", info: "Mercedes Sprinter (GHI789)" },
-];
-
+// Mock data for drivers (keeping for now)
 const mockDrivers = [
   { id: "driver-1", name: "John Driver" },
   { id: "driver-2", name: "Jane Driver" },
   { id: "driver-3", name: "Sam Driver" },
 ];
+
+// Type for route selection
+type RouteType = "regular" | "combined";
+
+interface RouteOption {
+  id: string;
+  name: string;
+  type: RouteType;
+}
 
 interface RouteAssignmentFormProps {
   open: boolean;
@@ -50,9 +57,18 @@ export function RouteAssignmentForm({
   onSuccess, 
   editingAssignment 
 }: RouteAssignmentFormProps) {
-  const { combinedRoutes } = useCombinedRoute();
+  // Load both regular routes and combined routes
+  const { combinedRoutes, loading: loadingCombinedRoutes } = useCombinedRoute(false); // false to use real data
+  const { routes, loading: loadingRoutes } = useRoute(false); // false to use real data
+  const { addAssignment, editAssignment } = useRouteAssignment(false); // false to use real data
+  const { vehicles, loading: loadingVehicles, getVehicles } = useVehicle();
   
-  const [combinedRouteId, setCombinedRouteId] = useState("");
+  // State for route selection
+  const [routeType, setRouteType] = useState<RouteType>("combined");
+  const [routeId, setRouteId] = useState("");
+  const [routeOptions, setRouteOptions] = useState<RouteOption[]>([]);
+  
+  // Other form state
   const [vehicleId, setVehicleId] = useState("");
   const [driverId, setDriverId] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
@@ -60,35 +76,93 @@ export function RouteAssignmentForm({
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch vehicles when component mounts
+  useEffect(() => {
+    if (open) {
+      getVehicles();
+    }
+  }, [open, getVehicles]);
+
+  // Combine routes into options when routes or combined routes change
+  useEffect(() => {
+    const options: RouteOption[] = [];
+    
+    // Add regular routes
+    if (routes && routes.length > 0) {
+      routes.forEach(route => {
+        options.push({
+          id: route.id,
+          name: route.name,
+          type: "regular"
+        });
+      });
+    }
+    
+    // Add combined routes
+    if (combinedRoutes && combinedRoutes.length > 0) {
+      combinedRoutes.forEach(combinedRoute => {
+        options.push({
+          id: combinedRoute.id,
+          name: combinedRoute.name,
+          type: "combined"
+        });
+      });
+    }
+    
+    setRouteOptions(options);
+    
+    // Set default route if available
+    if (options.length > 0 && !routeId) {
+      setRouteId(options[0].id);
+      setRouteType(options[0].type);
+    }
+  }, [routes, combinedRoutes, routeId]);
+  
   // Reset form when opened or when editing assignment changes
   useEffect(() => {
     if (open) {
       if (editingAssignment) {
-        setCombinedRouteId(editingAssignment.combinedRouteId);
+        // For editing, we need to determine if it's a regular or combined route
+        if (editingAssignment.combinedRouteId) {
+          setRouteType("combined");
+          setRouteId(editingAssignment.combinedRouteId);
+        } else if (editingAssignment.routeId) {
+          setRouteType("regular");
+          setRouteId(editingAssignment.routeId);
+        }
+        
         setVehicleId(editingAssignment.vehicleId);
         setDriverId(editingAssignment.driverId);
         setStartDate(editingAssignment.startDate ? new Date(editingAssignment.startDate) : new Date());
         setEndDate(editingAssignment.endDate ? new Date(editingAssignment.endDate) : undefined);
         setNotes(editingAssignment.notes || "");
       } else {
-        setCombinedRouteId(combinedRoutes.length > 0 ? combinedRoutes[0].id : "");
-        setVehicleId(mockVehicles.length > 0 ? mockVehicles[0].id : "");
+        // For new assignments, use the first available route option
+        if (routeOptions.length > 0) {
+          setRouteId(routeOptions[0].id);
+          setRouteType(routeOptions[0].type);
+        } else {
+          setRouteId("");
+          setRouteType("combined");
+        }
+        
+        setVehicleId(vehicles.length > 0 ? vehicles[0].id : "");
         setDriverId(mockDrivers.length > 0 ? mockDrivers[0].id : "");
         setStartDate(new Date());
         setEndDate(undefined);
         setNotes("");
       }
     }
-  }, [open, editingAssignment, combinedRoutes]);
+  }, [open, editingAssignment, routeOptions, vehicles]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (!combinedRouteId) {
+    if (!routeId) {
       toast({
         title: "Validation Error",
-        description: "Please select a combined route",
+        description: "Please select a route",
         variant: "destructive",
       });
       return;
@@ -124,9 +198,33 @@ export function RouteAssignmentForm({
     setIsSubmitting(true);
 
     try {
-      // In a real implementation, this would call the API
-      // For now, we just simulate success
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Prepare assignment data based on route type
+      const assignmentData: Omit<FrontendRouteAssignment, 'id' | 'executionLogs'> = {
+        vehicleId,
+        driverId,
+        startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+        status: 'scheduled' as const,
+        notes: notes || '',
+      };
+      
+      // Add the appropriate route ID and name based on type
+      if (routeType === 'combined') {
+        const selectedRoute = combinedRoutes.find(r => r.id === routeId);
+        assignmentData.combinedRouteId = routeId;
+        assignmentData.combinedRouteName = selectedRoute?.name || '';
+      } else {
+        const selectedRoute = routes.find(r => r.id === routeId);
+        assignmentData.routeId = routeId;
+        assignmentData.routeName = selectedRoute?.name || '';
+      }
+      
+      // Save to database
+      if (editingAssignment) {
+        await editAssignment(editingAssignment.id, assignmentData);
+      } else {
+        await addAssignment(assignmentData);
+      }
       
       toast({
         title: "Success",
@@ -153,30 +251,47 @@ export function RouteAssignmentForm({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-md md:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
-            {editingAssignment ? "Edit Route Assignment" : "Assign Route"}
+            {editingAssignment ? "Edit Route Assignment" : "New Route Assignment"}
           </SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6 pt-6">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="combinedRoute">Combined Route</Label>
-            <Select
-              value={combinedRouteId}
-              onValueChange={setCombinedRouteId}
-              disabled={isSubmitting}
+            <Label htmlFor="routeType">Route Type</Label>
+            <Select 
+              value={routeType} 
+              onValueChange={(value: RouteType) => setRouteType(value)}
             >
-              <SelectTrigger id="combinedRoute">
-                <SelectValue placeholder="Select a combined route" />
+              <SelectTrigger id="routeType" aria-label="Route Type">
+                <SelectValue placeholder="Select route type" />
               </SelectTrigger>
               <SelectContent>
-                {combinedRoutes.map((route) => (
-                  <SelectItem key={route.id} value={route.id}>
-                    {route.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="regular">Regular Route</SelectItem>
+                <SelectItem value="combined">Combined Route</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="routeId">Route</Label>
+            <Select 
+              value={routeId} 
+              onValueChange={setRouteId}
+            >
+              <SelectTrigger id="routeId" aria-label="Route Selection">
+                <SelectValue placeholder="Select a route" />
+              </SelectTrigger>
+              <SelectContent>
+                {routeOptions
+                  .filter(route => route.type === routeType)
+                  .map((route) => (
+                    <SelectItem key={route.id} value={route.id}>
+                      {route.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -188,16 +303,26 @@ export function RouteAssignmentForm({
               onValueChange={setVehicleId}
               disabled={isSubmitting}
             >
-              <SelectTrigger id="vehicle" className="flex items-center">
-                <Car className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Select a vehicle" />
+              <SelectTrigger id="vehicle" disabled={loadingVehicles} aria-label="Vehicle Selection">
+                <SelectValue placeholder={loadingVehicles ? "Loading vehicles..." : "Select a vehicle"} />
               </SelectTrigger>
               <SelectContent>
-                {mockVehicles.map((vehicle) => (
-                  <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.info}
-                  </SelectItem>
-                ))}
+                {loadingVehicles ? (
+                  <div className="flex items-center justify-center p-2" role="status" aria-live="polite">
+                    <div className="animate-spin mr-2">
+                      <Car size={16} />
+                    </div>
+                    Loading vehicles...
+                  </div>
+                ) : vehicles.length === 0 ? (
+                  <div className="p-2 text-center text-muted-foreground" role="status">No vehicles available</div>
+                ) : (
+                  vehicles.map((vehicle) => (
+                    <SelectItem key={vehicle.id} value={vehicle.id}>
+                      {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -209,7 +334,7 @@ export function RouteAssignmentForm({
               onValueChange={setDriverId}
               disabled={isSubmitting}
             >
-              <SelectTrigger id="driver" className="flex items-center">
+              <SelectTrigger id="driver" className="flex items-center" aria-label="Driver Selection">
                 <User className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Select a driver" />
               </SelectTrigger>
@@ -236,6 +361,8 @@ export function RouteAssignmentForm({
                       !startDate && "text-muted-foreground"
                     )}
                     disabled={isSubmitting}
+                    aria-label="Select start date"
+                    aria-haspopup="dialog"
                   >
                     <Calendar className="mr-2 h-4 w-4" />
                     {startDate ? format(startDate, "PPP") : "Select date"}
@@ -264,6 +391,8 @@ export function RouteAssignmentForm({
                       !endDate && "text-muted-foreground"
                     )}
                     disabled={isSubmitting}
+                    aria-label="Select end date"
+                    aria-haspopup="dialog"
                   >
                     <Calendar className="mr-2 h-4 w-4" />
                     {endDate ? format(endDate, "PPP") : "Select date"}
@@ -292,7 +421,10 @@ export function RouteAssignmentForm({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any special instructions or notes"
               disabled={isSubmitting}
+              aria-label="Assignment notes"
+              aria-describedby="notes-description"
             />
+            <div id="notes-description" className="sr-only">Enter any special instructions or notes for this route assignment</div>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">

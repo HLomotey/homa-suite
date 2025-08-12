@@ -290,6 +290,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                 type="file"
                 accept="image/*"
                 className="hidden"
+                aria-label="Upload property image"
+                title="Upload property image"
+                placeholder="Upload property image"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
