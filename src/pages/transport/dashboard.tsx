@@ -287,7 +287,7 @@ export default function TransportDashboard() {
   const completedMaintenance = transactions.filter(t => t.status === "Completed").length;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="h-full w-full p-4 space-y-4">
       <h1 className="text-3xl font-bold">Transport Management</h1>
       
       {/* Dashboard Stats */}
