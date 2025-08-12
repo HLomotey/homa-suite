@@ -329,21 +329,7 @@ export function UserDetail() {
             <TabsContent value="profile">
               <form id="userForm" onSubmit={handleSubmit}>
                 <div className="space-y-6">
-                  {/* Avatar Section */}
-                  <div className="flex flex-col items-center justify-center p-6 border border-dashed border-white/10 rounded-lg bg-black/20">
-                    <Avatar className="h-24 w-24 mb-4">
-                      <AvatarImage src={user.avatar} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                        {getUserInitials(user.name || "New User")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button variant="outline" className="border-white/10">
-                      <Upload className="h-4 w-4 mr-2" /> Upload Photo
-                    </Button>
-                    <p className="text-xs text-white/40 mt-2">
-                      Recommended: Square image, at least 300x300px
-                    </p>
-                  </div>
+
                   
                   {/* Basic Information */}
                   <div className="space-y-4">
@@ -470,47 +456,189 @@ export function UserDetail() {
                     <Switch id="custom-permissions" />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
                     <Card className="bg-black/20 border-white/5">
                       <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">User Management</CardTitle>
+                        <CardTitle className="text-sm text-white">Dashboard</CardTitle>
                       </CardHeader>
                       <CardContent className="py-2 space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-users-view" className="text-white/80 text-sm">View Users</Label>
-                          <Switch id="perm-users-view" checked disabled />
+                          <Label htmlFor="perm-dashboard-view" className="text-white/80 text-sm">View Dashboard</Label>
+                          <Switch 
+                            id="perm-dashboard-view" 
+                            checked={user.permissions?.includes('dashboard:view')}
+                            onCheckedChange={() => togglePermission('dashboard:view')}
+                            disabled 
+                          />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-users-create" className="text-white/80 text-sm">Create Users</Label>
-                          <Switch id="perm-users-create" disabled />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-users-edit" className="text-white/80 text-sm">Edit Users</Label>
-                          <Switch id="perm-users-edit" disabled />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-users-delete" className="text-white/80 text-sm">Delete Users</Label>
-                          <Switch id="perm-users-delete" disabled />
+                          <Label htmlFor="perm-dashboard-edit" className="text-white/80 text-sm">Edit Dashboard</Label>
+                          <Switch 
+                            id="perm-dashboard-edit" 
+                            checked={user.permissions?.includes('dashboard:edit')}
+                            onCheckedChange={() => togglePermission('dashboard:edit')}
+                            disabled 
+                          />
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card className="bg-black/20 border-white/5">
                       <CardHeader className="py-3">
-                        <CardTitle className="text-sm text-white">Settings</CardTitle>
+                        <CardTitle className="text-sm text-white">Properties</CardTitle>
                       </CardHeader>
                       <CardContent className="py-2 space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-settings-view" className="text-white/80 text-sm">View Settings</Label>
-                          <Switch id="perm-settings-view" checked disabled />
+                          <Label htmlFor="perm-properties-view" className="text-white/80 text-sm">View Properties</Label>
+                          <Switch 
+                            id="perm-properties-view" 
+                            checked={user.permissions?.includes('properties:view')}
+                            onCheckedChange={() => togglePermission('properties:view')}
+                            disabled 
+                          />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label htmlFor="perm-settings-edit" className="text-white/80 text-sm">Edit Settings</Label>
-                          <Switch id="perm-settings-edit" disabled />
+                          <Label htmlFor="perm-properties-edit" className="text-white/80 text-sm">Edit Properties</Label>
+                          <Switch 
+                            id="perm-properties-edit" 
+                            checked={user.permissions?.includes('properties:edit')}
+                            onCheckedChange={() => togglePermission('properties:edit')}
+                            disabled 
+                          />
                         </div>
                       </CardContent>
                     </Card>
-                    
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Transport</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-transport-view" className="text-white/80 text-sm">View Transport</Label>
+                          <Switch 
+                            id="perm-transport-view" 
+                            checked={user.permissions?.includes('transport:view')}
+                            onCheckedChange={() => togglePermission('transport:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-transport-edit" className="text-white/80 text-sm">Edit Transport</Label>
+                          <Switch 
+                            id="perm-transport-edit" 
+                            checked={user.permissions?.includes('transport:edit')}
+                            onCheckedChange={() => togglePermission('transport:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">HR</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-hr-view" className="text-white/80 text-sm">View HR</Label>
+                          <Switch 
+                            id="perm-hr-view" 
+                            checked={user.permissions?.includes('hr:view')}
+                            onCheckedChange={() => togglePermission('hr:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-hr-edit" className="text-white/80 text-sm">Edit HR</Label>
+                          <Switch 
+                            id="perm-hr-edit" 
+                            checked={user.permissions?.includes('hr:edit')}
+                            onCheckedChange={() => togglePermission('hr:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Finance</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-finance-view" className="text-white/80 text-sm">View Finance</Label>
+                          <Switch 
+                            id="perm-finance-view" 
+                            checked={user.permissions?.includes('finance:view')}
+                            onCheckedChange={() => togglePermission('finance:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-finance-edit" className="text-white/80 text-sm">Edit Finance</Label>
+                          <Switch 
+                            id="perm-finance-edit" 
+                            checked={user.permissions?.includes('finance:edit')}
+                            onCheckedChange={() => togglePermission('finance:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Operations</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-operations-view" className="text-white/80 text-sm">View Operations</Label>
+                          <Switch 
+                            id="perm-operations-view" 
+                            checked={user.permissions?.includes('operations:view')}
+                            onCheckedChange={() => togglePermission('operations:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-operations-edit" className="text-white/80 text-sm">Edit Operations</Label>
+                          <Switch 
+                            id="perm-operations-edit" 
+                            checked={user.permissions?.includes('operations:edit')}
+                            onCheckedChange={() => togglePermission('operations:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Staff</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-staff-view" className="text-white/80 text-sm">View Staff</Label>
+                          <Switch 
+                            id="perm-staff-view" 
+                            checked={user.permissions?.includes('staff:view')}
+                            onCheckedChange={() => togglePermission('staff:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-staff-edit" className="text-white/80 text-sm">Edit Staff</Label>
+                          <Switch 
+                            id="perm-staff-edit" 
+                            checked={user.permissions?.includes('staff:edit')}
+                            onCheckedChange={() => togglePermission('staff:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <Card className="bg-black/20 border-white/5">
                       <CardHeader className="py-3">
                         <CardTitle className="text-sm text-white">Billing</CardTitle>
@@ -518,11 +646,151 @@ export function UserDetail() {
                       <CardContent className="py-2 space-y-2">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="perm-billing-view" className="text-white/80 text-sm">View Billing</Label>
-                          <Switch id="perm-billing-view" disabled />
+                          <Switch 
+                            id="perm-billing-view" 
+                            checked={user.permissions?.includes('billing:view')}
+                            onCheckedChange={() => togglePermission('billing:view')}
+                            disabled 
+                          />
                         </div>
                         <div className="flex items-center justify-between">
                           <Label htmlFor="perm-billing-edit" className="text-white/80 text-sm">Edit Billing</Label>
-                          <Switch id="perm-billing-edit" disabled />
+                          <Switch 
+                            id="perm-billing-edit" 
+                            checked={user.permissions?.includes('billing:edit')}
+                            onCheckedChange={() => togglePermission('billing:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">User Management</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-users-view" className="text-white/80 text-sm">View Users</Label>
+                          <Switch 
+                            id="perm-users-view" 
+                            checked={user.permissions?.includes('users:view')}
+                            onCheckedChange={() => togglePermission('users:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-users-edit" className="text-white/80 text-sm">Edit Users</Label>
+                          <Switch 
+                            id="perm-users-edit" 
+                            checked={user.permissions?.includes('users:edit')}
+                            onCheckedChange={() => togglePermission('users:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Excel Uploads</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-uploads-view" className="text-white/80 text-sm">View Uploads</Label>
+                          <Switch 
+                            id="perm-uploads-view" 
+                            checked={user.permissions?.includes('uploads:view')}
+                            onCheckedChange={() => togglePermission('uploads:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-uploads-create" className="text-white/80 text-sm">Create Uploads</Label>
+                          <Switch 
+                            id="perm-uploads-create" 
+                            checked={user.permissions?.includes('uploads:create')}
+                            onCheckedChange={() => togglePermission('uploads:create')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Attendance</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-attendance-view" className="text-white/80 text-sm">View Attendance</Label>
+                          <Switch 
+                            id="perm-attendance-view" 
+                            checked={user.permissions?.includes('attendance:view')}
+                            onCheckedChange={() => togglePermission('attendance:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-attendance-edit" className="text-white/80 text-sm">Edit Attendance</Label>
+                          <Switch 
+                            id="perm-attendance-edit" 
+                            checked={user.permissions?.includes('attendance:edit')}
+                            onCheckedChange={() => togglePermission('attendance:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Payroll</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-payroll-view" className="text-white/80 text-sm">View Payroll</Label>
+                          <Switch 
+                            id="perm-payroll-view" 
+                            checked={user.permissions?.includes('payroll:view')}
+                            onCheckedChange={() => togglePermission('payroll:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-payroll-edit" className="text-white/80 text-sm">Edit Payroll</Label>
+                          <Switch 
+                            id="perm-payroll-edit" 
+                            checked={user.permissions?.includes('payroll:edit')}
+                            onCheckedChange={() => togglePermission('payroll:edit')}
+                            disabled 
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/20 border-white/5">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm text-white">Settings</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-settings-view" className="text-white/80 text-sm">View Settings</Label>
+                          <Switch 
+                            id="perm-settings-view" 
+                            checked={user.permissions?.includes('settings:view')}
+                            onCheckedChange={() => togglePermission('settings:view')}
+                            disabled 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="perm-settings-edit" className="text-white/80 text-sm">Edit Settings</Label>
+                          <Switch 
+                            id="perm-settings-edit" 
+                            checked={user.permissions?.includes('settings:edit')}
+                            onCheckedChange={() => togglePermission('settings:edit')}
+                            disabled 
+                          />
                         </div>
                       </CardContent>
                     </Card>
@@ -575,7 +843,7 @@ export function UserDetail() {
             <Button 
               type="submit"
               form="userForm"
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
