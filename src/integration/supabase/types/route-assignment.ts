@@ -20,7 +20,8 @@ export type ExecutionStatus = 'started' | 'completed' | 'delayed' | 'cancelled';
  */
 export interface RouteAssignment {
   id: string;
-  combined_route_id: string;
+  route_id: string | null;
+  combined_route_id: string | null;
   vehicle_id: string;
   driver_id: string;
   start_date: string;
@@ -52,7 +53,9 @@ export interface RouteExecutionLog {
  */
 export interface FrontendRouteAssignment {
   id: string;
-  combinedRouteId: string;
+  routeId?: string;
+  routeName?: string;
+  combinedRouteId?: string;
   combinedRouteName?: string;
   vehicleId: string;
   vehicleInfo?: string;
@@ -91,7 +94,8 @@ export interface FrontendRouteExecutionLog {
 export function mapDatabaseRouteAssignmentToFrontend(dbAssignment: RouteAssignment): FrontendRouteAssignment {
   return {
     id: dbAssignment.id,
-    combinedRouteId: dbAssignment.combined_route_id,
+    routeId: dbAssignment.route_id || undefined,
+    combinedRouteId: dbAssignment.combined_route_id || undefined,
     vehicleId: dbAssignment.vehicle_id,
     driverId: dbAssignment.driver_id,
     startDate: dbAssignment.start_date,
@@ -107,7 +111,8 @@ export function mapDatabaseRouteAssignmentToFrontend(dbAssignment: RouteAssignme
 export function mapFrontendRouteAssignmentToDatabase(frontendAssignment: FrontendRouteAssignment): RouteAssignment {
   return {
     id: frontendAssignment.id,
-    combined_route_id: frontendAssignment.combinedRouteId,
+    route_id: frontendAssignment.routeId || null,
+    combined_route_id: frontendAssignment.combinedRouteId || null,
     vehicle_id: frontendAssignment.vehicleId,
     driver_id: frontendAssignment.driverId,
     start_date: frontendAssignment.startDate,

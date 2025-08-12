@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,17 +23,11 @@ import { useCombinedRoute } from "@/hooks/transport/useCombinedRoute";
 import { useRoute } from "@/hooks/transport/useRoute";
 import { useRouteAssignment } from "@/hooks/transport/useRouteAssignment";
 import { useVehicle } from "@/hooks/transport/useVehicle";
+import { useDrivers } from "@/hooks/billing/useStaff";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-// Mock data for drivers (keeping for now)
-const mockDrivers = [
-  { id: "driver-1", name: "John Driver" },
-  { id: "driver-2", name: "Jane Driver" },
-  { id: "driver-3", name: "Sam Driver" },
-];
 
 // Type for route selection
 type RouteType = "regular" | "combined";
@@ -62,6 +56,7 @@ export function RouteAssignmentForm({
   const { routes, loading: loadingRoutes } = useRoute(false); // false to use real data
   const { addAssignment, editAssignment } = useRouteAssignment(false); // false to use real data
   const { vehicles, loading: loadingVehicles, getVehicles } = useVehicle();
+  const { drivers, loading: loadingDrivers } = useDrivers();
   
   // State for route selection
   const [routeType, setRouteType] = useState<RouteType>("combined");
@@ -147,13 +142,13 @@ export function RouteAssignmentForm({
         }
         
         setVehicleId(vehicles.length > 0 ? vehicles[0].id : "");
-        setDriverId(mockDrivers.length > 0 ? mockDrivers[0].id : "");
+        setDriverId(drivers.length > 0 ? drivers[0].id : "");
         setStartDate(new Date());
         setEndDate(undefined);
         setNotes("");
       }
     }
-  }, [open, editingAssignment, routeOptions, vehicles]);
+  }, [open, editingAssignment, routeOptions, vehicles, drivers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,6 +251,12 @@ export function RouteAssignmentForm({
           <SheetTitle>
             {editingAssignment ? "Edit Route Assignment" : "New Route Assignment"}
           </SheetTitle>
+          <SheetDescription>
+            {editingAssignment 
+              ? "Modify the details of this route assignment including route, vehicle, driver, and schedule." 
+              : "Create a new route assignment by selecting a route, vehicle, driver, and setting the schedule."
+            }
+          </SheetDescription>
         </SheetHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -332,18 +333,29 @@ export function RouteAssignmentForm({
             <Select
               value={driverId}
               onValueChange={setDriverId}
-              disabled={isSubmitting}
+              disabled={isSubmitting || loadingDrivers}
             >
               <SelectTrigger id="driver" className="flex items-center" aria-label="Driver Selection">
                 <User className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Select a driver" />
+                <SelectValue placeholder={loadingDrivers ? "Loading drivers..." : "Select a driver"} />
               </SelectTrigger>
               <SelectContent>
-                {mockDrivers.map((driver) => (
-                  <SelectItem key={driver.id} value={driver.id}>
-                    {driver.name}
-                  </SelectItem>
-                ))}
+                {loadingDrivers ? (
+                  <div className="flex items-center justify-center p-2" role="status" aria-live="polite">
+                    <div className="animate-spin mr-2">
+                      <User size={16} />
+                    </div>
+                    Loading drivers...
+                  </div>
+                ) : drivers.length === 0 ? (
+                  <div className="p-2 text-center text-muted-foreground" role="status">No drivers available</div>
+                ) : (
+                  drivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driver.legalName || driver.preferredName || `Driver ${driver.id.slice(0, 8)}`}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

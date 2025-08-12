@@ -184,14 +184,14 @@ export function useRouteAssignment(useMockData = true): UseRouteAssignmentReturn
         return;
       }
       
-      // Use combinedRouteId if available, otherwise use routeId
-      const routeId = assignment.combinedRouteId || assignment.routeId;
-      if (!routeId) {
+      // Ensure we have either a route ID or combined route ID
+      if (!assignment.combinedRouteId && !assignment.routeId) {
         throw new Error('Route ID is required (either combinedRouteId or routeId)');
       }
       
       await createRouteAssignment(
-        routeId,
+        assignment.routeId || null,
+        assignment.combinedRouteId || null,
         assignment.vehicleId,
         assignment.driverId,
         assignment.startDate,

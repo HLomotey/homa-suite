@@ -128,3 +128,34 @@ export const useStaff = () => {
 
   return { staff, loading, error, refetch: fetchStaff };
 };
+
+/**
+ * Hook for fetching drivers (staff members with department "driver")
+ * @returns Object containing drivers array, loading state, error state, and refetch function
+ */
+export const useDrivers = () => {
+  const [drivers, setDrivers] = useState<FrontendBillingStaff[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchDrivers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await staffApi.getDrivers();
+      setDrivers(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("An unknown error occurred")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDrivers();
+  }, [fetchDrivers]);
+
+  return { drivers, loading, error, refetch: fetchDrivers };
+};

@@ -488,7 +488,7 @@ export async function fetchRouteAssignments(): Promise<FrontendRouteAssignment[]
         *,
         combined_route:combined_routes(name),
         vehicle:vehicles(make, model, license_plate),
-        users(id, raw_user_meta_data)
+        driver:billing_staff(id, legal_name, preferred_name)
       `)
       .order('start_date', { ascending: false });
 
@@ -530,7 +530,7 @@ export async function fetchRouteAssignmentById(id: string): Promise<FrontendRout
         *,
         combined_route:combined_routes(name),
         vehicle:vehicles(make, model, license_plate),
-        users(id, raw_user_meta_data)
+        driver:billing_staff(id, legal_name, preferred_name)
       `)
       .eq('id', id)
       .single();
@@ -557,7 +557,8 @@ export async function fetchRouteAssignmentById(id: string): Promise<FrontendRout
 }
 
 export async function createRouteAssignment(
-  combinedRouteId: string,
+  routeId: string | null,
+  combinedRouteId: string | null,
   vehicleId: string,
   driverId: string,
   startDate: string,
@@ -566,7 +567,8 @@ export async function createRouteAssignment(
 ): Promise<FrontendRouteAssignment> {
   try {
     // Validate inputs
-    if (!combinedRouteId) throw new Error('Combined route ID is required');
+    if (!routeId && !combinedRouteId) throw new Error('Either route ID or combined route ID is required');
+    if (routeId && combinedRouteId) throw new Error('Cannot specify both route ID and combined route ID');
     if (!vehicleId) throw new Error('Vehicle ID is required');
     if (!driverId) throw new Error('Driver ID is required');
     if (!startDate) throw new Error('Start date is required');
@@ -582,6 +584,7 @@ export async function createRouteAssignment(
     const { data: newAssignment, error } = await supabase
       .from('route_assignments')
       .insert([{
+        route_id: routeId,
         combined_route_id: combinedRouteId,
         vehicle_id: vehicleId,
         driver_id: driverId,
