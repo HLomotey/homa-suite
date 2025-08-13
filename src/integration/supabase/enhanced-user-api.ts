@@ -13,31 +13,44 @@ export interface EnhancedUserQuery {
 }
 
 /**
- * Helper function to get user emails - simplified approach
+ * Helper function to get user emails - enhanced to fetch real emails
  */
 const getUserEmails = async (userIds: string[]): Promise<Map<string, string>> => {
   const emailMap = new Map<string, string>();
   
   try {
-    // For now, we'll use known email mappings for specific users
-    // This is a temporary solution until we can properly access auth.users
-    const knownEmails: Record<string, string> = {
-      'bbc78213-2292-48a0-8a42-0998a0a59bc0': 'nanasefa@gmail.com'
-    };
+    // First try to get emails directly from the users table
+    const { data: usersData, error } = await supabase
+      .from('users')
+      .select('id, email')
+      .in('id', userIds);
     
-    // Try to get current user's email if they're in the list
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (currentUser && currentUser.email) {
-      emailMap.set(currentUser.id, currentUser.email);
+    if (error) {
+      throw error;
     }
     
-    // Apply known email mappings
+    // Add all found emails to the map
+    if (usersData && usersData.length > 0) {
+      usersData.forEach(user => {
+        if (user.id && user.email) {
+          emailMap.set(user.id, user.email);
+          console.log(`Found email for user ${user.id}: ${user.email}`);
+        }
+      });
+    }
+    
+    // Try to get current user's email if they're in the list and not already found
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser && currentUser.email && userIds.includes(currentUser.id) && !emailMap.has(currentUser.id)) {
+      emailMap.set(currentUser.id, currentUser.email);
+      console.log(`Added current user email for ${currentUser.id}: ${currentUser.email}`);
+    }
+    
+    // For any remaining users without emails, use placeholder
     userIds.forEach(userId => {
-      if (knownEmails[userId]) {
-        emailMap.set(userId, knownEmails[userId]);
-      } else if (!emailMap.has(userId)) {
-        // Only use placeholder if we don't have the real email
+      if (!emailMap.has(userId)) {
         emailMap.set(userId, `user-${userId.slice(0, 8)}@example.com`);
+        console.log(`Using placeholder email for user ${userId}`);
       }
     });
     

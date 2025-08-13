@@ -11,6 +11,7 @@ import { useRoles } from '@/hooks/role';
 import { adminUserService } from '@/integration/supabase/admin-client';
 import { supabase } from '@/integration/supabase/client';
 import { getUserEffectivePermissions, permissionsApi, userPermissionsApi } from "@/integration/supabase/permissions-api";
+import * as enhancedUserApi from '@/integration/supabase/enhanced-user-api';
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
@@ -125,17 +126,18 @@ export function UserDetail() {
     console.log('UserDetail: handlePermissionToggle called with permission:', permission);
     console.log('UserDetail: Current user permissions:', user.permissions);
     
-    // Update local state
+    // Store original permissions for rollback if needed
     const currentPermissions = user.permissions || [];
     const hasPermission = currentPermissions.includes(permission);
     
+    // Calculate new permissions state
     const newPermissions = hasPermission
       ? currentPermissions.filter(p => p !== permission)
       : [...currentPermissions, permission];
     
     console.log('UserDetail: New permissions will be:', newPermissions);
     
-    // Update user state
+    // Optimistically update UI state
     setUser(prev => ({
       ...prev,
       permissions: newPermissions
@@ -167,32 +169,49 @@ export function UserDetail() {
         };
         
         // Update the user's permissions using the proper API
-        await userPermissionsApi.updateUserPermissions(permissionUpdateRequest);
+        const updateResult = await userPermissionsApi.updateUserPermissions(permissionUpdateRequest);
+        console.log('Permission update result:', updateResult);
         
-        // Update userEffectivePermissions in PermissionsGrid
-        // This will trigger a re-render with the updated permissions
+        // Fetch the latest effective permissions to ensure UI is in sync with DB
         const permissionsResponse = await getUserEffectivePermissions(user.id);
         console.log('Updated effective permissions:', permissionsResponse);
+        
+        // Force a refresh of the user object with the latest permissions
+        const { users: refreshedUsers } = await enhancedUserApi.getUsersWithRoles();
+        const refreshedUser = refreshedUsers.find(u => u.id === user.id);
+        
+        if (refreshedUser) {
+          console.log('Refreshed user data:', refreshedUser);
+          // Update the full user object with the latest data
+          setUser(prev => ({
+            ...prev,
+            ...refreshedUser,
+            // Ensure we keep the newly toggled permission state
+            permissions: newPermissions
+          }));
+        }
         
         toast({
           title: 'Permissions updated',
           description: hasPermission 
             ? `Removed permission: ${permission}` 
-            : `Added permission: ${permission}`
+            : `Added permission: ${permission}`,
+          variant: 'default'
         });
       } catch (error) {
         console.error('Error updating permissions:', error);
-        toast({
-          title: 'Error updating permissions',
-          description: 'Failed to save permission changes',
-          variant: 'destructive'
-        });
         
-        // Revert the local state change if the database update failed
+        // Revert the local state change on error
         setUser(prev => ({
           ...prev,
-          permissions: currentPermissions
+          permissions: currentPermissions // Revert to original permissions
         }));
+        
+        toast({
+          title: 'Error updating permissions',
+          description: error instanceof Error ? error.message : 'An unknown error occurred',
+          variant: 'destructive'
+        });
       }
     }
   };
