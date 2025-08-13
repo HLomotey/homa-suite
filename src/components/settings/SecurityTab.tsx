@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/integration/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +79,7 @@ export function SecurityTab() {
   };
   
   // Handle password update
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     // Validation
     if (!currentPassword) {
       toast({
@@ -116,20 +117,72 @@ export function SecurityTab() {
       return;
     }
     
-    // Simulate API call
+    // Update password using Supabase Auth
     setIsChangingPassword(true);
-    setTimeout(() => {
-      setIsChangingPassword(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordStrength(0);
+    try {
+      // Get current user's email
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData.user?.email;
       
-      toast({
-        title: "Password Updated",
-        description: "Your password has been changed successfully.",
+      if (!userEmail) {
+        toast({
+          title: "Authentication Error",
+          description: "Could not retrieve your account information. Please try signing in again.",
+          variant: "destructive",
+        });
+        setIsChangingPassword(false);
+        return;
+      }
+      
+      // First verify the current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword
       });
-    }, 1500);
+      
+      if (signInError) {
+        toast({
+          title: "Current Password Incorrect",
+          description: "The current password you entered is incorrect.",
+          variant: "destructive",
+        });
+        setIsChangingPassword(false);
+        return;
+      }
+      
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (updateError) {
+        toast({
+          title: "Password Update Failed",
+          description: updateError.message || "Could not update password. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        // Clear form fields on success
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordStrength(0);
+        
+        toast({
+          title: "Password Updated",
+          description: "Your password has been changed successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast({
+        title: "Password Update Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
   
   // Handle 2FA toggle
