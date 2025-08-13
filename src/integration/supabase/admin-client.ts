@@ -98,13 +98,57 @@ export const adminUserService = {
 
   /**
    * Delete a Supabase Auth user using admin privileges
+   * Enhanced to handle email-based deletion as a fallback
    */
-  async deleteAuthUser(userId: string) {
+  async deleteAuthUser(userId: string, email?: string) {
     try {
+      // First attempt: Delete by user ID
       const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
       if (error) {
-        console.error('Error deleting auth user:', error);
+        console.error('Error deleting auth user by ID:', error);
+        
+        // If we have an email and the error is about user not found, try to find by email
+        if (email && error.message.includes('User not found')) {
+          console.log('User not found by ID, attempting to find by email:', email);
+          
+          // Query auth.users to find the user by email
+          const { data: users, error: queryError } = await supabaseAdmin
+            .from('auth.users')
+            .select('id')
+            .eq('email', email)
+            .limit(1);
+          
+          if (queryError) {
+            console.error('Error querying auth user by email:', queryError);
+            return {
+              success: false,
+              error: `Failed to query user by email: ${queryError.message}`
+            };
+          }
+          
+          // If we found a user with this email, try to delete it
+          if (users && users.length > 0) {
+            const authUserId = users[0].id;
+            console.log('Found auth user by email with ID:', authUserId);
+            
+            const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+            
+            if (deleteError) {
+              console.error('Error deleting auth user found by email:', deleteError);
+              return {
+                success: false,
+                error: deleteError.message
+              };
+            }
+            
+            return {
+              success: true,
+              message: 'User deleted by email lookup'
+            };
+          }
+        }
+        
         return {
           success: false,
           error: error.message

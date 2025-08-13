@@ -264,6 +264,7 @@ export const updateUser = async (
   if (user.status !== undefined) dbUser.is_active = user.status === 'active';
   if (user.lastActive !== undefined) dbUser.last_login = user.lastActive;
   if (user.department !== undefined) dbUser.department = user.department;
+  if (user.permissions !== undefined) dbUser.permissions = user.permissions;
   
   // Extract profile-related fields
   const profileUpdate: any = {};

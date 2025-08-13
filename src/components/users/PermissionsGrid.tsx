@@ -102,7 +102,7 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
     };
 
     fetchUserPermissions();
-  }, [user.id]);
+  }, [user.id, user.permissions]); // Also refresh when user.permissions changes
 
   // Debug logging for loading states
   console.log('PermissionsGrid render - loadingData:', loadingData, 'loadingPermissions:', loadingPermissions);
@@ -164,8 +164,11 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
         <Label className="text-white text-base font-medium">Custom Permissions</Label>
         <Switch
           checked={customPermissionsEnabled}
-          onCheckedChange={onCustomPermissionsToggle}
-          disabled={isLoading}
+          onCheckedChange={(checked) => {
+            console.log('Main Custom Permissions toggle clicked, setting to:', checked);
+            onCustomPermissionsToggle(checked);
+          }}
+          disabled={false} // Always enable this toggle
         />
       </div>
       
@@ -207,7 +210,7 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
                         console.log('Switch should be enabled:', customPermissionsEnabled && !isLoading);
                         onPermissionToggle(permissionKey);
                       }}
-                      disabled={!customPermissionsEnabled || isLoading || (isNewUser && !user.id) || (!user.id && !isNewUser)}
+                      disabled={!customPermissionsEnabled} // Only disable if custom permissions are not enabled
                     />
                   </div>
                 );

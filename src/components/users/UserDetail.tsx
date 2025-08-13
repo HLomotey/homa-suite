@@ -10,6 +10,7 @@ import { useEnhancedUsers } from '@/hooks/user-profile/useEnhancedUsers';
 import { useRoles } from '@/hooks/role';
 import { adminUserService } from '@/integration/supabase/admin-client';
 import { supabase } from '@/integration/supabase/client';
+import { getUserEffectivePermissions, permissionsApi, userPermissionsApi } from "@/integration/supabase/permissions-api";
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
@@ -120,25 +121,80 @@ export function UserDetail() {
   };
 
   // Handle permission toggle
-  const handlePermissionToggle = (permission: string) => {
+  const handlePermissionToggle = async (permission: string) => {
     console.log('UserDetail: handlePermissionToggle called with permission:', permission);
     console.log('UserDetail: Current user permissions:', user.permissions);
     
-    setUser(prev => {
-      const currentPermissions = prev.permissions || [];
-      const hasPermission = currentPermissions.includes(permission);
-      
-      const newPermissions = hasPermission
-        ? currentPermissions.filter(p => p !== permission)
-        : [...currentPermissions, permission];
-      
-      console.log('UserDetail: New permissions will be:', newPermissions);
-      
-      return {
-        ...prev,
-        permissions: newPermissions
-      };
-    });
+    // Update local state
+    const currentPermissions = user.permissions || [];
+    const hasPermission = currentPermissions.includes(permission);
+    
+    const newPermissions = hasPermission
+      ? currentPermissions.filter(p => p !== permission)
+      : [...currentPermissions, permission];
+    
+    console.log('UserDetail: New permissions will be:', newPermissions);
+    
+    // Update user state
+    setUser(prev => ({
+      ...prev,
+      permissions: newPermissions
+    }));
+    
+    // Save to database immediately if this is an existing user
+    if (user.id && user.id !== 'new') {
+      try {
+        console.log('Saving updated permissions to database for user:', user.id);
+        
+        // Get the permission ID from the permission key
+        const permissionDetails = await permissionsApi.getByKey(permission);
+        
+        if (!permissionDetails) {
+          throw new Error(`Permission ${permission} not found`);
+        }
+        
+        console.log('Found permission details:', permissionDetails);
+        
+        // Prepare the permission update request
+        const permissionUpdateRequest = {
+          user_id: user.id,
+          permissions: [
+            {
+              permission_id: permissionDetails.id,
+              is_granted: !hasPermission // Toggle the permission
+            }
+          ]
+        };
+        
+        // Update the user's permissions using the proper API
+        await userPermissionsApi.updateUserPermissions(permissionUpdateRequest);
+        
+        // Update userEffectivePermissions in PermissionsGrid
+        // This will trigger a re-render with the updated permissions
+        const permissionsResponse = await getUserEffectivePermissions(user.id);
+        console.log('Updated effective permissions:', permissionsResponse);
+        
+        toast({
+          title: 'Permissions updated',
+          description: hasPermission 
+            ? `Removed permission: ${permission}` 
+            : `Added permission: ${permission}`
+        });
+      } catch (error) {
+        console.error('Error updating permissions:', error);
+        toast({
+          title: 'Error updating permissions',
+          description: 'Failed to save permission changes',
+          variant: 'destructive'
+        });
+        
+        // Revert the local state change if the database update failed
+        setUser(prev => ({
+          ...prev,
+          permissions: currentPermissions
+        }));
+      }
+    }
   };
 
   // Handle custom permissions toggle
@@ -281,11 +337,14 @@ export function UserDetail() {
               console.log('=== COMPLETE ID SYNCHRONIZATION VERIFICATION ===');
               
               // Check if profile exists with correct user_id
-              const { data: profileData, error: profileError } = await supabase
+              // Don't use .single() as it causes errors when multiple profiles exist
+              const { data: profilesData, error: profileError } = await supabase
                 .from('profiles')
                 .select('id, user_id, first_name, last_name')
-                .eq('user_id', createdUser.id)
-                .single();
+                .eq('user_id', createdUser.id);
+              
+              // Get the first profile if multiple exist
+              const profileData = profilesData && profilesData.length > 0 ? profilesData[0] : null;
               
               if (profileError) {
                 console.error('Profile verification failed:', profileError);
@@ -375,28 +434,27 @@ export function UserDetail() {
     }
     
     try {
-      console.log('Deleting user from database:', user.id);
+      console.log('Deleting user with ID:', user.id, 'and email:', user.email);
       
-      // Step 1: Delete user from database (profiles, permissions, etc.)
-      await deleteUserFn(user.id);
-      
-      console.log('User deleted from database, now deleting auth user:', user.id);
-      
-      // Step 2: Delete corresponding auth user from Supabase Auth
-      const authDeleteResult = await adminUserService.deleteAuthUser(user.id);
+      // Step 1: Delete auth user first to ensure it's removed from auth system
+      console.log('First deleting auth user:', user.id, 'with email:', user.email);
+      const authDeleteResult = await adminUserService.deleteAuthUser(user.id, user.email);
       
       if (!authDeleteResult.success) {
         // Check if it's just a "user not found" error, which is acceptable
         if (authDeleteResult.error?.includes('User not found')) {
-          console.log('Auth user was already deleted or never existed - this is fine');
+          console.log('Auth user was already deleted or never existed - continuing with database deletion');
         } else {
-          console.warn('Failed to delete auth user, but database deletion succeeded:', authDeleteResult.error);
+          console.warn('Warning: Failed to delete auth user:', authDeleteResult.error);
+          // Continue with database deletion even if auth deletion fails
         }
-        // Don't fail the entire operation if auth deletion fails
-        // The database deletion is more critical
       } else {
         console.log('Auth user deleted successfully');
       }
+      
+      // Step 2: Delete user from database (profiles, permissions, etc.)
+      console.log('Now deleting user from database:', user.id);
+      await deleteUserFn(user.id);
       
       toast({
         title: 'User deleted',
