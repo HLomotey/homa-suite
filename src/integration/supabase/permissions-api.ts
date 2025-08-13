@@ -479,7 +479,7 @@ export const getUserEffectivePermissions = async (userId: string): Promise<Permi
         role:roles(*)
       `)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to handle missing records
     
     if (profileError) {
       console.error('Error fetching user profile:', profileError);
@@ -487,6 +487,7 @@ export const getUserEffectivePermissions = async (userId: string): Promise<Permi
     }
 
     if (!profileData) {
+      console.warn(`No profile found for user ID: ${userId}`);
       return {
         data: {
           userId,

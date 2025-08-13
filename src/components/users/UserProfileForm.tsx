@@ -162,6 +162,7 @@ export const UserProfileForm: React.FC<UserProfileFormProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="admin">Administration</SelectItem>
+              <SelectItem value="engineering">Engineering</SelectItem>
               <SelectItem value="hr">Human Resources</SelectItem>
               <SelectItem value="finance">Finance</SelectItem>
               <SelectItem value="operations">Operations</SelectItem>
@@ -174,7 +175,7 @@ export const UserProfileForm: React.FC<UserProfileFormProps> = ({
       <div className="space-y-2">
         <Label htmlFor="status" className="text-white">Status</Label>
         <Select
-          value={user.status || 'pending'}
+          value={user.status || 'active'}
           onValueChange={(value) => onInputChange('status', value)}
           disabled={isLoading}
         >

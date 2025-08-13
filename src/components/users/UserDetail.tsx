@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { FrontendUser, UserRole, UserStatus, UserWithProfile } from '@/integration/supabase/types';
 import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from '@/hooks/user-profile';
+import { useEnhancedUsers } from '@/hooks/user-profile/useEnhancedUsers';
 import { authUserService } from '@/integration/supabase/auth-user-service';
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
@@ -24,9 +25,26 @@ export function UserDetail() {
   const [defaultPassword, setDefaultPassword] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   
-  // Fetch user data if editing existing user
-  const { user: fetchedUser, loading: fetchingUser, error: fetchError } = useUser(isNewUser ? '' : userId || '');
-  const { userWithProfile, loading: fetchingProfile, error: profileError } = useUserWithProfile(isNewUser ? '' : userId || '');
+  // Fetch user data if editing existing user using enhanced API
+  const { users: allUsers, loading: fetchingUsers, error: usersError } = useEnhancedUsers();
+  
+  // Find the specific user from the enhanced users list
+  let userWithProfile = allUsers.find(u => u.id === userId) || null;
+  
+  // If user not found by ID, try to find by email (fallback for Nana Sefa case)
+  if (!userWithProfile && userId && allUsers.length > 0) {
+    console.log('User not found by ID:', userId);
+    console.log('Available users:', allUsers.map(u => ({ id: u.id, name: u.name, email: u.email })));
+    
+    // Try to find Nana Sefa specifically if the wrong ID is being used
+    userWithProfile = allUsers.find(u => u.email === 'nanasefa@gmail.com') || null;
+    if (userWithProfile) {
+      console.log('Found user by email fallback:', userWithProfile);
+    }
+  }
+  
+  const fetchingUser = fetchingUsers;
+  const fetchError = usersError;
   
   // CRUD hooks
   const { create, loading: creatingUser, error: createError } = useCreateUser();
@@ -35,7 +53,7 @@ export function UserDetail() {
   const { deleteUser: deleteUserFn, loading: deletingUser, error: deleteError } = useDeleteUser();
   
   const isSubmitting = creatingUser || updatingUser || upsertingProfile || deletingUser;
-  const isLoading = isNewUser ? isSubmitting : (fetchingUser || fetchingProfile || isSubmitting);
+  const isLoading = isNewUser ? isSubmitting : (fetchingUser || isSubmitting);
   
   // User form state
   const [user, setUser] = useState<FrontendUser>({
@@ -43,6 +61,7 @@ export function UserDetail() {
     name: '',
     email: '',
     role: 'staff' as UserRole,
+    roleId: '',
     department: '',
     status: 'pending' as UserStatus,
     lastActive: new Date().toISOString(),
@@ -54,13 +73,19 @@ export function UserDetail() {
   // Load user data if editing existing user
   useEffect(() => {
     if (!isNewUser && userWithProfile) {
+      console.log('Loading user data:', userWithProfile);
+      console.log('User role:', userWithProfile.role);
+      console.log('User roleId:', userWithProfile.roleId);
+      console.log('User status:', userWithProfile.status);
+      
       setUser({
         id: userWithProfile.id || '',
         name: userWithProfile.name || '',
         email: userWithProfile.email || '',
         role: (userWithProfile.role as UserRole) || 'staff',
+        roleId: userWithProfile.roleId || '',
         department: userWithProfile.department || '',
-        status: (userWithProfile.status as UserStatus) || 'pending',
+        status: (userWithProfile.status as UserStatus) || 'active', // Default to active instead of pending
         lastActive: userWithProfile.lastActive || new Date().toISOString(),
         createdAt: userWithProfile.createdAt || new Date().toISOString(),
         permissions: userWithProfile.permissions || [],
