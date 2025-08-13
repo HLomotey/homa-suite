@@ -28,11 +28,24 @@ export interface User {
 export interface Profile {
   id: string;
   user_id: string;
+  first_name: string;
+  last_name: string;
   avatar_url: string | null;
-  bio: string | null;
+  phone: string | null;
+  department: string | null;
+  position: string | null;
+  employee_id: string | null;
+  hire_date: string | null;
+  address: Json | null;
+  contact_info: Json | null;
   preferences: Json | null;
+  bio: string | null;
+  skills: string[] | null;
+  certifications: string[] | null;
+  emergency_contact: Json | null;
+  role_id: string | null; // New field for role relationship
   created_at: string;
-  updated_at: string | null;
+  updated_at: string;
 }
 
 /**
@@ -46,6 +59,24 @@ export type UserStatus = 'active' | 'inactive' | 'pending';
 export type UserRole = 'admin' | 'manager' | 'staff' | 'guest';
 
 /**
+ * Role interface representing the roles table in Supabase
+ */
+export interface Role {
+  id: string;
+  name: string;
+  description: string | null;
+  permissions: string[];
+  created_at: string;
+}
+
+/**
+ * Profile with role information
+ */
+export interface ProfileWithRole extends Profile {
+  role?: Role | null;
+}
+
+/**
  * Frontend user type that matches the structure in UserDetail.tsx
  */
 export interface FrontendUser {
@@ -53,6 +84,7 @@ export interface FrontendUser {
   name: string;
   email: string;
   role: UserRole;
+  roleId?: string; // Role ID for database relationship
   department: string;
   status: UserStatus;
   lastActive?: string;
@@ -111,6 +143,7 @@ export const mapDatabaseUserToFrontend = (dbUser: User): FrontendUser => {
     name: dbUser.name,
     email: dbUser.email,
     role: dbUser.role as UserRole,
+    roleId: undefined, // User table doesn't have role_id, use profiles table instead
     department: dbUser.department,
     status: dbUser.status as UserStatus,
     lastActive: dbUser.last_active || undefined,
@@ -124,11 +157,29 @@ export const mapDatabaseUserToFrontend = (dbUser: User): FrontendUser => {
  * Function to convert database profile to frontend profile format
  */
 export const mapDatabaseProfileToProfile = (dbProfile: Profile): UserWithProfile['profile'] => {
-  if (!dbProfile) return undefined;
-  
   return {
     bio: dbProfile.bio,
     preferences: dbProfile.preferences as Record<string, any> | null,
     avatarUrl: dbProfile.avatar_url
+  };
+};
+
+/**
+ * Function to map ProfileWithRole to FrontendUser
+ */
+export const mapProfileWithRoleToFrontendUser = (profile: ProfileWithRole, email: string): FrontendUser => {
+  return {
+    id: profile.user_id,
+    name: `${profile.first_name} ${profile.last_name}`.trim(),
+    email: email,
+    role: (profile.role?.name as UserRole) || 'guest',
+    roleId: profile.role_id || undefined,
+    department: profile.department || '',
+    status: 'active' as UserStatus,
+    lastActive: undefined,
+    permissions: profile.role?.permissions || [],
+    createdAt: profile.created_at,
+    avatar: profile.avatar_url || undefined,
+    bio: profile.bio || undefined
   };
 };

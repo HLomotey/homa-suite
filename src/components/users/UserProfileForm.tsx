@@ -4,7 +4,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { FrontendUser } from '@/integration/supabase/types';
-import { Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { useRoles } from '@/hooks/role';
+import { Eye, EyeOff, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface UserProfileFormProps {
   user: FrontendUser;
@@ -25,6 +26,9 @@ export const UserProfileForm: React.FC<UserProfileFormProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState(defaultPassword);
+  
+  // Fetch roles from database
+  const { roles, loading: rolesLoading, error: rolesError } = useRoles();
 
   // Generate a random default password
   const generateDefaultPassword = () => {
@@ -121,23 +125,29 @@ export const UserProfileForm: React.FC<UserProfileFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="role" className="text-white">Role *</Label>
-          <Select
-            value={user.role || 'staff'}
-            onValueChange={(value) => onInputChange('role', value)}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="bg-black/20 border-white/10 text-white">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Administrator</SelectItem>
-              <SelectItem value="manager">Manager</SelectItem>
-              <SelectItem value="staff">Staff Member</SelectItem>
-              <SelectItem value="hr">HR</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-              <SelectItem value="guest">Guest</SelectItem>
-            </SelectContent>
-          </Select>
+          {rolesError ? (
+            <div className="flex items-center space-x-2 text-red-400 text-sm">
+              <AlertCircle className="h-4 w-4" />
+              <span>Failed to load roles</span>
+            </div>
+          ) : (
+            <Select
+              value={user.roleId || ''}
+              onValueChange={(value) => onInputChange('roleId', value)}
+              disabled={isLoading || rolesLoading}
+            >
+              <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                <SelectValue placeholder={rolesLoading ? "Loading roles..." : "Select role"} />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    {role.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="space-y-2">

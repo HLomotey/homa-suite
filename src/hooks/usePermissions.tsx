@@ -7,6 +7,8 @@ interface PermissionsContextType {
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
+  canViewModule: (module: string) => boolean;
+  canEditModule: (module: string) => boolean;
   loading: boolean;
   error: string | null;
   refreshPermissions: () => Promise<void>;
@@ -66,6 +68,36 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return permissionList.every(permission => permissions.includes(permission));
   };
 
+  const canViewModule = (module: string): boolean => {
+    // Check for specific view permission for the module
+    const viewPermission = `${module}:view`;
+    const readPermission = `${module}:read`;
+    const allPermission = `${module}:*`;
+    
+    return hasPermission(viewPermission) || 
+           hasPermission(readPermission) || 
+           hasPermission(allPermission) ||
+           hasPermission('*:view') ||
+           hasPermission('*:*');
+  };
+
+  const canEditModule = (module: string): boolean => {
+    // Check for specific edit permission for the module
+    const editPermission = `${module}:edit`;
+    const writePermission = `${module}:write`;
+    const updatePermission = `${module}:update`;
+    const allPermission = `${module}:*`;
+    
+    return hasPermission(editPermission) || 
+           hasPermission(writePermission) || 
+           hasPermission(updatePermission) ||
+           hasPermission(allPermission) ||
+           hasPermission('*:edit') ||
+           hasPermission('*:write') ||
+           hasPermission('*:update') ||
+           hasPermission('*:*');
+  };
+
   const refreshPermissions = async () => {
     await fetchPermissions();
   };
@@ -76,6 +108,8 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
+      canViewModule,
+      canEditModule,
       loading,
       error,
       refreshPermissions

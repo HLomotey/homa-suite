@@ -471,10 +471,22 @@ export interface PermissionsApiResponse<T> {
 
 export const getUserEffectivePermissions = async (userId: string): Promise<PermissionsApiResponse<UserEffectivePermissions>> => {
   try {
-    // Use the existing getUserPermissions function
-    const userPermissions = await userPermissionsApi.getUserPermissions(userId);
+    // Get user profile with role information
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        role:roles(*)
+      `)
+      .eq('user_id', userId)
+      .single();
     
-    if (!userPermissions) {
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      return { data: null, error: profileError };
+    }
+
+    if (!profileData) {
       return {
         data: {
           userId,
@@ -486,20 +498,57 @@ export const getUserEffectivePermissions = async (userId: string): Promise<Permi
       };
     }
 
+    // Handle admin role with "all" permissions
+    let effectivePermissions: string[] = [];
+    
+    if (profileData.role?.permissions?.includes('all')) {
+      // Admin has all permissions - generate comprehensive permission list
+      effectivePermissions = [
+        // Dashboard permissions
+        'dashboard:view', 'dashboard:edit', 'dashboard:create', 'dashboard:delete',
+        // Properties permissions
+        'properties:view', 'properties:edit', 'properties:create', 'properties:delete',
+        // Transport permissions
+        'transport:view', 'transport:edit', 'transport:create', 'transport:delete',
+        // HR permissions
+        'hr:view', 'hr:edit', 'hr:create', 'hr:delete',
+        // Finance permissions
+        'finance:view', 'finance:edit', 'finance:create', 'finance:delete',
+        // Operations permissions
+        'operations:view', 'operations:edit', 'operations:create', 'operations:delete',
+        // Staff permissions
+        'staff:view', 'staff:edit', 'staff:create', 'staff:delete',
+        // Billing permissions
+        'billing:view', 'billing:edit', 'billing:create', 'billing:delete',
+        // Users permissions
+        'users:view', 'users:edit', 'users:create', 'users:delete',
+        // Uploads permissions
+        'uploads:view', 'uploads:edit', 'uploads:create', 'uploads:delete',
+        // Attendance permissions
+        'attendance:view', 'attendance:edit', 'attendance:create', 'attendance:delete',
+        // Payroll permissions
+        'payroll:view', 'payroll:edit', 'payroll:create', 'payroll:delete',
+        // Settings permissions
+        'settings:view', 'settings:edit', 'settings:create', 'settings:delete',
+        // Global permissions
+        '*:view', '*:edit', '*:create', '*:delete', '*:*'
+      ];
+    } else if (profileData.role?.permissions) {
+      // Use role-specific permissions
+      effectivePermissions = profileData.role.permissions;
+    }
+
     return {
       data: {
         userId,
-        rolePermissions: userPermissions.role_permissions?.map((p: any) => p.permission_key) || [],
-        customPermissions: userPermissions.custom_permissions?.map((up: any) => ({
-          permission: up.permission?.permission_key || '',
-          granted: up.is_granted,
-          expiresAt: up.expires_at
-        })) || [],
-        effectivePermissions: userPermissions.effective_permissions || []
+        rolePermissions: profileData.role?.permissions || [],
+        customPermissions: [], // TODO: Implement custom permissions if needed
+        effectivePermissions
       },
       error: null
     };
   } catch (error) {
+    console.error('Error in getUserEffectivePermissions:', error);
     return { data: null, error: error as Error };
   }
 };
