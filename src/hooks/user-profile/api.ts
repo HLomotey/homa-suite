@@ -197,8 +197,20 @@ export const createUser = async (
   const profileData = {
     first_name: user.name?.split(' ')[0] || '',
     last_name: user.name?.split(' ').slice(1).join(' ') || '',
-    department: user.department,
-    avatar_url: user.avatar || null
+    department: user.department || '',
+    avatar_url: user.avatar || null,
+    role_id: user.roleId || null, // Include role_id from user data
+    phone: null,
+    position: null,
+    employee_id: null,
+    hire_date: null,
+    address: null,
+    contact_info: null,
+    preferences: null,
+    bio: null,
+    skills: null,
+    certifications: null,
+    emergency_contact: null
   };
 
   // Create the user first

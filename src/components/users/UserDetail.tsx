@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { FrontendUser, UserRole, UserStatus, UserWithProfile } from '@/integration/supabase/types';
 import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from '@/hooks/user-profile';
 import { useEnhancedUsers } from '@/hooks/user-profile/useEnhancedUsers';
-import { authUserService } from '@/integration/supabase/auth-user-service';
+import { adminUserService } from '@/integration/supabase/admin-client';
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
@@ -164,12 +164,14 @@ export function UserDetail() {
     
     try {
       if (isNewUser) {
-        // First, create the Supabase Auth user
-        const authResult = await authUserService.createAuthUser({
+        // Create Supabase Auth user using admin client
+        console.log('Creating auth user with admin client...');
+        
+        const authResult = await adminUserService.createAuthUser({
           email: user.email,
           password: defaultPassword,
           name: user.name,
-          role: user.role as UserRole,
+          role: user.role,
           department: user.department,
           requirePasswordChange: true
         });
@@ -183,29 +185,32 @@ export function UserDetail() {
           return;
         }
 
-        // Then create the custom user record
-        const newUser = await create({
-          name: user.name,
-          email: user.email,
-          role: user.role as UserRole,
-          department: user.department,
-          status: (user.status as UserStatus) || 'pending',
-          permissions: customPermissionsEnabled ? (user.permissions || []) : []
-        });
+        // Create user in custom users table
+        const createdUser = await create(user);
         
-        if (newUser.id) {
-          await upsert(newUser.id, {
+        if (!createdUser) {
+          toast({
+            title: 'User Creation Error',
+            description: 'Failed to create user in database',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Create profile if needed (handled by database trigger now)
+        if (createdUser.id) {
+          await upsert(createdUser.id, {
             bio: '',
             preferences: {}
           });
         }
 
-        // Send password reset email so user can set their own password
-        const resetResult = await authUserService.sendPasswordResetEmail(user.email);
+        // Send password reset email using admin client
+        const resetResult = await adminUserService.sendPasswordResetEmail(user.email);
         
         toast({
           title: 'User created successfully',
-          description: `${user.name} has been added. ${resetResult.success ? 'A password reset email has been sent.' : 'Please manually send password reset instructions.'}`
+          description: `${user.name} has been added to the system. ${resetResult.success ? 'A password reset email has been sent.' : 'Please manually send password reset instructions.'}`
         });
       } else {
         if (user.id) {
