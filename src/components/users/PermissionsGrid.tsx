@@ -198,7 +198,13 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
                     <Switch 
                       id={`perm-${module.name}-${action.name}`}
                       checked={isChecked}
-                      onCheckedChange={() => onPermissionToggle(permissionKey)}
+                      onCheckedChange={() => {
+                        console.log('Permission switch clicked:', permissionKey);
+                        console.log('customPermissionsEnabled:', customPermissionsEnabled);
+                        console.log('isLoading:', isLoading);
+                        console.log('Switch should be enabled:', customPermissionsEnabled && !isLoading);
+                        onPermissionToggle(permissionKey);
+                      }}
                       disabled={!customPermissionsEnabled || isLoading}
                     />
                   </div>

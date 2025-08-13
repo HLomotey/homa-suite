@@ -116,15 +116,22 @@ export function UserDetail() {
 
   // Handle permission toggle
   const handlePermissionToggle = (permission: string) => {
+    console.log('UserDetail: handlePermissionToggle called with permission:', permission);
+    console.log('UserDetail: Current user permissions:', user.permissions);
+    
     setUser(prev => {
       const currentPermissions = prev.permissions || [];
       const hasPermission = currentPermissions.includes(permission);
       
+      const newPermissions = hasPermission
+        ? currentPermissions.filter(p => p !== permission)
+        : [...currentPermissions, permission];
+      
+      console.log('UserDetail: New permissions will be:', newPermissions);
+      
       return {
         ...prev,
-        permissions: hasPermission
-          ? currentPermissions.filter(p => p !== permission)
-          : [...currentPermissions, permission]
+        permissions: newPermissions
       };
     });
   };
