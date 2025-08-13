@@ -16,6 +16,7 @@ import {
   mapDatabaseUserToFrontend,
   mapDatabaseProfileToProfile
 } from "../../integration/supabase/types";
+// Omit is a TypeScript built-in utility type, no need to import
 
 /**
  * Fetch all users from Supabase
@@ -187,7 +188,7 @@ export const createUser = async (
 ): Promise<FrontendUser> => {
   // Convert frontend user to database format - only use columns that exist in the users table
   const dbUser = {
-    id: user.id || undefined, // Use provided ID if available, otherwise let Supabase generate
+    id: user.id, // Use the provided user ID (from auth)
     email: user.email,
     role: user.role,
     is_active: user.status === 'active',

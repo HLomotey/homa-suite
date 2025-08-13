@@ -14,6 +14,7 @@ import {
   Profile
 } from "../../integration/supabase/types";
 import * as userProfileApi from "./api";
+import { adminUserService } from "../../integration/supabase/admin-client";
 
 /**
  * Hook for fetching all users
@@ -222,7 +223,7 @@ export const useCreateUser = () => {
   const [createdUser, setCreatedUser] = useState<FrontendUser | null>(null);
 
   const create = useCallback(
-    async (userData: Omit<FrontendUser, "id">) => {
+    async (userData: FrontendUser) => {
       try {
         setLoading(true);
         setError(null);
@@ -292,7 +293,18 @@ export const useDeleteUser = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // First delete from database tables
       await userProfileApi.deleteUser(id);
+      
+      // Then delete the auth user using admin privileges
+      const authDeleteResult = await adminUserService.deleteAuthUser(id);
+      
+      if (!authDeleteResult.success) {
+        console.warn('Failed to delete auth user:', authDeleteResult.error);
+        // Don't throw error here as database deletion was successful
+      }
+      
       setIsDeleted(true);
       return true;
     } catch (err) {

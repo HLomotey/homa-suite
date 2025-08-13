@@ -12,7 +12,8 @@ interface PermissionsGridProps {
   customPermissionsEnabled: boolean;
   onCustomPermissionsToggle: (enabled: boolean) => void;
   onPermissionToggle: (permission: string) => void;
-  isLoading: boolean;
+  isLoading?: boolean;
+  isNewUser?: boolean;
 }
 
 export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
@@ -20,7 +21,8 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
   customPermissionsEnabled,
   onCustomPermissionsToggle,
   onPermissionToggle,
-  isLoading
+  isLoading,
+  isNewUser
 }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [actions, setActions] = useState<Action[]>([]);
@@ -173,7 +175,7 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
       
       <Separator className="bg-white/10" />
       
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-200 ${customPermissionsEnabled ? 'opacity-100' : 'opacity-50'}`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{/* Removed opacity styling that was causing visual confusion */}
         {modules.map((module) => (
           <Card key={module.id} className="bg-black/20 border-white/5">
             <CardHeader className="py-3">
@@ -205,7 +207,7 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
                         console.log('Switch should be enabled:', customPermissionsEnabled && !isLoading);
                         onPermissionToggle(permissionKey);
                       }}
-                      disabled={!customPermissionsEnabled || isLoading}
+                      disabled={!customPermissionsEnabled || isLoading || (isNewUser && !user.id) || (!user.id && !isNewUser)}
                     />
                   </div>
                 );

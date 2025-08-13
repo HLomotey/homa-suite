@@ -7,7 +7,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { FrontendUser, UserRole, UserStatus, UserWithProfile } from '@/integration/supabase/types';
 import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from '@/hooks/user-profile';
 import { useEnhancedUsers } from '@/hooks/user-profile/useEnhancedUsers';
+import { useRoles } from '@/hooks/role';
 import { adminUserService } from '@/integration/supabase/admin-client';
+import { supabase } from '@/integration/supabase/client';
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
@@ -27,6 +29,9 @@ export function UserDetail() {
   
   // Fetch user data if editing existing user using enhanced API
   const { users: allUsers, loading: fetchingUsers, error: usersError } = useEnhancedUsers();
+  
+  // Fetch roles for role mapping
+  const { roles = [] } = useRoles();
   
   // Find the specific user from the enhanced users list
   let userWithProfile = allUsers.find(u => u.id === userId) || null;
@@ -205,11 +210,31 @@ export function UserDetail() {
         }
 
         // Create user in custom users table using the auth user ID
-        console.log('Auth user created successfully with ID:', authResult.user?.id);
+        const authUserId = authResult.user?.id;
+        console.log('Auth user created successfully with ID:', authUserId);
+        
+        // Map roleId to role name for database storage
+        let userRole = user.role;
+        if (user.roleId) {
+          const selectedRole = roles.find(r => r.id === user.roleId);
+          if (selectedRole) {
+            userRole = selectedRole.name as UserRole;
+          }
+        }
+        
         const userWithAuthId = {
           ...user,
-          id: authResult.user?.id || '' // Use the auth user ID
+          id: authUserId || '', // Use the auth user ID
+          role: userRole
         };
+        
+        // Debug role value before creation
+        console.log('=== ROLE DEBUGGING ===');
+        console.log('Original user role:', user.role);
+        console.log('User with auth ID role:', userWithAuthId.role);
+        console.log('User roleId:', user.roleId);
+        console.log('=====================');
+        
         const createdUser = await create(userWithAuthId);
         
         if (!createdUser) {
@@ -221,12 +246,71 @@ export function UserDetail() {
           return;
         }
 
-        // Create profile if needed (handled by database trigger now)
+        // Verify ID synchronization
+        console.log('ID Synchronization Check:');
+        console.log('- Auth User ID:', authUserId);
+        console.log('- Database User ID:', createdUser.id);
+        console.log('- IDs Match:', authUserId === createdUser.id);
+
+        if (authUserId !== createdUser.id) {
+          console.error('CRITICAL: ID mismatch detected!');
+          toast({
+            title: 'ID Synchronization Error',
+            description: 'Auth user and database user IDs do not match. This may cause deletion issues.',
+            variant: 'destructive'
+          });
+        }
+
+        // Profile creation (handled by database trigger, but verify it exists)
         if (createdUser.id) {
+          // The trigger should have created the profile automatically
+          // Let's verify the profile was created with the correct user_id
+          console.log('Verifying profile creation for user ID:', createdUser.id);
+          
+          // Add additional profile data if needed
           await upsert(createdUser.id, {
             bio: '',
             preferences: {}
           });
+          
+          console.log('Profile upsert completed for user ID:', createdUser.id);
+          
+          // Verify complete ID synchronization across all entities
+          setTimeout(async () => {
+            try {
+              console.log('=== COMPLETE ID SYNCHRONIZATION VERIFICATION ===');
+              
+              // Check if profile exists with correct user_id
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('id, user_id, first_name, last_name')
+                .eq('user_id', createdUser.id)
+                .single();
+              
+              if (profileError) {
+                console.error('Profile verification failed:', profileError);
+              } else {
+                console.log('✅ Profile found:');
+                console.log('- Profile ID:', profileData.id);
+                console.log('- Profile user_id:', profileData.user_id);
+                console.log('- Profile user_id matches:', profileData.user_id === createdUser.id);
+              }
+              
+              // Summary of all IDs
+              console.log('=== ID SYNCHRONIZATION SUMMARY ===');
+              console.log('Auth User ID:', authUserId);
+              console.log('Database User ID:', createdUser.id);
+              console.log('Profile user_id:', profileData?.user_id);
+              console.log('All IDs synchronized:', 
+                authUserId === createdUser.id && 
+                createdUser.id === profileData?.user_id
+              );
+              console.log('=======================================');
+              
+            } catch (error) {
+              console.error('ID verification error:', error);
+            }
+          }, 1000); // Wait 1 second for database trigger to complete
         }
 
         // Send password reset email using admin client
@@ -459,6 +543,7 @@ export function UserDetail() {
                   onCustomPermissionsToggle={handleCustomPermissionsToggle}
                   onPermissionToggle={handlePermissionToggle}
                   isLoading={isLoading}
+                  isNewUser={isNewUser}
                 />
               </TabsContent>
               
