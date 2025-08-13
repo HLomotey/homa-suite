@@ -106,6 +106,7 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
   console.log('PermissionsGrid render - loadingData:', loadingData, 'loadingPermissions:', loadingPermissions);
   console.log('PermissionsGrid render - modules count:', modules.length, 'actions count:', actions.length);
   console.log('PermissionsGrid render - user ID:', user.id, 'effective permissions count:', userEffectivePermissions.length);
+  console.log('PermissionsGrid render - customPermissionsEnabled:', customPermissionsEnabled);
 
   if (loadingData || loadingPermissions) {
     return (

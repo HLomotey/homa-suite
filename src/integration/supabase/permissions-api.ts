@@ -479,9 +479,74 @@ export const getUserEffectivePermissions = async (userId: string): Promise<Permi
         role:roles(*)
       `)
       .eq('user_id', userId)
-      .maybeSingle(); // Use maybeSingle() instead of single() to handle missing records
+      .maybeSingle(); // Use maybeSingle() to handle missing records gracefully
     
     if (profileError) {
+      // Handle specific error cases more gracefully
+      if (profileError.code === 'PGRST116') {
+        console.warn('Multiple profiles found for user, this should not happen:', userId);
+        // Try to get the first profile only
+        const { data: profileArray, error: arrayError } = await supabase
+          .from('profiles')
+          .select(`
+            *,
+            role:roles(*)
+          `)
+          .eq('user_id', userId)
+          .limit(1);
+        
+        if (arrayError || !profileArray || profileArray.length === 0) {
+          console.warn(`No profile found for user ID: ${userId}`);
+          return {
+            data: {
+              userId,
+              rolePermissions: [],
+              customPermissions: [],
+              effectivePermissions: []
+            },
+            error: null
+          };
+        }
+        
+        // Use the first profile found and process permissions inline
+        const profileData = profileArray[0];
+        
+        // Handle admin role with "all" permissions
+        let effectivePermissions: string[] = [];
+        
+        if (profileData.role?.permissions?.includes('all')) {
+          // Admin has all permissions - generate comprehensive permission list
+          effectivePermissions = [
+            'dashboard:view', 'dashboard:edit', 'dashboard:create', 'dashboard:delete',
+            'properties:view', 'properties:edit', 'properties:create', 'properties:delete',
+            'transport:view', 'transport:edit', 'transport:create', 'transport:delete',
+            'hr:view', 'hr:edit', 'hr:create', 'hr:delete',
+            'finance:view', 'finance:edit', 'finance:create', 'finance:delete',
+            'operations:view', 'operations:edit', 'operations:create', 'operations:delete',
+            'staff:view', 'staff:edit', 'staff:create', 'staff:delete',
+            'billing:view', 'billing:edit', 'billing:create', 'billing:delete',
+            'users:view', 'users:edit', 'users:create', 'users:delete',
+            'uploads:view', 'uploads:edit', 'uploads:create', 'uploads:delete',
+            'attendance:view', 'attendance:edit', 'attendance:create', 'attendance:delete',
+            'payroll:view', 'payroll:edit', 'payroll:create', 'payroll:delete',
+            'settings:view', 'settings:edit', 'settings:create', 'settings:delete',
+            '*:view', '*:edit', '*:create', '*:delete', '*:*'
+          ];
+        } else if (profileData.role?.permissions) {
+          effectivePermissions = profileData.role.permissions;
+        }
+
+        return {
+          data: {
+            userId,
+            rolePermissions: profileData.role?.permissions || [],
+            customPermissions: [],
+            effectivePermissions
+          },
+          error: null
+        };
+      }
+      
       console.error('Error fetching user profile:', profileError);
       return { data: null, error: profileError };
     }

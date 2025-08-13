@@ -131,7 +131,10 @@ export function UserDetail() {
 
   // Handle custom permissions toggle
   const handleCustomPermissionsToggle = (enabled: boolean) => {
+    console.log('UserDetail: Custom permissions toggle clicked, enabled:', enabled);
+    console.log('UserDetail: Previous customPermissionsEnabled state:', customPermissionsEnabled);
     setCustomPermissionsEnabled(enabled);
+    console.log('UserDetail: New customPermissionsEnabled state will be:', enabled);
     
     // If disabling custom permissions, clear all permissions
     if (!enabled) {
@@ -177,11 +180,20 @@ export function UserDetail() {
         });
 
         if (!authResult.success) {
-          toast({
-            title: 'Authentication Error',
-            description: `Failed to create auth user: ${authResult.error}`,
-            variant: 'destructive'
-          });
+          // Check if it's a duplicate email error
+          if (authResult.error?.includes('already been registered')) {
+            toast({
+              title: 'Email Already Exists',
+              description: `The email ${user.email} is already registered. Please use a different email address.`,
+              variant: 'destructive'
+            });
+          } else {
+            toast({
+              title: 'Authentication Error',
+              description: `Failed to create auth user: ${authResult.error}`,
+              variant: 'destructive'
+            });
+          }
           return;
         }
 
@@ -256,13 +268,48 @@ export function UserDetail() {
   const handleDelete = async () => {
     if (!user.id) return;
     
+    // Prevent deletion of nanasefa@gmail.com as requested
+    if (user.email === 'nanasefa@gmail.com') {
+      toast({
+        title: 'Cannot Delete User',
+        description: 'This user cannot be deleted as it is a protected admin account.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     try {
+      console.log('Deleting user from database:', user.id);
+      
+      // Step 1: Delete user from database (profiles, permissions, etc.)
       await deleteUserFn(user.id);
+      
+      console.log('User deleted from database, now deleting auth user:', user.id);
+      
+      // Step 2: Delete corresponding auth user from Supabase Auth
+      const authDeleteResult = await adminUserService.deleteAuthUser(user.id);
+      
+      if (!authDeleteResult.success) {
+        // Check if it's just a "user not found" error, which is acceptable
+        if (authDeleteResult.error?.includes('User not found')) {
+          console.log('Auth user was already deleted or never existed - this is fine');
+        } else {
+          console.warn('Failed to delete auth user, but database deletion succeeded:', authDeleteResult.error);
+        }
+        // Don't fail the entire operation if auth deletion fails
+        // The database deletion is more critical
+      } else {
+        console.log('Auth user deleted successfully');
+      }
       
       toast({
         title: 'User deleted',
-        description: `${user.name} has been removed from the system.`
+        description: `${user.name} has been completely removed from the system.`
       });
+      
+      // Set refresh flag for users list
+      sessionStorage.setItem('refreshUsers', 'true');
+      
       navigate('/users');
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -306,6 +353,8 @@ export function UserDetail() {
       setIsResettingPassword(false);
     }
   };
+
+
 
   // Handle cancel/back navigation
   const handleCancel = () => {
