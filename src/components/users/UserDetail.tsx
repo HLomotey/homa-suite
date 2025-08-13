@@ -212,6 +212,9 @@ export function UserDetail() {
           title: 'User created successfully',
           description: `${user.name} has been added to the system. ${resetResult.success ? 'A password reset email has been sent.' : 'Please manually send password reset instructions.'}`
         });
+
+        // Set refresh flag for users list
+        sessionStorage.setItem('refreshUsers', 'true');
       } else {
         if (user.id) {
           await update(user.id, {
@@ -233,6 +236,9 @@ export function UserDetail() {
           title: 'User updated',
           description: `${user.name}'s information has been updated.`
         });
+
+        // Set refresh flag for users list
+        sessionStorage.setItem('refreshUsers', 'true');
       }
       
       navigate('/users');
@@ -275,7 +281,7 @@ export function UserDetail() {
     setIsResettingPassword(true);
     
     try {
-      const result = await authUserService.sendPasswordResetEmail(user.email);
+      const result = await adminUserService.sendPasswordResetEmail(user.email);
       
       if (result.success) {
         toast({

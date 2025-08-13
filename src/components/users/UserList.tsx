@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { 
   Table, 
   TableBody, 
@@ -64,6 +65,7 @@ import { useNavigate } from "react-router-dom";
 export function UserList() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // State for filters and UI
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,6 +114,26 @@ export function UserList() {
       });
     }
   }, [errorAllUsers, deleteError, updateStatusError, toast]);
+
+  // Auto-refresh when returning from user creation/editing
+  useEffect(() => {
+    // Check if we're returning from user creation/editing
+    const shouldRefresh = location.state?.refreshUsers || 
+                         sessionStorage.getItem('refreshUsers') === 'true';
+    
+    if (shouldRefresh) {
+      console.log('UserList: Refreshing users after creation/edit');
+      refetchUsers();
+      
+      // Clear the refresh flag
+      sessionStorage.removeItem('refreshUsers');
+      
+      // Clear location state to prevent multiple refreshes
+      if (location.state?.refreshUsers) {
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location, refetchUsers]);
   
   // Loading state
   const isLoading = loadingAllUsers || loadingRoleUsers || loadingStatusUsers || deleteLoading || updateStatusLoading;
