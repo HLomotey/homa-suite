@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { modulesApi, actionsApi } from '@/integration/supabase/permissions-api';
+import { modulesApi, actionsApi, getUserEffectivePermissions } from '@/integration/supabase/permissions-api';
 import { Module, Action } from '@/integration/supabase/permissions-types';
 import { FrontendUser } from '@/integration/supabase/types';
 
@@ -24,7 +24,9 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
 }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [actions, setActions] = useState<Action[]>([]);
+  const [userEffectivePermissions, setUserEffectivePermissions] = useState<string[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingPermissions, setLoadingPermissions] = useState(true);
 
   useEffect(() => {
     const fetchPermissionsData = async () => {
@@ -49,7 +51,33 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
     fetchPermissionsData();
   }, []);
 
-  if (loadingData) {
+  // Fetch user's effective permissions
+  useEffect(() => {
+    const fetchUserPermissions = async () => {
+      if (!user.id) return;
+      
+      try {
+        setLoadingPermissions(true);
+        const { data, error } = await getUserEffectivePermissions(user.id);
+        
+        if (error) {
+          console.error('Error fetching user effective permissions:', error);
+          setUserEffectivePermissions([]);
+        } else {
+          setUserEffectivePermissions(data?.effectivePermissions || []);
+        }
+      } catch (error) {
+        console.error('Error in fetchUserPermissions:', error);
+        setUserEffectivePermissions([]);
+      } finally {
+        setLoadingPermissions(false);
+      }
+    };
+
+    fetchUserPermissions();
+  }, [user.id]);
+
+  if (loadingData || loadingPermissions) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -95,7 +123,10 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
             <CardContent className="py-2 space-y-2">
               {actions.map((action) => {
                 const permissionKey = `${module.name}:${action.name}`;
-                const isChecked = user.permissions?.includes(permissionKey) || false;
+                const isChecked = userEffectivePermissions.includes(permissionKey) || 
+                                userEffectivePermissions.includes('*:*') || 
+                                userEffectivePermissions.includes(`${module.name}:*`) ||
+                                userEffectivePermissions.includes(`*:${action.name}`);
                 
                 return (
                   <div key={action.id} className="flex items-center justify-between">
