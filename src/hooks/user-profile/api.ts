@@ -183,10 +183,11 @@ export const fetchUsersByStatus = async (
  * @returns Promise with created user data
  */
 export const createUser = async (
-  user: Omit<FrontendUser, "id">
+  user: FrontendUser
 ): Promise<FrontendUser> => {
   // Convert frontend user to database format - only use columns that exist in the users table
   const dbUser = {
+    id: user.id || undefined, // Use provided ID if available, otherwise let Supabase generate
     email: user.email,
     role: user.role,
     is_active: user.status === 'active',

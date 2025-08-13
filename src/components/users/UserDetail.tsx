@@ -204,8 +204,13 @@ export function UserDetail() {
           return;
         }
 
-        // Create user in custom users table
-        const createdUser = await create(user);
+        // Create user in custom users table using the auth user ID
+        console.log('Auth user created successfully with ID:', authResult.user?.id);
+        const userWithAuthId = {
+          ...user,
+          id: authResult.user?.id || '' // Use the auth user ID
+        };
+        const createdUser = await create(userWithAuthId);
         
         if (!createdUser) {
           toast({
