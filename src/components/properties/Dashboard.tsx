@@ -1,10 +1,80 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUp, ArrowDown, Percent, Building, DoorOpen, Users } from "lucide-react";
+import { ArrowUp, ArrowDown, Percent, Building, DoorOpen, Users, Loader2 } from "lucide-react";
+import { useProperties } from "@/hooks/property/useProperty";
+import { useRooms } from "@/hooks/room/useRoom";
+import { RoomStatus } from "@/integration/supabase/types/room";
 
 // Occupancy Dashboard Component
 export const OccupancyDashboard = () => {
+  // Fetch properties and rooms data
+  const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
+  const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
+
+  // Calculate dashboard metrics
+  const dashboardMetrics = useMemo(() => {
+    if (propertiesLoading || roomsLoading) {
+      return {
+        totalProperties: 0,
+        totalRooms: 0,
+        occupiedRooms: 0,
+        occupancyRate: 0,
+        // Default to neutral trends when loading
+        propertyTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
+        roomsTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
+        occupiedTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
+        rateTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" }
+      };
+    }
+
+    // Count total properties
+    const totalProperties = properties.length;
+    
+    // Count total rooms
+    const totalRooms = rooms.length;
+    
+    // Count occupied rooms (rooms with status 'Occupied')
+    const occupiedRooms = rooms.filter(room => room.status === 'Occupied').length;
+    
+    // Calculate occupancy rate
+    const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+
+    // For now, we'll use placeholder trends until we implement historical data tracking
+    // In a real implementation, these would be calculated by comparing current vs previous period
+    const propertyTrend = { value: "+15%", direction: "up" as "up" | "down", period: "vs last month" };
+    const roomsTrend = { value: "+5%", direction: "up" as "up" | "down", period: "vs last month" };
+    const occupiedTrend = { value: "-1%", direction: "down" as "up" | "down", period: "vs last month" };
+    const rateTrend = { value: "-1%", direction: "down" as "up" | "down", period: "vs last month" };
+
+    return {
+      totalProperties,
+      totalRooms,
+      occupiedRooms,
+      occupancyRate,
+      propertyTrend,
+      roomsTrend,
+      occupiedTrend,
+      rateTrend
+    };
+  }, [properties, rooms, propertiesLoading, roomsLoading]);
+
+  // Handle loading state
+  const isLoading = propertiesLoading || roomsLoading;
+  
+  // Handle error state
+  const hasError = propertiesError || roomsError;
+  const errorMessage = propertiesError?.message || roomsError?.message;
+
+  if (hasError) {
+    return (
+      <div className="w-full p-8 text-center">
+        <h2 className="text-xl text-red-500 mb-2">Error loading dashboard data</h2>
+        <p className="text-white/60">{errorMessage}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
@@ -26,31 +96,35 @@ export const OccupancyDashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard 
           title="Total Properties" 
-          value="12" 
-          trend={{ value: "+15%", direction: "up", period: "vs last month" }}
-          icon={<Building className="h-5 w-5" />}
+          value={isLoading ? "--" : dashboardMetrics.totalProperties.toString()} 
+          trend={dashboardMetrics.propertyTrend}
+          icon={isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Building className="h-5 w-5" />}
           color="blue"
+          isLoading={isLoading}
         />
         <StatsCard 
           title="Total Rooms" 
-          value="248" 
-          trend={{ value: "+5%", direction: "up", period: "vs last month" }}
-          icon={<DoorOpen className="h-5 w-5" />}
+          value={isLoading ? "--" : dashboardMetrics.totalRooms.toString()} 
+          trend={dashboardMetrics.roomsTrend}
+          icon={isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <DoorOpen className="h-5 w-5" />}
           color="green"
+          isLoading={isLoading}
         />
         <StatsCard 
           title="Occupied Rooms" 
-          value="186" 
-          trend={{ value: "-1%", direction: "down", period: "vs last month" }}
-          icon={<Users className="h-5 w-5" />}
+          value={isLoading ? "--" : dashboardMetrics.occupiedRooms.toString()} 
+          trend={dashboardMetrics.occupiedTrend}
+          icon={isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Users className="h-5 w-5" />}
           color="amber"
+          isLoading={isLoading}
         />
         <StatsCard 
           title="Occupancy Rate" 
-          value="75%" 
-          trend={{ value: "-1%", direction: "down", period: "vs last month" }}
-          icon={<Percent className="h-5 w-5" />}
+          value={isLoading ? "--" : `${dashboardMetrics.occupancyRate}%`} 
+          trend={dashboardMetrics.rateTrend}
+          icon={isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Percent className="h-5 w-5" />}
           color="purple"
+          isLoading={isLoading}
         />
       </div>
 
@@ -70,7 +144,11 @@ export const OccupancyDashboard = () => {
                 <p className="text-sm text-white/60">Daily occupancy rate over time</p>
               </CardHeader>
               <CardContent className="h-80 flex items-center justify-center">
-                <p className="text-white/60">Chart placeholder - Occupancy trend line chart</p>
+                {isLoading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                ) : (
+                  <p className="text-white/60">Chart placeholder - Occupancy trend line chart</p>
+                )}
               </CardContent>
             </Card>
             
@@ -80,7 +158,11 @@ export const OccupancyDashboard = () => {
                 <p className="text-sm text-white/60">Available room count over time</p>
               </CardHeader>
               <CardContent className="h-80 flex items-center justify-center">
-                <p className="text-white/60">Chart placeholder - Available rooms line chart</p>
+                {isLoading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                ) : (
+                  <p className="text-white/60">Chart placeholder - Available rooms line chart</p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -93,7 +175,11 @@ export const OccupancyDashboard = () => {
               <p className="text-sm text-white/60">Occupancy statistics by property</p>
             </CardHeader>
             <CardContent className="h-96 flex items-center justify-center">
-              <p className="text-white/60">Chart placeholder - Property breakdown</p>
+              {isLoading ? (
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              ) : (
+                <p className="text-white/60">Chart placeholder - Property breakdown</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -105,7 +191,11 @@ export const OccupancyDashboard = () => {
               <p className="text-sm text-white/60">Room status distribution</p>
             </CardHeader>
             <CardContent className="h-96 flex items-center justify-center">
-              <p className="text-white/60">Chart placeholder - Status distribution</p>
+              {isLoading ? (
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              ) : (
+                <p className="text-white/60">Chart placeholder - Status distribution</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -125,9 +215,10 @@ interface StatsCardProps {
   };
   icon: React.ReactNode;
   color: "blue" | "green" | "amber" | "purple";
+  isLoading?: boolean;
 }
 
-const StatsCard = ({ title, value, trend, icon, color }: StatsCardProps) => {
+const StatsCard = ({ title, value, trend, icon, color, isLoading = false }: StatsCardProps) => {
   const colorClasses = {
     blue: "bg-blue-950/40 border-blue-800/30 text-blue-500",
     green: "bg-green-950/40 border-green-800/30 text-green-500",
@@ -143,11 +234,15 @@ const StatsCard = ({ title, value, trend, icon, color }: StatsCardProps) => {
       </div>
       <div className="text-2xl font-bold text-white mb-1">{value}</div>
       <div className="flex items-center text-xs">
-        <span className={trend.direction === "up" ? "text-green-500" : "text-red-500"}>
-          {trend.direction === "up" ? <ArrowUp className="h-3 w-3 inline mr-1" /> : <ArrowDown className="h-3 w-3 inline mr-1" />}
-          {trend.value}
-        </span>
-        <span className="text-white/40 ml-1">{trend.period}</span>
+        {!isLoading && (
+          <>
+            <span className={trend.direction === "up" ? "text-green-500" : "text-red-500"}>
+              {trend.direction === "up" ? <ArrowUp className="h-3 w-3 inline mr-1" /> : <ArrowDown className="h-3 w-3 inline mr-1" />}
+              {trend.value}
+            </span>
+            <span className="text-white/40 ml-1">{trend.period}</span>
+          </>
+        )}
       </div>
     </div>
   );
