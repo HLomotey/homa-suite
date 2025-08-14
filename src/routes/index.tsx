@@ -10,6 +10,7 @@ import Transport from "@/pages/Transport";
 import Settings from "@/pages/Settings";
 import Users from "@/pages/Users";
 import ExcelUploads from "@/pages/ExcelUploads";
+import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/layout";
 import { RouteGuard } from "@/components/permissions";
@@ -145,6 +146,14 @@ export const routes: RouteObject[] = [
         element: (
           <RouteGuard module="uploads">
             <ExcelUploads />
+          </RouteGuard>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <RouteGuard module="admin">
+            <Analytics />
           </RouteGuard>
         ),
       },

@@ -100,6 +100,12 @@ const navigationItems = [
     active: false,
   },
   {
+    label: "Analytics",
+    icon: BarChart3,
+    href: "/analytics",
+    active: false,
+  },
+  {
     label: "Reports",
     icon: BarChart3,
     href: "/reports",

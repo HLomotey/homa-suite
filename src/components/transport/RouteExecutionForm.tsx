@@ -147,8 +147,8 @@ export function RouteExecutionForm({
             </p>
             <div className="flex items-center mt-2">
               <Badge variant={
-                assignment.status === 'completed' ? 'success' :
-                assignment.status === 'in_progress' ? 'warning' :
+                assignment.status === 'completed' ? 'secondary' :
+                assignment.status === 'in_progress' ? 'default' :
                 assignment.status === 'cancelled' ? 'destructive' :
                 'outline'
               }>
