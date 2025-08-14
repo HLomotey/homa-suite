@@ -280,9 +280,23 @@ export function RouteManagement() {
                             <TableCell>{route.description}</TableCell>
                             <TableCell>
                               {route.schedules.map((schedule, index) => (
-                                <div key={index} className="text-sm">
-                                  <span className="font-medium">{schedule.day}:</span>{' '}
-                                  {schedule.startTime} - {schedule.endTime}
+                                <div key={index} className="text-sm mb-1">
+                                  <Badge variant="outline" className="mr-2">{schedule.day || 'N/A'}</Badge>
+                                  <span className="font-medium">
+                                    {schedule.startTime ? 
+                                      (typeof schedule.startTime === 'string' ? 
+                                        schedule.startTime.replace(/:\d{2}$/, '').toLowerCase() : 
+                                        schedule.startTime) : 
+                                      '00:00'}
+                                  </span>
+                                  {' '}-{' '}
+                                  <span className="font-medium">
+                                    {schedule.endTime ? 
+                                      (typeof schedule.endTime === 'string' ? 
+                                        schedule.endTime.replace(/:\d{2}$/, '').toLowerCase() : 
+                                        schedule.endTime) : 
+                                      '00:00'}
+                                  </span>
                                 </div>
                               ))}
                             </TableCell>
