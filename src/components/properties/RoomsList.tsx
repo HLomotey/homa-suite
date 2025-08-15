@@ -5,11 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/custom-ui";
-import { Plus, Search, Filter, DoorOpen, Building2, Users, Calendar, Edit, Trash2, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Search, Filter, DoorOpen, Building2, Users, Calendar, Edit, Trash2, Square, CheckSquare } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import RoomForm from "./RoomForm";
 import { FrontendRoom, RoomStatus, RoomType } from "@/integration/supabase/types";
-import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, useRoomsByStatus, useRoomsByProperty } from "@/hooks/room";
+import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, useBulkDeleteRooms, useRoomsByStatus, useRoomsByProperty } from "@/hooks/room";
 import { useProperties } from "@/hooks/property";
 
 
@@ -21,6 +23,9 @@ export const RoomsList = () => {
   const [propertyFilter, setPropertyFilter] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<FrontendRoom | undefined>();
+  const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
   
   // Toast notifications
   const { toast } = useToast();
@@ -30,6 +35,7 @@ export const RoomsList = () => {
   const { create, loading: createLoading } = useCreateRoom();
   const { update, loading: updateLoading } = useUpdateRoom();
   const { deleteRoom, loading: deleteLoading } = useDeleteRoom();
+  const { bulkDelete, loading: bulkDeleteLoading } = useBulkDeleteRooms();
   
   // Fetch properties for the form
   const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
@@ -88,6 +94,8 @@ export const RoomsList = () => {
         description: "Room has been successfully deleted.",
       });
       refetchRooms();
+      // Clear selection if the deleted room was selected
+      setSelectedRooms(prev => prev.filter(id => id !== roomId));
     } catch (error) {
       toast({
         title: "Error",
@@ -97,6 +105,71 @@ export const RoomsList = () => {
       console.error("Error deleting room:", error);
     }
   };
+
+  const handleBulkDeleteRooms = async () => {
+    if (selectedRooms.length === 0) return;
+    
+    try {
+      const result = await bulkDelete(selectedRooms);
+      
+      if (result.success.length > 0) {
+        toast({
+          title: "Rooms deleted",
+          description: `Successfully deleted ${result.success.length} room(s).`,
+        });
+      }
+      
+      if (result.errors.length > 0) {
+        toast({
+          title: "Some deletions failed",
+          description: `Failed to delete ${result.errors.length} room(s).`,
+          variant: "destructive",
+        });
+        console.error("Bulk delete errors:", result.errors);
+      }
+      
+      // Clear selections and refresh the list
+      setSelectedRooms([]);
+      setSelectAll(false);
+      refetchRooms();
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete rooms. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error bulk deleting rooms:", error);
+    }
+  };
+  
+  const toggleSelectRoom = (roomId: string) => {
+    setSelectedRooms(prev => {
+      if (prev.includes(roomId)) {
+        return prev.filter(id => id !== roomId);
+      } else {
+        return [...prev, roomId];
+      }
+    });
+  };
+  
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedRooms([]);
+    } else {
+      setSelectedRooms(filteredRooms.map(room => room.id));
+    }
+    setSelectAll(!selectAll);
+  };
+  
+  // Update selectAll state when filtered rooms or selections change
+  useEffect(() => {
+    if (filteredRooms.length > 0 && selectedRooms.length === filteredRooms.length) {
+      setSelectAll(true);
+    } else {
+      setSelectAll(false);
+    }
+  }, [selectedRooms, filteredRooms]);
 
   const handleSaveRoom = async (roomData: Omit<FrontendRoom, "id">) => {
     try {
@@ -206,6 +279,16 @@ export const RoomsList = () => {
               <option key={property.id} value={property.id}>{property.name}</option>
             ))}
           </select>
+          {selectedRooms.length > 0 && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              disabled={bulkDeleteLoading}
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Delete ({selectedRooms.length})
+            </Button>
+          )}
         </div>
       </div>
 
@@ -214,6 +297,14 @@ export const RoomsList = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox 
+                  checked={selectAll} 
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all rooms"
+                  disabled={filteredRooms.length === 0 || roomsLoading}
+                />
+              </TableHead>
               <TableHead>Room</TableHead>
               <TableHead>Property</TableHead>
               <TableHead>Type</TableHead>
@@ -239,7 +330,14 @@ export const RoomsList = () => {
                 <TableCell colSpan={9} className="text-center py-4">No rooms found</TableCell>
               </TableRow>
             ) : filteredRooms.map((room) => (
-              <TableRow key={room.id}>
+              <TableRow key={room.id} className={selectedRooms.includes(room.id) ? "bg-primary/5" : ""}>
+                <TableCell>
+                  <Checkbox 
+                    checked={selectedRooms.includes(room.id)}
+                    onCheckedChange={() => toggleSelectRoom(room.id)}
+                    aria-label={`Select room ${room.name}`}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">{room.name}</TableCell>
                 <TableCell>{room.propertyName}</TableCell>
                 <TableCell>{room.type}</TableCell>
@@ -285,6 +383,31 @@ export const RoomsList = () => {
           />
         </SheetContent>
       </Sheet>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedRooms.length} room{selectedRooms.length !== 1 ? 's' : ''}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulkDeleteRooms();
+              }}
+              disabled={bulkDeleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteLoading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

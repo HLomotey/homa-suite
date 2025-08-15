@@ -212,6 +212,60 @@ export const deleteRoom = async (id: string): Promise<void> => {
 };
 
 /**
+ * Delete multiple rooms at once
+ * @param ids Array of room IDs to delete
+ * @returns Promise with success status and any errors
+ */
+export const bulkDeleteRooms = async (
+  ids: string[]
+): Promise<{ success: string[]; errors: string[] }> => {
+  console.log(`Attempting to delete ${ids.length} rooms`);
+  
+  const results: { success: string[]; errors: string[] } = {
+    success: [],
+    errors: []
+  };
+
+  if (!ids || ids.length === 0) {
+    console.warn("No room IDs provided for deletion");
+    return results;
+  }
+
+  // Delete rooms in batches of 10 to avoid overwhelming the database
+  const batchSize = 10;
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize);
+    
+    try {
+      const { error } = await supabase
+        .from("rooms")
+        .delete()
+        .in("id", batch);
+
+      if (error) {
+        console.error(`Error deleting batch of rooms:`, error);
+        batch.forEach(id => {
+          results.errors.push(`Failed to delete room ${id}: ${error.message}`);
+        });
+      } else {
+        batch.forEach(id => {
+          results.success.push(id);
+        });
+      }
+    } catch (error) {
+      console.error(`Error in bulk delete operation:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      batch.forEach(id => {
+        results.errors.push(`Failed to delete room ${id}: ${errorMessage}`);
+      });
+    }
+  }
+
+  console.log(`Bulk delete completed: ${results.success.length} successful, ${results.errors.length} failed`);
+  return results;
+};
+
+/**
  * Update room status
  * @param id Room ID
  * @param status New room status

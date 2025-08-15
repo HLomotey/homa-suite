@@ -13,6 +13,7 @@ export {
   createRoom,
   updateRoom,
   deleteRoom,
+  bulkDeleteRooms,
   updateRoomStatus,
   updateRoomOccupants
 } from './api';
@@ -27,6 +28,7 @@ export {
   useCreateRoom,
   useUpdateRoom,
   useDeleteRoom,
+  useBulkDeleteRooms,
   useUpdateRoomStatus,
   useUpdateRoomOccupants
 } from './useRoom';

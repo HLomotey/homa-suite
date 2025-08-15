@@ -333,3 +333,32 @@ export const useUpdateRoomOccupants = () => {
 
   return { updateOccupants, loading, error, updatedRoom };
 };
+
+/**
+ * Hook for bulk deleting multiple rooms
+ * @returns Object containing bulkDelete function, loading state, and error state
+ */
+export const useBulkDeleteRooms = () => {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [results, setResults] = useState<{ success: string[]; errors: string[] }>({ success: [], errors: [] });
+
+  const bulkDelete = useCallback(async (ids: string[]) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await roomApi.bulkDeleteRooms(ids);
+      setResults(result);
+      return result;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("An unknown error occurred")
+      );
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { bulkDelete, loading, error, results };
+};
