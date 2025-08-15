@@ -25,7 +25,11 @@ import {
   Bath,
   Bed,
   Square,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { cn } from "@/lib/utils";
 
 // Import FrontendProperty from Supabase types
@@ -46,6 +50,7 @@ export const PropertiesList = ({
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [isExporting, setIsExporting] = useState(false);
 
   // Filter properties based on search query and status filter
   const filteredProperties = properties.filter((property) => {
@@ -60,6 +65,45 @@ export const PropertiesList = ({
 
     return matchesSearch && matchesStatus;
   });
+
+  // Function to export properties to Excel
+  const exportToExcel = () => {
+    try {
+      setIsExporting(true);
+      
+      // Prepare data for export
+      const exportData = filteredProperties.map(property => ({
+        'Property': property.title,
+        'Address': property.address,
+        'Type': property.type,
+        'Price': `$${property.price.toLocaleString()}`,
+        'Status': property.status,
+        'Bedrooms': property.bedrooms,
+        'Bathrooms': property.bathrooms,
+        'Area (sq ft)': property.area,
+        'Date Added': property.dateAdded
+      }));
+      
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Properties');
+      
+      // Generate Excel file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      
+      // Save file
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, `properties_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      setIsExporting(false);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -102,6 +146,19 @@ export const PropertiesList = ({
             </Button>
           </div>
 
+          <Button onClick={exportToExcel} variant="outline" disabled={isExporting} className="mr-2">
+            {isExporting ? (
+              <>
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export to Excel
+              </>
+            )}
+          </Button>
           <Button onClick={onAddProperty}>
             <Plus className="h-4 w-4 mr-2" />
             Add Property

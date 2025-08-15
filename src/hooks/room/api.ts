@@ -11,6 +11,7 @@ import {
   RoomType,
   mapDatabaseRoomToFrontend
 } from "../../integration/supabase/types";
+import { toast } from "sonner";
 
 /**
  * Fetch all rooms from Supabase
@@ -258,4 +259,78 @@ export const updateRoomOccupants = async (
   }
 
   return mapDatabaseRoomToFrontend(data as Room);
+};
+
+/**
+ * Bulk import rooms from Excel data
+ * @param roomsData Array of room data from Excel import
+ * @returns Promise with array of created rooms and any errors
+ */
+export const bulkImportRooms = async (
+  roomsData: any[]
+): Promise<{ success: FrontendRoom[]; errors: string[] }> => {
+  const results: { success: FrontendRoom[]; errors: string[] } = {
+    success: [],
+    errors: []
+  };
+
+  // Process each room entry
+  for (const roomData of roomsData) {
+    try {
+      // Convert Excel data format to database format
+      const dbRoom = {
+        name: roomData['Room Name'],
+        property_id: roomData['Property ID'],
+        property_name: roomData['Property Name'],
+        type: roomData['Room Type'],
+        status: roomData['Status'],
+        area: parseFloat(roomData['Area (sq ft)']) || 0,
+        occupants: parseInt(roomData['Current Occupants']) || 0,
+        max_occupants: parseInt(roomData['Max Occupants']) || 0,
+        price: parseFloat(roomData['Price']) || 0,
+        date_available: roomData['Date Available']
+      };
+
+      // Check if room already exists (by name and property ID)
+      const { data: existingRoom } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('name', dbRoom.name)
+        .eq('property_id', dbRoom.property_id)
+        .maybeSingle();
+
+      let result;
+      
+      if (existingRoom?.id) {
+        // Update existing room
+        const { data, error } = await supabase
+          .from('rooms')
+          .update(dbRoom)
+          .eq('id', existingRoom.id)
+          .select()
+          .single();
+          
+        if (error) throw new Error(`Error updating room ${dbRoom.name}: ${error.message}`);
+        result = data;
+      } else {
+        // Insert new room
+        const { data, error } = await supabase
+          .from('rooms')
+          .insert(dbRoom)
+          .select()
+          .single();
+          
+        if (error) throw new Error(`Error creating room ${dbRoom.name}: ${error.message}`);
+        result = data;
+      }
+
+      results.success.push(mapDatabaseRoomToFrontend(result as Room));
+    } catch (error) {
+      console.error('Error processing room import:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      results.errors.push(errorMessage);
+    }
+  }
+
+  return results;
 };

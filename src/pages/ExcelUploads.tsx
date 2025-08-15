@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import UploadStaff from "./UploadStaff";
 import UploadPayroll from "./UploadPayroll";
 import UploadAttendance from "./UploadAttendance";
+import * as XLSX from 'xlsx';
+import { bulkImportRooms } from "../hooks/room/api";
+import { FrontendRoom } from "../integration/supabase/types";
 
 const UploadComponent = ({ 
   title, 
