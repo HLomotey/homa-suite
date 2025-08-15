@@ -12,9 +12,8 @@ import { toast } from "sonner";
 import UploadStaff from "./UploadStaff";
 import UploadPayroll from "./UploadPayroll";
 import UploadAttendance from "./UploadAttendance";
+import UploadRooms from "./UploadRooms";
 import * as XLSX from 'xlsx';
-import { bulkImportRooms } from "../hooks/room/api";
-import { FrontendRoom } from "../integration/supabase/types";
 
 const UploadComponent = ({ 
   title, 
@@ -59,6 +58,7 @@ const UploadComponent = ({
           clearInterval(interval);
           setUploading(false);
           setUploadStatus("success");
+          toast.success(`${title} file uploaded successfully!`);
           return 100;
         }
         return prev + 10;
@@ -244,25 +244,6 @@ export default function ExcelUploads() {
       ],
       templateName: "operations_template.csv"
     },
-    rooms: {
-      title: "Room Data",
-      icon: Building2,
-      description: "Upload Excel files to update room and property data",
-      badgeText: "Properties",
-      expectedColumns: [
-        "Room Name", "Property ID", "Property Name", "Room Type", "Status",
-        "Area (sq ft)", "Current Occupants", "Max Occupants", "Price", "Date Available"
-      ],
-      guidelines: [
-        "First row should contain column headers",
-        "Date format: MM/DD/YYYY or YYYY-MM-DD",
-        "Area and price should be numeric",
-        "Room Type: Single, Double, Suite, or Studio",
-        "Status: Available, Occupied, Maintenance, or Reserved",
-        "Maximum file size: 10MB"
-      ],
-      templateName: "rooms_template.csv"
-    }
   };
 
   return (
@@ -277,37 +258,38 @@ export default function ExcelUploads() {
       </div>
 
       <Tabs defaultValue="hr" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="hr" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            HR Data
+        <TabsList className="grid grid-cols-7 max-w-4xl">
+          <TabsTrigger value="hr">
+            <Users className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">HR</span>
           </TabsTrigger>
-          <TabsTrigger value="finance" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
-            Finance Data
+          <TabsTrigger value="finance">
+            <DollarSign className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Finance</span>
           </TabsTrigger>
-          <TabsTrigger value="operations" className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Operations Data
+          <TabsTrigger value="operations">
+            <ClipboardList className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Operations</span>
           </TabsTrigger>
-          <TabsTrigger value="rooms" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Room Data
+          <TabsTrigger value="rooms">
+            <Building2 className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Rooms</span>
           </TabsTrigger>
-          <TabsTrigger value="staff" className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4" />
-            Staff Data
+          <TabsTrigger value="staff">
+            <UserPlus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Staff</span>
           </TabsTrigger>
-          <TabsTrigger value="payroll" className="flex items-center gap-2">
-            <Calculator className="h-4 w-4" />
-            Payroll Data
+          <TabsTrigger value="payroll">
+            <Calculator className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Payroll</span>
           </TabsTrigger>
-          <TabsTrigger value="attendance" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Attendance Data
+          <TabsTrigger value="attendance">
+            <Clock className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Attendance</span>
           </TabsTrigger>
         </TabsList>
 
+        {/* HR, Finance, Operations tabs */}
         {Object.entries(uploadConfigs).map(([key, config]) => (
           <TabsContent key={key} value={key} className="space-y-6">
             <div className="flex items-center space-x-2 mb-4">
@@ -320,6 +302,17 @@ export default function ExcelUploads() {
             <UploadComponent {...config} />
           </TabsContent>
         ))}
+        
+        {/* Rooms Upload Tab */}
+        <TabsContent value="rooms" className="space-y-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Building2 className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Upload Room Data</h2>
+            <Badge variant="secondary">Properties</Badge>
+          </div>
+          <p className="text-muted-foreground mb-4">Upload Excel files to update room data in the database</p>
+          <UploadRooms />
+        </TabsContent>
 
         {/* Staff Upload Tab */}
         <TabsContent value="staff" className="space-y-6">
