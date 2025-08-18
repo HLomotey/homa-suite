@@ -159,3 +159,49 @@ export const useDrivers = () => {
 
   return { drivers, loading, error, refetch: fetchDrivers };
 };
+
+/**
+ * Hook for fetching staff members active during a specific billing period
+ * @param startDate Start date of the billing period
+ * @param endDate End date of the billing period
+ * @returns Object containing staff array, loading state, error state, and refetch function
+ */
+export const useStaffByBillingPeriod = (startDate?: string, endDate?: string) => {
+  const [staff, setStaff] = useState<FrontendBillingStaff[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchStaffByPeriod = useCallback(async (periodStart?: string, periodEnd?: string) => {
+    // Use parameters if provided, otherwise use the hook state
+    const start = periodStart || startDate;
+    const end = periodEnd || endDate;
+    
+    // If no dates are provided, don't fetch
+    if (!start || !end) {
+      setStaff([]);
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await staffApi.getStaffByBillingPeriod(start, end);
+      setStaff(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("An unknown error occurred")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchStaffByPeriod();
+    }
+  }, [fetchStaffByPeriod, startDate, endDate]);
+
+  return { staff, loading, error, refetch: fetchStaffByPeriod };
+};

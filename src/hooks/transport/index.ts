@@ -16,6 +16,24 @@ export {
   fetchTransportStats
 } from './api';
 
+// Re-export billing API functions
+export {
+  fetchBillingPeriods,
+  fetchBillingPeriodById,
+  createBillingPeriod,
+  updateBillingPeriod,
+  deleteBillingPeriod,
+  fetchTransportBillings,
+  fetchTransportBillingsByPeriod,
+  createTransportBilling,
+  updateTransportBilling,
+  deleteTransportBilling,
+  fetchTransportBillingRates,
+  createTransportBillingRate,
+  fetchTransportBillingUsage,
+  createTransportBillingUsage
+} from './billingApi';
+
 // Re-export hooks
 export {
   useVehicles,
@@ -28,3 +46,7 @@ export {
   useTransportStaff,
   useTransportStats
 } from './useTransport';
+
+// Re-export billing hooks
+export { useBillingPeriod } from './useBillingPeriod';
+export { useTransportBilling } from './useTransportBilling';

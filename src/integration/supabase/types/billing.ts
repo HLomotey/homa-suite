@@ -31,6 +31,16 @@ export type BillStatus = 'paid' | 'pending' | 'overdue';
 export type BillType = 'rent' | 'utilities' | 'transport' | 'maintenance';
 
 /**
+ * TransportBillingStatus enum
+ */
+export type TransportBillingStatus = 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
+
+/**
+ * BillingPeriodStatus enum
+ */
+export type BillingPeriodStatus = 'Active' | 'Closed' | 'Archived';
+
+/**
  * Staff interface representing the staff table in Supabase
  * Comprehensive staff information for billing and HR purposes
  */
@@ -297,5 +307,204 @@ export const mapDatabasePayrollToFrontend = (
     payPeriod: dbPayroll.pay_period,
     staffName,
     employeeId,
+  };
+};
+
+/**
+ * BillingPeriod interface representing the billing_periods table in Supabase
+ */
+export interface BillingPeriod {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: BillingPeriodStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * TransportBilling interface representing the transport_billing table in Supabase
+ */
+export interface TransportBilling {
+  id: string;
+  billing_period_id: string;
+  staff_id: string;
+  location_id: string;
+  vehicle_id: string;
+  amount: number;
+  description: string | null;
+  status: TransportBillingStatus;
+  due_date: string;
+  paid_date: string | null;
+  payment_reference: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * TransportBillingRate interface representing the transport_billing_rates table in Supabase
+ */
+export interface TransportBillingRate {
+  id: string;
+  location_id: string;
+  vehicle_type: string;
+  rate_per_day: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * TransportBillingUsage interface representing the transport_billing_usage table in Supabase
+ */
+export interface TransportBillingUsage {
+  id: string;
+  billing_id: string;
+  usage_date: string;
+  distance: number | null;
+  duration: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Frontend billing period type
+ */
+export interface FrontendBillingPeriod {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: BillingPeriodStatus;
+  createdBy: string;
+}
+
+/**
+ * Frontend transport billing type
+ */
+export interface FrontendTransportBilling {
+  id: string;
+  billingPeriodId: string;
+  billingPeriodName?: string;
+  staffId: string;
+  staffName?: string;
+  locationId: string;
+  locationName?: string;
+  vehicleId: string;
+  vehicleInfo?: string;
+  amount: number;
+  description?: string;
+  status: TransportBillingStatus;
+  dueDate: string;
+  paidDate?: string;
+  paymentReference?: string;
+  notes?: string;
+}
+
+/**
+ * Frontend transport billing rate type
+ */
+export interface FrontendTransportBillingRate {
+  id: string;
+  locationId: string;
+  locationName?: string;
+  vehicleType: string;
+  ratePerDay: number;
+  effectiveFrom: string;
+  effectiveTo?: string;
+}
+
+/**
+ * Frontend transport billing usage type
+ */
+export interface FrontendTransportBillingUsage {
+  id: string;
+  billingId: string;
+  usageDate: string;
+  distance?: number;
+  duration?: number;
+  notes?: string;
+}
+
+/**
+ * Maps a database billing period to the frontend format
+ */
+export const mapDatabaseBillingPeriodToFrontend = (dbPeriod: BillingPeriod): FrontendBillingPeriod => {
+  return {
+    id: dbPeriod.id,
+    name: dbPeriod.name,
+    startDate: dbPeriod.start_date,
+    endDate: dbPeriod.end_date,
+    status: dbPeriod.status,
+    createdBy: dbPeriod.created_by
+  };
+};
+
+/**
+ * Maps a database transport billing to the frontend format
+ */
+export const mapDatabaseTransportBillingToFrontend = (
+  dbBilling: TransportBilling,
+  billingPeriodName?: string,
+  staffName?: string,
+  locationName?: string,
+  vehicleInfo?: string
+): FrontendTransportBilling => {
+  return {
+    id: dbBilling.id,
+    billingPeriodId: dbBilling.billing_period_id,
+    billingPeriodName,
+    staffId: dbBilling.staff_id,
+    staffName,
+    locationId: dbBilling.location_id,
+    locationName,
+    vehicleId: dbBilling.vehicle_id,
+    vehicleInfo,
+    amount: dbBilling.amount,
+    description: dbBilling.description || undefined,
+    status: dbBilling.status,
+    dueDate: dbBilling.due_date,
+    paidDate: dbBilling.paid_date || undefined,
+    paymentReference: dbBilling.payment_reference || undefined,
+    notes: dbBilling.notes || undefined
+  };
+};
+
+/**
+ * Maps a database transport billing rate to the frontend format
+ */
+export const mapDatabaseTransportBillingRateToFrontend = (
+  dbRate: TransportBillingRate,
+  locationName?: string
+): FrontendTransportBillingRate => {
+  return {
+    id: dbRate.id,
+    locationId: dbRate.location_id,
+    locationName,
+    vehicleType: dbRate.vehicle_type,
+    ratePerDay: dbRate.rate_per_day,
+    effectiveFrom: dbRate.effective_from,
+    effectiveTo: dbRate.effective_to || undefined
+  };
+};
+
+/**
+ * Maps a database transport billing usage to the frontend format
+ */
+export const mapDatabaseTransportBillingUsageToFrontend = (
+  dbUsage: TransportBillingUsage
+): FrontendTransportBillingUsage => {
+  return {
+    id: dbUsage.id,
+    billingId: dbUsage.billing_id,
+    usageDate: dbUsage.usage_date,
+    distance: dbUsage.distance || undefined,
+    duration: dbUsage.duration || undefined,
+    notes: dbUsage.notes || undefined
   };
 };

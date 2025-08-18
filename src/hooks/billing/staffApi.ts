@@ -226,3 +226,30 @@ export const getDrivers = async (): Promise<FrontendBillingStaff[]> => {
 
   return data.map(mapDatabaseBillingStaffToFrontend);
 };
+
+/**
+ * Get staff members active during a specific billing period
+ * @param startDate Start date of the billing period
+ * @param endDate End date of the billing period
+ * @returns Promise with array of staff members active during the period
+ */
+export const getStaffByBillingPeriod = async (
+  startDate: string,
+  endDate: string
+): Promise<FrontendBillingStaff[]> => {
+  console.log(`Fetching staff members active during period ${startDate} to ${endDate}`);
+  
+  const { data, error } = await supabase
+    .from("billing_staff")
+    .select("*")
+    .or(`hire_date.lte.${endDate},and(termination_date.gte.${startDate})`)
+    .or(`employment_status.eq.active,and(hire_date.lte.${endDate})`)
+    .order("legal_name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching staff for billing period:", error);
+    throw new Error(error.message);
+  }
+
+  return data.map(mapDatabaseBillingStaffToFrontend);
+};
