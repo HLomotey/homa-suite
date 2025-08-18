@@ -3,7 +3,7 @@
  * Displays and manages inventory suppliers
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -22,7 +22,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Search, AlertCircle, PlusCircle, Edit, Trash2, Phone, Mail } from "lucide-react";
-import { useInventorySuppliers } from "../../hooks/inventory";
+import { fetchInventorySuppliers } from "../../hooks/inventory/api";
 import { FrontendInventorySupplier } from "../../integration/supabase/types/inventory";
 import { Skeleton } from "../ui/skeleton";
 
@@ -38,7 +38,28 @@ export function Suppliers({
   onDeleteSupplier,
 }: SuppliersProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { suppliers, loading, error } = useInventorySuppliers();
+  const [suppliers, setSuppliers] = useState<FrontendInventorySupplier[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  
+  // Fetch suppliers
+  useEffect(() => {
+    const getSuppliers = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchInventorySuppliers();
+        setSuppliers(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching suppliers:", err);
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    getSuppliers();
+  }, []);
 
   // Filter suppliers based on search query
   const filteredSuppliers = useMemo(() => {

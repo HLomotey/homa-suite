@@ -3,7 +3,7 @@
  * Displays and manages purchase orders for a property
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -23,8 +23,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Search, AlertCircle, PlusCircle, Eye, CheckCircle } from "lucide-react";
-import { usePurchaseOrdersByProperty, useInventorySuppliers } from "../../hooks/inventory";
-import { FrontendInventoryPurchaseOrder, PurchaseOrderStatus } from "../../integration/supabase/types/inventory";
+import { fetchPurchaseOrdersByProperty, fetchInventorySuppliers } from "../../hooks/inventory/api";
+import { FrontendInventoryPurchaseOrder, FrontendInventorySupplier, PurchaseOrderStatus } from "../../integration/supabase/types/inventory";
 import { Skeleton } from "../ui/skeleton";
 import { format } from "date-fns";
 
@@ -42,19 +42,56 @@ export function PurchaseOrders({
   onReceivePurchaseOrder,
 }: PurchaseOrdersProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { orders, loading: ordersLoading, error: ordersError } = usePurchaseOrdersByProperty(propertyId);
-  const { suppliers, loading: suppliersLoading } = useInventorySuppliers();
+  const [orders, setOrders] = useState<FrontendInventoryPurchaseOrder[]>([]);
+  const [suppliers, setSuppliers] = useState<FrontendInventorySupplier[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<Error | null>(null);
+  
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      setOrdersLoading(true);
+      setSuppliersLoading(true);
+      
+      try {
+        // Fetch orders
+        const ordersData = await fetchPurchaseOrdersByProperty(propertyId);
+        setOrders(ordersData);
+        setOrdersError(null);
+      } catch (err) {
+        console.error("Error fetching purchase orders:", err);
+        setOrdersError(err as Error);
+      } finally {
+        setOrdersLoading(false);
+      }
+      
+      try {
+        // Fetch suppliers
+        const suppliersData = await fetchInventorySuppliers();
+        setSuppliers(suppliersData);
+      } catch (err) {
+        console.error("Error fetching suppliers:", err);
+      } finally {
+        setSuppliersLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [propertyId]);
 
   // Get status badge variant
   const getStatusBadge = (status: PurchaseOrderStatus) => {
     switch (status) {
-      case "DRAFT":
+      case "draft":
         return "secondary";
-      case "ORDERED":
-        return "warning";
-      case "RECEIVED":
-        return "success";
-      case "CANCELLED":
+      case "ordered":
+        return "outline";
+      case "partial":
+        return "outline";
+      case "delivered":
+        return "default";
+      case "cancelled":
         return "destructive";
       default:
         return "default";
@@ -64,13 +101,15 @@ export function PurchaseOrders({
   // Get status display name
   const getStatusDisplay = (status: PurchaseOrderStatus) => {
     switch (status) {
-      case "DRAFT":
+      case "draft":
         return "Draft";
-      case "ORDERED":
+      case "ordered":
         return "Ordered";
-      case "RECEIVED":
-        return "Received";
-      case "CANCELLED":
+      case "partial":
+        return "Partially Delivered";
+      case "delivered":
+        return "Delivered";
+      case "cancelled":
         return "Cancelled";
       default:
         return status;
@@ -91,12 +130,12 @@ export function PurchaseOrders({
     const query = searchQuery.toLowerCase();
     return orders.filter((order) => {
       const supplierName = suppliersMap.get(order.supplierId)?.toLowerCase() || "";
-      const orderNumber = order.orderNumber?.toLowerCase() || "";
+      const orderIdShort = order.id.slice(0, 8).toLowerCase();
       const status = order.status.toLowerCase();
       
       return (
         supplierName.includes(query) ||
-        orderNumber.includes(query) ||
+        orderIdShort.includes(query) ||
         status.includes(query)
       );
     });
@@ -195,7 +234,7 @@ export function PurchaseOrders({
                 filteredOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">
-                      {order.orderNumber || `PO-${order.id.slice(0, 8)}`}
+                      {`PO-${order.id.slice(0, 8)}`}
                     </TableCell>
                     <TableCell>
                       {format(new Date(order.orderDate), "MMM d, yyyy")}
@@ -223,7 +262,7 @@ export function PurchaseOrders({
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {order.status === "ORDERED" && (
+                        {order.status === "ordered" && (
                           <Button
                             variant="outline"
                             size="icon"
