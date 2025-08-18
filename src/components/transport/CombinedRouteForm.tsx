@@ -9,7 +9,7 @@ import {
   FrontendCombinedRoute, 
   FrontendRoute 
 } from "@/integration/supabase/types/transport-route";
-import { Trash2, Plus, ArrowUpDown, Route } from "lucide-react";
+import { Plus, Trash2, Clock, X, ArrowUpDown, Route as RouteIcon } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useRoute } from "@/hooks/transport/useRoute";
 import { Switch } from "@/components/ui/switch";
@@ -37,6 +37,7 @@ export function CombinedRouteForm({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedRoutes, setSelectedRoutes] = useState<Array<{
     id: string;
     routeId: string;
@@ -405,7 +406,7 @@ export function CombinedRouteForm({
               
               {selectedRoutes.length === 0 && (
                 <div className="text-center p-4 border border-dashed rounded-md">
-                  <Route className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <RouteIcon className="h-8 w-8 mx-auto text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">
                     No routes added yet. Click "Add Route" to start building your combined route.
                   </p>
@@ -501,7 +502,28 @@ export function CombinedRouteForm({
               Choose routes to include in this combined route.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto">
+          <div className="space-y-4 p-2">
+            {/* Search input */}
+            <div className="relative">
+              <Input
+                placeholder="Search routes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto">
             {/* Route selection UI */}
             <div className="space-y-4 p-2">
               {loading ? (
@@ -524,7 +546,9 @@ export function CombinedRouteForm({
                 <div className="p-4 border rounded-md">
                   <p className="text-muted-foreground">No routes available. Please create routes first.</p>
                 </div>
-              ) : routes.map((route) => {
+              ) : routes.filter(route => 
+                searchTerm ? route.name.toLowerCase().includes(searchTerm.toLowerCase()) : true
+              ).map((route) => {
                 const isSelected = selectedRoutes.some(r => r.routeId === route.id);
                 const isDisabled = isSelected && (currentRouteIndex === null || 
                   selectedRoutes[currentRouteIndex]?.routeId !== route.id);
