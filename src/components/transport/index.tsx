@@ -13,6 +13,7 @@ import { TransportStats } from "./TransportStats";
 import { TransportList } from "./TransportList";
 import { TransportDetail } from "./TransportDetail";
 import { TransportForm } from "./TransportForm";
+import { TransportBilling } from "./TransportBilling";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function Transport() {
@@ -96,12 +97,17 @@ export function Transport() {
             <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
             <TabsTrigger value="repair">Repair</TabsTrigger>
             <TabsTrigger value="retired">Retired</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
           </TabsList>
           <TabsContent
             value={activeTab}
             className="bg-black/40 border border-white/10 rounded-lg p-0"
           >
-            {selectedVehicle ? (
+            {activeTab === "billing" ? (
+              <div className="p-6">
+                <TransportBilling />
+              </div>
+            ) : selectedVehicle ? (
               <div className="p-6">
                 <TransportDetail
                   vehicle={selectedVehicle}

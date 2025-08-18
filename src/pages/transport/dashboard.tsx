@@ -7,11 +7,18 @@ import VehicleList from "@/components/transport/VehicleList";
 import MaintenanceTypeList from "@/components/transport/MaintenanceTypeList";
 import MaintenanceTransactionList from "@/components/transport/MaintenanceTransactionList";
 import { RouteManagement } from "@/components/transport/RouteManagement";
+import { TransportBilling } from "@/components/transport/TransportBilling";
 import { FrontendVehicle } from "@/integration/supabase/types/vehicle";
 import { FrontendMaintenanceType } from "@/integration/supabase/types/maintenance-type";
 import { FrontendMaintenanceTransaction } from "@/integration/supabase/types/maintenance-transaction";
 import { toast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { AlertCircle, Car, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { supabase } from "@/integration/supabase";
 
@@ -24,7 +31,7 @@ export default function TransportDashboard() {
     addVehicle,
     editVehicle,
     removeVehicle,
-    setSelectedVehicle
+    setSelectedVehicle,
   } = useVehicle();
 
   const {
@@ -34,7 +41,7 @@ export default function TransportDashboard() {
     addMaintenanceType,
     editMaintenanceType,
     removeMaintenanceType,
-    setSelectedMaintenanceType
+    setSelectedMaintenanceType,
   } = useMaintenanceType();
 
   const {
@@ -44,7 +51,7 @@ export default function TransportDashboard() {
     addTransaction,
     editTransaction,
     removeTransaction,
-    setSelectedTransaction
+    setSelectedTransaction,
   } = useMaintenanceTransaction();
 
   // Handle vehicle actions
@@ -56,22 +63,22 @@ export default function TransportDashboard() {
     const fetchDefaultLocation = async () => {
       try {
         const { data } = await supabase
-          .from('company_locations')
-          .select('id')
+          .from("company_locations")
+          .select("id")
           .limit(1)
           .single();
-        
+
         if (data) {
-          console.log('Found default location:', data.id);
+          console.log("Found default location:", data.id);
           setDefaultLocationId(data.id);
         } else {
-          console.log('No default location found');
+          console.log("No default location found");
         }
       } catch (err) {
-        console.error('Error fetching default location:', err);
+        console.error("Error fetching default location:", err);
       }
     };
-    
+
     fetchDefaultLocation();
   }, []);
 
@@ -81,7 +88,8 @@ export default function TransportDashboard() {
       if (!vehicleData.locationId && !defaultLocationId) {
         toast({
           title: "Error",
-          description: "No company location available. Please create a location first.",
+          description:
+            "No company location available. Please create a location first.",
           variant: "destructive",
         });
         return;
@@ -90,10 +98,10 @@ export default function TransportDashboard() {
       // Use the form data but ensure locationId is set
       const vehicleToAdd = {
         ...vehicleData,
-        locationId: vehicleData.locationId || defaultLocationId
+        locationId: vehicleData.locationId || defaultLocationId,
       };
-      
-      console.log('Adding vehicle with data:', vehicleToAdd);
+
+      console.log("Adding vehicle with data:", vehicleToAdd);
       await addVehicle(vehicleToAdd);
       toast({
         title: "Success",
@@ -148,9 +156,11 @@ export default function TransportDashboard() {
   };
 
   // Handle maintenance type actions
-  const handleAddMaintenanceType = async (maintenanceTypeData: Omit<FrontendMaintenanceType, "id">) => {
+  const handleAddMaintenanceType = async (
+    maintenanceTypeData: Omit<FrontendMaintenanceType, "id">
+  ) => {
     try {
-      console.log('Adding maintenance type with data:', maintenanceTypeData);
+      console.log("Adding maintenance type with data:", maintenanceTypeData);
       await addMaintenanceType(maintenanceTypeData);
       toast({
         title: "Success",
@@ -166,7 +176,9 @@ export default function TransportDashboard() {
     }
   };
 
-  const handleEditMaintenanceType = async (maintenanceType: FrontendMaintenanceType) => {
+  const handleEditMaintenanceType = async (
+    maintenanceType: FrontendMaintenanceType
+  ) => {
     try {
       await editMaintenanceType(maintenanceType.id, maintenanceType);
       toast({
@@ -200,7 +212,9 @@ export default function TransportDashboard() {
     }
   };
 
-  const handleSelectMaintenanceType = (maintenanceType: FrontendMaintenanceType) => {
+  const handleSelectMaintenanceType = (
+    maintenanceType: FrontendMaintenanceType
+  ) => {
     setSelectedMaintenanceType(maintenanceType);
   };
 
@@ -210,7 +224,8 @@ export default function TransportDashboard() {
       if (vehicles.length === 0 || maintenanceTypes.length === 0) {
         toast({
           title: "Error",
-          description: "You need at least one vehicle and maintenance type to add a transaction",
+          description:
+            "You need at least one vehicle and maintenance type to add a transaction",
           variant: "destructive",
         });
         return;
@@ -225,7 +240,7 @@ export default function TransportDashboard() {
         notes: "",
         performedBy: "",
         status: "Scheduled",
-        receiptUrl: null
+        receiptUrl: null,
       });
       toast({
         title: "Success",
@@ -241,7 +256,9 @@ export default function TransportDashboard() {
     }
   };
 
-  const handleEditTransaction = async (transaction: FrontendMaintenanceTransaction) => {
+  const handleEditTransaction = async (
+    transaction: FrontendMaintenanceTransaction
+  ) => {
     try {
       const { id, vehicleInfo, maintenanceTypeName, ...rest } = transaction;
       await editTransaction(id, rest);
@@ -276,49 +293,69 @@ export default function TransportDashboard() {
     }
   };
 
-  const handleSelectTransaction = (transaction: FrontendMaintenanceTransaction) => {
+  const handleSelectTransaction = (
+    transaction: FrontendMaintenanceTransaction
+  ) => {
     setSelectedTransaction(transaction);
   };
 
   // Calculate dashboard stats
-  const activeVehicles = vehicles.filter(v => v.status === "Active").length;
-  const inMaintenanceVehicles = vehicles.filter(v => v.status === "Maintenance").length;
-  const scheduledMaintenance = transactions.filter(t => t.status === "Scheduled").length;
-  const completedMaintenance = transactions.filter(t => t.status === "Completed").length;
+  const activeVehicles = vehicles.filter((v) => v.status === "Active").length;
+  const inMaintenanceVehicles = vehicles.filter(
+    (v) => v.status === "Maintenance"
+  ).length;
+  const scheduledMaintenance = transactions.filter(
+    (t) => t.status === "Scheduled"
+  ).length;
+  const completedMaintenance = transactions.filter(
+    (t) => t.status === "Completed"
+  ).length;
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Transport Management</h1>
-      
+
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Vehicles</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Vehicles
+            </CardTitle>
             <Car className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeVehicles}</div>
             <p className="text-xs text-muted-foreground">
-              {vehicles.length > 0 ? Math.round((activeVehicles / vehicles.length) * 100) : 0}% of fleet
+              {vehicles.length > 0
+                ? Math.round((activeVehicles / vehicles.length) * 100)
+                : 0}
+              % of fleet
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Maintenance</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              In Maintenance
+            </CardTitle>
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{inMaintenanceVehicles}</div>
             <p className="text-xs text-muted-foreground">
-              {vehicles.length > 0 ? Math.round((inMaintenanceVehicles / vehicles.length) * 100) : 0}% of fleet
+              {vehicles.length > 0
+                ? Math.round((inMaintenanceVehicles / vehicles.length) * 100)
+                : 0}
+              % of fleet
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Scheduled Maintenance</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Scheduled Maintenance
+            </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -330,13 +367,18 @@ export default function TransportDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Maintenance</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Completed Maintenance
+            </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedMaintenance}</div>
             <p className="text-xs text-muted-foreground">
-              {transactions.length > 0 ? Math.round((completedMaintenance / transactions.length) * 100) : 0}% completion rate
+              {transactions.length > 0
+                ? Math.round((completedMaintenance / transactions.length) * 100)
+                : 0}
+              % completion rate
             </p>
           </CardContent>
         </Card>
@@ -359,17 +401,20 @@ export default function TransportDashboard() {
         <TabsList>
           <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
           <TabsTrigger value="maintenance-types">Maintenance Types</TabsTrigger>
-          <TabsTrigger value="maintenance-records">Maintenance Records</TabsTrigger>
+          <TabsTrigger value="maintenance-records">
+            Maintenance Records
+          </TabsTrigger>
           <TabsTrigger value="routes">Routes</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="vehicles" className="space-y-4">
           {vehiclesError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
               Error loading vehicles: {vehiclesError}
             </div>
           )}
-          
+
           {vehiclesLoading ? (
             <div className="text-center py-4">Loading vehicles...</div>
           ) : (
@@ -382,14 +427,14 @@ export default function TransportDashboard() {
             />
           )}
         </TabsContent>
-        
+
         <TabsContent value="maintenance-types" className="space-y-4">
           {typesError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
               Error loading maintenance types: {typesError}
             </div>
           )}
-          
+
           {typesLoading ? (
             <div className="text-center py-4">Loading maintenance types...</div>
           ) : (
@@ -402,16 +447,18 @@ export default function TransportDashboard() {
             />
           )}
         </TabsContent>
-        
+
         <TabsContent value="maintenance-records" className="space-y-4">
           {transactionsError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
               Error loading maintenance records: {transactionsError}
             </div>
           )}
-          
+
           {transactionsLoading ? (
-            <div className="text-center py-4">Loading maintenance records...</div>
+            <div className="text-center py-4">
+              Loading maintenance records...
+            </div>
           ) : (
             <MaintenanceTransactionList
               transactions={transactions}
@@ -424,9 +471,13 @@ export default function TransportDashboard() {
             />
           )}
         </TabsContent>
-        
+
         <TabsContent value="routes" className="space-y-4">
           <RouteManagement />
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-4">
+          <TransportBilling />
         </TabsContent>
       </Tabs>
     </div>

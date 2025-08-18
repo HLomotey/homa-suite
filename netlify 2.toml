@@ -1,0 +1,15 @@
+# netlify.toml
+# This file tells Netlify how to handle routes for a single-page application
+
+[build]
+  # Directory to publish (relative to root of your repo)
+  publish = "dist"
+  # Default build command
+  command = "npm run build"
+
+# The following redirect is intended for use with single-page applications (SPA)
+# where the app handles routing internally.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
