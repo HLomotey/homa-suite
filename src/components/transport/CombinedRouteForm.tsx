@@ -9,7 +9,9 @@ import {
   FrontendCombinedRoute, 
   FrontendRoute 
 } from "@/integration/supabase/types/transport-route";
-import { Plus, Trash2, Clock, X, ArrowUpDown, Route as RouteIcon } from "lucide-react";
+import { Plus, Route as RouteIcon, ArrowUpDown, Trash2, X } from "lucide-react";
+import { RouteItem } from "./RouteItem";
+import { RouteSelectionHeader } from "./RouteSelectionHeader";
 import { toast } from "@/components/ui/use-toast";
 import { useRoute } from "@/hooks/transport/useRoute";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +46,8 @@ export function CombinedRouteForm({
     routeName: string;
     order: number;
   }>>([]);
+  const [selectedForDeletion, setSelectedForDeletion] = useState<string[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routeFormOpen, setRouteFormOpen] = useState(false);
@@ -143,16 +147,44 @@ export function CombinedRouteForm({
   };
 
   const handleRemoveRoute = (index: number) => {
-    const newRoutes = [...selectedRoutes];
-    newRoutes.splice(index, 1);
+    setSelectedRoutes(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleSelectMode = () => {
+    setSelectMode(prev => !prev);
+    setSelectedForDeletion([]);
+  };
+
+  const toggleRouteSelection = (id: string) => {
+    setSelectedForDeletion(prev => 
+      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+    );
+  };
+  
+  const toggleSelectAll = () => {
+    if (selectedForDeletion.length === selectedRoutes.length) {
+      // If all are selected, deselect all
+      setSelectedForDeletion([]);
+    } else {
+      // Otherwise, select all
+      setSelectedForDeletion(selectedRoutes.map(route => route.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedForDeletion.length === 0) return;
     
-    // Reorder remaining routes
-    const reorderedRoutes = newRoutes.map((route, idx) => ({
-      ...route,
-      order: idx + 1
-    }));
+    setSelectedRoutes(prev => 
+      prev.filter((route) => !selectedForDeletion.includes(route.id))
+    );
     
-    setSelectedRoutes(reorderedRoutes);
+    toast({
+      title: "Routes Removed",
+      description: `${selectedForDeletion.length} route${selectedForDeletion.length > 1 ? 's' : ''} removed from combined route`,
+    });
+    
+    setSelectedForDeletion([]);
+    setSelectMode(false);
   };
 
   const handleRouteChange = (index: number, routeId: string) => {
@@ -391,18 +423,17 @@ export function CombinedRouteForm({
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Routes</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleAddRoute}
-                  disabled={isSubmitting}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Route
-                </Button>
-              </div>
+              <RouteSelectionHeader
+                selectMode={selectMode}
+                selectedCount={selectedForDeletion.length}
+                totalRoutes={selectedRoutes.length}
+                isSubmitting={isSubmitting}
+                onToggleSelectMode={toggleSelectMode}
+                onToggleSelectAll={toggleSelectAll}
+                onDeleteSelected={handleDeleteSelected}
+                onAddRoute={handleAddRoute}
+                allSelected={selectedForDeletion.length === selectedRoutes.length}
+              />
               
               {selectedRoutes.length === 0 && (
                 <div className="text-center p-4 border border-dashed rounded-md">
@@ -414,58 +445,22 @@ export function CombinedRouteForm({
               )}
               
               {selectedRoutes.map((route, index) => (
-                <div key={route.id} className="space-y-2 p-4 border rounded-md">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Route {index + 1}</h4>
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveUp(index)}
-                        disabled={isSubmitting || index === 0}
-                      >
-                        <ArrowUpDown className="h-4 w-4 rotate-90" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveDown(index)}
-                        disabled={isSubmitting || index === selectedRoutes.length - 1}
-                      >
-                        <ArrowUpDown className="h-4 w-4 -rotate-90" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveRoute(index)}
-                        disabled={isSubmitting}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Selected Route</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditRoute(index)}
-                        disabled={isSubmitting}
-                      >
-                        Change Route
-                      </Button>
-                    </div>
-                    <div className="p-3 border rounded-md bg-muted/20">
-                      <p className="font-medium">{route.routeName}</p>
-                    </div>
-                  </div>
-                </div>
+                <RouteItem
+                  key={route.id}
+                  route={route}
+                  index={index}
+                  selectMode={selectMode}
+                  isSelected={selectedForDeletion.includes(route.id)}
+                  isSubmitting={isSubmitting}
+                  onSelect={toggleRouteSelection}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  onDelete={handleRemoveRoute}
+                  onRouteChange={handleEditRoute}
+                  routes={routes}
+                  isFirst={index === 0}
+                  isLast={index === selectedRoutes.length - 1}
+                />
               ))}
             </div>
             
