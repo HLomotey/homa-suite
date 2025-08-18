@@ -8,13 +8,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import {
   Form,
   FormControl,
@@ -145,14 +145,14 @@ export function TransactionForm({
   const isLoading = itemsLoading || stockLoading || createLoading;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Add Inventory Transaction</DialogTitle>
-          <DialogDescription>
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="right" className="w-full sm:max-w-[500px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Add Inventory Transaction</SheetTitle>
+          <SheetDescription>
             Record a new inventory transaction for this property.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -268,7 +268,7 @@ export function TransactionForm({
               )}
             />
 
-            <DialogFooter>
+            <SheetFooter className="mt-6">
               <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
                 Cancel
               </Button>
@@ -276,10 +276,10 @@ export function TransactionForm({
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Transaction
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

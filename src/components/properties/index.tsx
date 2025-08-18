@@ -115,7 +115,7 @@ export default function Properties() {
               onEdit={handleEditProperty}
               onDelete={handleDeleteProperty}
               onAddProperty={handleAddProperty}
-              onSelect={(propertyId: string) => setSelectedPropertyId(propertyId)}
+              onSelect={(propertyId) => setSelectedPropertyId(propertyId)}
             />
           )}
         </TabsContent>

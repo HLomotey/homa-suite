@@ -10,6 +10,7 @@ import { TenantsList } from "@/components/properties/TenantsList";
 import { StaffTransactionLog } from "@/components/properties/StaffTransactionLog";
 import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
+import { Inventory } from "@/components/inventory";
 import { FrontendProperty } from "@/integration/supabase/types";
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
 import {
@@ -26,6 +27,7 @@ const HousingPage: React.FC = () => {
   const [editingProperty, setEditingProperty] = useState<
     FrontendProperty | undefined
   >();
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   // Use the real property API hooks
   const { properties, loading, error, refetch } = useProperties();
@@ -118,6 +120,7 @@ const HousingPage: React.FC = () => {
           <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="staff-transactions">Staff Transactions</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
           {/* <TabsTrigger value="tenants">Tenant Profiles</TabsTrigger> */}
         </TabsList>
 
@@ -147,6 +150,7 @@ const HousingPage: React.FC = () => {
               onEdit={handleEditProperty}
               onDelete={handleDeleteProperty}
               onAddProperty={handleAddProperty}
+              onSelect={(propertyId) => setSelectedPropertyId(propertyId)}
             />
           )}
         </TabsContent>
@@ -161,6 +165,26 @@ const HousingPage: React.FC = () => {
 
         <TabsContent value="staff-transactions">
           <StaffTransactionLog />
+        </TabsContent>
+
+        <TabsContent value="inventory">
+          {selectedPropertyId ? (
+            <Inventory propertyId={selectedPropertyId} />
+          ) : (
+            <div className="p-4 bg-black/40 backdrop-blur-md rounded-lg">
+              <h2 className="text-xl font-semibold mb-4">Inventory Management</h2>
+              <p className="text-white/60 mb-4">Please select a property from the Properties tab to manage its inventory.</p>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  const tabsList = document.querySelector('[value="properties"]');
+                  if (tabsList) (tabsList as HTMLElement).click();
+                }}
+              >
+                Go to Properties
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="tenants">

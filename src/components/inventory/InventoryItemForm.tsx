@@ -8,13 +8,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 import {
   Form,
   FormControl,
@@ -38,7 +38,7 @@ const inventoryItemSchema = z.object({
   description: z.string().optional(),
   category: z.string().optional(),
   unit: z.string().min(1, "Unit is required"),
-  minimumStockLevel: z.coerce.number().int().min(0, "Minimum stock level must be a positive number"),
+  minStockLevel: z.coerce.number().int().min(0, "Minimum stock level must be a positive number"),
 });
 
 type InventoryItemFormValues = z.infer<typeof inventoryItemSchema>;
@@ -72,7 +72,7 @@ export function InventoryItemForm({
       description: "",
       category: "",
       unit: "",
-      minimumStockLevel: 0,
+      minStockLevel: 0,
     },
   });
 
@@ -84,7 +84,7 @@ export function InventoryItemForm({
         description: item.description || "",
         category: item.category || "",
         unit: item.unit,
-        minimumStockLevel: item.minimumStockLevel,
+        minStockLevel: item.minStockLevel,
       });
     }
   }, [form, isEditing, item]);
@@ -92,14 +92,24 @@ export function InventoryItemForm({
   // Form submission handler
   const onSubmit = async (values: InventoryItemFormValues) => {
     try {
+      // Ensure all required fields are present for the API
+      const itemData = {
+        ...values,
+        name: values.name || "", // Ensure name is not undefined
+        description: values.description || null, // Ensure description is null if undefined
+        category: values.category || "", // Ensure category is not undefined
+        unit: values.unit || "", // Ensure unit is not undefined
+        minStockLevel: values.minStockLevel ?? 0, // Ensure minStockLevel is not undefined
+      };
+      
       if (isEditing && itemId) {
-        await update(itemId, values);
+        await update(itemId, itemData);
         toast({
           title: "Item updated",
           description: "The inventory item has been updated successfully.",
         });
       } else {
-        await create(values);
+        await create(itemData);
         toast({
           title: "Item created",
           description: "The new inventory item has been created successfully.",
@@ -120,16 +130,16 @@ export function InventoryItemForm({
   const isLoading = createLoading || updateLoading || (isEditing && itemLoading);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Inventory Item" : "Add Inventory Item"}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="right" className="w-full sm:max-w-[500px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{isEditing ? "Edit Inventory Item" : "Add Inventory Item"}</SheetTitle>
+          <SheetDescription>
             {isEditing
               ? "Update the details of this inventory item."
               : "Add a new item to your inventory."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -201,7 +211,7 @@ export function InventoryItemForm({
 
             <FormField
               control={form.control}
-              name="minimumStockLevel"
+              name="minStockLevel"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Minimum Stock Level</FormLabel>
@@ -222,7 +232,7 @@ export function InventoryItemForm({
               )}
             />
 
-            <DialogFooter>
+            <SheetFooter className="mt-6">
               <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
                 Cancel
               </Button>
@@ -230,10 +240,10 @@ export function InventoryItemForm({
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? "Update" : "Create"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
