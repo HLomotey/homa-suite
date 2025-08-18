@@ -37,7 +37,7 @@ export function RouteForm({ open, onOpenChange, onSuccess, editingRoute, onAdd, 
     day: string;
     startTime: string;
     endTime: string;
-  }>>([]);
+  }>>([{ day: "Monday", startTime: "06:00", endTime: "06:30" }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when opened or when editing route changes

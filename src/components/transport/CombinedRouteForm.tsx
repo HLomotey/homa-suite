@@ -14,7 +14,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useRoute } from "@/hooks/transport/useRoute";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/components/auth";
 import { supabase } from "@/integration/supabase/client"; // Import Supabase client
 
@@ -494,15 +494,12 @@ export function CombinedRouteForm({
       <Dialog open={routeFormOpen} onOpenChange={setRouteFormOpen}>
         <DialogContent 
           className="sm:max-w-md md:max-w-lg lg:max-w-2xl"
-          aria-describedby="route-dialog-description"
         >
-          <span id="route-dialog-description" className="sr-only">
-            Select a route to add to the combined route.
-          </span>
           <DialogHeader>
-            <DialogTitle>
-              {currentRouteIndex !== null ? "Change Route" : "Select Route"}
-            </DialogTitle>
+            <DialogTitle>{currentRouteIndex !== null ? "Change Route" : "Select Route"}</DialogTitle>
+            <DialogDescription id="route-dialog-description">
+              Choose routes to include in this combined route.
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto">
             {/* Route selection UI */}
