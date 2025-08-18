@@ -1,12 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Download, RefreshCw, Activity, DollarSign, Users, TrendingUp, Calendar, Filter } from "lucide-react";
-import { format } from "date-fns";
+import { Loader2, Search, Download, RefreshCw, Activity, DollarSign, Users, TrendingUp, Calendar, Filter, AlertCircle } from "lucide-react";
+import { format, subDays } from "date-fns";
+import { useStaffTransactionLogs, useStaffWithTransactionLogs } from "@/hooks/staffTransactionLog/useStaffTransactionLog";
+import { 
+  FrontendStaffTransactionLog,
+  getTransactionTypeDisplayName,
+  getTransactionCategoryDisplayName,
+  getTransactionTypeColor,
+  getTransactionCategoryBadgeColor
+} from "@/integration/supabase/types/staffTransactionLog";
 
 interface StaffTransactionLogProps {
   selectedStaffId?: string;
@@ -20,50 +28,62 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("all");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Mock data for now - this will be replaced with real API calls later
-  const mockTransactions = [
-    {
-      id: "1",
-      staffId: "staff-1",
-      timestamp: new Date().toISOString(),
-      staffName: "John Doe",
-      transactionType: "billing",
-      transactionCategory: "payment",
-      description: "Monthly rent payment processed",
-      amount: 1200,
-      performedByName: "Admin User"
-    },
-    {
-      id: "2",
-      staffId: "staff-2", 
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      staffName: "Jane Smith",
-      transactionType: "payroll",
-      transactionCategory: "salary",
-      description: "Salary payment issued",
-      amount: 3500,
-      performedByName: "HR Manager"
-    }
-  ];
+  // Fetch staff transaction logs
+  const { data: transactions, isLoading: logsLoading, error: logsError } = useStaffTransactionLogs({
+    staffId: selectedStaffId,
+  });
 
-  // Mock staff list
-  const staffList = [
-    { id: "staff-1", name: "John Doe" },
-    { id: "staff-2", name: "Jane Smith" },
-    { id: "staff-3", name: "Bob Wilson" }
-  ];
+  // Fetch staff list
+  const { data: staffList, isLoading: staffLoading, error: staffError } = useStaffWithTransactionLogs();
 
-  // Mock loading states
-  const logsLoading = false;
-  const staffLoading = false;
+  // Handle refresh
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
-  const filteredTransactions = mockTransactions.filter(transaction => 
-    transaction.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    transaction.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Apply filters to transactions
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
+    
+    return transactions.filter(transaction => {
+      // Search filter
+      const matchesSearch = 
+        searchQuery === "" ||
+        transaction.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (transaction.performedByName && transaction.performedByName.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Type filter
+      const matchesType = typeFilter === "all" || transaction.transactionType === typeFilter;
+      
+      // Category filter
+      const matchesCategory = categoryFilter === "all" || transaction.transactionCategory === categoryFilter;
+      
+      // Date filter
+      let matchesDate = true;
+      if (dateRange !== "all") {
+        const transactionDate = new Date(transaction.timestamp);
+        const now = new Date();
+        
+        if (dateRange === "today") {
+          matchesDate = transactionDate.toDateString() === now.toDateString();
+        } else if (dateRange === "week") {
+          matchesDate = transactionDate >= subDays(now, 7);
+        } else if (dateRange === "month") {
+          matchesDate = transactionDate >= subDays(now, 30);
+        }
+      }
+      
+      return matchesSearch && matchesType && matchesCategory && matchesDate;
+    });
+  }, [transactions, searchQuery, typeFilter, categoryFilter, dateRange]);
 
-  const totalAmount = filteredTransactions.reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+  // Calculate total amount
+  const totalAmount = useMemo(() => {
+    return filteredTransactions.reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+  }, [filteredTransactions]);
 
   const handleExport = () => {
     const csvContent = [
@@ -100,6 +120,10 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
           <p className="text-white/60">Comprehensive log of all staff-related activities</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button onClick={handleExport} variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Export CSV
@@ -139,7 +163,7 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
               <Users className="h-5 w-5 text-purple-500" />
               <div>
                 <p className="text-sm text-white/60">Staff Members</p>
-                <p className="text-2xl font-bold text-white">{new Set(filteredTransactions.map(t => t.staffId)).size}</p>
+                <p className="text-2xl font-bold text-white">{filteredTransactions.length > 0 ? new Set(filteredTransactions.map(t => t.staffId)).size : 0}</p>
               </div>
             </div>
           </CardContent>
@@ -152,10 +176,12 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
               <div>
                 <p className="text-sm text-white/60">Most Active Type</p>
                 <p className="text-lg font-bold text-white">
-                  {Object.entries(filteredTransactions.reduce((acc, t) => {
-                    acc[t.transactionType] = (acc[t.transactionType] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>)).sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'N/A'}
+                  {filteredTransactions.length > 0 
+                    ? Object.entries(filteredTransactions.reduce((acc, t) => {
+                        acc[t.transactionType] = (acc[t.transactionType] || 0) + 1;
+                        return acc;
+                      }, {} as Record<string, number>)).sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'N/A'
+                    : 'N/A'}
                 </p>
               </div>
             </div>
@@ -194,11 +220,11 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Staff</SelectItem>
-                {staffList.map((staff) => (
+                {staffList?.map((staff) => (
                   <SelectItem key={staff.id} value={staff.id}>
                     {staff.name}
                   </SelectItem>
-                ))}
+                )) || null}
               </SelectContent>
             </Select>
 
@@ -263,6 +289,12 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
               <Loader2 className="h-8 w-8 animate-spin text-white/60" />
               <span className="ml-2 text-white/60">Loading transactions...</span>
             </div>
+          ) : logsError || staffError ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+              <p className="text-white/80 font-medium">Error loading transaction data</p>
+              <p className="text-white/60 mt-2">{logsError?.message || staffError?.message || 'Please try refreshing the page'}</p>
+            </div>
           ) : filteredTransactions.length === 0 ? (
             <div className="text-center py-12">
               <Activity className="h-12 w-12 text-white/20 mx-auto mb-4" />
@@ -298,14 +330,14 @@ export const StaffTransactionLog: React.FC<StaffTransactionLogProps> = ({
                       <TableCell>
                         <Badge 
                           variant="outline" 
-                          className="text-blue-400 border-blue-400"
+                          className={getTransactionTypeColor(transaction.transactionType)}
                         >
-                          {transaction.transactionType}
+                          {getTransactionTypeDisplayName(transaction.transactionType)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-green-500/20 text-green-400">
-                          {transaction.transactionCategory}
+                        <Badge className={getTransactionCategoryBadgeColor(transaction.transactionCategory)}>
+                          {getTransactionCategoryDisplayName(transaction.transactionCategory)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-white/90 max-w-md">
