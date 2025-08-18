@@ -26,6 +26,16 @@ import { fetchInventorySuppliers } from "../../hooks/inventory/api";
 import { FrontendInventorySupplier } from "../../integration/supabase/types/inventory";
 import { Skeleton } from "../ui/skeleton";
 
+// Define a global interface for refresh functions
+declare global {
+  interface Window {
+    inventoryRefreshFunctions?: {
+      refreshPurchaseOrders?: () => Promise<void>;
+      refreshSuppliers?: () => Promise<void>;
+    };
+  }
+}
+
 interface SuppliersProps {
   onAddSupplier: () => void;
   onEditSupplier: (supplierId: string) => void;
@@ -42,6 +52,40 @@ export function Suppliers({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   
+  // Function to refresh suppliers data
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchInventorySuppliers();
+      setSuppliers(data);
+      setError(null);
+    } catch (err) {
+      console.error("Error refreshing suppliers:", err);
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Expose the refreshData function to parent via window
+  useEffect(() => {
+    // Make refreshData available to parent components
+    if (window && !window.inventoryRefreshFunctions) {
+      window.inventoryRefreshFunctions = {};
+    }
+    
+    if (window.inventoryRefreshFunctions) {
+      window.inventoryRefreshFunctions.refreshSuppliers = refreshData;
+    }
+    
+    return () => {
+      // Cleanup
+      if (window.inventoryRefreshFunctions) {
+        delete window.inventoryRefreshFunctions.refreshSuppliers;
+      }
+    };
+  }, []);
+
   // Fetch suppliers
   useEffect(() => {
     const getSuppliers = async () => {

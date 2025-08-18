@@ -122,6 +122,7 @@ export function SupplierForm({
   // Form submission handler
   const onSubmit = async (values: SupplierFormValues) => {
     try {
+      setIsLoading(true);
       const supplierData = {
         ...values,
         name: values.name || "", // Ensure name is not undefined
@@ -130,20 +131,57 @@ export function SupplierForm({
         phone: values.phone || null,
         address: values.address || null,
       };
-      
-      if (isEditing && supplierId) {
-        await updateInventorySupplier(supplierId, supplierData);
+
+      if (isEditing && supplier) {
+        await updateInventorySupplier(supplier.id, supplierData);
         toast({
           title: "Supplier updated",
           description: "The supplier has been updated successfully.",
         });
       } else {
+        // Check for potential duplicates before creating
+        try {
+          // Get all suppliers
+          const existingSuppliers = await fetchInventorySuppliers();
+          
+          // Check for suppliers with the same name (case insensitive)
+          const potentialDuplicates = existingSuppliers.filter(s => 
+            s.name.toLowerCase() === values.name.toLowerCase()
+          );
+          
+          if (potentialDuplicates.length > 0) {
+            // Ask for confirmation before proceeding
+            const confirmCreate = window.confirm(
+              `A supplier with the name "${values.name}" already exists. ` +
+              `Are you sure you want to create another one?`
+            );
+            
+            if (!confirmCreate) {
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("Error checking for duplicate suppliers:", err);
+          // Continue with creation even if duplicate check fails
+        }
+        
         await createInventorySupplier(supplierData);
         toast({
           title: "Supplier created",
           description: "The new supplier has been created successfully.",
         });
       }
+      
+      // Refresh the suppliers list
+      if (window.inventoryRefreshFunctions?.refreshSuppliers) {
+        try {
+          await window.inventoryRefreshFunctions.refreshSuppliers();
+        } catch (err) {
+          console.error("Error refreshing suppliers:", err);
+        }
+      }
+      
       onSuccess();
       onClose();
     } catch (error) {
@@ -158,7 +196,9 @@ export function SupplierForm({
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
       <SheetContent side="right" className="w-full sm:max-w-[500px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEditing ? "Edit Supplier" : "Add Supplier"}</SheetTitle>

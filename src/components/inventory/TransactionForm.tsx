@@ -122,7 +122,7 @@ export function TransactionForm({
         transactionType: values.transactionType,
         quantity: values.quantity,
         notes: values.notes,
-        createdBy: "system", // Default value for now, can be updated with actual user ID
+        createdBy: null, // Using null for system-generated transactions
       });
       
       toast({

@@ -168,23 +168,7 @@ const HousingPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="inventory">
-          {selectedPropertyId ? (
-            <Inventory propertyId={selectedPropertyId} />
-          ) : (
-            <div className="p-4 bg-black/40 backdrop-blur-md rounded-lg">
-              <h2 className="text-xl font-semibold mb-4">Inventory Management</h2>
-              <p className="text-white/60 mb-4">Please select a property from the Properties tab to manage its inventory.</p>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  const tabsList = document.querySelector('[value="properties"]');
-                  if (tabsList) (tabsList as HTMLElement).click();
-                }}
-              >
-                Go to Properties
-              </Button>
-            </div>
-          )}
+          <Inventory propertyId={selectedPropertyId} />
         </TabsContent>
 
         <TabsContent value="tenants">

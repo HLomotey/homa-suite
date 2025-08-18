@@ -193,7 +193,7 @@ export const fetchInventoryStockByProperty = async (
     }
 
     if (!data || data.length === 0) {
-      console.warn(`No inventory stock found for property ${propertyId}`);
+      // This is normal for new properties, so we'll return an empty array without a warning
       return [];
     }
 
@@ -377,21 +377,51 @@ export const createInventoryTransaction = async (
       break;
   }
 
-  // Begin a transaction
-  const { data, error } = await supabase.rpc('create_inventory_transaction', {
-    p_property_id: transaction.propertyId,
-    p_item_id: transaction.itemId,
-    p_transaction_type: transaction.transactionType,
-    p_quantity: transaction.quantity,
-    p_previous_quantity: previousQuantity,
-    p_new_quantity: newQuantity,
-    p_notes: transaction.notes,
-    p_created_by: transaction.createdBy
-  });
+  // Try to use the stored procedure first
+  let transactionId: string | undefined;
+  
+  try {
+    const { data, error } = await supabase.rpc('create_inventory_transaction', {
+      p_property_id: transaction.propertyId,
+      p_item_id: transaction.itemId,
+      p_transaction_type: transaction.transactionType,
+      p_quantity: transaction.quantity,
+      p_previous_quantity: previousQuantity,
+      p_new_quantity: newQuantity,
+      p_notes: transaction.notes,
+      p_created_by: transaction.createdBy
+    });
 
-  if (error) {
-    console.error("Error creating inventory transaction:", error);
-    throw new Error(error.message);
+    if (error) {
+      throw error;
+    }
+    
+    transactionId = data.id;
+  } catch (rpcError) {
+    console.warn("RPC function not available, falling back to direct table insertion", rpcError);
+    
+    // Fallback: Insert directly into the table
+    const { data: insertData, error: insertError } = await supabase
+      .from("inventory_transactions")
+      .insert({
+        property_id: transaction.propertyId,
+        item_id: transaction.itemId,
+        transaction_type: transaction.transactionType,
+        quantity: transaction.quantity,
+        previous_quantity: previousQuantity,
+        new_quantity: newQuantity,
+        notes: transaction.notes,
+        created_by: transaction.createdBy
+      })
+      .select("id")
+      .single();
+      
+    if (insertError) {
+      console.error("Error creating inventory transaction:", insertError);
+      throw new Error(insertError.message);
+    }
+    
+    transactionId = insertData.id;
   }
 
   // Update the stock level
@@ -401,7 +431,7 @@ export const createInventoryTransaction = async (
   const { data: createdTransaction, error: fetchError } = await supabase
     .from("inventory_transactions")
     .select("*")
-    .eq("id", data.id)
+    .eq("id", transactionId)
     .single();
 
   if (fetchError) {

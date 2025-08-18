@@ -47,6 +47,7 @@ import {
   createPurchaseOrder, 
   updatePurchaseOrderStatus, 
   fetchPurchaseOrderById,
+  fetchPurchaseOrdersByProperty,
   fetchInventorySuppliers,
   fetchInventoryItems
 } from "../../hooks/inventory/api";
@@ -229,6 +230,34 @@ export function PurchaseOrderForm({
           description: "The purchase order has been updated successfully.",
         });
       } else {
+        // Check for potential duplicates before creating
+        // We'll consider a duplicate if there's an order with the same supplier and items created recently
+        try {
+          // Get recent orders for this supplier
+          const recentOrders = await fetchPurchaseOrdersByProperty(propertyId);
+          const potentialDuplicates = recentOrders.filter(order => 
+            order.supplierId === values.supplierId && 
+            // Check if order was created in the last hour (to avoid flagging old orders)
+            new Date(order.orderDate).getTime() > Date.now() - 3600000
+          );
+          
+          if (potentialDuplicates.length > 0) {
+            // Ask for confirmation before proceeding
+            const confirmCreate = window.confirm(
+              `There ${potentialDuplicates.length === 1 ? 'is' : 'are'} ${potentialDuplicates.length} recent order(s) ` +
+              `for this supplier. Are you sure you want to create another one?`
+            );
+            
+            if (!confirmCreate) {
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("Error checking for duplicate orders:", err);
+          // Continue with creation even if duplicate check fails
+        }
+        
         // For new orders, create the order with items
         await createPurchaseOrder(orderData, orderItems);
         toast({
@@ -236,6 +265,16 @@ export function PurchaseOrderForm({
           description: "The new purchase order has been created successfully.",
         });
       }
+      
+      // Refresh the purchase orders list
+      if (window.inventoryRefreshFunctions?.refreshPurchaseOrders) {
+        try {
+          await window.inventoryRefreshFunctions.refreshPurchaseOrders();
+        } catch (err) {
+          console.error("Error refreshing purchase orders:", err);
+        }
+      }
+      
       onSuccess();
       onClose();
     } catch (error) {
@@ -252,7 +291,9 @@ export function PurchaseOrderForm({
   // Loading state is managed in state
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
       <SheetContent side="right" className="w-full sm:max-w-[600px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEditing ? "Edit Purchase Order" : "Create Purchase Order"}</SheetTitle>

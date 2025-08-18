@@ -28,6 +28,16 @@ import { FrontendInventoryPurchaseOrder, FrontendInventorySupplier, PurchaseOrde
 import { Skeleton } from "../ui/skeleton";
 import { format } from "date-fns";
 
+// Define a global interface for refresh functions
+declare global {
+  interface Window {
+    inventoryRefreshFunctions?: {
+      refreshPurchaseOrders?: () => Promise<void>;
+      refreshSuppliers?: () => Promise<void>;
+    };
+  }
+}
+
 interface PurchaseOrdersProps {
   propertyId: string;
   onAddPurchaseOrder: () => void;
@@ -47,6 +57,23 @@ export function PurchaseOrders({
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<Error | null>(null);
+  
+  // Function to refresh data
+  const refreshData = async () => {
+    setOrdersLoading(true);
+    
+    try {
+      // Fetch orders
+      const ordersData = await fetchPurchaseOrdersByProperty(propertyId);
+      setOrders(ordersData);
+      setOrdersError(null);
+    } catch (err) {
+      console.error("Error refreshing purchase orders:", err);
+      setOrdersError(err as Error);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
   
   // Fetch data
   useEffect(() => {
@@ -78,6 +105,25 @@ export function PurchaseOrders({
     };
     
     fetchData();
+  }, [propertyId]);
+  
+  // Expose the refreshData function to parent via ref
+  useEffect(() => {
+    // Make refreshData available to parent components
+    if (window && !window.inventoryRefreshFunctions) {
+      window.inventoryRefreshFunctions = {};
+    }
+    
+    if (window.inventoryRefreshFunctions) {
+      window.inventoryRefreshFunctions.refreshPurchaseOrders = refreshData;
+    }
+    
+    return () => {
+      // Cleanup
+      if (window.inventoryRefreshFunctions) {
+        delete window.inventoryRefreshFunctions.refreshPurchaseOrders;
+      }
+    };
   }, [propertyId]);
 
   // Get status badge variant
