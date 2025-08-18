@@ -16,6 +16,8 @@ import { InventoryTransactions } from "./InventoryTransactions";
 import { TransactionForm } from "./TransactionForm";
 import { PurchaseOrders } from "./PurchaseOrders";
 import { Suppliers } from "./Suppliers";
+import { SupplierForm } from "./SupplierForm";
+import { PurchaseOrderForm } from "./PurchaseOrderForm";
 import { useToast } from "../ui/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { useDeleteInventoryItem, useDeleteInventorySupplier } from "../../hooks/inventory";
@@ -32,12 +34,15 @@ export function Inventory({ propertyId }: InventoryProps) {
   // State for dialogs
   const [isItemFormOpen, setIsItemFormOpen] = useState(false);
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
+  const [isSupplierFormOpen, setIsSupplierFormOpen] = useState(false);
+  const [isPurchaseOrderFormOpen, setIsPurchaseOrderFormOpen] = useState(false);
   const [isDeleteItemDialogOpen, setIsDeleteItemDialogOpen] = useState(false);
   const [isDeleteSupplierDialogOpen, setIsDeleteSupplierDialogOpen] = useState(false);
   
-  // Selected item/supplier state
+  // Selected item/supplier/order state
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>();
+  const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
 
   // Tab state
   const [activeTab, setActiveTab] = useState("items");
@@ -89,20 +94,14 @@ export function Inventory({ propertyId }: InventoryProps) {
 
   // Handle add purchase order
   const handleAddPurchaseOrder = () => {
-    // This would open a purchase order form dialog
-    toast({
-      title: "Feature coming soon",
-      description: "Purchase order creation will be available in the next update.",
-    });
+    setSelectedOrderId(undefined);
+    setIsPurchaseOrderFormOpen(true);
   };
 
   // Handle view purchase order
   const handleViewPurchaseOrder = (orderId: string) => {
-    // This would open a purchase order details dialog
-    toast({
-      title: "Feature coming soon",
-      description: "Purchase order details will be available in the next update.",
-    });
+    setSelectedOrderId(orderId);
+    setIsPurchaseOrderFormOpen(true);
   };
 
   // Handle receive purchase order
@@ -116,20 +115,14 @@ export function Inventory({ propertyId }: InventoryProps) {
 
   // Handle add supplier
   const handleAddSupplier = () => {
-    // This would open a supplier form dialog
-    toast({
-      title: "Feature coming soon",
-      description: "Supplier creation will be available in the next update.",
-    });
+    setSelectedSupplierId(undefined);
+    setIsSupplierFormOpen(true);
   };
 
   // Handle edit supplier
   const handleEditSupplier = (supplierId: string) => {
-    // This would open a supplier form dialog with the supplier data
-    toast({
-      title: "Feature coming soon",
-      description: "Supplier editing will be available in the next update.",
-    });
+    setSelectedSupplierId(supplierId);
+    setIsSupplierFormOpen(true);
   };
 
   // Handle delete supplier
@@ -162,6 +155,18 @@ export function Inventory({ propertyId }: InventoryProps) {
   // Handle item form success
   const handleItemFormSuccess = () => {
     // Refresh data if needed
+  };
+
+  // Handle supplier form success
+  const handleSupplierFormSuccess = () => {
+    // Refresh data if needed
+    setActiveTab("suppliers");
+  };
+
+  // Handle purchase order form success
+  const handlePurchaseOrderFormSuccess = () => {
+    // Refresh data if needed
+    setActiveTab("purchase-orders");
   };
 
   // Handle transaction form success
@@ -215,7 +220,7 @@ export function Inventory({ propertyId }: InventoryProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Item Form Dialog */}
+      {/* Item Form */}
       <InventoryItemForm
         isOpen={isItemFormOpen}
         onClose={() => setIsItemFormOpen(false)}
@@ -223,13 +228,30 @@ export function Inventory({ propertyId }: InventoryProps) {
         onSuccess={handleItemFormSuccess}
       />
 
-      {/* Transaction Form Dialog */}
+      {/* Transaction Form */}
       <TransactionForm
         isOpen={isTransactionFormOpen}
         onClose={() => setIsTransactionFormOpen(false)}
         propertyId={propertyId}
         initialItemId={selectedItemId}
         onSuccess={handleTransactionFormSuccess}
+      />
+
+      {/* Supplier Form */}
+      <SupplierForm
+        isOpen={isSupplierFormOpen}
+        onClose={() => setIsSupplierFormOpen(false)}
+        supplierId={selectedSupplierId}
+        onSuccess={handleSupplierFormSuccess}
+      />
+
+      {/* Purchase Order Form */}
+      <PurchaseOrderForm
+        isOpen={isPurchaseOrderFormOpen}
+        onClose={() => setIsPurchaseOrderFormOpen(false)}
+        propertyId={propertyId}
+        orderId={selectedOrderId}
+        onSuccess={handlePurchaseOrderFormSuccess}
       />
 
       {/* Delete Item Confirmation Dialog */}
