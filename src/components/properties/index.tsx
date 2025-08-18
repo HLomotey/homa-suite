@@ -7,6 +7,7 @@ import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty 
 import { FrontendProperty } from "../../integration/supabase/types";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Inventory } from "../inventory";
 
 export default function Properties() {
   // Hooks for property data and operations
@@ -20,6 +21,7 @@ export default function Properties() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentProperty, setCurrentProperty] = useState<FrontendProperty | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   // Handle property operations
   const handleAddProperty = () => {
@@ -29,6 +31,7 @@ export default function Properties() {
 
   const handleEditProperty = (property: FrontendProperty) => {
     setCurrentProperty(property);
+    setSelectedPropertyId(property.id);
     setIsEditDialogOpen(true);
   };
 
@@ -94,6 +97,7 @@ export default function Properties() {
         <TabsList className="mb-6">
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="inventory" disabled={!selectedPropertyId}>Inventory</TabsTrigger>
         </TabsList>
         
         <TabsContent value="properties" className="space-y-6">
@@ -111,12 +115,23 @@ export default function Properties() {
               onEdit={handleEditProperty}
               onDelete={handleDeleteProperty}
               onAddProperty={handleAddProperty}
+              onSelect={(propertyId: string) => setSelectedPropertyId(propertyId)}
             />
           )}
         </TabsContent>
         
         <TabsContent value="dashboard">
           <OccupancyDashboard />
+        </TabsContent>
+
+        <TabsContent value="inventory">
+          {selectedPropertyId ? (
+            <Inventory propertyId={selectedPropertyId} />
+          ) : (
+            <div className="flex justify-center items-center h-64">
+              <p className="text-muted-foreground">Please select a property first</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

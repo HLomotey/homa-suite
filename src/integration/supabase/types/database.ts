@@ -60,6 +60,14 @@ import {
 import {
   Tenant
 } from './tenant';
+import {
+  InventoryItem,
+  InventoryStock,
+  InventoryTransaction,
+  InventorySupplier,
+  InventoryPurchaseOrder,
+  InventoryPurchaseOrderItem
+} from './inventory';
 
 // Database interface using the imported types
 export interface Database {
@@ -240,6 +248,36 @@ export interface Database {
         Insert: Omit<Tenant, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<Tenant, "id" | "created_at">>;
       };
+      inventory_items: {
+        Row: InventoryItem;
+        Insert: Omit<InventoryItem, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryItem, "id" | "created_at">>;
+      };
+      inventory_stock: {
+        Row: InventoryStock;
+        Insert: Omit<InventoryStock, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryStock, "id" | "created_at">>;
+      };
+      inventory_transactions: {
+        Row: InventoryTransaction;
+        Insert: Omit<InventoryTransaction, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryTransaction, "id" | "created_at">>;
+      };
+      inventory_suppliers: {
+        Row: InventorySupplier;
+        Insert: Omit<InventorySupplier, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventorySupplier, "id" | "created_at">>;
+      };
+      inventory_purchase_orders: {
+        Row: InventoryPurchaseOrder;
+        Insert: Omit<InventoryPurchaseOrder, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryPurchaseOrder, "id" | "created_at">>;
+      };
+      inventory_purchase_order_items: {
+        Row: InventoryPurchaseOrderItem;
+        Insert: Omit<InventoryPurchaseOrderItem, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryPurchaseOrderItem, "id" | "created_at">>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -269,6 +307,8 @@ export interface Database {
       transaction_status: "completed" | "pending" | "cancelled";
       budget_status: "on-track" | "warning" | "critical";
       tenant_status: "Active" | "Pending" | "Former" | "Blacklisted";
+      inventory_transaction_type: "received" | "issued" | "adjusted";
+      purchase_order_status: "draft" | "ordered" | "partial" | "delivered" | "cancelled";
     };
   };
 };
