@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, DollarSign, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -18,6 +18,64 @@ export default function UploadFinance() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [uploadedCount, setUploadedCount] = useState<number>(0);
   const { upload, loading: uploading, progress: uploadProgress, error } = useUploadInvoices();
+  
+  // Function to generate and download an Excel template
+  const downloadTemplate = () => {
+    // In a real implementation, we would use a library like xlsx or exceljs
+    // to generate an actual Excel file. For now, we'll create a CSV file
+    // which can be opened in Excel.
+    
+    // Create header row based on the exact Excel template format from the screenshot
+    const headers = [
+      "Transaction ID",
+      "Amount",
+      "Account",
+      "Client",
+      "Payment Method",
+      "Date",
+      "Category",
+      "Description",
+      "Invoice ID",
+      "Status"
+    ];
+    
+    // Create sample data row matching the format from the screenshot
+    const sampleData = [
+      "TRX12345",
+      "1500.00",
+      "Business Account",
+      "Acme Corp",
+      "Bank Transfer",
+      "2025-08-15",
+      "Revenue",
+      "Monthly service fee",
+      "INV-2025-001",
+      "Completed"
+    ];
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(","),
+      sampleData.join(",")
+    ].join("\n");
+    
+    // Create a Blob with the CSV content
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    
+    // Create a download link
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    // Set link properties
+    link.setAttribute("href", url);
+    link.setAttribute("download", "invoice_template.csv");
+    link.style.visibility = "hidden";
+    
+    // Append to document, click to download, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -41,23 +99,16 @@ export default function UploadFinance() {
   };
 
   const expectedColumns = [
-    "Client Name",
-    "Invoice Number",
-    "Date Issued",
-    "Invoice Status",
-    "Date Paid",
-    "Item Name",
-    "Item Description",
-    "Rate",
-    "Quantity",
-    "Discount Percentage",
-    "Line Subtotal",
-    "Tax 1 Type",
-    "Tax 1 Amount",
-    "Tax 2 Type",
-    "Tax 2 Amount",
-    "Line Total",
-    "Currency"
+    "Transaction ID",
+    "Amount",
+    "Account",
+    "Client",
+    "Payment Method",
+    "Date",
+    "Category",
+    "Description",
+    "Invoice ID",
+    "Status"
   ];
 
   return (
@@ -83,51 +134,95 @@ export default function UploadFinance() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="file-upload">Choose File</Label>
+              <Label htmlFor="file" className="flex items-center">
+                <span>Upload Excel File</span>
+                <span className="text-red-500 ml-1">*</span>
+              </Label>
               <Input
-                id="file-upload"
+                id="file"
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv"
                 onChange={handleFileChange}
                 disabled={uploading}
+                className={`${!file && 'border-dashed border-gray-300'}`}
               />
+              {!file && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select an Excel file (.xlsx, .xls) or CSV file (.csv)
+                </p>
+              )}
+              {file && (
+                <p className="text-xs text-green-600 mt-1 flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
             </div>
 
-            {file && (
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium">{file.name}</span>
-                <span className="text-xs text-muted-foreground">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={handleUpload}
+                disabled={!file || uploading}
+                className="w-full sm:w-auto"
+                variant={!file ? "outline" : "default"}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setFile(null);
+                  setUploadStatus("idle");
+                }}
+                disabled={!file || uploading}
+              >
+                Clear
+              </Button>
+            </div>
 
             {uploading && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Uploading...</span>
-                  <span>{uploadProgress}%</span>
+                  <span className="flex items-center">
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    {uploadProgress < 40 ? "Reading file..." : 
+                     uploadProgress < 70 ? "Processing data..." : 
+                     "Saving records..."}
+                  </span>
+                  <span className="font-medium">{uploadProgress}%</span>
                 </div>
-                <Progress value={uploadProgress} className="w-full" />
+                <Progress value={uploadProgress} className="h-2" />
               </div>
             )}
 
             {uploadStatus === "success" && (
-              <Alert>
+              <Alert className="bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 border-green-200">
                 <CheckCircle className="h-4 w-4" />
-                <AlertDescription>File uploaded successfully! {uploadedCount} invoice records have been processed.</AlertDescription>
+                <AlertDescription>
+                  <span className="font-medium">Success!</span> {uploadedCount} invoice {uploadedCount === 1 ? 'record' : 'records'} uploaded successfully.
+                </AlertDescription>
               </Alert>
             )}
 
             {uploadStatus === "error" && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Upload failed. Please check your file format and try again.</AlertDescription>
+                <AlertDescription>
+                  <span className="font-medium">Error:</span> {error || "An error occurred while uploading the file."}
+                </AlertDescription>
               </Alert>
             )}
-
-            <Button onClick={handleUpload} disabled={!file || uploading} className="w-full">
-              {uploading ? "Uploading..." : "Upload File"}
-            </Button>
           </CardContent>
         </Card>
 
@@ -166,7 +261,12 @@ export default function UploadFinance() {
               <p className="text-sm text-green-800 dark:text-green-200">
                 <strong>Tip:</strong> Download our template file to ensure proper formatting
               </p>
-              <Button variant="outline" size="sm" className="mt-2 bg-transparent">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 bg-transparent"
+                onClick={downloadTemplate}
+              >
                 Download Template
               </Button>
             </div>

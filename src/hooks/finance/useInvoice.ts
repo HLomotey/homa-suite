@@ -7,9 +7,10 @@ import { useState, useEffect, useCallback } from "react";
 import {
   FrontendInvoice,
   InvoiceStatus,
-} from "../../integration/supabase/types/finance";
-import { supabase } from "../../integration/supabase/client";
-import { mapDatabaseInvoiceToFrontend } from "../../integration/supabase/types/finance";
+} from "@/integration/supabase/types/finance";
+import { supabase } from "@/integration/supabase/client";
+import { mapDatabaseInvoiceToFrontend } from "@/integration/supabase/types/finance";
+import * as XLSX from 'xlsx';
 
 /**
  * Hook for fetching all invoices
@@ -348,8 +349,91 @@ export const useInvoicesByClient = (clientName: string) => {
 export const useUploadInvoices = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [uploadedCount, setUploadedCount] = useState<number>(0);
+  const { create } = useCreateInvoice();
+
+  /**
+   * Expected Excel column structure based on the template from screenshot:
+   * - Transaction ID
+   * - Amount
+   * - Account
+   * - Client
+   * - Payment Method
+   * - Date
+   * - Category
+   * - Description
+   * - Invoice ID
+   * - Status
+   */
+  // Helper function to parse Excel date (which is stored as a number) to a string date
+  const parseExcelDate = (excelDate: number | string): string => {
+    if (typeof excelDate === 'string') {
+      return excelDate; // Already a string date
+    }
+    
+    // Excel dates are stored as days since 1900-01-01
+    const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+    return date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  };
+
+  // Helper function to validate invoice status
+  const validateInvoiceStatus = (status: string): InvoiceStatus => {
+    const validStatuses: InvoiceStatus[] = ['paid', 'pending', 'overdue', 'cancelled'];
+    const normalizedStatus = status.toLowerCase();
+    
+    if (validStatuses.includes(normalizedStatus as InvoiceStatus)) {
+      return normalizedStatus as InvoiceStatus;
+    }
+    return 'pending'; // Default status
+  };
+
+  // Convert Excel row to FrontendInvoice format
+  const convertExcelRowToInvoice = (row: any): Partial<FrontendInvoice> => {
+    // Map Excel columns to our data model based on the new template format
+    // We need to map the new column names to our existing data model
+    return {
+      // Map Transaction ID to invoiceNumber
+      invoiceNumber: row['Transaction ID'] || row['Invoice ID'] || '',
+      
+      // Map Amount to lineTotal
+      lineTotal: parseFloat(row['Amount']) || 0,
+      
+      // Map Client to clientName
+      clientName: row['Client'] || '',
+      
+      // Map Date to dateIssued
+      dateIssued: typeof row['Date'] === 'number' 
+        ? parseExcelDate(row['Date']) 
+        : row['Date'] || '',
+      
+      // Map Status to invoiceStatus
+      invoiceStatus: validateInvoiceStatus(row['Status'] || 'pending'),
+      
+      // Map Description to itemDescription
+      itemDescription: row['Description'] || '',
+      
+      // Map Category to itemName
+      itemName: row['Category'] || '',
+      
+      // Set default values for required fields
+      rate: parseFloat(row['Amount']) || 0,
+      quantity: 1,
+      discountPercentage: 0,
+      lineSubtotal: parseFloat(row['Amount']) || 0,
+      
+      // Additional information from new columns
+      // Store in existing fields or add to description
+      tax1Type: row['Payment Method'] || null,
+      tax1Amount: 0,
+      tax2Type: row['Account'] || null,
+      tax2Amount: 0,
+      
+      // Default values
+      datePaid: null,
+      currency: 'USD'
+    };
+  };
 
   const upload = useCallback(async (file: File) => {
     try {
@@ -357,35 +441,105 @@ export const useUploadInvoices = () => {
       setError(null);
       setProgress(0);
       
-      // In a real implementation, we would use a library like xlsx or exceljs
-      // to parse the Excel file and then insert the data into Supabase
+      // Read the Excel file
+      const fileData = await file.arrayBuffer();
+      setProgress(10);
       
-      // Simulate progress for now
-      let currentProgress = 0;
-      const interval = setInterval(() => {
-        currentProgress += 10;
-        setProgress(Math.min(currentProgress, 90));
-        if (currentProgress >= 90) clearInterval(interval);
-      }, 300);
+      // Parse the Excel data
+      const workbook = XLSX.read(fileData, { type: 'array' });
+      setProgress(20);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Get the first worksheet
+      const worksheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[worksheetName];
+      setProgress(30);
       
-      // Simulate success
-      clearInterval(interval);
+      // Convert to JSON
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 'A' });
+      setProgress(40);
+      
+      // Check if the file has headers
+      if (jsonData.length === 0) {
+        throw new Error('The Excel file is empty');
+      }
+      
+      // Extract headers from the first row
+      const headers = Object.values(jsonData[0]);
+      
+      // Expected headers from the template based on the screenshot
+      const expectedHeaders = [
+        "Transaction ID",
+        "Amount",
+        "Account",
+        "Client",
+        "Payment Method",
+        "Date",
+        "Category",
+        "Description",
+        "Invoice ID",
+        "Status"
+      ];
+      
+      // Validate headers
+      const missingHeaders = expectedHeaders.filter(
+        header => !headers.includes(header)
+      );
+      
+      if (missingHeaders.length > 0) {
+        throw new Error(
+          `Missing required columns: ${missingHeaders.join(", ")}. Please use the template provided.`
+        );
+      }
+      
+      // Convert headers to object keys for each row
+      const rowsWithHeaders = [];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        const rowWithHeaders: Record<string, any> = {};
+        
+        // Map A, B, C... to actual header names
+        Object.keys(row).forEach((key, index) => {
+          const headerName = headers[index];
+          if (typeof headerName === 'string') {
+            rowWithHeaders[headerName] = row[key];
+          }
+        });
+        
+        rowsWithHeaders.push(rowWithHeaders);
+      }
+      
+      setProgress(50);
+      
+      // Convert Excel rows to invoice objects
+      const invoices = rowsWithHeaders.map(convertExcelRowToInvoice);
+      
+      // Batch insert to Supabase
+      let inserted = 0;
+      const totalRecords = invoices.length;
+      
+      for (let i = 0; i < invoices.length; i++) {
+        const invoice = invoices[i];
+        
+        // Create the invoice in the database
+        await create(invoice as FrontendInvoice);
+        
+        inserted++;
+        const newProgress = 50 + Math.floor((inserted / totalRecords) * 50);
+        setProgress(newProgress);
+      }
+      
+      setLoading(false);
       setProgress(100);
-      setUploadedCount(Math.floor(Math.random() * 50) + 10); // Random number between 10-60
-      
-      return uploadedCount;
+      setUploadedCount(invoices.length);
+      return invoices.length;
     } catch (err) {
       setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
+        err instanceof Error ? err.message : "An unknown error occurred"
       );
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
-  }, [uploadedCount]);
+  }, [create]);
 
   return { upload, loading, progress, error, uploadedCount };
 };
