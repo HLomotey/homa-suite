@@ -1,6 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { ROUTES } from "@/routes/constants";
+import { Upload } from "lucide-react";
 
 export function FinanceTransactions() {
   const transactions = [
@@ -52,9 +56,17 @@ export function FinanceTransactions() {
       <p className="text-sm text-muted-foreground">Recent financial transactions and payments</p>
       
       <Card className="bg-background border-border">
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>View and manage recent financial transactions</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent Transactions</CardTitle>
+            <CardDescription>View and manage recent financial transactions</CardDescription>
+          </div>
+          <Button asChild variant="default">
+            <Link to={ROUTES.FINANCE_UPLOAD} className="flex items-center gap-2">
+              <Upload size={16} />
+              Upload Transactions
+            </Link>
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>

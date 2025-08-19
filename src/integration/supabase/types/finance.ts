@@ -14,7 +14,7 @@ export interface Invoice {
   client_name: string;
   invoice_number: string;
   date_issued: string;
-  invoice_status: string;
+  invoice_status: InvoiceStatus;
   date_paid: string | null;
   item_name: string;
   item_description: string;
@@ -334,7 +334,7 @@ export const mapDatabaseInvoiceToFrontend = (dbInvoice: Invoice): FrontendInvoic
     clientName: dbInvoice.client_name,
     invoiceNumber: dbInvoice.invoice_number,
     dateIssued: dbInvoice.date_issued,
-    invoiceStatus: dbInvoice.invoice_status as InvoiceStatus,
+    invoiceStatus: dbInvoice.invoice_status,
     datePaid: dbInvoice.date_paid,
     itemName: dbInvoice.item_name,
     itemDescription: dbInvoice.item_description,

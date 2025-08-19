@@ -55,7 +55,7 @@ export function InventoryList({
       return {
         ...item,
         currentStock: stockItem?.quantity || 0,
-        belowMinimum: stockItem ? stockItem.quantity < item.minimumStockLevel : true,
+        belowMinimum: stockItem ? stockItem.quantity < item.minStockLevel : true,
       };
     });
   }, [items, stock]);
@@ -179,7 +179,7 @@ export function InventoryList({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{item.minimumStockLevel}</TableCell>
+                    <TableCell className="text-right">{item.minStockLevel}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button

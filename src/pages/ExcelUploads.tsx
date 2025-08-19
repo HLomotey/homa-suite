@@ -281,7 +281,7 @@ export default function ExcelUploads() {
         "Date format: MM/DD/YYYY or YYYY-MM-DD",
         "Rate and quantities should be numeric values",
         "Discount percentage should be between 0-100",
-        "Invoice Status: Pending, Paid, Overdue",
+        "Invoice Status: pending, paid, overdue, cancelled",
         "Tax types should be GST, VAT, or Sales Tax",
         "Currency should be standard 3-letter code (USD, EUR, GBP)",
         "Maximum file size: 10MB",

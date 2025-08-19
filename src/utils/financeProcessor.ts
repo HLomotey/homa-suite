@@ -50,8 +50,12 @@ export const FINANCE_COLUMN_MAPPINGS: FinanceColumnMapping[] = [
     fieldName: "status",
     required: true,
     validator: (value) =>
-      ["Pending", "Paid", "Overdue"].includes(value),
-    transformer: (value) => value?.trim() || "Pending",
+      ["pending", "paid", "overdue", "cancelled", "Pending", "Paid", "Overdue", "Cancelled"].includes(value?.toString().toLowerCase()),
+    transformer: (value) => {
+      const normalizedValue = value?.toString().trim() || "pending";
+      // Convert to lowercase and then capitalize first letter to match enum format
+      return normalizedValue.toLowerCase();
+    },
   },
   {
     excelColumn: "Date Paid",
@@ -274,18 +278,25 @@ export async function processFinanceData(fileData: ArrayBuffer): Promise<Finance
     }
 
     // Process each row
+    console.log('Starting to process each row of data');
     rawData.forEach((row, index) => {
       const rowNumber = index + 2; // +2 because Excel rows start at 1 and we skip header
+      console.log(`Processing row ${rowNumber} (index ${index})`);
       const transaction: Partial<Omit<FrontendFinanceTransaction, "id">> = {};
       const rowErrors: string[] = [];
       const rowWarnings: string[] = [];
 
+      // Log the raw row data for debugging
+      console.log(`Row ${rowNumber} raw data:`, JSON.stringify(row));
+
       // Process each column mapping
       FINANCE_COLUMN_MAPPINGS.forEach((mapping) => {
         const rawValue = row[mapping.excelColumn];
+        console.log(`Row ${rowNumber}, Column '${mapping.excelColumn}' (field: ${mapping.fieldName}), Raw value:`, rawValue);
 
         // Skip empty values for optional fields
         if (!rawValue && !mapping.required) {
+          console.log(`Row ${rowNumber}, Column '${mapping.excelColumn}': Skipping empty optional field`);
           return;
         }
 
@@ -294,17 +305,17 @@ export async function processFinanceData(fileData: ArrayBuffer): Promise<Finance
           mapping.required &&
           (!rawValue || (typeof rawValue === "string" && rawValue.trim() === ""))
         ) {
-          rowErrors.push(
-            `Row ${rowNumber}: Missing required field '${mapping.excelColumn}'`
-          );
+          const errorMsg = `Row ${rowNumber}: Missing required field '${mapping.excelColumn}'`;
+          console.error(errorMsg);
+          rowErrors.push(errorMsg);
           return;
         }
 
         // Validate value
         if (mapping.validator && !mapping.validator(rawValue)) {
-          rowErrors.push(
-            `Row ${rowNumber}: Invalid value for '${mapping.excelColumn}': ${rawValue}`
-          );
+          const errorMsg = `Row ${rowNumber}: Invalid value for '${mapping.excelColumn}': ${rawValue}`;
+          console.error(errorMsg);
+          rowErrors.push(errorMsg);
           return;
         }
 
@@ -312,21 +323,33 @@ export async function processFinanceData(fileData: ArrayBuffer): Promise<Finance
         let transformedValue = rawValue;
         if (mapping.transformer) {
           transformedValue = mapping.transformer(rawValue);
+          console.log(`Row ${rowNumber}, Column '${mapping.excelColumn}': Transformed from '${rawValue}' to '${transformedValue}'`);
         }
 
         // Set the value
         if (transformedValue !== undefined) {
           (transaction as any)[mapping.fieldName] = transformedValue;
+        } else {
+          console.warn(`Row ${rowNumber}, Column '${mapping.excelColumn}': Transformed value is undefined, skipping field`);
         }
       });
 
+      // Log the complete transaction object after all fields are processed
+      console.log(`Row ${rowNumber} processed transaction:`, JSON.stringify(transaction));
+      
       // Add row-specific errors and warnings
+      if (rowErrors.length > 0) {
+        console.error(`Row ${rowNumber} has ${rowErrors.length} errors:`, rowErrors);
+      }
       errors.push(...rowErrors);
       warnings.push(...rowWarnings);
 
       // Only add to processed data if no errors
       if (rowErrors.length === 0) {
+        console.log(`Row ${rowNumber}: Successfully validated, adding to processed data`);
         processedData.push(transaction as Omit<FrontendFinanceTransaction, "id">);
+      } else {
+        console.error(`Row ${rowNumber}: Not added to processed data due to validation errors`);
       }
     });
 

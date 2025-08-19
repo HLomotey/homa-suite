@@ -3,7 +3,7 @@
  * These hooks provide data fetching and state management for finance transaction data
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   FinanceTransaction,
   FrontendFinanceTransaction,
@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integration/supabase/client";
 import * as XLSX from 'xlsx';
 import { processFinanceData, generateFinanceTemplate } from "@/utils/financeProcessor";
+import { toast } from "sonner";
 
 /**
  * Hook for fetching all finance transactions
@@ -110,16 +111,22 @@ export const useCreateFinanceTransaction = () => {
         
         // Convert frontend data to database format
         const dbTransactionData = {
-          transaction_id: transactionData.transactionId,
-          amount: transactionData.amount,
-          account: transactionData.account,
           client: transactionData.client,
-          payment_method: transactionData.paymentMethod,
-          date: transactionData.date,
-          category: transactionData.category,
-          description: transactionData.description,
           invoice_id: transactionData.invoiceId,
-          status: transactionData.status
+          date: transactionData.date,
+          status: transactionData.status,
+          date_paid: transactionData.datePaid,
+          description: transactionData.description,
+          rate: transactionData.rate,
+          quantity: transactionData.quantity,
+          discount_percentage: transactionData.discountPercentage,
+          line_subtotal: transactionData.lineSubtotal,
+          tax_1_type: transactionData.tax1Type,
+          tax_1_amount: transactionData.tax1Amount,
+          tax_2_type: transactionData.tax2Type,
+          tax_2_amount: transactionData.tax2Amount,
+          amount: transactionData.amount,
+          currency: transactionData.currency
         };
         
         const { data, error: supabaseError } = await supabase
@@ -169,16 +176,22 @@ export const useUpdateFinanceTransaction = () => {
         // Convert frontend data to database format
         const dbTransactionData: Record<string, any> = {};
         
-        if (transactionData.transactionId !== undefined) dbTransactionData.transaction_id = transactionData.transactionId;
-        if (transactionData.amount !== undefined) dbTransactionData.amount = transactionData.amount;
-        if (transactionData.account !== undefined) dbTransactionData.account = transactionData.account;
         if (transactionData.client !== undefined) dbTransactionData.client = transactionData.client;
-        if (transactionData.paymentMethod !== undefined) dbTransactionData.payment_method = transactionData.paymentMethod;
-        if (transactionData.date !== undefined) dbTransactionData.date = transactionData.date;
-        if (transactionData.category !== undefined) dbTransactionData.category = transactionData.category;
-        if (transactionData.description !== undefined) dbTransactionData.description = transactionData.description;
         if (transactionData.invoiceId !== undefined) dbTransactionData.invoice_id = transactionData.invoiceId;
+        if (transactionData.date !== undefined) dbTransactionData.date = transactionData.date;
         if (transactionData.status !== undefined) dbTransactionData.status = transactionData.status;
+        if (transactionData.datePaid !== undefined) dbTransactionData.date_paid = transactionData.datePaid;
+        if (transactionData.description !== undefined) dbTransactionData.description = transactionData.description;
+        if (transactionData.rate !== undefined) dbTransactionData.rate = transactionData.rate;
+        if (transactionData.quantity !== undefined) dbTransactionData.quantity = transactionData.quantity;
+        if (transactionData.discountPercentage !== undefined) dbTransactionData.discount_percentage = transactionData.discountPercentage;
+        if (transactionData.lineSubtotal !== undefined) dbTransactionData.line_subtotal = transactionData.lineSubtotal;
+        if (transactionData.tax1Type !== undefined) dbTransactionData.tax_1_type = transactionData.tax1Type;
+        if (transactionData.tax1Amount !== undefined) dbTransactionData.tax_1_amount = transactionData.tax1Amount;
+        if (transactionData.tax2Type !== undefined) dbTransactionData.tax_2_type = transactionData.tax2Type;
+        if (transactionData.tax2Amount !== undefined) dbTransactionData.tax_2_amount = transactionData.tax2Amount;
+        if (transactionData.amount !== undefined) dbTransactionData.amount = transactionData.amount;
+        if (transactionData.currency !== undefined) dbTransactionData.currency = transactionData.currency;
         
         const { data, error: supabaseError } = await supabase
           .from("finance_transactions")
@@ -252,13 +265,37 @@ export const useUploadFinanceTransactions = () => {
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [uploadedCount, setUploadedCount] = useState<number>(0);
+  const [timeoutWarnings, setTimeoutWarnings] = useState<string[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Function to cancel ongoing upload operations
+  const cancelUpload = useCallback(() => {
+    if (abortControllerRef.current) {
+      console.log('🛑 Cancelling upload operation...');
+      abortControllerRef.current.abort();
+      setLoading(false);
+      setProgress(0);
+      toast.info('Upload operation cancelled');
+    }
+  }, []);
 
   const upload = useCallback(async (file: File) => {
+    // Create a new AbortController for this upload operation
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
     try {
       console.log('Starting finance transaction upload process');
       setLoading(true);
       setError(null);
       setProgress(0);
+      setTimeoutWarnings([]);
+      
+      // Create a timeout detector for the entire process
+      const overallTimeout = setTimeout(() => {
+        console.warn('⚠️ TIMEOUT WARNING: Overall upload process taking longer than expected (60s)');
+        toast.warning('Upload process is taking longer than expected. Check console for details.');
+        setTimeoutWarnings(prev => [...prev, 'Overall upload process exceeded 60s']);
+      }, 60000); // 60 second timeout for the entire process
       
       // Validate file
       if (!file) {
@@ -271,14 +308,30 @@ export const useUploadFinanceTransactions = () => {
       
       console.log(`Reading file: ${file.name}, size: ${file.size} bytes`);
       
-      // Read the Excel file
+      // Read the Excel file with timeout detection
+      console.time('file-read');
+      const fileReadTimeout = setTimeout(() => {
+        console.warn('⚠️ TIMEOUT WARNING: File reading operation taking longer than expected (10s)');
+        setTimeoutWarnings(prev => [...prev, 'File reading exceeded 10s']);
+      }, 10000); // 10 second timeout for file reading
+      
       const fileData = await file.arrayBuffer();
+      clearTimeout(fileReadTimeout);
+      console.timeEnd('file-read');
       console.log('File read successfully, converting to ArrayBuffer');
       setProgress(10);
       
-      // Process the Excel data using our financeProcessor utility
+      // Process the Excel data using our financeProcessor utility with timeout detection
       console.log('Processing finance data from Excel');
+      console.time('data-processing');
+      const processingTimeout = setTimeout(() => {
+        console.warn('⚠️ TIMEOUT WARNING: Data processing operation taking longer than expected (15s)');
+        setTimeoutWarnings(prev => [...prev, 'Data processing exceeded 15s']);
+      }, 15000); // 15 second timeout for data processing
+      
       const result = await processFinanceData(fileData);
+      clearTimeout(processingTimeout);
+      console.timeEnd('data-processing');
       console.log('Finance data processed:', result);
       setProgress(30);
       
@@ -295,10 +348,24 @@ export const useUploadFinanceTransactions = () => {
       console.log(`Found ${result.data.length} valid transactions, beginning database insert`);
       setProgress(50);
       
+      // Validate total transaction size
+      if (result.data.length > 500) {
+        console.warn(`⚠️ Large dataset detected: ${result.data.length} records. This may cause performance issues.`);
+        toast.warning(`Large dataset detected (${result.data.length} records). Processing may take longer than usual.`);
+        setTimeoutWarnings(prev => [...prev, `Large dataset warning: ${result.data.length} records`]);
+      }
+      
       // Batch insert to Supabase
       let inserted = 0;
       const totalRecords = result.data.length;
-      const batchSize = 20; // Insert in batches of 20 for better performance
+      
+      // Adjust batch size based on total records to prevent issues
+      let batchSize = 20; // Default batch size
+      if (totalRecords > 200) {
+        batchSize = 10; // Smaller batches for large datasets
+        console.log(`Reducing batch size to ${batchSize} due to large dataset (${totalRecords} records)`);  
+      }
+      
       const batches = [];
       
       // Create batches
@@ -308,19 +375,120 @@ export const useUploadFinanceTransactions = () => {
       
       console.log(`Created ${batches.length} batches for insertion`);
       
-      // Process each batch
+      // Process each batch with timeout detection and cancellation support
+      console.log('Beginning batch processing of records');
       for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        console.log(`Processing batch ${i+1}/${batches.length} with ${batch.length} records`);
+        // Check if operation has been cancelled
+        if (abortControllerRef.current?.signal.aborted) {
+          console.log('🛑 Upload operation was cancelled, stopping batch processing');
+          throw new Error('Upload operation cancelled by user');
+        }
         
-        // Create the transactions in the database
-        const { error: supabaseError } = await supabase
-          .from("finance_transactions")
-          .insert(batch);
+        const batch = batches[i];
+        console.log(`Processing batch ${i+1} of ${batches.length} (${batch.length} records)`);
+        
+        // Update progress
+        const progressPercent = Math.floor(50 + ((i / batches.length) * 50));
+        setProgress(progressPercent);
+        
+        console.time(`batch-${i+1}-insert`);
+        
+        // Log the first and last record in each batch for debugging
+        if (batch.length > 0) {
+          console.log(`Batch ${i+1} first record:`, JSON.stringify(batch[0]));
+          if (batch.length > 1) {
+            console.log(`Batch ${i+1} last record:`, JSON.stringify(batch[batch.length - 1]));
+          }
+        }
+        
+        console.log(`Starting database insert for batch ${i+1}`);
+        console.time(`batch-${i+1}-insert`);
+        
+        // Set timeout detection for this batch
+        const batchTimeout = setTimeout(() => {
+          console.warn(`⚠️ TIMEOUT WARNING: Batch ${i+1} insertion taking longer than expected (20s)`);
+          setTimeoutWarnings(prev => [...prev, `Batch ${i+1} insertion exceeded 20s`]);
+          // Log network activity to help diagnose the issue
+          console.log(`Potential hang detected in batch ${i+1}. Network activity should be checked.`);
+        }, 20000); // 20 second timeout for each batch insertion
+        
+        // Add network request monitoring
+        console.log(`🌐 Network: Starting request for batch ${i+1} with ${batch.length} records`);
+        const requestStartTime = performance.now();
+        
+        // Create a secondary timeout to check if the request is still in progress
+        const networkCheckTimeout = setTimeout(() => {
+          console.warn(`⚠️ NETWORK WARNING: Batch ${i+1} network request still in progress after 10s`);
+          console.log(`🌐 Network: Request for batch ${i+1} has been running for 10+ seconds without response`);
+          setTimeoutWarnings(prev => [...prev, `Network request for batch ${i+1} exceeded 10s without response`]);
+        }, 10000); // Check network status after 10 seconds
+        
+        // Create the transactions in the database with connection error handling
+        let insertedData;
+        let supabaseError;
+        
+        try {
+          // Wrap the Supabase call in a try-catch to handle network/connection errors
+          const response = await Promise.race([
+            supabase
+              .from("finance_transactions")
+              .insert(batch)
+              .select(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Supabase connection timeout')), 30000)
+            )
+          ]) as { data: any, error: any };
           
+          insertedData = response.data;
+          supabaseError = response.error;
+        } catch (connectionError) {
+          console.error(`❌ CONNECTION ERROR in batch ${i+1}:`, connectionError);
+          console.error('Connection details:', {
+            timestamp: new Date().toISOString(),
+            batchSize: batch.length,
+            batchIndex: i
+          });
+          
+          // Add specific error handling for connection timeout
+          if (connectionError instanceof Error && connectionError.message === 'Supabase connection timeout') {
+            setTimeoutWarnings(prev => [...prev, `Batch ${i+1} connection timed out after 30s`]);
+            toast.error(`Network issue detected. Connection timed out for batch ${i+1}.`);
+            throw new Error(`Connection timeout for batch ${i+1}. Please check your network connection and try again.`);
+          } else {
+            setTimeoutWarnings(prev => [...prev, `Batch ${i+1} connection error: ${connectionError instanceof Error ? connectionError.message : 'Unknown error'}`]);
+            throw connectionError;
+          }
+        }
+        
+        // Clear the network check timeout since we got a response
+        clearTimeout(networkCheckTimeout);
+        
+        // Log network request completion time
+        const requestEndTime = performance.now();
+        const requestDuration = requestEndTime - requestStartTime;
+        console.log(`🌐 Network: Completed request for batch ${i+1} in ${requestDuration.toFixed(2)}ms`);
+        
+        // If the request took longer than 5 seconds, log a warning
+        if (requestDuration > 5000) {
+          console.warn(`⚠️ NETWORK SLOW: Batch ${i+1} took ${(requestDuration/1000).toFixed(2)}s to complete`);
+          setTimeoutWarnings(prev => [...prev, `Batch ${i+1} network request was slow (${(requestDuration/1000).toFixed(2)}s)`]);
+        }
+          
+        clearTimeout(batchTimeout);
+        console.timeEnd(`batch-${i+1}-insert`);
+        
         if (supabaseError) {
           console.error('Supabase error during batch insert:', supabaseError);
+          console.error('Error details:', JSON.stringify(supabaseError));
           throw new Error(`Database error: ${supabaseError.message}`);
+        }
+        
+        // Log inserted data count vs batch size to verify all records were inserted
+        const insertedCount = insertedData ? insertedData.length : batch.length;
+        console.log(`Batch ${i+1} insertion complete. Expected: ${batch.length}, Confirmed: ${insertedCount}`);
+        
+        if (insertedData && insertedData.length !== batch.length) {
+          console.warn(`Batch ${i+1} insertion count mismatch! Expected ${batch.length} but got ${insertedData.length}`);
         }
         
         inserted += batch.length;
@@ -329,7 +497,14 @@ export const useUploadFinanceTransactions = () => {
         setProgress(newProgress);
       }
       
+      // Clear the overall timeout since we're done
+      clearTimeout(overallTimeout);
+      
       console.log('Finance transaction upload completed successfully');
+      if (timeoutWarnings.length > 0) {
+        console.warn('Upload completed with timeout warnings:', timeoutWarnings);
+      }
+      
       setLoading(false);
       setProgress(100);
       setUploadedCount(result.data.length);
@@ -361,7 +536,7 @@ export const useUploadFinanceTransactions = () => {
     }
   }, []);
 
-  return { upload, generateTemplate, loading, progress, error, uploadedCount };
+  return { upload, generateTemplate, cancelUpload, loading, progress, error, uploadedCount, timeoutWarnings };
 };
 
 /**
@@ -411,17 +586,17 @@ export const useFinanceTransactionsByClient = (client: string) => {
 };
 
 /**
- * Hook for fetching finance transactions by category
- * @param category Category to filter by
+ * Hook for fetching finance transactions by description or client
+ * @param searchTerm Search term to filter by
  * @returns Object containing transactions data, loading state, error state, and refetch function
  */
-export const useFinanceTransactionsByCategory = (category: string) => {
+export const useFinanceTransactionsBySearchTerm = (searchTerm: string) => {
   const [transactions, setTransactions] = useState<FrontendFinanceTransaction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!category) {
+    if (!searchTerm) {
       setTransactions([]);
       setLoading(false);
       return;
@@ -431,10 +606,11 @@ export const useFinanceTransactionsByCategory = (category: string) => {
       setLoading(true);
       setError(null);
       
+      // Search in both description and client fields
       const { data, error: supabaseError } = await supabase
         .from("finance_transactions")
         .select("*")
-        .eq("category", category)
+        .or(`description.ilike.%${searchTerm}%,client.ilike.%${searchTerm}%`)
         .order("date", { ascending: false });
       
       if (supabaseError) throw new Error(supabaseError.message);
@@ -447,7 +623,7 @@ export const useFinanceTransactionsByCategory = (category: string) => {
     } finally {
       setLoading(false);
     }
-  }, [category]);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchData();

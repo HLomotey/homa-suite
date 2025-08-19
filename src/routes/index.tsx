@@ -31,6 +31,7 @@ import { RegionalFillRateDetail } from "@/components/operations/detail/RegionalF
 import { TimeToFillTrendDetail } from "@/components/operations/detail/TimeToFillTrendDetail";
 import { JobTypesDistributionDetail } from "@/components/operations/detail/JobTypesDistributionDetail";
 import Utilities from "@/pages/Utilities";
+import UploadFinance from "@/pages/UploadFinance";
 
 // Define all application routes
 export const routes: RouteObject[] = [
@@ -213,6 +214,10 @@ export const routes: RouteObject[] = [
       {
         path: "/finance/expenses",
         element: <ExpenseDetail />,
+      },
+      {
+        path: "/finance/upload",
+        element: <UploadFinance />,
       },
       {
         path: "/operations",
