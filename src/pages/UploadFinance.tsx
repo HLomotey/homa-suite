@@ -2,79 +2,85 @@
 
 import type React from "react";
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, DollarSign, Loader2 } from "lucide-react";
+import {
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  AlertCircle,
+  DollarSign,
+  Loader2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { useUploadInvoices } from "@/hooks/finance/useInvoice";
-import { FrontendInvoice } from "@/integration/supabase/types/finance";
+import { useUploadFinanceTransactions } from "@/hooks/finance/useFinanceTransaction";
+import { FrontendFinanceTransaction } from "@/integration/supabase/types/finance";
 
 export default function UploadFinance() {
   const [file, setFile] = useState<File | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
   const [uploadedCount, setUploadedCount] = useState<number>(0);
-  const { upload, loading: uploading, progress: uploadProgress, error } = useUploadInvoices();
-  
+  const {
+    upload,
+    generateTemplate,
+    loading: uploading,
+    progress: uploadProgress,
+    error,
+  } = useUploadFinanceTransactions();
+
   // Function to generate and download an Excel template
-  const downloadTemplate = () => {
-    // In a real implementation, we would use a library like xlsx or exceljs
-    // to generate an actual Excel file. For now, we'll create a CSV file
-    // which can be opened in Excel.
-    
-    // Create header row based on the format shown in the screenshot
-    const headers = [
-      "Transaction ID",
-      "Amount",
-      "Account",
-      "Client",
-      "Payment Method",
-      "Date",
-      "Category",
-      "Description",
-      "Invoice ID",
-      "Status"
-    ];
-    
-    // Create sample data row matching the format shown in the screenshot
-    const sampleData = [
-      "TRX12345",
-      "1500.00",
-      "Business Account",
-      "Acme Corp",
-      "Bank Transfer",
-      "2025-08-15",
-      "Revenue",
-      "Monthly service fee",
-      "INV-2025-001",
-      "Completed"
-    ];
-    
-    // Create CSV content
-    const csvContent = [
-      headers.join(","),
-      sampleData.join(",")
-    ].join("\n");
-    
-    // Create a Blob with the CSV content
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    
-    // Create a download link
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    // Set link properties
-    link.setAttribute("href", url);
-    link.setAttribute("download", "invoice_template.csv");
-    link.style.visibility = "hidden";
-    
-    // Append to document, click to download, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadTemplate = async () => {
+    try {
+      console.log("Starting template download process");
+
+      // Use our utility function to generate the template (now async)
+      const templateBlob = await generateTemplate();
+
+      // Check if we got a valid blob with content
+      if (!templateBlob || templateBlob.size === 0) {
+        console.error("Generated template blob is empty or invalid");
+        setUploadStatus("error");
+        return;
+      }
+
+      console.log(
+        `Template generated successfully, size: ${templateBlob.size} bytes`
+      );
+
+      // Create a download link
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(templateBlob);
+
+      // Set link properties
+      link.setAttribute("href", url);
+      link.setAttribute("download", "finance_transaction_template.xlsx");
+      link.style.visibility = "hidden";
+
+      // Append to document, click to download, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the URL object
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+
+      console.log("Finance transaction template downloaded successfully");
+    } catch (err) {
+      console.error("Error downloading template:", err);
+      setUploadStatus("error");
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,29 +92,46 @@ export default function UploadFinance() {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     try {
+      setUploadStatus("idle");
       const count = await upload(file);
       setUploadedCount(count);
       setUploadStatus("success");
+      setFile(null);
+      // Reset the file input
+      const fileInput = document.getElementById(
+        "finance-file"
+      ) as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = "";
+      }
     } catch (err) {
-      console.error("Upload failed:", err);
+      console.error("Upload error:", err);
       setUploadStatus("error");
     }
   };
 
   const expectedColumns = [
-    "Transaction ID",
-    "Amount",
-    "Account",
-    "Client",
-    "Payment Method",
+    "Client Name",
+    "Invoice #",
     "Date",
-    "Category",
-    "Description",
-    "Invoice ID",
-    "Status"
+    "Invoice Status",
+    "Date Paid",
+    "Item Description",
+    "Rate",
+    "Quantity",
+    "Discount Percentage",
+    "Line Subtotal",
+    "Tax 1 Type",
+    "Tax 1 Amount",
+    "Tax 2 Type",
+    "Tax 2 Amount",
+    "Line Total",
+    "Currency",
   ];
 
   return (
@@ -116,10 +139,12 @@ export default function UploadFinance() {
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-2">
           <DollarSign className="h-6 w-6 text-green-600" />
-          <h1 className="text-3xl font-bold">Upload Finance Data</h1>
+          <h1 className="text-3xl font-bold">Upload Finance Invoices</h1>
           <Badge variant="secondary">Finance</Badge>
         </div>
-        <p className="text-muted-foreground">Upload Excel files to update financial records and reports</p>
+        <p className="text-muted-foreground">
+          Upload Excel files to update financial records and reports
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -127,10 +152,13 @@ export default function UploadFinance() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload Excel File
+              <DollarSign className="h-6 w-6" />
+              Finance Invoice Upload
             </CardTitle>
-            <CardDescription>Select an Excel file (.xlsx, .xls) containing financial data</CardDescription>
+            <CardDescription>
+              Upload invoice line items from Excel files. The system will
+              process and validate the data before importing it.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -144,11 +172,12 @@ export default function UploadFinance() {
                 accept=".xlsx,.xls,.csv"
                 onChange={handleFileChange}
                 disabled={uploading}
-                className={`${!file && 'border-dashed border-gray-300'}`}
+                className={`${!file && "border-dashed border-gray-300"}`}
               />
               {!file && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select an Excel file (.xlsx, .xls) or CSV file (.csv)
+                <p className="text-sm text-muted-foreground">
+                  Upload an Excel file (.xlsx) with invoice line items data. The
+                  file should have the following columns:
                 </p>
               )}
               {file && (
@@ -174,13 +203,13 @@ export default function UploadFinance() {
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Upload
+                    Upload Invoice Items
                   </>
                 )}
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 onClick={() => {
                   setFile(null);
                   setUploadStatus("idle");
@@ -196,9 +225,11 @@ export default function UploadFinance() {
                 <div className="flex justify-between text-sm">
                   <span className="flex items-center">
                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    {uploadProgress < 40 ? "Reading file..." : 
-                     uploadProgress < 70 ? "Processing data..." : 
-                     "Saving records..."}
+                    {uploadProgress < 40
+                      ? "Reading file..."
+                      : uploadProgress < 70
+                      ? "Processing data..."
+                      : "Saving records..."}
                   </span>
                   <span className="font-medium">{uploadProgress}%</span>
                 </div>
@@ -210,7 +241,9 @@ export default function UploadFinance() {
               <Alert className="bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 border-green-200">
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <span className="font-medium">Success!</span> {uploadedCount} invoice {uploadedCount === 1 ? 'record' : 'records'} uploaded successfully.
+                  <span className="font-medium">Success!</span> {uploadedCount}{" "}
+                  invoice line {uploadedCount === 1 ? "item" : "items"} uploaded
+                  successfully.
                 </AlertDescription>
               </Alert>
             )}
@@ -219,7 +252,8 @@ export default function UploadFinance() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <span className="font-medium">Error:</span> {error || "An error occurred while uploading the file."}
+                  <span className="font-medium">Error:</span>{" "}
+                  {error || "An error occurred while uploading the file."}
                 </AlertDescription>
               </Alert>
             )}
@@ -230,7 +264,9 @@ export default function UploadFinance() {
         <Card>
           <CardHeader>
             <CardTitle>File Format Requirements</CardTitle>
-            <CardDescription>Ensure your Excel file follows the correct format</CardDescription>
+            <CardDescription>
+              Ensure your Excel file follows the correct format
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="mb-4">
@@ -250,23 +286,28 @@ export default function UploadFinance() {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• First row should contain column headers</li>
                 <li>• Date format: MM/DD/YYYY or YYYY-MM-DD</li>
-                <li>• Amount should be numeric (no currency symbols)</li>
-                <li>• Status: Pending, Completed, or Failed</li>
-                <li>• Minimum file size: 10KB</li>
+                <li>• Rate and quantities should be numeric values</li>
+                <li>• Discount percentage should be between 0-100</li>
+                <li>• Invoice Status: Pending, Paid, Overdue</li>
+                <li>• Tax types should be GST, VAT, or Sales Tax</li>
+                <li>
+                  • Currency should be standard 3-letter code (USD, EUR, GBP)
+                </li>
               </ul>
             </div>
 
             <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
               <p className="text-sm text-green-800 dark:text-green-200">
-                <strong>Tip:</strong> Download our template file to ensure proper formatting
+                <strong>Tip:</strong> Download our template file to ensure
+                proper formatting
               </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="mt-2 bg-transparent"
                 onClick={downloadTemplate}
               >
-                Download Template
+                Download Invoice Line Items Template
               </Button>
             </div>
           </CardContent>
@@ -277,16 +318,36 @@ export default function UploadFinance() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Uploads</CardTitle>
-          <CardDescription>History of recent financial data uploads</CardDescription>
+          <CardDescription>
+            History of recent transaction data uploads
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {[
-              { file: "invoices_june_2024.xlsx", date: "2024-06-30", records: 42, status: "success" },
-              { file: "client_invoices_q2.xlsx", date: "2024-06-15", records: 78, status: "success" },
-              { file: "pending_invoices.xlsx", date: "2024-06-01", records: 23, status: "error" },
+              {
+                file: "transactions_june_2024.xlsx",
+                date: "2024-06-30",
+                records: 42,
+                status: "success",
+              },
+              {
+                file: "client_transactions_q2.xlsx",
+                date: "2024-06-15",
+                records: 78,
+                status: "success",
+              },
+              {
+                file: "pending_transactions.xlsx",
+                date: "2024-06-01",
+                records: 23,
+                status: "error",
+              },
             ].map((upload, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
                 <div className="flex items-center gap-3">
                   <FileSpreadsheet className="h-4 w-4 text-green-600" />
                   <div>
@@ -296,7 +357,11 @@ export default function UploadFinance() {
                     </p>
                   </div>
                 </div>
-                <Badge variant={upload.status === "success" ? "default" : "destructive"}>
+                <Badge
+                  variant={
+                    upload.status === "success" ? "default" : "destructive"
+                  }
+                >
                   {upload.status === "success" ? "Success" : "Failed"}
                 </Badge>
               </div>

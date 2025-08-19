@@ -343,7 +343,7 @@ export const useInvoicesByClient = (clientName: string) => {
 };
 
 /**
- * Hook for uploading invoice data from Excel
+ * Hook for uploading finance transaction data from Excel
  * @returns Object containing upload function, loading state, and error state
  */
 export const useUploadInvoices = () => {
@@ -351,7 +351,6 @@ export const useUploadInvoices = () => {
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [uploadedCount, setUploadedCount] = useState<number>(0);
-  const { create } = useCreateInvoice();
 
   /**
    * Expected Excel column structure based on the template from screenshot:
@@ -377,45 +376,33 @@ export const useUploadInvoices = () => {
     return date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
   };
 
-  // Helper function to validate invoice status
-  const validateInvoiceStatus = (status: string): InvoiceStatus => {
-    const validStatuses: InvoiceStatus[] = ['paid', 'pending', 'overdue', 'cancelled'];
-    const normalizedStatus = status.toLowerCase();
+  // Helper function to validate transaction status
+  const validateTransactionStatus = (status: string): string => {
+    const validStatuses = ['Pending', 'Completed', 'Failed'];
     
-    if (validStatuses.includes(normalizedStatus as InvoiceStatus)) {
-      return normalizedStatus as InvoiceStatus;
+    if (validStatuses.includes(status)) {
+      return status;
     }
-    return 'pending'; // Default status
+    return 'Pending'; // Default status
   };
 
-  // Convert Excel row to FrontendInvoice format
-  const convertExcelRowToInvoice = (row: any): Partial<FrontendInvoice> => {
-    // Map Excel columns to our data model based on the format from the second image
+  // Convert Excel row to FrontendFinanceTransaction format
+  const convertExcelRowToTransaction = (row: any): any => {
+    // Map Excel columns to our data model based on the format from the screenshot
     return {
       // Direct mappings from Excel columns to our data model
-      clientName: row['Client Name'] || '',
-      invoiceNumber: row['Invoice #'] || '',
-      dateIssued: typeof row['Date Issued'] === 'number' 
-        ? parseExcelDate(row['Date Issued']) 
-        : row['Date Issued'] || '',
-      invoiceStatus: validateInvoiceStatus(row['Invoice Status'] || 'pending'),
-      datePaid: row['Date Paid'] 
-        ? (typeof row['Date Paid'] === 'number' 
-          ? parseExcelDate(row['Date Paid']) 
-          : row['Date Paid']) 
-        : null,
-      itemName: row['Item Name'] || '',
-      itemDescription: row['Item Description'] || '',
-      rate: parseFloat(row['Rate']) || 0,
-      quantity: parseInt(row['Quantity']) || 1,
-      discountPercentage: parseFloat(row['Discount Percentage']) || 0,
-      lineSubtotal: parseFloat(row['Line Subtotal']) || 0,
-      tax1Type: row['Tax 1 Type'] || null,
-      tax1Amount: parseFloat(row['Tax 1 Amount']) || 0,
-      tax2Type: row['Tax 2 Type'] || null,
-      tax2Amount: parseFloat(row['Tax 2 Amount']) || 0,
-      lineTotal: parseFloat(row['Line Total']) || 0,
-      currency: row['Currency'] || 'USD'
+      transaction_id: row['Transaction ID'] || '',
+      amount: parseFloat(row['Amount']) || 0,
+      account: row['Account'] || '',
+      client: row['Client'] || '',
+      payment_method: row['Payment Method'] || '',
+      date: typeof row['Date'] === 'number' 
+        ? parseExcelDate(row['Date']) 
+        : row['Date'] || '',
+      category: row['Category'] || '',
+      description: row['Description'] || '',
+      invoice_id: row['Invoice ID'] || '',
+      status: validateTransactionStatus(row['Status'] || 'Pending')
     };
   };
 
@@ -450,25 +437,18 @@ export const useUploadInvoices = () => {
       // Extract headers from the first row
       const headers = Object.values(jsonData[0]);
       
-      // Expected headers from the template based on the second image
+      // Expected headers from the template based on the screenshot
       const expectedHeaders = [
-        "Client Name",
-        "Invoice #",
-        "Date Issued",
-        "Invoice Status",
-        "Date Paid",
-        "Item Name",
-        "Item Description",
-        "Rate",
-        "Quantity",
-        "Discount Percentage",
-        "Line Subtotal",
-        "Tax 1 Type",
-        "Tax 1 Amount",
-        "Tax 2 Type",
-        "Tax 2 Amount",
-        "Line Total",
-        "Currency"
+        "Transaction ID",
+        "Amount",
+        "Account",
+        "Client",
+        "Payment Method",
+        "Date",
+        "Category",
+        "Description",
+        "Invoice ID",
+        "Status"
       ];
       
       // Validate headers
@@ -501,18 +481,24 @@ export const useUploadInvoices = () => {
       
       setProgress(50);
       
-      // Convert Excel rows to invoice objects
-      const invoices = rowsWithHeaders.map(convertExcelRowToInvoice);
+      // Convert Excel rows to transaction objects
+      const transactions = rowsWithHeaders.map(convertExcelRowToTransaction);
       
       // Batch insert to Supabase
       let inserted = 0;
-      const totalRecords = invoices.length;
+      const totalRecords = transactions.length;
       
-      for (let i = 0; i < invoices.length; i++) {
-        const invoice = invoices[i];
+      for (let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
         
-        // Create the invoice in the database
-        await create(invoice as FrontendInvoice);
+        // Create the transaction in the database
+        const { error: supabaseError } = await supabase
+          .from("finance_transactions")
+          .insert(transaction);
+          
+        if (supabaseError) {
+          throw new Error(supabaseError.message);
+        }
         
         inserted++;
         const newProgress = 50 + Math.floor((inserted / totalRecords) * 50);
@@ -521,8 +507,8 @@ export const useUploadInvoices = () => {
       
       setLoading(false);
       setProgress(100);
-      setUploadedCount(invoices.length);
-      return invoices.length;
+      setUploadedCount(transactions.length);
+      return transactions.length;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unknown error occurred"
@@ -530,7 +516,7 @@ export const useUploadInvoices = () => {
       setLoading(false);
       throw err;
     }
-  }, [create]);
+  }, []);
 
   return { upload, loading, progress, error, uploadedCount };
 };

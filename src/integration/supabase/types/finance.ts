@@ -201,39 +201,51 @@ export interface FrontendTransaction {
 }
 
 /**
- * Finance transaction interface for the Excel upload format shown in the screenshot
+ * Finance transaction interface for the invoice line item Excel upload format
  */
 export interface FinanceTransaction {
   id: string;
-  transaction_id: string;
-  amount: number;
-  account: string;
   client: string;
-  payment_method: string;
-  date: string;
-  category: string;
-  description: string;
   invoice_id: string;
+  date: string;
   status: string;
+  date_paid?: string;
+  description: string;
+  rate: number;
+  quantity: number;
+  discount_percentage?: number;
+  line_subtotal?: number;
+  tax_1_type?: string;
+  tax_1_amount?: number;
+  tax_2_type?: string;
+  tax_2_amount?: number;
+  amount: number; // Line Total
+  currency?: string;
   created_at: string;
   updated_at: string | null;
 }
 
 /**
- * Frontend finance transaction type that matches the Excel upload format
+ * Frontend finance transaction type that matches the invoice line item Excel upload format
  */
 export interface FrontendFinanceTransaction {
   id: string;
-  transactionId: string;
-  amount: number;
-  account: string;
   client: string;
-  paymentMethod: string;
-  date: string;
-  category: string;
-  description: string;
   invoiceId: string;
+  date: string;
   status: string;
+  datePaid?: string;
+  description: string;
+  rate: number;
+  quantity: number;
+  discountPercentage?: number;
+  lineSubtotal?: number;
+  tax1Type?: string;
+  tax1Amount?: number;
+  tax2Type?: string;
+  tax2Amount?: number;
+  amount: number; // Line Total
+  currency?: string;
 }
 
 /**
@@ -461,21 +473,28 @@ export const mapDatabaseRevenueProfitDataToFrontend = (
 
 /**
  * Maps a database finance transaction to the frontend format
+ * Updated to match the invoice line item format
  */
 export const mapDatabaseFinanceTransactionToFrontend = (
   dbFinanceTransaction: FinanceTransaction
 ): FrontendFinanceTransaction => {
   return {
     id: dbFinanceTransaction.id,
-    transactionId: dbFinanceTransaction.transaction_id,
-    amount: dbFinanceTransaction.amount,
-    account: dbFinanceTransaction.account,
     client: dbFinanceTransaction.client,
-    paymentMethod: dbFinanceTransaction.payment_method,
-    date: dbFinanceTransaction.date,
-    category: dbFinanceTransaction.category,
-    description: dbFinanceTransaction.description,
     invoiceId: dbFinanceTransaction.invoice_id,
-    status: dbFinanceTransaction.status
+    date: dbFinanceTransaction.date,
+    status: dbFinanceTransaction.status,
+    datePaid: dbFinanceTransaction.date_paid,
+    description: dbFinanceTransaction.description,
+    rate: dbFinanceTransaction.rate,
+    quantity: dbFinanceTransaction.quantity,
+    amount: dbFinanceTransaction.amount,
+    discountPercentage: dbFinanceTransaction.discount_percentage,
+    lineSubtotal: dbFinanceTransaction.line_subtotal,
+    tax1Type: dbFinanceTransaction.tax_1_type,
+    tax1Amount: dbFinanceTransaction.tax_1_amount,
+    tax2Type: dbFinanceTransaction.tax_2_type,
+    tax2Amount: dbFinanceTransaction.tax_2_amount,
+    currency: dbFinanceTransaction.currency || "USD"
   };
 };
