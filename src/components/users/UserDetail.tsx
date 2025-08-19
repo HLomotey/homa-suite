@@ -12,6 +12,7 @@ import { adminUserService } from '@/integration/supabase/admin-client';
 import { supabase } from '@/integration/supabase/client';
 import { getUserEffectivePermissions, permissionsApi, userPermissionsApi } from "@/integration/supabase/permissions-api";
 import * as enhancedUserApi from '@/integration/supabase/enhanced-user-api';
+import { userRolesApi } from '@/integration/supabase/rbac-api';
 import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
@@ -28,6 +29,7 @@ export function UserDetail() {
   const [customPermissionsEnabled, setCustomPermissionsEnabled] = useState(false);
   const [defaultPassword, setDefaultPassword] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [userRoles, setUserRoles] = useState<{ roleId: string, isPrimary: boolean }[]>([]);
   
   // Fetch user data if editing existing user using enhanced API
   const { users: allUsers, loading: fetchingUsers, error: usersError } = useEnhancedUsers();
@@ -101,8 +103,48 @@ export function UserDetail() {
       
       // Enable custom permissions if user has any custom permissions
       setCustomPermissionsEnabled((userWithProfile.permissions || []).length > 0);
+      
+      // Load user roles if this is an existing user
+      if (userWithProfile.id) {
+        loadUserRoles(userWithProfile.id);
+      }
     }
   }, [isNewUser, userWithProfile]);
+  
+  // Load user roles from the database
+  const loadUserRoles = async (userId: string) => {
+    try {
+      // Get user roles directly from the user_roles table instead
+      const { data: userRolesData, error } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', userId);
+        
+      if (error) throw error;
+      
+      console.log('Loaded user roles:', userRolesData);
+      
+      if (Array.isArray(userRolesData)) {
+        // Transform to the format expected by the UserProfileForm
+        const formattedRoles = userRolesData.map(ur => ({
+          roleId: ur.role_id,
+          isPrimary: ur.is_primary || false
+        }));
+        
+        setUserRoles(formattedRoles);
+      } else {
+        console.error('User roles data is not an array:', userRolesData);
+        setUserRoles([]);
+      }
+    } catch (error) {
+      console.error('Error loading user roles:', error);
+      toast({
+        title: 'Error loading roles',
+        description: 'Could not load user roles. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
   
   // Handle fetch errors
   useEffect(() => {
@@ -119,6 +161,12 @@ export function UserDetail() {
   // Handle input changes
   const handleInputChange = (field: keyof FrontendUser, value: string) => {
     setUser(prev => ({ ...prev, [field]: value }));
+  };
+  
+  // Handle roles changes
+  const handleRolesChange = (roles: { roleId: string, isPrimary: boolean }[]) => {
+    console.log('Roles changed:', roles);
+    setUserRoles(roles);
   };
 
   // Handle permission toggle
@@ -233,10 +281,20 @@ export function UserDetail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user.name || !user.email || !user.role || !user.department) {
+    if (!user.name || !user.email || !user.department) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Validate that at least one role is assigned
+    if (userRoles.length === 0) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please assign at least one role to the user.',
         variant: 'destructive'
       });
       return;
@@ -288,10 +346,12 @@ export function UserDetail() {
         const authUserId = authResult.user?.id;
         console.log('Auth user created successfully with ID:', authUserId);
         
-        // Map roleId to role name for database storage
+        // Get the primary role for the user
+        const primaryRole = userRoles.find(r => r.isPrimary);
         let userRole = user.role;
-        if (user.roleId) {
-          const selectedRole = roles.find(r => r.id === user.roleId);
+        
+        if (primaryRole) {
+          const selectedRole = roles.find(r => r.id === primaryRole.roleId);
           if (selectedRole) {
             userRole = selectedRole.name as UserRole;
           }
@@ -300,14 +360,16 @@ export function UserDetail() {
         const userWithAuthId = {
           ...user,
           id: authUserId || '', // Use the auth user ID
-          role: userRole
+          role: userRole,
+          roleId: primaryRole?.roleId || ''
         };
         
         // Debug role value before creation
         console.log('=== ROLE DEBUGGING ===');
         console.log('Original user role:', user.role);
         console.log('User with auth ID role:', userWithAuthId.role);
-        console.log('User roleId:', user.roleId);
+        console.log('User roleId:', userWithAuthId.roleId);
+        console.log('User roles:', userRoles);
         console.log('=====================');
         
         const createdUser = await create(userWithAuthId);
@@ -349,6 +411,21 @@ export function UserDetail() {
           });
           
           console.log('Profile upsert completed for user ID:', createdUser.id);
+          
+          // Assign all roles to the user
+          console.log('Assigning roles to new user:', userRoles);
+          for (const userRole of userRoles) {
+            try {
+              await userRolesApi.assignRole({
+                user_id: createdUser.id,
+                role_id: userRole.roleId,
+                is_primary: userRole.isPrimary
+              });
+              console.log(`Role ${userRole.roleId} assigned successfully with primary=${userRole.isPrimary}`);
+            } catch (roleError) {
+              console.error(`Error assigning role ${userRole.roleId}:`, roleError);
+            }
+          }
           
           // Verify complete ID synchronization across all entities
           setTimeout(async () => {
@@ -403,10 +480,24 @@ export function UserDetail() {
         sessionStorage.setItem('refreshUsers', 'true');
       } else {
         if (user.id) {
+          // Get the primary role for the user profile
+          const primaryRole = userRoles.find(r => r.isPrimary);
+          let userRole = user.role;
+          let userRoleId = '';
+          
+          if (primaryRole) {
+            const selectedRole = roles.find(r => r.id === primaryRole.roleId);
+            if (selectedRole) {
+              userRole = selectedRole.name as UserRole;
+              userRoleId = selectedRole.id;
+            }
+          }
+          
           await update(user.id, {
             name: user.name,
             email: user.email,
-            role: user.role as UserRole,
+            role: userRole,
+            roleId: userRoleId,
             department: user.department,
             status: user.status as UserStatus,
             permissions: customPermissionsEnabled ? (user.permissions || []) : []
@@ -415,6 +506,22 @@ export function UserDetail() {
           await upsert(user.id, {
             bio: '',
             preferences: {}
+          });
+          
+          // Update user roles
+          console.log('Updating user roles:', userRoles);
+          
+          // Get all role IDs
+          const roleIds = userRoles.map(ur => ur.roleId);
+          
+          // Find the primary role ID
+          const primaryRoleId = userRoles.find(ur => ur.isPrimary)?.roleId;
+          
+          // Update all user roles at once
+          await userRolesApi.updateUserRoles({
+            user_id: user.id,
+            role_ids: roleIds,
+            primary_role_id: primaryRoleId
           });
         }
         
@@ -610,6 +717,8 @@ export function UserDetail() {
                   defaultPassword={defaultPassword}
                   isLoading={isLoading}
                   isNewUser={isNewUser}
+                  userRoles={userRoles}
+                  onRolesChange={handleRolesChange}
                 />
               </TabsContent>
               
