@@ -55,7 +55,8 @@ import {
   ClientRevenue,
   FinancialMetric,
   CashFlow,
-  RevenueProfitData
+  RevenueProfitData,
+  Invoice
 } from './finance';
 import {
   Tenant
@@ -243,6 +244,11 @@ export interface Database {
         Insert: Omit<RevenueProfitData, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<RevenueProfitData, "id" | "created_at">>;
       };
+      finance_invoices: {
+        Row: Invoice;
+        Insert: Omit<Invoice, "created_at" | "updated_at">;
+        Update: Partial<Omit<Invoice, "created_at">>;
+      };
       tenants: {
         Row: Tenant;
         Insert: Omit<Tenant, "id" | "created_at" | "updated_at">;
@@ -306,6 +312,7 @@ export interface Database {
       transaction_type: "income" | "expense";
       transaction_status: "completed" | "pending" | "cancelled";
       budget_status: "on-track" | "warning" | "critical";
+      invoice_status: "paid" | "pending" | "overdue" | "cancelled";
       tenant_status: "Active" | "Pending" | "Former" | "Blacklisted";
       inventory_transaction_type: "received" | "issued" | "adjusted";
       purchase_order_status: "draft" | "ordered" | "partial" | "delivered" | "cancelled";

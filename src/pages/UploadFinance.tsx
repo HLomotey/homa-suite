@@ -10,12 +10,14 @@ import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, DollarSign } from "l
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { useUploadInvoices } from "@/hooks/finance/useInvoice";
+import { FrontendInvoice } from "@/integration/supabase/types/finance";
 
 export default function UploadFinance() {
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [uploadedCount, setUploadedCount] = useState<number>(0);
+  const { upload, loading: uploading, progress: uploadProgress, error } = useUploadInvoices();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -28,34 +30,34 @@ export default function UploadFinance() {
   const handleUpload = async () => {
     if (!file) return;
 
-    setUploading(true);
-    setUploadProgress(0);
-
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setUploading(false);
-          setUploadStatus("success");
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    try {
+      const count = await upload(file);
+      setUploadedCount(count);
+      setUploadStatus("success");
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setUploadStatus("error");
+    }
   };
 
   const expectedColumns = [
-    "Transaction ID",
-    "Date",
-    "Account",
-    "Category",
-    "Description",
-    "Amount",
-    "Type",
-    "Status",
-    "Property ID",
-    "Reference",
+    "Client Name",
+    "Invoice Number",
+    "Date Issued",
+    "Invoice Status",
+    "Date Paid",
+    "Item Name",
+    "Item Description",
+    "Rate",
+    "Quantity",
+    "Discount Percentage",
+    "Line Subtotal",
+    "Tax 1 Type",
+    "Tax 1 Amount",
+    "Tax 2 Type",
+    "Tax 2 Amount",
+    "Line Total",
+    "Currency"
   ];
 
   return (
@@ -112,7 +114,7 @@ export default function UploadFinance() {
             {uploadStatus === "success" && (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
-                <AlertDescription>File uploaded successfully! Financial data has been updated.</AlertDescription>
+                <AlertDescription>File uploaded successfully! {uploadedCount} invoice records have been processed.</AlertDescription>
               </Alert>
             )}
 
@@ -153,9 +155,9 @@ export default function UploadFinance() {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• First row should contain column headers</li>
                 <li>• Date format: MM/DD/YYYY or YYYY-MM-DD</li>
-                <li>• Amount should be numeric (no currency symbols)</li>
-                <li>• Type: Income, Expense, Transfer</li>
-                <li>• Status: Completed, Pending, Cancelled</li>
+                <li>• Rates and amounts should be numeric (no currency symbols)</li>
+                <li>• Invoice Status: paid, pending, overdue, cancelled</li>
+                <li>• Discount percentage should be a number between 0-100</li>
                 <li>• Maximum file size: 10MB</li>
               </ul>
             </div>
@@ -181,9 +183,9 @@ export default function UploadFinance() {
         <CardContent>
           <div className="space-y-3">
             {[
-              { file: "transactions_june_2024.xlsx", date: "2024-06-30", records: 523, status: "success" },
-              { file: "q2_expenses.xlsx", date: "2024-06-15", records: 189, status: "success" },
-              { file: "property_revenue_q2.xlsx", date: "2024-06-01", records: 78, status: "error" },
+              { file: "invoices_june_2024.xlsx", date: "2024-06-30", records: 42, status: "success" },
+              { file: "client_invoices_q2.xlsx", date: "2024-06-15", records: 78, status: "success" },
+              { file: "pending_invoices.xlsx", date: "2024-06-01", records: 23, status: "error" },
             ].map((upload, index) => (
               <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-3">
