@@ -65,7 +65,7 @@ export default function UploadFinance() {
 
       // Set link properties
       link.setAttribute("href", url);
-      link.setAttribute("download", "finance_invoice_template.xlsx");
+      link.setAttribute("download", "finance_invoice_template.csv");
       link.style.visibility = "hidden";
 
       // Append to document, click to download, and remove

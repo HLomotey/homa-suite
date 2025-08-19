@@ -364,84 +364,70 @@ export async function processFinanceData(fileData: ArrayBuffer): Promise<Finance
 }
 
 /**
- * Generate an Excel template for finance invoice line item data upload
- * @returns A Blob containing the Excel template
+ * Generate a CSV template for finance invoice line item data upload
+ * @returns A Blob containing the CSV template
  */
 export async function generateFinanceTemplate(): Promise<Blob> {
   try {
     console.log('Generating finance invoice template');
-    // Dynamically import xlsx to avoid browser compatibility issues
-    const XLSX = await import('xlsx');
     
-    // Get the column headers from our mappings
+    // Get headers from column mappings
     const headers = FINANCE_COLUMN_MAPPINGS.map(mapping => mapping.excelColumn);
     
-    // Create sample data for invoice line items
-    const sampleData = [
-      {
-        "Client Name": "ABC Corporation",
-        "Invoice #": "INV-2023-001",
-        "Date": new Date().toISOString().split('T')[0],
-        "Invoice Status": "Pending",
-        "Date Paid": "",
-        "Item Description": "Web Development Services",
-        "Rate": 125.00,
-        "Quantity": 10,
-        "Discount Percentage": 5,
-        "Line Subtotal": 1187.50,
-        "Tax 1 Type": "VAT",
-        "Tax 1 Amount": 237.50,
-        "Tax 2 Type": "",
-        "Tax 2 Amount": 0,
-        "Line Total": 1425.00,
-        "Currency": "USD"
-      },
-      {
-        "Client Name": "XYZ Ltd",
-        "Invoice #": "INV-2023-002",
-        "Date": new Date().toISOString().split('T')[0],
-        "Invoice Status": "Paid",
-        "Date Paid": new Date().toISOString().split('T')[0],
-        "Item Description": "Monthly Maintenance",
-        "Rate": 75.00,
-        "Quantity": 6,
-        "Discount Percentage": 0,
-        "Line Subtotal": 450.00,
-        "Tax 1 Type": "GST",
-        "Tax 1 Amount": 45.00,
-        "Tax 2 Type": "PST",
-        "Tax 2 Amount": 22.50,
-        "Line Total": 517.50,
-        "Currency": "USD"
-      }
+    // Create sample data rows
+    const sampleData1 = [
+      "ABC Corporation", // Client Name
+      "INV-2023-001", // Invoice #
+      new Date().toISOString().split('T')[0], // Date
+      "Pending", // Invoice Status
+      "", // Date Paid
+      "Web Development Services", // Item Description
+      "125.00", // Rate
+      "10", // Quantity
+      "5", // Discount Percentage
+      "1187.50", // Line Subtotal
+      "VAT", // Tax 1 Type
+      "237.50", // Tax 1 Amount
+      "", // Tax 2 Type
+      "0", // Tax 2 Amount
+      "1425.00", // Line Total
+      "USD" // Currency
     ];
     
-    // Create a worksheet
-    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const sampleData2 = [
+      "XYZ Ltd", // Client Name
+      "INV-2023-002", // Invoice #
+      new Date().toISOString().split('T')[0], // Date
+      "Paid", // Invoice Status
+      new Date().toISOString().split('T')[0], // Date Paid
+      "Monthly Maintenance", // Item Description
+      "75.00", // Rate
+      "6", // Quantity
+      "0", // Discount Percentage
+      "450.00", // Line Subtotal
+      "GST", // Tax 1 Type
+      "45.00", // Tax 1 Amount
+      "PST", // Tax 2 Type
+      "22.50", // Tax 2 Amount
+      "517.50", // Line Total
+      "USD" // Currency
+    ];
     
-    // Create a workbook
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Invoice Line Items");
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      sampleData1.join(','),
+      sampleData2.join(',')
+    ].join('\n');
     
-    // Generate Excel file as binary string
-    const excelBinary = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
-    
-    // Convert binary string to array buffer
-    const buf = new ArrayBuffer(excelBinary.length);
-    const view = new Uint8Array(buf);
-    for (let i = 0; i < excelBinary.length; i++) {
-      view[i] = excelBinary.charCodeAt(i) & 0xFF;
-    }
-    
-    // Convert array buffer to Blob
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    // Convert to Blob
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     
     console.log('Finance invoice template generated successfully');
     return blob;
   } catch (error) {
     console.error('Error generating finance invoice template:', error);
-    throw new Error(`Failed to generate finance invoice template: ${error instanceof Error ? error.message : String(error)}`);
-    return new Blob([""], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    return new Blob([""], { type: 'text/csv' });
   }
 }
 

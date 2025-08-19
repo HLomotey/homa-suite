@@ -286,7 +286,7 @@ export default function ExcelUploads() {
         "Currency should be standard 3-letter code (USD, EUR, GBP)",
         "Maximum file size: 10MB",
       ],
-      templateName: "finance_invoice_template.xlsx",
+      templateName: "finance_invoice_template.csv",
     },
     operations: {
       title: "Operations Data",
