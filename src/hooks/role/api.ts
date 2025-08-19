@@ -16,17 +16,35 @@ import {
  * @returns Promise with array of roles
  */
 export const fetchRoles = async (): Promise<FrontendRole[]> => {
-  const { data, error } = await supabase
-    .from("roles")
-    .select("*")
-    .order("name", { ascending: true });
+  try {
+    console.log("Attempting to fetch roles from database...");
+    
+    const { data, error } = await supabase
+      .from("roles")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
 
-  if (error) {
-    console.error("Error fetching roles:", error);
-    throw new Error(error.message);
+    if (error) {
+      console.error("Supabase error fetching roles:", error);
+      throw new Error(`Failed to fetch roles: ${error.message}`);
+    }
+
+    console.log("Successfully fetched roles data:", data);
+    
+    if (!data || data.length === 0) {
+      console.warn("No roles found in database");
+      return [];
+    }
+
+    const mappedRoles = (data as Role[]).map(mapDatabaseRoleToFrontend);
+    console.log("Mapped roles:", mappedRoles);
+    
+    return mappedRoles;
+  } catch (error) {
+    console.error("Error in fetchRoles:", error);
+    throw error;
   }
-
-  return (data as Role[]).map(mapDatabaseRoleToFrontend);
 };
 
 /**

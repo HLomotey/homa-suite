@@ -74,7 +74,9 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
       .from('profiles')
       .select(`
         *,
-        role:roles(*)
+        user_roles!inner(
+          role:roles(*)
+        )
       `)
       .order('created_at', { ascending: false });
 
@@ -113,9 +115,11 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
       .from('profiles')
       .select(`
         *,
-        role:roles(*)
+        user_roles!inner(
+          role:roles!inner(*)
+        )
       `)
-      .eq('roles.name', roleName)
+      .eq('user_roles.role.name', roleName)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -153,7 +157,9 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
       .from('profiles')
       .select(`
         *,
-        role:roles(*)
+        user_roles(
+          role:roles(*)
+        )
       `)
       .eq('department', department)
       .order('created_at', { ascending: false });
@@ -193,7 +199,9 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
       .from('profiles')
       .select(`
         *,
-        role:roles(*)
+        user_roles(
+          role:roles(*)
+        )
       `)
       .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
       .order('created_at', { ascending: false });

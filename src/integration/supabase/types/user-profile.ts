@@ -54,9 +54,9 @@ export interface Profile {
 export type UserStatus = 'active' | 'inactive' | 'pending';
 
 /**
- * User role enum
+ * User role type - now dynamic from roles table
  */
-export type UserRole = 'admin' | 'manager' | 'staff' | 'guest';
+export type UserRole = string;
 
 /**
  * Role interface representing the roles table in Supabase
@@ -64,9 +64,14 @@ export type UserRole = 'admin' | 'manager' | 'staff' | 'guest';
 export interface Role {
   id: string;
   name: string;
+  display_name: string;
   description: string | null;
-  permissions: string[];
+  permissions: string[] | null;
+  is_system_role: boolean;
+  is_active: boolean;
+  sort_order: number;
   created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -74,6 +79,10 @@ export interface Role {
  */
 export interface ProfileWithRole extends Profile {
   role?: Role | null;
+  user_roles?: Array<{
+    role: Role;
+    is_primary: boolean;
+  }>;
 }
 
 /**
@@ -168,16 +177,21 @@ export const mapDatabaseProfileToProfile = (dbProfile: Profile): UserWithProfile
  * Function to map ProfileWithRole to FrontendUser
  */
 export const mapProfileWithRoleToFrontendUser = (profile: ProfileWithRole, email: string): FrontendUser => {
+  // Extract role from user_roles array (get primary role or first role) or fallback to direct role
+  const userRole = profile.user_roles?.find(ur => ur.is_primary)?.role || 
+                   profile.user_roles?.[0]?.role || 
+                   profile.role;
+  
   return {
     id: profile.user_id,
     name: `${profile.first_name} ${profile.last_name}`.trim(),
     email: email,
-    role: (profile.role?.name as UserRole) || 'guest',
-    roleId: profile.role_id || undefined,
+    role: userRole?.name || 'guest',
+    roleId: userRole?.id || profile.role_id || undefined,
     department: profile.department || '',
     status: 'active' as UserStatus,
     lastActive: undefined,
-    permissions: profile.role?.permissions || [],
+    permissions: userRole?.permissions || [],
     createdAt: profile.created_at,
     avatar: profile.avatar_url || undefined,
     bio: profile.bio || undefined
