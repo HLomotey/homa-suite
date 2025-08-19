@@ -8,9 +8,14 @@
 export interface Role {
   id: string;
   name: string;
+  display_name: string;
   description: string;
   permissions: string[] | null;
+  is_system_role: boolean;
+  is_active: boolean;
+  sort_order: number;
   created_at: string;
+  updated_at: string;
 }
 
 /**

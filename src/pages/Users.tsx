@@ -1,5 +1,5 @@
-import { Users } from "@/components/users";
+import { UserManagementTabs } from "@/components/user-management";
 
 export default function UsersPage() {
-  return <Users />;
+  return <UserManagementTabs />;
 }

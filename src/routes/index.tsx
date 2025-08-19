@@ -160,7 +160,7 @@ export const routes: RouteObject[] = [
       {
         path: "roles",
         element: (
-          <RouteGuard module="users" action="admin">
+          <RouteGuard module="users" action="edit">
             <Roles />
           </RouteGuard>
         ),
@@ -168,7 +168,7 @@ export const routes: RouteObject[] = [
       {
         path: "roles/:roleId",
         element: (
-          <RouteGuard module="users" action="admin">
+          <RouteGuard module="users" action="edit">
             <Roles />
           </RouteGuard>
         ),

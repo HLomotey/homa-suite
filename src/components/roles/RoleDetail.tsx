@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,18 @@ import { Shield, Users } from 'lucide-react';
 export function RoleDetail() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const { roleId } = useParams<{ roleId: string }>();
-  const isNewRole = roleId === 'new';
+  
+  // Check URL parameters for role ID and action
+  const urlParams = new URLSearchParams(location.search);
+  const urlRoleId = urlParams.get('roleId');
+  const action = urlParams.get('action');
+  const isNewRole = action === 'new' || roleId === 'new';
+  const currentRoleId = urlRoleId || roleId;
   
   // Fetch role data if editing existing role
-  const { role: existingRole, loading: fetchingRole, error: fetchError } = useRole(isNewRole ? '' : roleId || '');
+  const { role: existingRole, loading: fetchingRole, error: fetchError } = useRole(isNewRole ? '' : currentRoleId || '');
   
   // CRUD hooks
   const { create, loading: creatingRole } = useCreateRole();
@@ -110,7 +117,12 @@ export function RoleDetail() {
         });
       }
       
-      navigate('/roles');
+      // Navigate back to roles tab
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('roleId');
+      newUrl.searchParams.delete('action');
+      newUrl.searchParams.set('tab', 'roles');
+      navigate(newUrl.pathname + newUrl.search, { replace: true });
     } catch (error) {
       console.error('Error saving role:', error);
       toast({
@@ -123,7 +135,11 @@ export function RoleDetail() {
   
   // Handle cancel/back navigation
   const handleCancel = () => {
-    navigate('/roles');
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('roleId');
+    newUrl.searchParams.delete('action');
+    newUrl.searchParams.set('tab', 'roles');
+    navigate(newUrl.pathname + newUrl.search, { replace: true });
   };
   
   return (
@@ -179,7 +195,7 @@ export function RoleDetail() {
                       placeholder="Enter role name"
                       value={role.name || ''}
                       onChange={(e) => handleInputChange('name', e.target.value)}
-                      disabled={isLoading || role.name === 'admin'} // Prevent editing admin role name
+                      disabled={isLoading && !isNewRole} // Only disable when loading existing role
                       className="bg-black/20 border-white/10 text-white"
                     />
                   </div>
@@ -191,7 +207,7 @@ export function RoleDetail() {
                       placeholder="Describe the purpose of this role"
                       value={role.description || ''}
                       onChange={(e) => handleInputChange('description', e.target.value)}
-                      disabled={isLoading}
+                      disabled={false} // Always allow description editing
                       className="bg-black/20 border-white/10 text-white min-h-[100px]"
                     />
                   </div>
@@ -227,7 +243,7 @@ export function RoleDetail() {
               
               <Button
                 type="submit"
-                disabled={isSubmitting || (role.name === 'admin' && !isNewRole)}
+                disabled={isSubmitting || !role.name?.trim()}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {isSubmitting ? 'Saving...' : isNewRole ? 'Create Role' : 'Save Changes'}

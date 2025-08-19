@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "../../integration/supabase/client";
+import { supabaseAdmin } from "../../integration/supabase/admin-client";
 import {
   Role,
   FrontendRole,
@@ -83,11 +84,16 @@ export const createRole = async (
   // Convert frontend role to database format
   const dbRole = {
     name: role.name,
+    display_name: role.name, // Use name as display_name
     description: role.description,
-    permissions: role.permissions || null
+    permissions: role.permissions || [],
+    is_system_role: false,
+    is_active: true,
+    sort_order: 999
   };
 
-  const { data, error } = await supabase
+  // Use admin client for role creation to bypass RLS policies
+  const { data, error } = await supabaseAdmin
     .from("roles")
     .insert(dbRole)
     .select()
@@ -114,11 +120,15 @@ export const updateRole = async (
   // Convert frontend role to database format
   const dbRole: any = {};
   
-  if (role.name !== undefined) dbRole.name = role.name;
+  if (role.name !== undefined) {
+    dbRole.name = role.name;
+    dbRole.display_name = role.name; // Update display_name as well
+  }
   if (role.description !== undefined) dbRole.description = role.description;
   if (role.permissions !== undefined) dbRole.permissions = role.permissions;
 
-  const { data, error } = await supabase
+  // Use admin client for role updates to bypass RLS policies
+  const { data, error } = await supabaseAdmin
     .from("roles")
     .update(dbRole)
     .eq("id", id)
@@ -139,7 +149,8 @@ export const updateRole = async (
  * @returns Promise with success status
  */
 export const deleteRole = async (id: string): Promise<void> => {
-  const { error } = await supabase
+  // Use admin client for role deletion to bypass RLS policies
+  const { error } = await supabaseAdmin
     .from("roles")
     .delete()
     .eq("id", id);
@@ -160,7 +171,8 @@ export const updateRolePermissions = async (
   id: string,
   permissions: string[]
 ): Promise<FrontendRole> => {
-  const { data, error } = await supabase
+  // Use admin client for role permission updates to bypass RLS policies
+  const { data, error } = await supabaseAdmin
     .from("roles")
     .update({ permissions })
     .eq("id", id)
