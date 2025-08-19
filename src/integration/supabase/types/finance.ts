@@ -201,6 +201,42 @@ export interface FrontendTransaction {
 }
 
 /**
+ * Finance transaction interface for the Excel upload format shown in the screenshot
+ */
+export interface FinanceTransaction {
+  id: string;
+  transaction_id: string;
+  amount: number;
+  account: string;
+  client: string;
+  payment_method: string;
+  date: string;
+  category: string;
+  description: string;
+  invoice_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Frontend finance transaction type that matches the Excel upload format
+ */
+export interface FrontendFinanceTransaction {
+  id: string;
+  transactionId: string;
+  amount: number;
+  account: string;
+  client: string;
+  paymentMethod: string;
+  date: string;
+  category: string;
+  description: string;
+  invoiceId: string;
+  status: string;
+}
+
+/**
  * Frontend budget type that matches the structure in FinanceBudgeting.tsx
  */
 export interface FrontendBudget {
@@ -420,5 +456,26 @@ export const mapDatabaseRevenueProfitDataToFrontend = (
     month: dbRevenueProfitData.month,
     revenue: dbRevenueProfitData.revenue,
     profit: dbRevenueProfitData.profit
+  };
+};
+
+/**
+ * Maps a database finance transaction to the frontend format
+ */
+export const mapDatabaseFinanceTransactionToFrontend = (
+  dbFinanceTransaction: FinanceTransaction
+): FrontendFinanceTransaction => {
+  return {
+    id: dbFinanceTransaction.id,
+    transactionId: dbFinanceTransaction.transaction_id,
+    amount: dbFinanceTransaction.amount,
+    account: dbFinanceTransaction.account,
+    client: dbFinanceTransaction.client,
+    paymentMethod: dbFinanceTransaction.payment_method,
+    date: dbFinanceTransaction.date,
+    category: dbFinanceTransaction.category,
+    description: dbFinanceTransaction.description,
+    invoiceId: dbFinanceTransaction.invoice_id,
+    status: dbFinanceTransaction.status
   };
 };

@@ -390,48 +390,32 @@ export const useUploadInvoices = () => {
 
   // Convert Excel row to FrontendInvoice format
   const convertExcelRowToInvoice = (row: any): Partial<FrontendInvoice> => {
-    // Map Excel columns to our data model based on the new template format from the image
-    // We need to map the new column names to our existing data model
+    // Map Excel columns to our data model based on the format from the second image
     return {
-      // Map Transactio to invoiceNumber or use Invoice ID
-      invoiceNumber: row['Transactio'] || row['Invoice ID'] || '',
-      
-      // Map Amount to lineTotal
-      lineTotal: parseFloat(row['Amount']) || 0,
-      
-      // Map Client to clientName
-      clientName: row['Client'] || '',
-      
-      // Map Date to dateIssued
-      dateIssued: typeof row['Date'] === 'number' 
-        ? parseExcelDate(row['Date']) 
-        : row['Date'] || '',
-      
-      // Map Status to invoiceStatus
-      invoiceStatus: validateInvoiceStatus(row['Status'] || 'pending'),
-      
-      // Map Descriptio to itemDescription
-      itemDescription: row['Descriptio'] || '',
-      
-      // Map Category to itemName
-      itemName: row['Category'] || '',
-      
-      // Set default values for required fields
-      rate: parseFloat(row['Amount']) || 0,
-      quantity: 1,
-      discountPercentage: 0,
-      lineSubtotal: parseFloat(row['Amount']) || 0,
-      
-      // Additional information from new columns
-      // Store in existing fields or add to description
-      tax1Type: row['Payment M'] || null,
-      tax1Amount: 0,
-      tax2Type: row['Account'] || null,
-      tax2Amount: 0,
-      
-      // Default values
-      datePaid: null,
-      currency: 'USD'
+      // Direct mappings from Excel columns to our data model
+      clientName: row['Client Name'] || '',
+      invoiceNumber: row['Invoice #'] || '',
+      dateIssued: typeof row['Date Issued'] === 'number' 
+        ? parseExcelDate(row['Date Issued']) 
+        : row['Date Issued'] || '',
+      invoiceStatus: validateInvoiceStatus(row['Invoice Status'] || 'pending'),
+      datePaid: row['Date Paid'] 
+        ? (typeof row['Date Paid'] === 'number' 
+          ? parseExcelDate(row['Date Paid']) 
+          : row['Date Paid']) 
+        : null,
+      itemName: row['Item Name'] || '',
+      itemDescription: row['Item Description'] || '',
+      rate: parseFloat(row['Rate']) || 0,
+      quantity: parseInt(row['Quantity']) || 1,
+      discountPercentage: parseFloat(row['Discount Percentage']) || 0,
+      lineSubtotal: parseFloat(row['Line Subtotal']) || 0,
+      tax1Type: row['Tax 1 Type'] || null,
+      tax1Amount: parseFloat(row['Tax 1 Amount']) || 0,
+      tax2Type: row['Tax 2 Type'] || null,
+      tax2Amount: parseFloat(row['Tax 2 Amount']) || 0,
+      lineTotal: parseFloat(row['Line Total']) || 0,
+      currency: row['Currency'] || 'USD'
     };
   };
 
@@ -466,18 +450,25 @@ export const useUploadInvoices = () => {
       // Extract headers from the first row
       const headers = Object.values(jsonData[0]);
       
-      // Expected headers from the template based on the image
+      // Expected headers from the template based on the second image
       const expectedHeaders = [
-        "Transactio",
-        "Date",
-        "Amount",
-        "Category",
-        "Account",
-        "Descriptio",
-        "Client",
-        "Invoice ID",
-        "Payment M",
-        "Status"
+        "Client Name",
+        "Invoice #",
+        "Date Issued",
+        "Invoice Status",
+        "Date Paid",
+        "Item Name",
+        "Item Description",
+        "Rate",
+        "Quantity",
+        "Discount Percentage",
+        "Line Subtotal",
+        "Tax 1 Type",
+        "Tax 1 Amount",
+        "Tax 2 Type",
+        "Tax 2 Amount",
+        "Line Total",
+        "Currency"
       ];
       
       // Validate headers

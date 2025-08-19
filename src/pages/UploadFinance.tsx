@@ -25,31 +25,31 @@ export default function UploadFinance() {
     // to generate an actual Excel file. For now, we'll create a CSV file
     // which can be opened in Excel.
     
-    // Create header row based on the exact Excel template format from the image
+    // Create header row based on the format shown in the screenshot
     const headers = [
-      "Transactio",
-      "Date",
+      "Transaction ID",
       "Amount",
-      "Category",
       "Account",
-      "Descriptio",
       "Client",
+      "Payment Method",
+      "Date",
+      "Category",
+      "Description",
       "Invoice ID",
-      "Payment M",
       "Status"
     ];
     
-    // Create sample data row matching the format from the image
+    // Create sample data row matching the format shown in the screenshot
     const sampleData = [
       "TRX12345",
-      "2025-08-15",
       "1500.00",
-      "Revenue",
       "Business Account",
-      "Monthly service fee",
       "Acme Corp",
-      "INV-2025-001",
       "Bank Transfer",
+      "2025-08-15",
+      "Revenue",
+      "Monthly service fee",
+      "INV-2025-001",
       "Completed"
     ];
     
@@ -99,15 +99,15 @@ export default function UploadFinance() {
   };
 
   const expectedColumns = [
-    "Transactio",
-    "Date",
+    "Transaction ID",
     "Amount",
-    "Category",
     "Account",
-    "Descriptio",
     "Client",
+    "Payment Method",
+    "Date",
+    "Category",
+    "Description",
     "Invoice ID",
-    "Payment M",
     "Status"
   ];
 
@@ -233,16 +233,16 @@ export default function UploadFinance() {
             <CardDescription>Ensure your Excel file follows the correct format</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Required Columns:</h4>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold mb-2">Required Columns:</h2>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-1">
                 {expectedColumns.map((column, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-green-600 rounded-full" />
+                  <li key={index} className="flex items-center">
+                    <span className="mr-2 h-2 w-2 rounded-full bg-blue-500"></span>
                     {column}
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
 
             <div className="space-y-2">
@@ -250,10 +250,9 @@ export default function UploadFinance() {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• First row should contain column headers</li>
                 <li>• Date format: MM/DD/YYYY or YYYY-MM-DD</li>
-                <li>• Rates and amounts should be numeric (no currency symbols)</li>
-                <li>• Invoice Status: paid, pending, overdue, cancelled</li>
-                <li>• Discount percentage should be a number between 0-100</li>
-                <li>• Maximum file size: 10MB</li>
+                <li>• Amount should be numeric (no currency symbols)</li>
+                <li>• Status: Pending, Completed, or Failed</li>
+                <li>• Minimum file size: 10KB</li>
               </ul>
             </div>
 
