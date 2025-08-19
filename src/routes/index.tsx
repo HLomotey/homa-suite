@@ -30,6 +30,7 @@ import { JobOrdersTrendDetail } from "@/components/operations/detail/JobOrdersTr
 import { RegionalFillRateDetail } from "@/components/operations/detail/RegionalFillRateDetail";
 import { TimeToFillTrendDetail } from "@/components/operations/detail/TimeToFillTrendDetail";
 import { JobTypesDistributionDetail } from "@/components/operations/detail/JobTypesDistributionDetail";
+import Utilities from "@/pages/Utilities";
 
 // Define all application routes
 export const routes: RouteObject[] = [
@@ -232,6 +233,14 @@ export const routes: RouteObject[] = [
       {
         path: "/operations/job-types",
         element: <JobTypesDistributionDetail />,
+      },
+      {
+        path: "utilities",
+        element: (
+          <RouteGuard module="utilities">
+            <Utilities />
+          </RouteGuard>
+        ),
       },
       {
         path: "*",

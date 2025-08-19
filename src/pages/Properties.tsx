@@ -11,6 +11,7 @@ import { StaffTransactionLog } from "@/components/properties/StaffTransactionLog
 import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
 import { Inventory } from "@/components/inventory";
+import { UtilitiesDashboard } from "@/components/utilities/UtilitiesDashboard";
 import { FrontendProperty } from "@/integration/supabase/types";
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
 import {
@@ -27,7 +28,9 @@ const HousingPage: React.FC = () => {
   const [editingProperty, setEditingProperty] = useState<
     FrontendProperty | undefined
   >();
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(
+    null
+  );
 
   // Use the real property API hooks
   const { properties, loading, error, refetch } = useProperties();
@@ -119,8 +122,11 @@ const HousingPage: React.FC = () => {
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="staff-transactions">Staff Transactions</TabsTrigger>
+          <TabsTrigger value="staff-transactions">
+            Staff Transactions
+          </TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="utilities">Utilities</TabsTrigger>
           {/* <TabsTrigger value="tenants">Tenant Profiles</TabsTrigger> */}
         </TabsList>
 
@@ -169,6 +175,10 @@ const HousingPage: React.FC = () => {
 
         <TabsContent value="inventory">
           <Inventory propertyId={selectedPropertyId} />
+        </TabsContent>
+
+        <TabsContent value="utilities">
+          <UtilitiesDashboard />
         </TabsContent>
 
         <TabsContent value="tenants">
