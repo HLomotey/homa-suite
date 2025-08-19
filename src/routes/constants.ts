@@ -16,5 +16,6 @@ export const ROUTES = {
   HELP: "/help",
   NOT_FOUND: "/404",
   USERS: "/users",
-  EXCEL_UPLOADS: "/excel-uploads"
+  EXCEL_UPLOADS: "/excel-uploads",
+  UTILITIES: "/utilities"
 };

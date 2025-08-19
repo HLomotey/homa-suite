@@ -22,6 +22,7 @@ import {
   FileUp,
   LogOut,
   Clock,
+  Gauge,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -57,6 +58,7 @@ const navigationItems = [
     href: ROUTES.PROPERTIES,
     active: false,
   },
+
   {
     label: "Billing",
     icon: Calculator,

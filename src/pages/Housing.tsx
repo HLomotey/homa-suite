@@ -4,12 +4,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Grid3X3, Plus, Edit, Trash2, Users, Building2, Calendar, Table as TableIcon } from "lucide-react";
+import {
+  Grid3X3,
+  Plus,
+  Edit,
+  Trash2,
+  Users,
+  Building2,
+  Calendar,
+  Table as TableIcon,
+  Gauge,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UtilitiesDashboard } from "@/components/utilities/UtilitiesDashboard";
 
 interface Staff {
   id: string;
@@ -56,17 +87,21 @@ const mockAssignments: Assignment[] = [
 ];
 
 export default function Housing() {
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("housing");
 
   const filteredAssignments = mockAssignments.filter((assignment) => {
     const staff = mockStaff.find((s) => s.id === assignment.staffId);
     if (!staff) return false;
 
-    const matchesSearch = staff.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || assignment.status === statusFilter;
+    const matchesSearch = staff.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || assignment.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -84,146 +119,207 @@ export default function Housing() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Staff Housing</h1>
-              <p className="text-white/60">Manage staff housing assignments</p>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {/* View Toggle */}
-              <div className="flex items-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-1">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className={cn(
-                    "h-8 px-3",
-                    viewMode === 'grid' 
-                      ? "bg-white text-black hover:bg-white/90" 
-                      : "text-white/70 hover:text-white hover:bg-white/10"
-                  )}
-                >
-                  <Grid3X3 className="h-4 w-4 mr-2" />
-                  Grid
-                </Button>
-                <Button
-                  variant={viewMode === 'table' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('table')}
-                  className={cn(
-                    "h-8 px-3",
-                    viewMode === 'table' 
-                      ? "bg-white text-black hover:bg-white/90" 
-                      : "text-white/70 hover:text-white hover:bg-white/10"
-                  )}
-                >
-                  <TableIcon className="h-4 w-4 mr-2" />
-                  Table
-                </Button>
-              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Staff Housing
+              </h1>
+              <p className="text-white/60">
+                Manage staff housing assignments and utilities
+              </p>
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {[
-              { label: 'Total Assignments', value: filteredAssignments.length, icon: Users },
-              { label: 'Active', value: filteredAssignments.filter(a => a.status === 'active').length, icon: Building2 },
-              { label: 'Pending', value: filteredAssignments.filter(a => a.status === 'pending').length, icon: Calendar },
-              { label: 'Completed', value: filteredAssignments.filter(a => a.status === 'completed').length, icon: Calendar }
-            ].map((stat, index) => (
-              <div key={index} className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/60 text-sm">{stat.label}</p>
-                    <p className="text-white text-2xl font-bold">{stat.value}</p>
+          {/* Main Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+            <TabsList className="mb-4">
+              <TabsTrigger value="housing">Housing Assignments</TabsTrigger>
+              <TabsTrigger value="utilities">Utilities</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="housing">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                {[
+                  {
+                    label: "Total Assignments",
+                    value: filteredAssignments.length,
+                    icon: Users,
+                  },
+                  {
+                    label: "Active",
+                    value: filteredAssignments.filter(
+                      (a) => a.status === "active"
+                    ).length,
+                    icon: Building2,
+                  },
+                  {
+                    label: "Pending",
+                    value: filteredAssignments.filter(
+                      (a) => a.status === "pending"
+                    ).length,
+                    icon: Calendar,
+                  },
+                  {
+                    label: "Completed",
+                    value: filteredAssignments.filter(
+                      (a) => a.status === "completed"
+                    ).length,
+                    icon: Calendar,
+                  },
+                ].map((stat, index) => (
+                  <div
+                    key={index}
+                    className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">{stat.label}</p>
+                        <p className="text-white text-2xl font-bold">
+                          {stat.value}
+                        </p>
+                      </div>
+                      <stat.icon className="h-8 w-8 text-white/40" />
+                    </div>
                   </div>
-                  <stat.icon className="h-8 w-8 text-white/40" />
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Search by staff name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-64"
+                  />
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                    defaultValue="all"
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-4">
+                  {/* View Toggle */}
+                  <div className="flex items-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-1">
+                    <Button
+                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("grid")}
+                      className={cn(
+                        "h-8 px-3",
+                        viewMode === "grid"
+                          ? "bg-white text-black hover:bg-white/90"
+                          : "text-white/70 hover:text-white hover:bg-white/10"
+                      )}
+                    >
+                      <Grid3X3 className="h-4 w-4 mr-2" />
+                      Grid
+                    </Button>
+                    <Button
+                      variant={viewMode === "table" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("table")}
+                      className={cn(
+                        "h-8 px-3",
+                        viewMode === "table"
+                          ? "bg-white text-black hover:bg-white/90"
+                          : "text-white/70 hover:text-white hover:bg-white/10"
+                      )}
+                    >
+                      <TableIcon className="h-4 w-4 mr-2" />
+                      Table
+                    </Button>
+                  </div>
+                  <Button onClick={() => setIsFormOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Assignment
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="Search by staff name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
-            />
-            <Select
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              defaultValue="all"
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Assignment
-          </Button>
-        </div>
 
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Staff</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAssignments.map((assignment) => {
-                const staff = mockStaff.find((s) => s.id === assignment.staffId);
-                return (
-                  <TableRow key={assignment.id}>
-                    <TableCell className="font-medium">{staff?.name}</TableCell>
-                    <TableCell>Property {assignment.propertyId}</TableCell>
-                    <TableCell>{assignment.roomNumber}</TableCell>
-                    <TableCell>{new Date(assignment.startDate).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      {assignment.endDate
-                        ? new Date(assignment.endDate).toLocaleDateString()
-                        : "Ongoing"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={assignment.status === "active" ? "default" : "secondary"}
-                        className="capitalize"
-                      >
-                        {assignment.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Property</TableHead>
+                      <TableHead>Room</TableHead>
+                      <TableHead>Start Date</TableHead>
+                      <TableHead>End Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAssignments.map((assignment) => {
+                      const staff = mockStaff.find(
+                        (s) => s.id === assignment.staffId
+                      );
+                      return (
+                        <TableRow key={assignment.id}>
+                          <TableCell className="font-medium">
+                            {staff?.name}
+                          </TableCell>
+                          <TableCell>
+                            Property {assignment.propertyId}
+                          </TableCell>
+                          <TableCell>{assignment.roomNumber}</TableCell>
+                          <TableCell>
+                            {new Date(
+                              assignment.startDate
+                            ).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {assignment.endDate
+                              ? new Date(
+                                  assignment.endDate
+                                ).toLocaleDateString()
+                              : "Ongoing"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                assignment.status === "active"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className="capitalize"
+                            >
+                              {assignment.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="icon">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="utilities">
+              <UtilitiesDashboard />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
