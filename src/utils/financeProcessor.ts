@@ -423,11 +423,18 @@ export async function generateFinanceTemplate(): Promise<Blob> {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Invoice Line Items");
     
-    // Generate Excel file as array buffer
-    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    // Generate Excel file as binary string
+    const excelBinary = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+    
+    // Convert binary string to array buffer
+    const buf = new ArrayBuffer(excelBinary.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < excelBinary.length; i++) {
+      view[i] = excelBinary.charCodeAt(i) & 0xFF;
+    }
     
     // Convert array buffer to Blob
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     
     console.log('Finance invoice template generated successfully');
     return blob;
