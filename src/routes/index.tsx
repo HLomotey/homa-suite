@@ -9,6 +9,7 @@ import { AttendancePage } from "@/pages/AttendancePage";
 import Transport from "@/pages/Transport";
 import Settings from "@/pages/Settings";
 import Users from "@/pages/Users";
+import Roles from "@/pages/Roles";
 import ExcelUploads from "@/pages/ExcelUploads";
 import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/NotFound";
@@ -152,6 +153,23 @@ export const routes: RouteObject[] = [
         element: (
           <RouteGuard module="users" action="edit">
             <Users />
+          </RouteGuard>
+        ),
+      },
+      // Add role management routes
+      {
+        path: "roles",
+        element: (
+          <RouteGuard module="users" action="admin">
+            <Roles />
+          </RouteGuard>
+        ),
+      },
+      {
+        path: "roles/:roleId",
+        element: (
+          <RouteGuard module="users" action="admin">
+            <Roles />
           </RouteGuard>
         ),
       },
