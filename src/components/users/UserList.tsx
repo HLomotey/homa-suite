@@ -277,9 +277,14 @@ export function UserList() {
                 Manage users, roles, and permissions
               </CardDescription>
             </div>
-            <Button onClick={handleCreateUser} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" /> Add User
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/roles/new')} className="flex items-center gap-2">
+                <Shield className="h-4 w-4" /> New Role
+              </Button>
+              <Button onClick={handleCreateUser} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Add User
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
