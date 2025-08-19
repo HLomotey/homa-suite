@@ -25,31 +25,31 @@ export default function UploadFinance() {
     // to generate an actual Excel file. For now, we'll create a CSV file
     // which can be opened in Excel.
     
-    // Create header row based on the exact Excel template format from the screenshot
+    // Create header row based on the exact Excel template format from the image
     const headers = [
-      "Transaction ID",
-      "Amount",
-      "Account",
-      "Client",
-      "Payment Method",
+      "Transactio",
       "Date",
+      "Amount",
       "Category",
-      "Description",
+      "Account",
+      "Descriptio",
+      "Client",
       "Invoice ID",
+      "Payment M",
       "Status"
     ];
     
-    // Create sample data row matching the format from the screenshot
+    // Create sample data row matching the format from the image
     const sampleData = [
       "TRX12345",
-      "1500.00",
-      "Business Account",
-      "Acme Corp",
-      "Bank Transfer",
       "2025-08-15",
+      "1500.00",
       "Revenue",
+      "Business Account",
       "Monthly service fee",
+      "Acme Corp",
       "INV-2025-001",
+      "Bank Transfer",
       "Completed"
     ];
     
@@ -99,15 +99,15 @@ export default function UploadFinance() {
   };
 
   const expectedColumns = [
-    "Transaction ID",
-    "Amount",
-    "Account",
-    "Client",
-    "Payment Method",
+    "Transactio",
     "Date",
+    "Amount",
     "Category",
-    "Description",
+    "Account",
+    "Descriptio",
+    "Client",
     "Invoice ID",
+    "Payment M",
     "Status"
   ];
 

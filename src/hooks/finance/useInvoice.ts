@@ -390,11 +390,11 @@ export const useUploadInvoices = () => {
 
   // Convert Excel row to FrontendInvoice format
   const convertExcelRowToInvoice = (row: any): Partial<FrontendInvoice> => {
-    // Map Excel columns to our data model based on the new template format
+    // Map Excel columns to our data model based on the new template format from the image
     // We need to map the new column names to our existing data model
     return {
-      // Map Transaction ID to invoiceNumber
-      invoiceNumber: row['Transaction ID'] || row['Invoice ID'] || '',
+      // Map Transactio to invoiceNumber or use Invoice ID
+      invoiceNumber: row['Transactio'] || row['Invoice ID'] || '',
       
       // Map Amount to lineTotal
       lineTotal: parseFloat(row['Amount']) || 0,
@@ -410,8 +410,8 @@ export const useUploadInvoices = () => {
       // Map Status to invoiceStatus
       invoiceStatus: validateInvoiceStatus(row['Status'] || 'pending'),
       
-      // Map Description to itemDescription
-      itemDescription: row['Description'] || '',
+      // Map Descriptio to itemDescription
+      itemDescription: row['Descriptio'] || '',
       
       // Map Category to itemName
       itemName: row['Category'] || '',
@@ -424,7 +424,7 @@ export const useUploadInvoices = () => {
       
       // Additional information from new columns
       // Store in existing fields or add to description
-      tax1Type: row['Payment Method'] || null,
+      tax1Type: row['Payment M'] || null,
       tax1Amount: 0,
       tax2Type: row['Account'] || null,
       tax2Amount: 0,
@@ -466,17 +466,17 @@ export const useUploadInvoices = () => {
       // Extract headers from the first row
       const headers = Object.values(jsonData[0]);
       
-      // Expected headers from the template based on the screenshot
+      // Expected headers from the template based on the image
       const expectedHeaders = [
-        "Transaction ID",
-        "Amount",
-        "Account",
-        "Client",
-        "Payment Method",
+        "Transactio",
         "Date",
+        "Amount",
         "Category",
-        "Description",
+        "Account",
+        "Descriptio",
+        "Client",
         "Invoice ID",
+        "Payment M",
         "Status"
       ];
       
