@@ -239,3 +239,25 @@ export const fetchAssignmentsByProperty = async (
 
   return (data as Assignment[]).map(mapDatabaseAssignmentToFrontend);
 };
+
+/**
+ * Fetch assignments by staff ID
+ * @param staffId Staff ID to filter by
+ * @returns Promise with array of assignments
+ */
+export const fetchAssignmentsByStaff = async (
+  staffId: string
+): Promise<FrontendAssignment[]> => {
+  const { data, error } = await supabase
+    .from("assignments")
+    .select("*")
+    .eq("staff_id", staffId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(`Error fetching assignments for staff ${staffId}:`, error);
+    throw new Error(error.message);
+  }
+
+  return (data as Assignment[]).map(mapDatabaseAssignmentToFrontend);
+};
