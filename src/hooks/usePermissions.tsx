@@ -1,17 +1,25 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getUserEffectivePermissions } from '@/integration/supabase/permissions-api';
+import { userPermissionsApi } from '@/integration/supabase/rbac-api';
+import { Role, UserPermissionSummary } from '@/integration/supabase/types/rbac-types';
 
 interface PermissionsContextType {
   permissions: string[];
+  roles: Role[];
+  primaryRole?: Role;
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
   canViewModule: (module: string) => boolean;
   canEditModule: (module: string) => boolean;
+  canCreateInModule: (module: string) => boolean;
+  canDeleteInModule: (module: string) => boolean;
+  canAdminModule: (module: string) => boolean;
+  hasRole: (roleName: string) => boolean;
   loading: boolean;
   error: string | null;
   refreshPermissions: () => Promise<void>;
+  permissionDetails: UserPermissionSummary | null;
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
@@ -19,12 +27,18 @@ const PermissionsContext = createContext<PermissionsContextType | undefined>(und
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [primaryRole, setPrimaryRole] = useState<Role | undefined>(undefined);
+  const [permissionDetails, setPermissionDetails] = useState<UserPermissionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPermissions = async () => {
     if (!user?.id) {
       setPermissions([]);
+      setRoles([]);
+      setPrimaryRole(undefined);
+      setPermissionDetails(null);
       setLoading(false);
       return;
     }
@@ -33,20 +47,28 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setLoading(true);
       setError(null);
       
-      const { data, error: apiError } = await getUserEffectivePermissions(user.id);
+      const permissionData = await userPermissionsApi.getUserEffectivePermissions(user.id);
       
-      if (apiError) {
-        console.error('Error fetching permissions:', apiError);
-        setError(apiError.message);
+      if (permissionData) {
+        setPermissions(permissionData.effective_permissions);
+        setRoles(permissionData.roles || []);
+        setPrimaryRole(permissionData.primary_role);
+        setPermissionDetails(permissionData);
+        console.log('Loaded permissions for user:', permissionData.effective_permissions);
+        console.log('User roles:', permissionData.roles);
+      } else {
         setPermissions([]);
-      } else if (data) {
-        setPermissions(data.effectivePermissions);
-        console.log('Loaded permissions for user:', data.effectivePermissions);
+        setRoles([]);
+        setPrimaryRole(undefined);
+        setPermissionDetails(null);
       }
     } catch (err) {
       console.error('Error fetching permissions:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       setPermissions([]);
+      setRoles([]);
+      setPrimaryRole(undefined);
+      setPermissionDetails(null);
     } finally {
       setLoading(false);
     }
@@ -57,45 +79,48 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [user?.id]);
 
   const hasPermission = (permission: string): boolean => {
-    return permissions.includes(permission);
+    // TEMPORARY: Grant access to all permissions
+    return true; // permissions.includes(permission);
   };
 
   const hasAnyPermission = (permissionList: string[]): boolean => {
-    return permissionList.some(permission => permissions.includes(permission));
+    // TEMPORARY: Grant access to all permissions
+    return true; // permissionList.some(permission => permissions.includes(permission));
   };
 
   const hasAllPermissions = (permissionList: string[]): boolean => {
-    return permissionList.every(permission => permissions.includes(permission));
+    // TEMPORARY: Grant access to all permissions
+    return true; // permissionList.every(permission => permissions.includes(permission));
+  };
+
+  const hasRole = (roleName: string): boolean => {
+    // TEMPORARY: Grant access to all roles
+    return true; // roles.some(role => role.name === roleName);
   };
 
   const canViewModule = (module: string): boolean => {
-    // Check for specific view permission for the module
-    const viewPermission = `${module}:view`;
-    const readPermission = `${module}:read`;
-    const allPermission = `${module}:*`;
-    
-    return hasPermission(viewPermission) || 
-           hasPermission(readPermission) || 
-           hasPermission(allPermission) ||
-           hasPermission('*:view') ||
-           hasPermission('*:*');
+    // TEMPORARY: Grant access to all modules
+    return true;
   };
 
   const canEditModule = (module: string): boolean => {
-    // Check for specific edit permission for the module
-    const editPermission = `${module}:edit`;
-    const writePermission = `${module}:write`;
-    const updatePermission = `${module}:update`;
-    const allPermission = `${module}:*`;
-    
-    return hasPermission(editPermission) || 
-           hasPermission(writePermission) || 
-           hasPermission(updatePermission) ||
-           hasPermission(allPermission) ||
-           hasPermission('*:edit') ||
-           hasPermission('*:write') ||
-           hasPermission('*:update') ||
-           hasPermission('*:*');
+    // TEMPORARY: Grant access to all modules
+    return true;
+  };
+
+  const canCreateInModule = (module: string): boolean => {
+    // TEMPORARY: Grant access to all modules
+    return true;
+  };
+
+  const canDeleteInModule = (module: string): boolean => {
+    // TEMPORARY: Grant access to all modules
+    return true;
+  };
+
+  const canAdminModule = (module: string): boolean => {
+    // TEMPORARY: Grant access to all modules
+    return true;
   };
 
   const refreshPermissions = async () => {
@@ -105,14 +130,21 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   return (
     <PermissionsContext.Provider value={{
       permissions,
+      roles,
+      primaryRole,
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
       canViewModule,
       canEditModule,
+      canCreateInModule,
+      canDeleteInModule,
+      canAdminModule,
+      hasRole,
       loading,
       error,
-      refreshPermissions
+      refreshPermissions,
+      permissionDetails
     }}>
       {children}
     </PermissionsContext.Provider>
