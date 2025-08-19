@@ -345,7 +345,52 @@ export const useUploadFinanceTransactions = () => {
         throw new Error("No valid transactions found in the file");
       }
       
-      console.log(`Found ${result.data.length} valid transactions, beginning database insert`);
+      console.log(`Found ${result.data.length} valid transactions, checking for duplicates`);
+      setProgress(40);
+      
+      // Check for existing records to prevent duplicates
+      console.log('Checking for existing invoice records to prevent duplicates');
+      const invoiceNumbers = result.data.map(t => t.invoiceId).filter(Boolean);
+      const uniqueInvoiceNumbers = [...new Set(invoiceNumbers)];
+      
+      if (uniqueInvoiceNumbers.length > 0) {
+        console.log(`Checking ${uniqueInvoiceNumbers.length} unique invoice numbers for duplicates`);
+        const { data: existingInvoices, error: checkError } = await supabase
+          .from("finance_invoices")
+          .select("invoice_number")
+          .in("invoice_number", uniqueInvoiceNumbers);
+          
+        if (checkError) {
+          console.error('Error checking for existing invoices:', checkError);
+          throw new Error(`Error checking for duplicates: ${checkError.message}`);
+        }
+        
+        const existingInvoiceNumbers = new Set(existingInvoices?.map(inv => inv.invoice_number) || []);
+        
+        if (existingInvoiceNumbers.size > 0) {
+          console.warn(`Found ${existingInvoiceNumbers.size} duplicate invoice numbers:`, Array.from(existingInvoiceNumbers));
+          
+          // Filter out duplicates
+          const originalCount = result.data.length;
+          result.data = result.data.filter(transaction => 
+            !existingInvoiceNumbers.has(transaction.invoiceId)
+          );
+          
+          const duplicateCount = originalCount - result.data.length;
+          if (duplicateCount > 0) {
+            console.warn(`Filtered out ${duplicateCount} duplicate records`);
+            toast.warning(`Found ${duplicateCount} duplicate invoice(s). Only new records will be uploaded.`);
+            setTimeoutWarnings(prev => [...prev, `${duplicateCount} duplicate records filtered out`]);
+          }
+        }
+      }
+      
+      if (result.data.length === 0) {
+        console.warn('No new records to upload after duplicate filtering');
+        throw new Error("All records already exist in the database. No new data to upload.");
+      }
+      
+      console.log(`${result.data.length} new records ready for upload`);
       setProgress(50);
       
       // Validate total transaction size
@@ -423,6 +468,27 @@ export const useUploadFinanceTransactions = () => {
           setTimeoutWarnings(prev => [...prev, `Network request for batch ${i+1} exceeded 10s without response`]);
         }, 10000); // Check network status after 10 seconds
         
+        // Convert batch data to match finance_invoices table schema
+        const invoiceBatch = batch.map(transaction => ({
+          client_name: transaction.client,
+          invoice_number: transaction.invoiceId,
+          date_issued: transaction.date,
+          invoice_status: transaction.status,
+          date_paid: transaction.datePaid || null,
+          item_name: transaction.description || 'Service',
+          item_description: transaction.description,
+          rate: transaction.rate,
+          quantity: transaction.quantity,
+          discount_percentage: transaction.discountPercentage || 0,
+          line_subtotal: transaction.lineSubtotal || (transaction.rate * transaction.quantity),
+          tax_1_type: transaction.tax1Type || null,
+          tax_1_amount: transaction.tax1Amount || 0,
+          tax_2_type: transaction.tax2Type || null,
+          tax_2_amount: transaction.tax2Amount || 0,
+          line_total: transaction.amount,
+          currency: transaction.currency || 'USD'
+        }));
+
         // Create the transactions in the database with connection error handling
         let insertedData;
         let supabaseError;
@@ -431,8 +497,8 @@ export const useUploadFinanceTransactions = () => {
           // Wrap the Supabase call in a try-catch to handle network/connection errors
           const response = await Promise.race([
             supabase
-              .from("finance_transactions")
-              .insert(batch)
+              .from("finance_invoices")
+              .insert(invoiceBatch)
               .select(),
             new Promise((_, reject) => 
               setTimeout(() => reject(new Error('Supabase connection timeout')), 30000)

@@ -316,11 +316,17 @@ export default function UploadFinance() {
                 <div>
                   <AlertTitle className="font-medium">Warning</AlertTitle>
                   <AlertDescription>
-                    Upload completed with {uploadedCount} records, but some operations took longer than expected.
+                    Upload completed with {uploadedCount} records
+                    {timeoutWarnings && timeoutWarnings.some(w => w.includes('duplicate')) && 
+                      ', but some duplicate records were filtered out'
+                    }
+                    {timeoutWarnings && timeoutWarnings.some(w => w.includes('timeout') || w.includes('slow')) && 
+                      ', and some operations took longer than expected'
+                    }.
                     {timeoutWarnings && timeoutWarnings.length > 0 && (
                       <Button 
                         variant="link" 
-                        className="p-0 h-auto text-yellow-800 dark:text-yellow-200 underline" 
+                        className="p-0 h-auto text-yellow-800 dark:text-yellow-200 underline ml-1" 
                         onClick={() => setShowDebugInfo(!showDebugInfo)}
                       >
                         {showDebugInfo ? "Hide details" : "Show details"}
@@ -328,10 +334,18 @@ export default function UploadFinance() {
                     )}
                     {showDebugInfo && timeoutWarnings && timeoutWarnings.length > 0 && (
                       <div className="mt-2 text-xs bg-yellow-100 dark:bg-yellow-900 p-2 rounded">
-                        <p className="font-medium mb-1">Timeout warnings:</p>
+                        <p className="font-medium mb-1">Details:</p>
                         <ul className="list-disc pl-4 space-y-1">
                           {timeoutWarnings.map((warning, index) => (
-                            <li key={index}>{warning}</li>
+                            <li key={index}>
+                              {warning.includes('duplicate') ? (
+                                <span className="text-orange-600 dark:text-orange-400">🔄 {warning}</span>
+                              ) : warning.includes('timeout') || warning.includes('slow') ? (
+                                <span className="text-yellow-600 dark:text-yellow-400">⏱️ {warning}</span>
+                              ) : (
+                                warning
+                              )}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -405,6 +419,7 @@ export default function UploadFinance() {
                 <li>• Invoice Status: pending, paid, overdue, cancelled</li>
                 <li>• Tax types should be GST, VAT, or Sales Tax</li>
                 <li>• Currency should be standard 3-letter code (USD, EUR, GBP)</li>
+                <li>• <strong>Duplicate Prevention:</strong> Records with existing invoice numbers will be automatically filtered out</li>
               </ul>
             </div>
             
