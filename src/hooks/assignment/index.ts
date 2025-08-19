@@ -13,7 +13,8 @@ export {
   fetchAssignmentsByStatus,
   fetchAssignmentsByPaymentStatus,
   fetchAssignmentsByTenant,
-  fetchAssignmentsByProperty
+  fetchAssignmentsByProperty,
+  fetchAssignmentsByStaff
 } from './api';
 
 // Re-export hooks
@@ -26,5 +27,6 @@ export {
   useAssignmentsByStatus,
   useAssignmentsByPaymentStatus,
   useAssignmentsByTenant,
-  useAssignmentsByProperty
+  useAssignmentsByProperty,
+  useAssignmentsByStaff
 } from './useAssignment';

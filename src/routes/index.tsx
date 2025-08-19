@@ -33,6 +33,18 @@ import { JobTypesDistributionDetail } from "@/components/operations/detail/JobTy
 import Utilities from "@/pages/Utilities";
 import UploadFinance from "@/pages/UploadFinance";
 
+// Maintenance Module
+import MaintenanceLayout from "@/routes/maintenance";
+import MaintenanceDashboard from "@/routes/maintenance/dashboard";
+import MaintenanceRequests from "@/routes/maintenance/requests";
+import MaintenanceRequestDetail from "@/routes/maintenance/request-detail";
+import ReportMaintenanceIssue from "@/routes/maintenance/report";
+import MaintenanceAdmin from "@/routes/maintenance/admin";
+import AdminRequestDetail from "@/routes/maintenance/admin/request-detail";
+import ManageMaintenanceRequest from "@/routes/maintenance/admin/request-manage";
+import StaffMaintenanceRequests from "@/routes/maintenance/staff";
+import StaffRequestDetail from "@/routes/maintenance/staff/request-detail";
+
 // Define all application routes
 export const routes: RouteObject[] = [
   {
@@ -246,6 +258,56 @@ export const routes: RouteObject[] = [
             <Utilities />
           </RouteGuard>
         ),
+      },
+      {
+        path: "maintenance",
+        element: (
+          <RouteGuard module="properties">
+            <MaintenanceLayout />
+          </RouteGuard>
+        ),
+        children: [
+          {
+            index: true,
+            element: <MaintenanceDashboard />,
+          },
+          {
+            path: "requests",
+            element: <MaintenanceRequests />,
+          },
+          {
+            path: "requests/:id",
+            element: <MaintenanceRequestDetail />,
+          },
+          {
+            path: "report",
+            element: <ReportMaintenanceIssue />,
+          },
+          {
+            path: "admin",
+            element: <MaintenanceAdmin />,
+          },
+          {
+            path: "admin/requests/:id",
+            element: <AdminRequestDetail />,
+          },
+          {
+            path: "admin/requests/:id/edit",
+            element: <ManageMaintenanceRequest />,
+          },
+          {
+            path: "staff",
+            element: <StaffMaintenanceRequests />,
+          },
+          {
+            path: "staff/requests/:id",
+            element: <StaffRequestDetail />,
+          },
+          {
+            path: "staff/requests/:id/manage",
+            element: <ManageMaintenanceRequest />,
+          },
+        ],
       },
       {
         path: "*",

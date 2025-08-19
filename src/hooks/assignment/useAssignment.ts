@@ -303,3 +303,37 @@ export const useAssignmentsByProperty = (propertyId: string) => {
 
   return { assignments, loading, error, refetch: fetchData };
 };
+
+/**
+ * Hook for fetching assignments by staff ID
+ * @param staffId Staff ID to filter by
+ * @returns Object containing assignments data, loading state, error state, and refetch function
+ */
+export const useAssignmentsByStaff = (staffId: string) => {
+  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!staffId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await assignmentApi.fetchAssignmentsByStaff(staffId);
+      setAssignments(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("An unknown error occurred")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [staffId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { assignments, loading, error, refetch: fetchData };
+};
