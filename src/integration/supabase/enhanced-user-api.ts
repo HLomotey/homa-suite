@@ -224,9 +224,13 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
     // Get all profiles with role information
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
+
+      .select('*')
+
       .select(`
         *,
-        user_roles(
+        user_roles!inner(
           role:roles(*)
         )
       `)
@@ -277,6 +281,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
     // Fetch profiles with specific role
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+    
       .select(`
         *,
         user_roles!inner(
@@ -329,6 +334,8 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
     // Fetch profiles filtered by department
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
+
       .select(`
         *,
         user_roles(
@@ -337,6 +344,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
       `)
       .eq('department', department)
       .order('created_at', { ascending: false });
+
 
     if (profilesError) {
       console.error('Error fetching users by department:', profilesError);
@@ -378,6 +386,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
  */
 export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery> => {
   try {
+
     // Search profiles by name, department, or full_name
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
