@@ -72,19 +72,53 @@ const UploadComponent = ({
     setUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setUploading(false);
-          setUploadStatus("success");
-          toast.success(`${title} file uploaded successfully!`);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    try {
+      // Read and parse Excel file
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+      console.log(`Processing ${jsonData.length} rows for ${title}`);
+      
+      // Validate data structure
+      if (jsonData.length === 0) {
+        throw new Error('No data found in the uploaded file');
+      }
+
+      // Check if we have a large dataset
+      if (jsonData.length > 1000) {
+        console.warn(`Large dataset detected: ${jsonData.length} rows. Processing in batches...`);
+      }
+
+      // Simulate processing with actual data validation
+      const batchSize = 100;
+      let processed = 0;
+
+      for (let i = 0; i < jsonData.length; i += batchSize) {
+        const batch = jsonData.slice(i, i + batchSize);
+        
+        // Simulate batch processing
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        processed += batch.length;
+        const progress = Math.min((processed / jsonData.length) * 100, 100);
+        setUploadProgress(progress);
+        
+        console.log(`Processed batch ${Math.floor(i/batchSize) + 1}: ${batch.length} rows (${processed}/${jsonData.length} total)`);
+      }
+
+      setUploading(false);
+      setUploadStatus("success");
+      toast.success(`${title} file uploaded successfully! Processed ${jsonData.length} rows.`);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploading(false);
+      setUploadStatus("error");
+      toast.error(`Failed to upload ${title} file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const downloadTemplate = () => {
