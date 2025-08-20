@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { supabaseAdmin } from './admin-client';
 import {
   Module,
   Action,
@@ -195,7 +196,7 @@ export const rolesApi = {
     const { permission_ids, ...roleInfo } = roleData;
     
     // Create role
-    const { data: role, error: roleError } = await supabase
+    const { data: role, error: roleError } = await supabaseAdmin
       .from('roles')
       .insert([roleInfo])
       .select()
@@ -210,7 +211,7 @@ export const rolesApi = {
         permission_id: permissionId
       }));
 
-      const { error: permError } = await supabase
+      const { error: permError } = await supabaseAdmin
         .from('role_permissions')
         .insert(rolePermissions);
       
@@ -237,7 +238,7 @@ export const rolesApi = {
     // Update permissions if provided
     if (permission_ids) {
       // Delete existing permissions
-      await supabase
+      await supabaseAdmin
         .from('role_permissions')
         .delete()
         .eq('role_id', id);
@@ -249,7 +250,7 @@ export const rolesApi = {
           permission_id: permissionId
         }));
 
-        const { error: permError } = await supabase
+        const { error: permError } = await supabaseAdmin
           .from('role_permissions')
           .insert(rolePermissions);
         
@@ -262,7 +263,7 @@ export const rolesApi = {
 
   // Delete role
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('roles')
       .delete()
       .eq('id', id);
@@ -336,11 +337,11 @@ export const userRolesApi = {
     }
 
     // Insert or update the role assignment
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('user_roles')
-      .upsert({
-        user_id,
-        role_id,
+      .insert({
+        user_id: user_id,
+        role_id: role_id,
         is_primary: is_primary || false,
         assigned_at: new Date().toISOString()
       });
@@ -350,7 +351,7 @@ export const userRolesApi = {
 
   // Remove role from user
   async removeRole(userId: string, roleId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('user_roles')
       .delete()
       .eq('user_id', userId)
@@ -365,7 +366,7 @@ export const userRolesApi = {
     
     try {
       // Delete existing roles
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await supabaseAdmin
         .from('user_roles')
         .delete()
         .eq('user_id', user_id);
@@ -381,7 +382,7 @@ export const userRolesApi = {
           assigned_at: new Date().toISOString()
         }));
 
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseAdmin
           .from('user_roles')
           .insert(userRoles);
         
@@ -462,7 +463,7 @@ export const userPermissionsApi = {
     const { user_id, permissions } = data;
     
     // Delete existing custom permissions for this user
-    await supabase
+    await supabaseAdmin
       .from('user_permissions')
       .delete()
       .eq('user_id', user_id);
@@ -477,7 +478,7 @@ export const userPermissionsApi = {
         granted_at: new Date().toISOString()
       }));
 
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('user_permissions')
         .insert(userPermissions);
       
@@ -487,7 +488,7 @@ export const userPermissionsApi = {
 
   // Grant permission to user
   async grantPermission(userId: string, permissionId: string, expiresAt?: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('user_permissions')
       .upsert({
         user_id: userId,
@@ -516,7 +517,7 @@ export const userPermissionsApi = {
 
   // Remove custom permission (fall back to role permission)
   async removeCustomPermission(userId: string, permissionId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('user_permissions')
       .delete()
       .eq('user_id', userId)

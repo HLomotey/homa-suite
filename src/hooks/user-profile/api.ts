@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "../../integration/supabase/client";
+import { supabaseAdmin } from "../../integration/supabase/admin-client";
 import {
   FrontendUser,
   User,
@@ -335,16 +336,22 @@ export const updateUser = async (
     hasProfileUpdates = true;
   }
 
-  // Update user in users table
-  const { data, error } = await supabase
-    .from("users")
-    .update(dbUser)
+  // Update profile table - only update fields that are provided
+  const profileUpdates: any = {};
+  if (user.name !== undefined) profileUpdates.full_name = user.name;
+  if (user.department !== undefined) profileUpdates.department = user.department;
+  if (user.status !== undefined) profileUpdates.status = user.status;
+  profileUpdates.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .update(profileUpdates)
     .eq("id", id)
     .select()
     .single();
 
   if (error) {
-    console.error(`Error updating user with ID ${id}:`, error);
+    console.error(`Error updating user profile with ID ${id}:`, error);
     throw new Error(error.message);
   }
   
@@ -363,7 +370,7 @@ export const updateUser = async (
     } else {
       if (profileData && profileData.length > 0) {
         // Update existing profile
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from("profiles")
           .update(profileUpdate)
           .eq("user_id", id);
@@ -374,9 +381,9 @@ export const updateUser = async (
         }
       } else {
         // Create new profile
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseAdmin
           .from("profiles")
-          .insert({ ...profileUpdate, user_id: id });
+          .insert({ ...profileUpdate, id: id, user_id: id });
           
         if (insertError) {
           console.error(`Error creating profile for user ${id}:`, insertError);
@@ -420,16 +427,18 @@ export const upsertProfile = async (
     avatarUrl?: string | null;
   }
 ): Promise<Profile> => {
-  // Convert frontend profile to database format
-  const dbProfile = {
-    user_id: userId,
-    bio: profile.bio,
-    preferences: profile.preferences,
-    avatar_url: profile.avatarUrl
+  // Convert frontend profile to database format - only include fields that exist in the table
+  const dbProfile: any = {
+    user_id: userId
   };
+  
+  // Only add avatar_url if provided (bio doesn't exist in profiles table)
+  if (profile.avatarUrl !== undefined) {
+    dbProfile.avatar_url = profile.avatarUrl;
+  }
 
   // Check if profile already exists
-  const { data: existingData, error: checkError } = await supabase
+  const { data: existingData, error: checkError } = await supabaseAdmin
     .from("profiles")
     .select("id")
     .eq("user_id", userId)
@@ -443,8 +452,8 @@ export const upsertProfile = async (
   let result;
   
   if (existingData && existingData.length > 0) {
-    // Update existing profile
-    const { data, error } = await supabase
+    // Update existing profile using admin client
+    const { data, error } = await supabaseAdmin
       .from("profiles")
       .update(dbProfile)
       .eq("id", existingData[0].id)
@@ -458,8 +467,8 @@ export const upsertProfile = async (
     
     result = data;
   } else {
-    // Create new profile
-    const { data, error } = await supabase
+    // Create new profile using admin client
+    const { data, error } = await supabaseAdmin
       .from("profiles")
       .insert(dbProfile)
       .select()
