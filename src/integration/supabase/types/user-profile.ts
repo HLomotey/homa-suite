@@ -10,16 +10,20 @@ import { Json } from './database';
  */
 export interface User {
   id: string;
-  name: string;
   email: string;
-  role: string;
-  department: string;
-  status: string;
-  last_active: string | null;
-  permissions: string[] | null;
+  role: UserRole;
+  is_active: boolean;
+  last_login: string | null;
+  email_verified: boolean;
+  password_changed_at: string | null;
+  two_factor_enabled: boolean;
+  login_attempts: number;
+  locked_until: string | null;
   created_at: string;
-  updated_at: string | null;
-  avatar_url: string | null;
+  updated_at: string;
+  department: string | null;
+  name: string | null;
+  permissions: Json | null;
 }
 
 /**
@@ -27,25 +31,16 @@ export interface User {
  */
 export interface Profile {
   id: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  avatar_url: string | null;
-  phone: string | null;
-  department: string | null;
-  position: string | null;
-  employee_id: string | null;
-  hire_date: string | null;
-  address: Json | null;
-  contact_info: Json | null;
-  preferences: Json | null;
-  bio: string | null;
-  skills: string[] | null;
-  certifications: string[] | null;
-  emergency_contact: Json | null;
-  role_id: string | null; // New field for role relationship
+  email: string;
+  full_name: string | null;
+  status: string;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  department: string | null;
+  create_user: string | null;
 }
 
 /**
@@ -135,21 +130,20 @@ export interface UserActivity {
 }
 
 /**
- * Maps a database user to the frontend user format
+ * Function to convert database user to frontend user format
  */
 export const mapDatabaseUserToFrontend = (dbUser: User): FrontendUser => {
   return {
     id: dbUser.id,
-    name: dbUser.name,
+    name: dbUser.name || dbUser.email.split('@')[0],
     email: dbUser.email,
-    role: dbUser.role as UserRole,
-    roleId: undefined, // User table doesn't have role_id, use profiles table instead
-    department: dbUser.department,
-    status: dbUser.status as UserStatus,
-    lastActive: dbUser.last_active || undefined,
-    permissions: dbUser.permissions || undefined,
-    createdAt: dbUser.created_at,
-    avatar: dbUser.avatar_url || undefined
+    role: dbUser.role,
+    roleId: undefined,
+    department: dbUser.department || '',
+    status: dbUser.is_active ? 'active' : 'inactive',
+    lastActive: dbUser.last_login || undefined,
+    permissions: Array.isArray(dbUser.permissions) ? dbUser.permissions as string[] : [],
+    createdAt: dbUser.created_at
   };
 };
 
@@ -158,9 +152,9 @@ export const mapDatabaseUserToFrontend = (dbUser: User): FrontendUser => {
  */
 export const mapDatabaseProfileToProfile = (dbProfile: Profile): UserWithProfile['profile'] => {
   return {
-    bio: dbProfile.bio,
-    preferences: dbProfile.preferences as Record<string, any> | null,
-    avatarUrl: dbProfile.avatar_url
+    bio: dbProfile.full_name || '',
+    preferences: null,
+    avatarUrl: null
   };
 };
 
@@ -169,17 +163,15 @@ export const mapDatabaseProfileToProfile = (dbProfile: Profile): UserWithProfile
  */
 export const mapProfileWithRoleToFrontendUser = (profile: ProfileWithRole, email: string): FrontendUser => {
   return {
-    id: profile.user_id,
-    name: `${profile.first_name} ${profile.last_name}`.trim(),
+    id: profile.user_id || profile.id,
+    name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || email.split('@')[0],
     email: email,
     role: (profile.role?.name as UserRole) || 'guest',
-    roleId: profile.role_id || undefined,
+    roleId: undefined,
     department: profile.department || '',
-    status: 'active' as UserStatus,
+    status: profile.status === 'active' ? 'active' : 'inactive',
     lastActive: undefined,
     permissions: profile.role?.permissions || [],
-    createdAt: profile.created_at,
-    avatar: profile.avatar_url || undefined,
-    bio: profile.bio || undefined
+    createdAt: profile.created_at
   };
 };

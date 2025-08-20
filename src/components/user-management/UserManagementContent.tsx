@@ -72,6 +72,14 @@ export function UserManagementContent() {
   const { updateStatus } = useUpdateUserStatus();
   const { deleteUser } = useDeleteUser();
 
+  // Debug logging for users data
+  console.log('🔍 UserManagementContent - Users data:', { 
+    count: users.length, 
+    users, 
+    loading, 
+    error 
+  });
+
   // Check if we're on a user detail page
   const isUserDetailPage = path.includes("/users/new") || !!path.match(/\/users\/[^/]+$/);
   const isUserPermissionsPage = !!path.match(/\/users\/[^/]+\/permissions$/);
