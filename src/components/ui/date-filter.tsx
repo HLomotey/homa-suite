@@ -48,13 +48,7 @@ export function DateFilter({ onDateChange }: DateFilterProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-300">
-          Select a month and transfer all basic salary data to the payroll details table.
-        </span>
-      </div>
-      
+    <div className="flex flex-col gap-2 p-3 bg-gradient-to-br from-slate-900/40 to-slate-800/20 border-slate-800/30 rounded-lg">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-slate-300">Year:</label>
@@ -62,31 +56,31 @@ export function DateFilter({ onDateChange }: DateFilterProps) {
             type="number"
             value={selectedYear}
             onChange={handleYearChange}
-            className="w-20 bg-slate-700 border-slate-600 text-white"
+            className="w-20 h-8 bg-slate-700/50 border-slate-600/50 text-white text-sm"
             min="2020"
             max="2030"
           />
         </div>
         
-        <Button variant="ghost" size="sm" onClick={handleReset} className="text-slate-400 hover:text-white">
-          <X className="h-4 w-4 mr-1" />
+        <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 text-slate-400 hover:text-white">
+          <X className="h-3 w-3 mr-1" />
           Reset
         </Button>
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-slate-300 mr-2">Month:</label>
-        <div className="flex gap-1">
+        <label className="text-sm font-medium text-slate-300">Month:</label>
+        <div className="flex gap-1 flex-wrap">
           {months.map((month) => (
             <Button
               key={month.value}
               variant={selectedMonth === month.value ? "default" : "outline"}
               size="sm"
               onClick={() => handleMonthClick(month.value)}
-              className={`px-3 py-1 text-xs ${
+              className={`px-2 py-1 h-7 text-xs ${
                 selectedMonth === month.value
                   ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                  : "bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600"
+                  : "bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 border-slate-600/50"
               }`}
             >
               {month.label}
