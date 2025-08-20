@@ -19,6 +19,12 @@ export function RoleList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleToDelete, setRoleToDelete] = useState<FrontendRole | null>(null);
   
+  // Debug logging
+  console.log('🎯 RoleList: Component rendered');
+  console.log('📊 RoleList: roles =', roles);
+  console.log('⏳ RoleList: loading =', loading);
+  console.log('❌ RoleList: error =', error);
+  
   // Filter roles based on search query
   const filteredRoles = roles.filter(role => 
     role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,7 +123,7 @@ export function RoleList() {
                         size="icon"
                         onClick={() => setRoleToDelete(role)}
                         className="text-white/70 hover:text-red-400 hover:bg-red-900/20"
-                        disabled={role.name === 'admin'} // Prevent deletion of admin role
+                        disabled={false} // Role restrictions removed - allow deletion of all roles
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

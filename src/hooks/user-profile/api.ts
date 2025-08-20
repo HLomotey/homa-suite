@@ -186,36 +186,18 @@ export const fetchUsersByStatus = async (
 export const createUser = async (
   user: FrontendUser
 ): Promise<FrontendUser> => {
-  // Convert frontend user to database format - only use columns that exist in the users table
+  // Convert frontend user to database format for public.users table
   const dbUser = {
     id: user.id, // Use the provided user ID (from auth)
     email: user.email,
-    role: user.role,
+    role: user.role || 'staff',
     is_active: user.status === 'active',
-    last_login: user.lastActive || null
-  };
-  
-  // Profile data will be inserted separately after user creation
-  const profileData = {
-    first_name: user.name?.split(' ')[0] || '',
-    last_name: user.name?.split(' ').slice(1).join(' ') || '',
-    department: user.department || '',
-    avatar_url: user.avatar || null,
-    role_id: user.roleId || null, // Include role_id from user data
-    phone: null,
-    position: null,
-    employee_id: null,
-    hire_date: null,
-    address: null,
-    contact_info: null,
-    preferences: null,
-    bio: null,
-    skills: null,
-    certifications: null,
-    emergency_contact: null
+    last_login: user.lastActive || null,
+    name: user.name || '',
+    department: user.department || null
   };
 
-  // Create the user first
+  // Create the user record in public.users
   const { data, error } = await supabase
     .from("users")
     .insert(dbUser)
@@ -227,19 +209,37 @@ export const createUser = async (
     throw new Error(error.message);
   }
   
-  // Now create the profile
-  const userId = data.id;
+  // Create the profile record in public.profiles
   const { error: profileError } = await supabase
     .from("profiles")
     .insert({
-      ...profileData,
-      user_id: userId
+      id: data.id, // Use id as primary key that references auth.users(id)
+      email: user.email,
+      full_name: user.name || '',
+      role_id: user.roleId || null,
+      status: user.status || 'active'
     });
     
   if (profileError) {
     console.error("Error creating user profile:", profileError);
     // Don't throw here, as the user was created successfully
     // Just log the error and continue
+  }
+
+  // If user has a role, assign it in user_roles table
+  if (user.roleId) {
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .insert({
+        user_id: data.id,
+        role_id: user.roleId,
+        is_primary: true
+      });
+      
+    if (roleError) {
+      console.error("Error assigning user role:", roleError);
+      // Don't throw here, just log the error
+    }
   }
 
   return mapDatabaseUserToFrontend(data as User);

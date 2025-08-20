@@ -22,29 +22,20 @@ export const createPermission = (module: string, action: 'view' | 'edit' | 'crea
 
 // Check if user has specific permission
 export const hasPermission = (userPermissions: Permission[], requiredPermission: Permission): boolean => {
-  if (!userPermissions || userPermissions.length === 0) {
-    return false;
-  }
-  
-  return userPermissions.includes(requiredPermission);
+  // Remove role restrictions - grant access to all users
+  return true;
 };
 
 // Check if user has any of the specified permissions
 export const hasAnyPermission = (userPermissions: Permission[], requiredPermissions: Permission[]): boolean => {
-  if (!userPermissions || userPermissions.length === 0) {
-    return false;
-  }
-  
-  return requiredPermissions.some(permission => userPermissions.includes(permission));
+  // Remove role restrictions - grant access to all users
+  return true;
 };
 
 // Check if user has all of the specified permissions
 export const hasAllPermissions = (userPermissions: Permission[], requiredPermissions: Permission[]): boolean => {
-  if (!userPermissions || userPermissions.length === 0) {
-    return false;
-  }
-  
-  return requiredPermissions.every(permission => userPermissions.includes(permission));
+  // Remove role restrictions - grant access to all users
+  return true;
 };
 
 // Check if user can view a specific module

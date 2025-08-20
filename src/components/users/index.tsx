@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { UserList } from "./UserList";
 import { UserDetail } from "./UserDetail";
 import { UserPermissions } from "./UserPermissions";
+import { OrphanedUserCleanup } from "./OrphanedUserCleanup";
+import { UserSyncTool } from "./UserSyncTool";
 import {
   Sheet,
   SheetContent,
@@ -24,10 +26,16 @@ export function Users() {
   // Check if we're on a user permissions page
   const isUserPermissionsPage = !!path.match(/\/users\/[^/]+\/permissions$/);
 
+  // Check if we're on the cleanup page
+  const isCleanupPage = path.includes("/users/cleanup");
+
+  // Check if we're on the sync page
+  const isSyncPage = path.includes("/users/sync");
+
   // Effect to open/close sheet based on URL
   useEffect(() => {
-    setIsSheetOpen(isUserDetailPage || isUserPermissionsPage);
-  }, [isUserDetailPage, isUserPermissionsPage]);
+    setIsSheetOpen(isUserDetailPage || isUserPermissionsPage || isCleanupPage || isSyncPage);
+  }, [isUserDetailPage, isUserPermissionsPage, isCleanupPage, isSyncPage]);
 
   // Handle sheet close
   const handleSheetClose = () => {
@@ -55,6 +63,8 @@ export function Users() {
               {isUserDetailPage &&
                 (path.includes("/users/new") ? "Create User" : "Edit User")}
               {isUserPermissionsPage && "User Permissions"}
+              {isCleanupPage && "Orphaned User Cleanup"}
+              {isSyncPage && "User Sync Tool"}
             </SheetTitle>
             <SheetDescription className="text-white/60">
               {isUserDetailPage &&
@@ -62,10 +72,14 @@ export function Users() {
                   ? "Create a new user account"
                   : "Edit user details and profile")}
               {isUserPermissionsPage && "Manage user roles and permissions"}
+              {isCleanupPage && "Clean up users that exist in auth but not in profiles"}
+              {isSyncPage && "Sync auth users to profiles table"}
             </SheetDescription>
           </SheetHeader>
           {isUserDetailPage && <UserDetail />}
           {isUserPermissionsPage && <UserPermissions />}
+          {isCleanupPage && <OrphanedUserCleanup />}
+          {isSyncPage && <UserSyncTool />}
         </SheetContent>
       </Sheet>
     </div>

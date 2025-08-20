@@ -58,7 +58,9 @@ import {
   RefreshCw, 
   CheckCircle, 
   XCircle, 
-  Clock 
+  Clock,
+  AlertTriangle,
+  Users 
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -278,6 +280,20 @@ export function UserList() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button 
+                onClick={() => navigate('/users/sync')} 
+                variant="outline"
+                className="flex items-center gap-2 bg-blue-900/20 border-blue-500/30 text-blue-400 hover:bg-blue-900/30"
+              >
+                <Users className="h-4 w-4" /> Sync
+              </Button>
+              <Button 
+                onClick={() => navigate('/users/cleanup')} 
+                variant="outline"
+                className="flex items-center gap-2 bg-yellow-900/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-900/30"
+              >
+                <AlertTriangle className="h-4 w-4" /> Cleanup
+              </Button>
               <Button onClick={() => navigate('/roles/new')} className="flex items-center gap-2">
                 <Shield className="h-4 w-4" /> New Role
               </Button>

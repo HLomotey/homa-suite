@@ -1,6 +1,6 @@
 -- First, check if the roles table exists and create it if needed
 CREATE TABLE IF NOT EXISTS public.roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     display_name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -52,23 +52,30 @@ CREATE TABLE IF NOT EXISTS public.permissions (
 -- Create role_permissions table (if not exists)
 CREATE TABLE IF NOT EXISTS public.role_permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
+    role_id BIGINT NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
     permission_id UUID NOT NULL REFERENCES public.permissions(id) ON DELETE CASCADE,
     granted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     granted_by UUID REFERENCES auth.users(id),
     UNIQUE (role_id, permission_id)
 );
 
--- Create user_roles table for multiple roles per user
+-- Create user_roles junction table with proper foreign keys
 CREATE TABLE IF NOT EXISTS public.user_roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id BIGSERIAL PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
-    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
-    assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    role_id BIGINT NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     assigned_by UUID REFERENCES auth.users(id),
-    UNIQUE (user_id, role_id)
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, role_id)
 );
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON public.user_roles(role_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_primary ON public.user_roles(user_id, is_primary) WHERE is_primary = true;
 
 -- Create user_permissions table for custom permissions
 CREATE TABLE IF NOT EXISTS public.user_permissions (
@@ -203,3 +210,81 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO public.roles (name, display_name, description, is_system_role, sort_order) VALUES
 ('admin', 'Administrator', 'Full system access', TRUE, 10)
 ON CONFLICT (name) DO NOTHING;
+
+-- Create a view that explicitly shows the relationship between profiles and roles
+-- Only using columns that actually exist in the profiles table
+CREATE OR REPLACE VIEW public.profiles_with_roles AS
+SELECT 
+    p.id,
+    ur.role_id,
+    ur.is_primary,
+    r.name as role_name,
+    r.display_name as role_display_name,
+    r.description as role_description
+FROM public.profiles p
+LEFT JOIN public.user_roles ur ON p.id = ur.user_id
+LEFT JOIN public.roles r ON ur.role_id = r.id;
+
+-- Drop existing function if it exists
+DROP FUNCTION IF EXISTS public.get_users_with_roles();
+
+-- Create function to get users with their roles for the API
+-- Simplified to only use existing columns
+CREATE OR REPLACE FUNCTION public.get_users_with_roles()
+RETURNS TABLE (
+    id UUID,
+    email VARCHAR(255),
+    role_id BIGINT,
+    role_name VARCHAR(50),
+    role_display_name VARCHAR(100),
+    role_description TEXT,
+    is_primary_role BOOLEAN
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id,
+        u.email::VARCHAR(255),
+        ur.role_id,
+        r.name::VARCHAR(50) as role_name,
+        r.display_name::VARCHAR(100) as role_display_name,
+        r.description as role_description,
+        ur.is_primary as is_primary_role
+    FROM public.profiles p
+    LEFT JOIN auth.users u ON p.id = u.id
+    LEFT JOIN public.user_roles ur ON p.id = ur.user_id
+    LEFT JOIN public.roles r ON ur.role_id = r.id
+    ORDER BY u.email, ur.is_primary DESC;
+END;
+$$;
+
+-- Grant necessary permissions
+GRANT SELECT ON public.profiles_with_roles TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_users_with_roles() TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_roles TO authenticated;
+GRANT USAGE ON SEQUENCE public.user_roles_id_seq TO authenticated;
+
+-- Enable RLS on user_roles table
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for user_roles
+CREATE POLICY "Users can view their own roles" ON public.user_roles
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Authenticated users can view all user roles" ON public.user_roles
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Admin users can manage user roles" ON public.user_roles
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.user_roles ur
+            JOIN public.roles r ON ur.role_id = r.id
+            WHERE ur.user_id = auth.uid() AND r.name = 'admin'
+        )
+    );
+
+-- Refresh the schema cache
+NOTIFY pgrst, 'reload schema';

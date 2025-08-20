@@ -3,14 +3,18 @@ import { Database } from './types/database';
 
 // Initialize Supabase admin client with service role key for admin operations
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  console.error('Supabase URL or Service Role Key is missing. Please check your environment variables.');
+if (!supabaseUrl) {
+  console.error('Supabase URL is missing. Please check your environment variables.');
 }
 
-// Create Supabase admin client with service role key
-// This client has full admin privileges and bypasses RLS policies
+if (!supabaseServiceRoleKey) {
+  console.warn('Supabase Service Role Key is missing. Using anon key as fallback - some admin operations may fail due to RLS.');
+}
+
+// Create Supabase admin client with service role key (or anon key as fallback)
+// This client has full admin privileges and bypasses RLS policies when using service role key
 export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     autoRefreshToken: false,
@@ -164,6 +168,112 @@ export const adminUserService = {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
+    }
+  },
+
+  /**
+   * Delete a user by email address
+   */
+  async deleteUserByEmail(email: string) {
+    try {
+      console.log(`🔍 Looking for user with email: ${email}`);
+      
+      // First, get all users from Supabase Auth
+      const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (listError) {
+        console.error('❌ Error listing users:', listError);
+        throw new Error(`Failed to list users: ${listError.message}`);
+      }
+
+      // Find the user by email
+      const user = users.find((u: any) => u.email === email);
+      
+      if (!user) {
+        console.log(`⚠️ User with email ${email} not found in auth.users`);
+        return { success: false, message: `User with email ${email} not found` };
+      }
+
+      console.log(`✅ Found user: ${user.id} (${user.email})`);
+
+      // Clean up database references first to avoid foreign key constraint errors
+      console.log('🧹 Cleaning up database references...');
+      
+      // Delete from user_roles table (junction table)
+      const { error: userRolesError } = await supabaseAdmin
+        .from('user_roles')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (userRolesError) {
+        console.error('❌ Error deleting user roles:', userRolesError);
+      } else {
+        console.log('✅ Deleted user roles');
+      }
+
+      // Delete from user_permissions table (if exists)
+      const { error: userPermissionsError } = await supabaseAdmin
+        .from('user_permissions')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (userPermissionsError) {
+        console.error('❌ Error deleting user permissions:', userPermissionsError);
+      } else {
+        console.log('✅ Deleted user permissions');
+      }
+
+      // Delete from profiles table
+      const { error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+      
+      if (profilesError) {
+        console.error('❌ Error deleting profile:', profilesError);
+      } else {
+        console.log('✅ Deleted profile');
+      }
+
+      // Delete from public.users table (main user data table)
+      const { error: usersError } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', user.id);
+      
+      if (usersError) {
+        console.error('❌ Error deleting from users table:', usersError);
+      } else {
+        console.log('✅ Deleted from users table');
+      }
+
+      // Delete any notifications for this user
+      const { error: notificationsError } = await supabaseAdmin
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (notificationsError) {
+        console.error('❌ Error deleting notifications (table may not exist):', notificationsError);
+      } else {
+        console.log('✅ Deleted notifications');
+      }
+
+      // Finally, delete the auth user
+      console.log('🗑️ Deleting auth user...');
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+      
+      if (deleteError) {
+        console.error('❌ Error deleting auth user:', deleteError);
+        throw new Error(`Failed to delete auth user: ${deleteError.message}`);
+      }
+
+      console.log('✅ Successfully deleted auth user');
+      return { success: true, message: `Successfully deleted user: ${email}` };
+
+    } catch (error) {
+      console.error('❌ Error in deleteUserByEmail:', error);
+      throw error;
     }
   }
 };
