@@ -127,10 +127,11 @@ export function UserDetail() {
       if (Array.isArray(userRolesData)) {
         // Transform to the format expected by the UserProfileForm
         const formattedRoles = userRolesData.map(ur => ({
-          roleId: ur.role_id,
+          roleId: String(ur.role_id), // Convert to string to match role.id format
           isPrimary: ur.is_primary || false
         }));
         
+        console.log('Formatted roles for form:', formattedRoles);
         setUserRoles(formattedRoles);
       } else {
         console.error('User roles data is not an array:', userRolesData);
