@@ -1,50 +1,72 @@
 import { createBrowserRouter, RouteObject } from "react-router-dom";
-import Dashboard from "@/pages/Dashboard";
-import Properties from "@/pages/Properties";
-import Housing from "@/pages/Housing";
-import Billing from "@/pages/Billing";
-import Staff from "@/pages/Staff";
-import PayrollPage from "@/pages/PayrollPage";
-import { AttendancePage } from "@/pages/AttendancePage";
-import Transport from "@/pages/Transport";
-import Settings from "@/pages/Settings";
-import Users from "@/pages/Users";
-import Roles from "@/pages/Roles";
-import ExcelUploads from "@/pages/ExcelUploads";
-import Analytics from "@/pages/Analytics";
-import NotFound from "@/pages/NotFound";
+import { lazy, Suspense } from "react";
 import { AppLayout } from "@/components/layout";
 import { RouteGuard } from "@/components/permissions";
 
-import { HRRecruitment } from "@/components/hr/HRRecruitment";
-import { HRDiversity } from "@/components/hr/HRDiversity";
-import { HROverview } from "@/components/hr/HROverview";
-import { HRDepartments } from "@/components/hr/HRDepartments";
-import HR from "@/pages/HR";
-import Finance from "@/pages/Finance";
-import Operations from "@/pages/Operations";
-import { RevenueTrendDetail } from "@/components/finance/detail/RevenueTrendDetail";
-import { ClientRevenueDetail } from "@/components/finance/detail/ClientRevenueDetail";
-import { CashFlowDetail } from "@/components/finance/detail/CashFlowDetail";
-import { ExpenseDetail } from "@/components/finance/detail/ExpenseDetail";
-import { JobOrdersTrendDetail } from "@/components/operations/detail/JobOrdersTrendDetail";
-import { RegionalFillRateDetail } from "@/components/operations/detail/RegionalFillRateDetail";
-import { TimeToFillTrendDetail } from "@/components/operations/detail/TimeToFillTrendDetail";
-import { JobTypesDistributionDetail } from "@/components/operations/detail/JobTypesDistributionDetail";
-import Utilities from "@/pages/Utilities";
-import UploadFinance from "@/pages/UploadFinance";
+// Lazy load all page components
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Properties = lazy(() => import("@/pages/Properties"));
+const Housing = lazy(() => import("@/pages/Housing"));
+const Billing = lazy(() => import("@/pages/Billing"));
+const Staff = lazy(() => import("@/pages/Staff"));
+const PayrollPage = lazy(() => import("@/pages/PayrollPage"));
+const AttendancePage = lazy(() => import("@/pages/AttendancePage").then(module => ({ default: module.AttendancePage })));
+const Transport = lazy(() => import("@/pages/Transport"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Users = lazy(() => import("@/pages/Users"));
+const Roles = lazy(() => import("@/pages/Roles"));
+const ExcelUploads = lazy(() => import("@/pages/ExcelUploads"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const HR = lazy(() => import("@/pages/HR"));
+const Finance = lazy(() => import("@/pages/Finance"));
+const Operations = lazy(() => import("@/pages/Operations"));
+const Utilities = lazy(() => import("@/pages/Utilities"));
+const UploadFinance = lazy(() => import("@/pages/UploadFinance"));
 
-// Maintenance Module
-import MaintenanceLayout from "@/routes/maintenance";
-import MaintenanceDashboard from "@/routes/maintenance/dashboard";
-import MaintenanceRequests from "@/routes/maintenance/requests";
-import MaintenanceRequestDetail from "@/routes/maintenance/request-detail";
-import ReportMaintenanceIssue from "@/routes/maintenance/report";
-import MaintenanceAdmin from "@/routes/maintenance/admin";
-import AdminRequestDetail from "@/routes/maintenance/admin/request-detail";
-import ManageMaintenanceRequest from "@/routes/maintenance/admin/request-manage";
-import StaffMaintenanceRequests from "@/routes/maintenance/staff";
-import StaffRequestDetail from "@/routes/maintenance/staff/request-detail";
+// Lazy load HR components
+const HRRecruitment = lazy(() => import("@/components/hr/HRRecruitment").then(module => ({ default: module.HRRecruitment })));
+const HRDiversity = lazy(() => import("@/components/hr/HRDiversity").then(module => ({ default: module.HRDiversity })));
+const HROverview = lazy(() => import("@/components/hr/HROverview").then(module => ({ default: module.HROverview })));
+const HRDepartments = lazy(() => import("@/components/hr/HRDepartments").then(module => ({ default: module.HRDepartments })));
+
+// Lazy load Finance detail components
+const RevenueTrendDetail = lazy(() => import("@/components/finance/detail/RevenueTrendDetail").then(module => ({ default: module.RevenueTrendDetail })));
+const ClientRevenueDetail = lazy(() => import("@/components/finance/detail/ClientRevenueDetail").then(module => ({ default: module.ClientRevenueDetail })));
+const CashFlowDetail = lazy(() => import("@/components/finance/detail/CashFlowDetail").then(module => ({ default: module.CashFlowDetail })));
+const ExpenseDetail = lazy(() => import("@/components/finance/detail/ExpenseDetail").then(module => ({ default: module.ExpenseDetail })));
+
+// Lazy load Operations detail components
+const JobOrdersTrendDetail = lazy(() => import("@/components/operations/detail/JobOrdersTrendDetail").then(module => ({ default: module.JobOrdersTrendDetail })));
+const RegionalFillRateDetail = lazy(() => import("@/components/operations/detail/RegionalFillRateDetail").then(module => ({ default: module.RegionalFillRateDetail })));
+const TimeToFillTrendDetail = lazy(() => import("@/components/operations/detail/TimeToFillTrendDetail").then(module => ({ default: module.TimeToFillTrendDetail })));
+const JobTypesDistributionDetail = lazy(() => import("@/components/operations/detail/JobTypesDistributionDetail").then(module => ({ default: module.JobTypesDistributionDetail })));
+
+// Lazy load Maintenance Module components
+const MaintenanceLayout = lazy(() => import("@/routes/maintenance"));
+const MaintenanceDashboard = lazy(() => import("@/routes/maintenance/dashboard"));
+const MaintenanceRequests = lazy(() => import("@/routes/maintenance/requests"));
+const MaintenanceRequestDetail = lazy(() => import("@/routes/maintenance/request-detail"));
+const ReportMaintenanceIssue = lazy(() => import("@/routes/maintenance/report"));
+const MaintenanceAdmin = lazy(() => import("@/routes/maintenance/admin"));
+const AdminRequestDetail = lazy(() => import("@/routes/maintenance/admin/request-detail"));
+const ManageMaintenanceRequest = lazy(() => import("@/routes/maintenance/admin/request-manage"));
+const StaffMaintenanceRequests = lazy(() => import("@/routes/maintenance/staff"));
+const StaffRequestDetail = lazy(() => import("@/routes/maintenance/staff/request-detail"));
+
+// Loading component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
+
+// Wrapper component for lazy loaded routes with suspense
+const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<LoadingSpinner />}>
+    {children}
+  </Suspense>
+);
 
 // Define all application routes
 export const routes: RouteObject[] = [
@@ -55,281 +77,437 @@ export const routes: RouteObject[] = [
       {
         index: true,
         element: (
-          <RouteGuard module="dashboard">
-            <Dashboard />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="dashboard">
+              <Dashboard />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "dashboard",
         element: (
-          <RouteGuard module="dashboard">
-            <Dashboard />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="dashboard">
+              <Dashboard />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "properties",
         element: (
-          <RouteGuard module="properties">
-            <Properties />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="properties">
+              <Properties />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "housing",
         element: (
-          <RouteGuard module="properties">
-            <Housing />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="properties">
+              <Housing />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "billing",
         element: (
-          <RouteGuard module="billing">
-            <Billing />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="billing">
+              <Billing />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "staff",
         element: (
-          <RouteGuard module="staff">
-            <Staff />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="staff">
+              <Staff />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "payroll",
         element: (
-          <RouteGuard module="payroll">
-            <PayrollPage />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="payroll">
+              <PayrollPage />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "attendance",
         element: (
-          <RouteGuard module="attendance">
-            <AttendancePage />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="attendance">
+              <AttendancePage />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "transport",
         element: (
-          <RouteGuard module="transport">
-            <Transport />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="transport">
+              <Transport />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "settings",
         element: (
-          <RouteGuard module="settings">
-            <Settings />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="settings">
+              <Settings />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "users",
         element: (
-          <RouteGuard module="users">
-            <Users />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="users">
+              <Users />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "users/:userId",
         element: (
-          <RouteGuard module="users">
-            <Users />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="users">
+              <Users />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "users/:userId/permissions",
         element: (
-          <RouteGuard module="users" action="edit">
-            <Users />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="users" action="edit">
+              <Users />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       // Add role management routes
       {
         path: "roles",
         element: (
-          <RouteGuard module="users" action="edit">
-            <Roles />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="users" action="edit">
+              <Roles />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "roles/:roleId",
         element: (
-          <RouteGuard module="users" action="edit">
-            <Roles />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="users" action="edit">
+              <Roles />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "excel-uploads",
         element: (
-          <RouteGuard module="uploads">
-            <ExcelUploads />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="uploads">
+              <ExcelUploads />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "analytics",
         element: (
-          <RouteGuard module="admin">
-            <Analytics />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="admin">
+              <Analytics />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "hr",
         element: (
-          <RouteGuard module="hr">
-            <HR />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="hr">
+              <HR />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "/hr/recruitment",
-        element: <HRRecruitment />,
+        element: (
+          <LazyWrapper>
+            <HRRecruitment />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/hr/diversity",
-        element: <HRDiversity />,
+        element: (
+          <LazyWrapper>
+            <HRDiversity />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/hr/overview",
-        element: <HROverview />,
+        element: (
+          <LazyWrapper>
+            <HROverview />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/hr/overview/headcount",
-        element: <HRDepartments />,
+        element: (
+          <LazyWrapper>
+            <HRDepartments />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/hr/overview/retention",
-        element: <HROverview />,
+        element: (
+          <LazyWrapper>
+            <HROverview />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/hr/overview/gender",
-        element: <HRDiversity />,
+        element: (
+          <LazyWrapper>
+            <HRDiversity />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/hr/overview/hiring",
-        element: <HRRecruitment />,
+        element: (
+          <LazyWrapper>
+            <HRRecruitment />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/finance",
-        element: <Finance />,
+        element: (
+          <LazyWrapper>
+            <Finance />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/finance/revenue-trend",
-        element: <RevenueTrendDetail />,
+        element: (
+          <LazyWrapper>
+            <RevenueTrendDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/finance/client-revenue",
-        element: <ClientRevenueDetail />,
+        element: (
+          <LazyWrapper>
+            <ClientRevenueDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/finance/cash-flow",
-        element: <CashFlowDetail />,
+        element: (
+          <LazyWrapper>
+            <CashFlowDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/finance/expenses",
-        element: <ExpenseDetail />,
+        element: (
+          <LazyWrapper>
+            <ExpenseDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/finance/upload",
-        element: <UploadFinance />,
+        element: (
+          <LazyWrapper>
+            <UploadFinance />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/operations",
-        element: <Operations />,
+        element: (
+          <LazyWrapper>
+            <Operations />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/operations/job-orders-trend",
-        element: <JobOrdersTrendDetail />,
+        element: (
+          <LazyWrapper>
+            <JobOrdersTrendDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/operations/regional-performance",
-        element: <RegionalFillRateDetail />,
+        element: (
+          <LazyWrapper>
+            <RegionalFillRateDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/operations/time-to-fill",
-        element: <TimeToFillTrendDetail />,
+        element: (
+          <LazyWrapper>
+            <TimeToFillTrendDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "/operations/job-types",
-        element: <JobTypesDistributionDetail />,
+        element: (
+          <LazyWrapper>
+            <JobTypesDistributionDetail />
+          </LazyWrapper>
+        ),
       },
       {
         path: "utilities",
         element: (
-          <RouteGuard module="utilities">
-            <Utilities />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="utilities">
+              <Utilities />
+            </RouteGuard>
+          </LazyWrapper>
         ),
       },
       {
         path: "maintenance",
         element: (
-          <RouteGuard module="properties">
-            <MaintenanceLayout />
-          </RouteGuard>
+          <LazyWrapper>
+            <RouteGuard module="properties">
+              <MaintenanceLayout />
+            </RouteGuard>
+          </LazyWrapper>
         ),
         children: [
           {
             index: true,
-            element: <MaintenanceDashboard />,
+            element: (
+              <LazyWrapper>
+                <MaintenanceDashboard />
+              </LazyWrapper>
+            ),
           },
           {
             path: "requests",
-            element: <MaintenanceRequests />,
+            element: (
+              <LazyWrapper>
+                <MaintenanceRequests />
+              </LazyWrapper>
+            ),
           },
           {
             path: "requests/:id",
-            element: <MaintenanceRequestDetail />,
+            element: (
+              <LazyWrapper>
+                <MaintenanceRequestDetail />
+              </LazyWrapper>
+            ),
           },
           {
             path: "report",
-            element: <ReportMaintenanceIssue />,
+            element: (
+              <LazyWrapper>
+                <ReportMaintenanceIssue />
+              </LazyWrapper>
+            ),
           },
           {
             path: "admin",
-            element: <MaintenanceAdmin />,
+            element: (
+              <LazyWrapper>
+                <MaintenanceAdmin />
+              </LazyWrapper>
+            ),
           },
           {
             path: "admin/requests/:id",
-            element: <AdminRequestDetail />,
+            element: (
+              <LazyWrapper>
+                <AdminRequestDetail />
+              </LazyWrapper>
+            ),
           },
           {
             path: "admin/requests/:id/edit",
-            element: <ManageMaintenanceRequest />,
+            element: (
+              <LazyWrapper>
+                <ManageMaintenanceRequest />
+              </LazyWrapper>
+            ),
           },
           {
             path: "staff",
-            element: <StaffMaintenanceRequests />,
+            element: (
+              <LazyWrapper>
+                <StaffMaintenanceRequests />
+              </LazyWrapper>
+            ),
           },
           {
             path: "staff/requests/:id",
-            element: <StaffRequestDetail />,
+            element: (
+              <LazyWrapper>
+                <StaffRequestDetail />
+              </LazyWrapper>
+            ),
           },
           {
             path: "staff/requests/:id/manage",
-            element: <ManageMaintenanceRequest />,
+            element: (
+              <LazyWrapper>
+                <ManageMaintenanceRequest />
+              </LazyWrapper>
+            ),
           },
         ],
       },
       {
         path: "*",
-        element: <NotFound />,
+        element: (
+          <LazyWrapper>
+            <NotFound />
+          </LazyWrapper>
+        ),
       },
     ],
   },
