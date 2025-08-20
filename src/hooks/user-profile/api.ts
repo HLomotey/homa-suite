@@ -247,57 +247,107 @@ export const createUser = async (
   const dbUser = {
     id: user.id, // Use the provided user ID (from auth)
     email: user.email,
-    role: userRole,
     is_active: user.status === 'active',
     last_login: user.lastActive || null,
     name: user.name || '',
     department: user.department || null
   };
 
-  // Create the user record in public.users using admin client
-  const { data, error } = await supabaseAdmin
+  // Check if user already exists in users table
+  const { data: existingUser, error: userCheckError } = await supabaseAdmin
     .from("users")
-    .insert(dbUser)
-    .select()
+    .select("*")
+    .eq("id", user.id)
     .single();
 
-  if (error) {
-    console.error("Error creating user:", error);
-    throw new Error(error.message);
-  }
-  
-  // Create the profile record in public.profiles using admin client
-  const { error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .insert({
-      id: data.id, // Use id as primary key that references auth.users(id)
-      email: user.email,
-      full_name: user.name || '',
-      status: user.status || 'active',
-      user_id: data.id // Add user_id field
-    });
-    
-  if (profileError) {
-    console.error("Error creating user profile:", profileError);
-    // Don't throw here, as the user was created successfully
-    // Just log the error and continue
+  let data;
+  if (userCheckError && userCheckError.code !== 'PGRST116') {
+    console.error("Error checking existing user:", userCheckError);
   }
 
-  // If user has a role, assign it in user_roles table using admin client
-  if (user.roleId) {
-    const { error: roleError } = await supabaseAdmin
-      .from("user_roles")
+  if (!existingUser) {
+    // Create the user record in public.users using admin client
+    const { data: newUser, error } = await supabaseAdmin
+      .from("users")
+      .insert(dbUser)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating user:", error);
+      throw new Error(error.message);
+    }
+    data = newUser;
+  } else {
+    console.log("User already exists in users table:", user.id);
+    // Update the existing user with new data
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
+      .from("users")
+      .update({
+        email: dbUser.email,
+        is_active: dbUser.is_active,
+        name: dbUser.name,
+        department: dbUser.department,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", user.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating existing user:", updateError);
+      throw new Error(updateError.message);
+    }
+    data = updatedUser;
+  }
+  
+  // Check if profile already exists before creating
+  const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("id", data.id)
+    .single();
+
+  if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+    console.error("Error checking existing profile:", profileCheckError);
+  }
+
+  if (!existingProfile) {
+    // Create the profile record in public.profiles using admin client
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
       .insert({
-        user_id: data.id,
-        role_id: user.roleId,
-        is_primary: true
+        id: data.id, // Use id as primary key that references auth.users(id)
+        email: user.email, // Required field
+        full_name: user.name || user.email.split('@')[0], // Fallback to email username
+        status: user.status === 'active' ? 'active' : user.status === 'inactive' ? 'inactive' : 'active', // Ensure valid status
+        user_id: data.id // Add user_id field
       });
       
-    if (roleError) {
-      console.error("Error assigning user role:", roleError);
-      // Don't throw here, just log the error
+    if (profileError) {
+      console.error("Error creating user profile:", profileError);
+      // Don't throw here, as the user was created successfully
+      // Just log the error and continue
+    }
+  } else {
+    console.log("Profile already exists for user:", data.id);
+    // Optionally update the existing profile with new data
+    const { error: updateError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        full_name: user.name || user.email.split('@')[0],
+        status: user.status === 'active' ? 'active' : user.status === 'inactive' ? 'inactive' : 'active',
+        role_id: userRole ? parseInt(userRole.toString()) : null, // Update role in profile
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", data.id);
+      
+    if (updateError) {
+      console.error("Error updating existing profile:", updateError);
     }
   }
+
+  // Role is now stored directly in users table, no need for separate assignment
 
   return mapDatabaseUserToFrontend(data as User);
 };
@@ -437,12 +487,34 @@ export const upsertProfile = async (
     bio?: string | null;
     preferences?: Record<string, any> | null;
     avatarUrl?: string | null;
+    email?: string;
+    fullName?: string;
+    status?: string;
+    roleId?: string | number | null;
   }
 ): Promise<Profile> => {
-  // Convert frontend profile to database format - only include fields that exist in the table
+  // First, get user email from auth.users if not provided
+  let userEmail = profile.email;
+  if (!userEmail) {
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (authError) {
+      console.error(`Error getting auth user:`, authError);
+      throw new Error(`Cannot create profile without email: ${authError.message}`);
+    }
+    userEmail = authUser.user?.email;
+    if (!userEmail) {
+      throw new Error("Cannot create profile: user email not found");
+    }
+  }
+
+  // Convert frontend profile to database format - include required fields
   const dbProfile: any = {
     id: userId, // Use id as primary key
-    user_id: userId
+    user_id: userId,
+    email: userEmail, // Required field
+    status: profile.status || 'active', // Required field with valid constraint value
+    full_name: profile.fullName || userEmail.split('@')[0], // Fallback to email username
+    role_id: profile.roleId ? parseInt(profile.roleId.toString()) : null // Add role to profile
   };
   
   // Only add avatar_url if provided (bio doesn't exist in profiles table)
@@ -450,26 +522,30 @@ export const upsertProfile = async (
     dbProfile.avatar_url = profile.avatarUrl;
   }
 
-  // Check if profile already exists
+  // Check if profile already exists - check by both id and user_id since they should be the same
   const { data: existingData, error: checkError } = await supabaseAdmin
     .from("profiles")
     .select("id")
-    .eq("user_id", userId)
-    .limit(1);
+    .eq("id", userId)
+    .single();
 
-  if (checkError) {
+  if (checkError && checkError.code !== 'PGRST116') {
     console.error(`Error checking existing profile:`, checkError);
     throw new Error(checkError.message);
   }
 
   let result;
   
-  if (existingData && existingData.length > 0) {
-    // Update existing profile using admin client
+  if (existingData) {
+    // Update existing profile using admin client - remove required fields for updates
+    const updateData = { ...dbProfile };
+    delete updateData.id; // Don't update primary key
+    delete updateData.email; // Don't update email in existing profile
+    
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .update(dbProfile)
-      .eq("id", existingData[0].id)
+      .update(updateData)
+      .eq("id", existingData.id)
       .select()
       .single();
       

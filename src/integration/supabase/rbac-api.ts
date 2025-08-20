@@ -297,17 +297,15 @@ export const userRolesApi = {
       is_primary_role: item.is_primary
     }));
   },
-  // Get user's roles
+  // Get user's role (simplified - single role from profiles table)
   async getUserRoles(userId: string): Promise<UserWithRoles | null> {
     const { data: userData, error: userError } = await supabase
-      .from('auth.users')
+      .from('profiles')
       .select(`
         id,
         email,
-        user_roles:user_roles(
-          *,
-          role:roles(*)
-        )
+        role_id,
+        role:roles(*)
       `)
       .eq('id', userId)
       .single();
@@ -315,84 +313,59 @@ export const userRolesApi = {
     if (userError) throw userError;
     if (!userData) return null;
 
-    // Find primary role
-    const primaryRole = userData.user_roles.find((ur: any) => ur.is_primary)?.role;
-    
     return {
       ...userData,
-      primary_role: primaryRole
+      primary_role: Array.isArray(userData.role) ? userData.role[0] : userData.role
     };
   },
 
-  // Assign role to user
+  // Assign role to user (simplified - direct role_id in profiles table)
   async assignRole(data: AssignRoleRequest): Promise<void> {
-    const { user_id, role_id, is_primary } = data;
+    const { user_id, role_id } = data;
     
-    // If setting as primary, update all other roles to not primary
-    if (is_primary) {
-      await supabase
-        .from('user_roles')
-        .update({ is_primary: false })
-        .eq('user_id', user_id);
-    }
-
-    // Insert or update the role assignment
+    // Simply update the user's role_id in the profiles table
     const { error } = await supabaseAdmin
-      .from('user_roles')
-      .insert({
-        user_id: user_id,
+      .from('profiles')
+      .update({ 
         role_id: role_id,
-        is_primary: is_primary || false,
-        assigned_at: new Date().toISOString()
-      });
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user_id);
     
     if (error) throw error;
   },
 
-  // Remove role from user
+  // Remove role from user (set role_id to null)
   async removeRole(userId: string, roleId: string): Promise<void> {
     const { error } = await supabaseAdmin
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId)
+      .from('profiles')
+      .update({ 
+        role_id: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
       .eq('role_id', roleId);
     
     if (error) throw error;
   },
 
-  // Update user's roles
+  // Update user's role (simplified - single role only)
   async updateUserRoles(data: UpdateUserRolesRequest): Promise<void> {
-    const { user_id, role_ids, primary_role_id } = data;
+    const { user_id, role_ids } = data;
     
-    try {
-      // Delete existing roles
-      const { error: deleteError } = await supabaseAdmin
-        .from('user_roles')
-        .delete()
-        .eq('user_id', user_id);
-        
-      if (deleteError) throw deleteError;
-
-      // Add new roles
-      if (role_ids.length > 0) {
-        const userRoles = role_ids.map(roleId => ({
-          user_id,
-          role_id: roleId,
-          is_primary: roleId === primary_role_id,
-          assigned_at: new Date().toISOString()
-        }));
-
-        const { error: insertError } = await supabaseAdmin
-          .from('user_roles')
-          .insert(userRoles);
-        
-        if (insertError) throw insertError;
-      }
-    } catch (error) {
-      console.error('Error updating user roles:', error);
-      throw error;
-    }
-  }
+    // Since we only support single roles now, take the first role_id
+    const role_id = role_ids.length > 0 ? role_ids[0] : null;
+    
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ 
+        role_id: role_id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user_id);
+    
+    if (error) throw error;
+  },
 };
 
 // User Permissions API

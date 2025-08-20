@@ -231,17 +231,7 @@ export const adminUserService = {
       // Clean up database references first to avoid foreign key constraint errors
       console.log('🧹 Cleaning up database references...');
       
-      // Delete from user_roles table (junction table)
-      const { error: userRolesError } = await supabaseAdmin
-        .from('user_roles')
-        .delete()
-        .eq('user_id', user.id);
-      
-      if (userRolesError) {
-        console.error('❌ Error deleting user roles:', userRolesError);
-      } else {
-        console.log('✅ Deleted user roles');
-      }
+      // Note: user_roles table no longer exists - roles are now stored directly in profiles table
 
       // Delete from user_permissions table (if exists)
       const { error: userPermissionsError } = await supabaseAdmin

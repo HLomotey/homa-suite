@@ -4,7 +4,7 @@
  */
 
 import { supabase } from './client';
-import { Json } from './types/database';
+import { supabaseAdmin } from './admin-client';
 
 /**
  * User interface representing the users table in Supabase
@@ -24,7 +24,7 @@ export interface User {
   updated_at: string;
   department: string | null;
   name: string | null;
-  permissions: Json | null;
+  permissions: any | null;
 }
 
 /**
@@ -140,7 +140,7 @@ export interface UserActivity {
 }
 
 /** Narrow a Json to a string[] safely */
-const asStringArray = (val: Json | null | undefined): string[] => {
+const asStringArray = (val: any | null | undefined): string[] => {
   return Array.isArray(val) ? (val as unknown as string[]) : [];
 };
 
@@ -221,91 +221,47 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
   try {
     console.log('🔍 Fetching users with roles...');
     
-    // Use the user_management_view we created earlier for a cleaner approach
-    const { data: userManagementData, error: viewError } = await supabase
-      .from('user_management_view')
-      .select('*')
-      .order('auth_created_at', { ascending: false });
+    // Fetch profiles with roles directly (simplified approach)
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .select(`
+        id,
+        email,
+        full_name,
+        status,
+        role_id,
+        created_at,
+        role:roles(
+          id,
+          name,
+          display_name,
+          description
+        )
+      `)
+      .order('created_at', { ascending: false });
 
-    if (viewError) {
-      console.error('❌ Error fetching from user_management_view:', viewError);
-      
-      // Fallback: Get profiles and join manually with user_roles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (profilesError) {
-        console.error('❌ Error fetching profiles:', profilesError);
-        return { users: [], total: 0, error: profilesError };
-      }
-
-      // Get user roles separately
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select(`
-          user_id,
-          is_primary,
-          roles (
-            id,
-            name,
-            display_name,
-            permissions
-          )
-        `)
-        .eq('is_primary', true);
-
-      if (rolesError) {
-        console.error('❌ Error fetching user roles:', rolesError);
-      }
-
-      // Create a map of user roles for easy lookup
-      const roleMap = new Map();
-      (userRoles || []).forEach(ur => {
-        roleMap.set(ur.user_id, ur.roles);
-      });
-
-      // Transform profiles with role data
-      const users: FrontendUser[] = (profiles || []).map(profile => {
-        const userRole = roleMap.get(profile.id);
-        
-        return {
-          id: profile.id,
-          name: profile.full_name || profile.first_name || profile.last_name || profile.email?.split('@')[0] || '',
-          email: profile.email || `user-${profile.id.slice(0, 8)}@example.com`,
-          role: userRole?.name || 'No Role',
-          roleId: userRole?.id?.toString() || '',
-          department: profile.department || '',
-          status: 'active', // Default to active since we don't have status in profiles
-          lastActive: new Date().toISOString(),
-          permissions: userRole?.permissions || [],
-          createdAt: profile.created_at || new Date().toISOString(),
-        };
-      });
-
-      return {
-        users,
-        total: users.length,
-        error: null
-      };
+    if (profilesError) {
+      console.error('❌ Error fetching profiles:', profilesError);
+      return { users: [], total: 0, error: profilesError };
     }
 
-    console.log(`✅ Found ${userManagementData?.length || 0} users from view`);
+    console.log(`✅ Found ${profiles?.length || 0} users from profiles table`);
 
-    // Transform the view data to match FrontendUser interface
-    const users: FrontendUser[] = (userManagementData || []).map(userData => {
+    // Transform profiles with role data
+    const users: FrontendUser[] = (profiles || []).map(profile => {
+      const role = Array.isArray(profile.role) ? profile.role[0] : profile.role;
+      
       return {
-        id: userData.id,
-        name: userData.full_name || userData.email?.split('@')[0] || '',
-        email: userData.email || `user-${userData.id.slice(0, 8)}@example.com`,
-        role: userData.role_name || 'No Role',
-        roleId: userData.role_name || '',
-        department: userData.department || '',
-        status: 'active', // Default to active
-        lastActive: userData.last_sign_in_at || userData.auth_created_at,
-        permissions: [],
-        createdAt: userData.auth_created_at || new Date().toISOString(),
+        id: profile.id,
+        name: profile.full_name || profile.email?.split('@')[0] || '',
+        email: profile.email || `user-${profile.id.slice(0, 8)}@example.com`,
+        role: role?.name || 'No Role',
+        roleId: role?.id?.toString() || '',
+        department: '', // Not stored in profiles table
+        status: profile.status || 'active',
+        lastActive: new Date().toISOString(),
+        permissions: [], // Permissions not stored in roles table
+        createdAt: profile.created_at || new Date().toISOString(),
       };
     });
 

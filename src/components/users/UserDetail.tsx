@@ -336,63 +336,16 @@ export function UserDetail() {
           });
 
           if (!authResult.success) {
-            // Check if it's a duplicate email error - overwrite existing user
+            // If user already exists, show error and stop
             if (authResult.error?.includes('already been registered')) {
-              console.log('Email already exists, attempting to overwrite existing user...');
-              
-              try {
-                // First, find and delete the existing auth user
-                const existingAuthResult = await adminUserService.deleteUserByEmail(user.email);
-                
-                if (existingAuthResult.success) {
-                  console.log('Existing auth user deleted, creating new one...');
-                  
-                  // Try creating the auth user again
-                  const retryAuthResult = await adminUserService.createAuthUser({
-                    email: user.email,
-                    password: defaultPassword,
-                    name: user.name,
-                    role: user.role,
-                    department: user.department,
-                    requirePasswordChange: true
-                  });
-                  
-                  if (!retryAuthResult.success) {
-                    toast({
-                      title: 'Authentication Error',
-                      description: `Failed to create auth user after cleanup: ${retryAuthResult.error}`,
-                      variant: 'destructive'
-                    });
-                    return;
-                  }
-                  
-                  // Update authUserId with the new user ID
-                  authUserId = retryAuthResult.user?.id || null;
-                  console.log('New auth user created successfully with ID:', authUserId);
-                  
-                  toast({
-                    title: 'Existing User Overwritten',
-                    description: `Existing user with email ${user.email} has been replaced with the new user data.`,
-                    variant: 'default'
-                  });
-                } else {
-                  toast({
-                    title: 'Cleanup Failed',
-                    description: `Could not remove existing user: ${existingAuthResult.message || 'Unknown error'}`,
-                    variant: 'destructive'
-                  });
-                  return;
-                }
-              } catch (overwriteError) {
-                console.error('Error during user overwrite:', overwriteError);
-                toast({
-                  title: 'Overwrite Failed',
-                  description: 'Failed to overwrite existing user. Please try again.',
-                  variant: 'destructive'
-                });
-                return;
-              }
+              toast({
+                title: 'User Already Exists',
+                description: `A user with email ${user.email} already exists. Please use a different email address.`,
+                variant: 'destructive'
+              });
+              return;
             } else {
+              // Handle other auth creation errors
               toast({
                 title: 'Authentication Error',
                 description: `Failed to create auth user: ${authResult.error}`,
