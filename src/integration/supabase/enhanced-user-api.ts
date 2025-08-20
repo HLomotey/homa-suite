@@ -75,7 +75,16 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
     // Get all profiles first
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
       .select('*')
+
+      .select(`
+        *,
+        user_roles!inner(
+          role:roles(*)
+        )
+      `)
+
       .order('created_at', { ascending: false });
 
     if (profilesError) {
@@ -165,8 +174,18 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
     // Fetch profiles for filtered users
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
       .select('*')
       .in('id', userIds);
+
+      .select(`
+        *,
+        user_roles!inner(
+          role:roles!inner(*)
+        )
+      `)
+      .eq('user_roles.role.name', roleName)
+      .order('created_at', { ascending: false });
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
@@ -232,9 +251,20 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
     // Fetch profiles for all users and filter by department
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
       .select('*')
       .in('id', userIds)
       .eq('department', department);
+
+      .select(`
+        *,
+        user_roles(
+          role:roles(*)
+        )
+      `)
+      .eq('department', department)
+      .order('created_at', { ascending: false });
+
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
@@ -290,9 +320,22 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
  */
 export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery> => {
   try {
+
     // First get all users with roles
     const { data: usersWithRoles, error: rolesError } = await supabase
       .rpc('get_users_with_roles');
+
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        user_roles(
+          role:roles(*)
+        )
+      `)
+      .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
+      .order('created_at', { ascending: false });
+
 
     if (rolesError) {
       console.error('Error fetching users with roles:', rolesError);
