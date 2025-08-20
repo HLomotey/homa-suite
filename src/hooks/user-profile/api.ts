@@ -5,14 +5,10 @@
 
 import { supabase } from "../../integration/supabase/client";
 import {
+  FrontendUser,
   User,
   Profile,
-  FrontendUser,
-  UserWithProfile,
-  UserStatus,
   UserRole,
-  UserPreferences,
-  UserActivity,
   mapDatabaseUserToFrontend,
   mapDatabaseProfileToProfile
 } from "../../integration/supabase/types";
@@ -23,17 +19,68 @@ import {
  * @returns Promise with array of users
  */
 export const fetchUsers = async (): Promise<FrontendUser[]> => {
-  const { data, error } = await supabase
+  console.log('🔍 [UPDATED API] Fetching users from database...', new Date().toISOString());
+  
+  // Check authentication status
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  console.log('🔐 Auth status for users:', { user: user?.email || 'Not authenticated', authError });
+  
+  // Try to fetch from users table first
+  const { data: usersData, error: usersError } = await supabase
     .from("users")
     .select("*")
-    .order("email", { ascending: true }); // Using email instead of name which doesn't exist
+    .order("email", { ascending: true });
 
-  if (error) {
-    console.error("Error fetching users:", error);
-    throw new Error(error.message);
+  console.log('👥 Users table query result:', { 
+    count: usersData?.length || 0, 
+    data: usersData, 
+    error: usersError 
+  });
+
+  // Also try to fetch from profiles table
+  const { data: profilesData, error: profilesError } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("email", { ascending: true });
+
+  console.log('📋 Profiles table query result:', { 
+    count: profilesData?.length || 0, 
+    data: profilesData, 
+    error: profilesError 
+  });
+
+  // If we have users data, use it
+  if (usersData && usersData.length > 0) {
+    console.log(`✅ Found ${usersData.length} users from users table`);
+    return (usersData as User[]).map(mapDatabaseUserToFrontend);
   }
 
-  return (data as User[]).map(mapDatabaseUserToFrontend);
+  // If we have profiles data, use it
+  if (profilesData && profilesData.length > 0) {
+    console.log(`✅ Found ${profilesData.length} profiles from profiles table`);
+    return (profilesData as Profile[]).map(profile => ({
+      id: profile.id,
+      name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email.split('@')[0],
+      email: profile.email,
+      role: 'staff' as UserRole, // Default role since profiles table doesn't have role
+      department: profile.department || '',
+      status: profile.status === 'active' ? 'active' : profile.status === 'inactive' ? 'inactive' : 'pending',
+      lastActive: undefined,
+      permissions: [],
+      createdAt: profile.created_at
+    }));
+  }
+
+  // If both queries failed, log errors
+  if (usersError) {
+    console.error("❌ Error fetching users:", usersError);
+  }
+  if (profilesError) {
+    console.error("❌ Error fetching profiles:", profilesError);
+  }
+
+  console.log('⚠️ No data found in users or profiles tables');
+  return [];
 };
 
 /**
