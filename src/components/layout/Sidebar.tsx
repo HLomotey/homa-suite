@@ -103,6 +103,12 @@ const navigationItems = [
     active: false,
   },
   {
+    label: "Profile",
+    icon: UserRound,
+    href: ROUTES.PROFILE,
+    active: false,
+  },
+  {
     label: "Excel Uploads",
     icon: FileUp,
     href: ROUTES.EXCEL_UPLOADS,

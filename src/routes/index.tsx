@@ -13,6 +13,7 @@ const PayrollPage = lazy(() => import("@/pages/PayrollPage"));
 const AttendancePage = lazy(() => import("@/pages/AttendancePage").then(module => ({ default: module.AttendancePage })));
 const Transport = lazy(() => import("@/pages/Transport"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const Profile = lazy(() => import("@/pages/Profile"));
 const Users = lazy(() => import("@/pages/Users"));
 const Roles = lazy(() => import("@/pages/Roles"));
 const ExcelUploads = lazy(() => import("@/pages/ExcelUploads"));
@@ -170,6 +171,16 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <RouteGuard module="settings">
               <Settings />
+            </RouteGuard>
+          </LazyWrapper>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <LazyWrapper>
+            <RouteGuard module="profile">
+              <Profile />
             </RouteGuard>
           </LazyWrapper>
         ),
