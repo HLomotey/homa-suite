@@ -6,7 +6,6 @@ import { DataSourcesTab } from "./DataSourcesTab";
 import { ADPTab } from "./ADPTab";
 import { NotificationsTab } from "./NotificationsTab";
 import { LocationsTab } from "./LocationsTab";
-import { ClickLogsTab } from "./ClickLogsTab";
 import { Cog, Database, UserCircle, Bell, Lock, Shield, MapPin, BarChart3 } from "lucide-react";
 
 export function Settings() {
@@ -19,7 +18,7 @@ export function Settings() {
         <p className="text-white/60">Configure system settings and integrations</p>
       
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-black/40 border border-white/10 mb-6 grid grid-cols-5 h-auto">
+          <TabsList className="bg-black/40 border border-white/10 mb-6 grid grid-cols-4 h-auto">
             <TabsTrigger 
               value="data-sources" 
               className="flex items-center gap-2 py-3"
@@ -48,13 +47,6 @@ export function Settings() {
               <MapPin className="h-4 w-4" />
               <span>Locations</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="click-logs" 
-              className="flex items-center gap-2 py-3"
-            >
-              <BarChart3 className="h-4 w-4" />
-              <span>Click Logs</span>
-            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="data-sources">
@@ -71,10 +63,6 @@ export function Settings() {
           
           <TabsContent value="locations">
             <LocationsTab />
-          </TabsContent>
-          
-          <TabsContent value="click-logs">
-            <ClickLogsTab />
           </TabsContent>
         </Tabs>
       </div>

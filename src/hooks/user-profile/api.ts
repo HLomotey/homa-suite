@@ -224,19 +224,38 @@ export const fetchUsersByStatus = async (
 export const createUser = async (
   user: FrontendUser
 ): Promise<FrontendUser> => {
+  // Map role to valid enum values until we remove the enum constraint
+  const validEnumRoles = ['admin', 'manager', 'staff', 'tenant', 'driver', 'maintenance', 'guest'];
+  let userRole = 'staff'; // default fallback
+  
+  // Check if the role exists in roles table and map to valid enum
+  const { data: roleData } = await supabaseAdmin
+    .from('roles')
+    .select('name')
+    .eq('name', user.role)
+    .single();
+  
+  if (roleData?.name && validEnumRoles.includes(roleData.name)) {
+    userRole = roleData.name;
+  } else if (validEnumRoles.includes(user.role)) {
+    userRole = user.role;
+  }
+  
+  console.log(`Role mapping: ${user.role} -> ${userRole}`);
+  
   // Convert frontend user to database format for public.users table
   const dbUser = {
     id: user.id, // Use the provided user ID (from auth)
     email: user.email,
-    role: user.role || 'staff',
+    role: userRole,
     is_active: user.status === 'active',
     last_login: user.lastActive || null,
     name: user.name || '',
     department: user.department || null
   };
 
-  // Create the user record in public.users
-  const { data, error } = await supabase
+  // Create the user record in public.users using admin client
+  const { data, error } = await supabaseAdmin
     .from("users")
     .insert(dbUser)
     .select()
@@ -247,15 +266,15 @@ export const createUser = async (
     throw new Error(error.message);
   }
   
-  // Create the profile record in public.profiles
-  const { error: profileError } = await supabase
+  // Create the profile record in public.profiles using admin client
+  const { error: profileError } = await supabaseAdmin
     .from("profiles")
     .insert({
       id: data.id, // Use id as primary key that references auth.users(id)
       email: user.email,
       full_name: user.name || '',
-      role_id: user.roleId || null,
-      status: user.status || 'active'
+      status: user.status || 'active',
+      user_id: data.id // Add user_id field
     });
     
   if (profileError) {
@@ -264,9 +283,9 @@ export const createUser = async (
     // Just log the error and continue
   }
 
-  // If user has a role, assign it in user_roles table
+  // If user has a role, assign it in user_roles table using admin client
   if (user.roleId) {
-    const { error: roleError } = await supabase
+    const { error: roleError } = await supabaseAdmin
       .from("user_roles")
       .insert({
         user_id: data.id,
@@ -422,6 +441,7 @@ export const upsertProfile = async (
 ): Promise<Profile> => {
   // Convert frontend profile to database format - only include fields that exist in the table
   const dbProfile: any = {
+    id: userId, // Use id as primary key
     user_id: userId
   };
   
