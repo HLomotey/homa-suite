@@ -380,10 +380,17 @@ export const updateUser = async (
           // Don't throw, just log the error
         }
       } else {
-        // Create new profile
+        // Create new profile - get email from user data
+        const profileData = {
+          ...profileUpdate,
+          id: id,
+          user_id: id,
+          email: user.email || data.email // Use email from user update or existing data
+        };
+        
         const { error: insertError } = await supabaseAdmin
           .from("profiles")
-          .insert({ ...profileUpdate, id: id, user_id: id });
+          .insert(profileData);
           
         if (insertError) {
           console.error(`Error creating profile for user ${id}:`, insertError);
