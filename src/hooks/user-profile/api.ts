@@ -9,6 +9,10 @@ import {
   User,
   Profile,
   UserRole,
+  UserWithProfile,
+  UserStatus,
+  UserPreferences,
+  UserActivity,
   mapDatabaseUserToFrontend,
   mapDatabaseProfileToProfile
 } from "../../integration/supabase/types";

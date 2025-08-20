@@ -74,6 +74,9 @@ export interface Role {
  */
 export interface ProfileWithRole extends Profile {
   role?: Role | null;
+  role_id?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
   user_roles?: Array<{
     role: Role;
     is_primary: boolean;
@@ -180,24 +183,14 @@ export const mapProfileWithRoleToFrontendUser = (profile: ProfileWithRole, email
     id: profile.user_id || profile.id,
     name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || email.split('@')[0],
     email: email,
-
-    role: (profile.role?.name as UserRole) || 'guest',
-    roleId: undefined,
-
     role: userRole?.name || 'guest',
     roleId: userRole?.id || profile.role_id || undefined,
-
     department: profile.department || '',
     status: profile.status === 'active' ? 'active' : 'inactive',
     lastActive: undefined,
-
-    permissions: profile.role?.permissions || [],
-    createdAt: profile.created_at
-
     permissions: userRole?.permissions || [],
     createdAt: profile.created_at,
     avatar: profile.avatar_url || undefined,
     bio: profile.bio || undefined
-
   };
 };
