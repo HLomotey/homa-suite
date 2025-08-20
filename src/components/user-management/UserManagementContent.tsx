@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
 import { FrontendUser, UserStatus } from "@/integration/supabase/types";
-import { useUsers, useUsersByRole, useUsersByStatus, useDeleteUser, useUpdateUserStatus } from "@/hooks/user-profile";
+import { useEnhancedUsers, useUsersByRole, useUsersByStatus, useUpdateUserStatus, useDeleteUser } from "@/hooks/user-profile";
 import { useRoles } from "@/hooks/role/useRole";
 import { 
   Search, 
@@ -67,7 +67,7 @@ export function UserManagementContent() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   // Fetch users and roles data
-  const { users, loading, error, refetch } = useUsers();
+  const { users, loading, error, refetch } = useEnhancedUsers();
   const { roles } = useRoles();
   const { updateStatus } = useUpdateUserStatus();
   const { deleteUser } = useDeleteUser();
