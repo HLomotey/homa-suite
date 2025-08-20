@@ -26,14 +26,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { SlideInFormWithActions } from "@/components/utilities";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
@@ -433,327 +426,305 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
         </Table>
       </div>
 
-      {/* Create Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Add Utility Bill</DialogTitle>
-            <DialogDescription>
-              Create a new utility bill for a property
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="propertyId" className="text-right">
-                  Property
-                </Label>
-                <select
-                  id="propertyId"
-                  name="propertyId"
-                  value={formData.propertyId}
-                  onChange={handleInputChange}
-                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                  aria-label="Select Property"
-                  title="Select Property"
-                >
-                  <option value="">Select a property</option>
-                  {properties?.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="utilityTypeId" className="text-right">
-                  Utility Type
-                </Label>
-                <select
-                  id="utilityTypeId"
-                  name="utilityTypeId"
-                  value={formData.utilityTypeId}
-                  onChange={handleInputChange}
-                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                  aria-label="Select Utility Type"
-                  title="Select Utility Type"
-                >
-                  <option value="">Select a utility type</option>
-                  {utilityTypes?.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="billingPeriodId" className="text-right">
-                  Billing Period
-                </Label>
-                <select
-                  id="billingPeriodId"
-                  name="billingPeriodId"
-                  value={formData.billingPeriodId}
-                  onChange={handleInputChange}
-                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                  aria-label="Select Billing Period"
-                  title="Select Billing Period"
-                >
-                  <option value="">Select a billing period</option>
-                  {billingPeriods?.map((period) => (
-                    <option key={period.id} value={period.id}>
-                      {period.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="billingDate" className="text-right">
-                  Billing Date
-                </Label>
-                <Input
-                  id="billingDate"
-                  name="billingDate"
-                  type="date"
-                  value={formData.billingDate}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="billingAmount" className="text-right">
-                  Amount
-                </Label>
-                <Input
-                  id="billingAmount"
-                  name="billingAmount"
-                  type="number"
-                  step="0.01"
-                  value={formData.billingAmount}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="notes" className="text-right">
-                  Notes
-                </Label>
-                <Input
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  placeholder="Optional notes"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createBill.isPending}>
-                {createBill.isPending ? "Creating..." : "Create"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Create Slide-in Form */}
+      <SlideInFormWithActions
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        title="Add Utility Bill"
+        description="Create a new utility bill for a property"
+        size="lg"
+        position="right"
+        onSubmit={handleCreateSubmit}
+        actions={[
+          {
+            label: 'Cancel',
+            onClick: () => setIsDialogOpen(false),
+            variant: 'outline'
+          },
+          {
+            label: createBill.isPending ? 'Creating...' : 'Create',
+            onClick: () => {},
+            variant: 'default',
+            disabled: createBill.isPending,
+            loading: createBill.isPending
+          }
+        ]}
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="propertyId" className="text-white">Property *</Label>
+            <select
+              id="propertyId"
+              name="propertyId"
+              value={formData.propertyId}
+              onChange={handleInputChange}
+              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+              required
+              aria-label="Select Property"
+              title="Select Property"
+            >
+              <option value="">Select a property</option>
+              {properties?.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="utilityTypeId" className="text-white">Utility Type *</Label>
+            <select
+              id="utilityTypeId"
+              name="utilityTypeId"
+              value={formData.utilityTypeId}
+              onChange={handleInputChange}
+              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+              required
+              aria-label="Select Utility Type"
+              title="Select Utility Type"
+            >
+              <option value="">Select a utility type</option>
+              {utilityTypes?.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="billingPeriodId" className="text-white">Billing Period *</Label>
+            <select
+              id="billingPeriodId"
+              name="billingPeriodId"
+              value={formData.billingPeriodId}
+              onChange={handleInputChange}
+              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+              required
+              aria-label="Select Billing Period"
+              title="Select Billing Period"
+            >
+              <option value="">Select a billing period</option>
+              {billingPeriods?.map((period) => (
+                <option key={period.id} value={period.id}>
+                  {period.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="billingDate" className="text-white">Billing Date *</Label>
+            <Input
+              id="billingDate"
+              name="billingDate"
+              type="date"
+              value={formData.billingDate}
+              onChange={handleInputChange}
+              className="bg-gray-800 border-gray-600 text-white"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="billingAmount" className="text-white">Amount *</Label>
+            <Input
+              id="billingAmount"
+              name="billingAmount"
+              type="number"
+              step="0.01"
+              value={formData.billingAmount}
+              onChange={handleInputChange}
+              placeholder="0.00"
+              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="notes" className="text-white">Notes</Label>
+            <Input
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              placeholder="Optional notes"
+              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+      </SlideInFormWithActions>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Utility Bill</DialogTitle>
-            <DialogDescription>
-              Update the utility bill details
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-propertyId" className="text-right">
-                  Property
-                </Label>
-                <select
-                  id="edit-propertyId"
-                  name="propertyId"
-                  value={formData.propertyId}
-                  onChange={handleInputChange}
-                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                  aria-label="Select Property"
-                  title="Select Property"
-                >
-                  <option value="">Select a property</option>
-                  {properties?.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-utilityTypeId" className="text-right">
-                  Utility Type
-                </Label>
-                <select
-                  id="edit-utilityTypeId"
-                  name="utilityTypeId"
-                  value={formData.utilityTypeId}
-                  onChange={handleInputChange}
-                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                  aria-label="Select Utility Type"
-                  title="Select Utility Type"
-                >
-                  <option value="">Select a utility type</option>
-                  {utilityTypes?.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-billingPeriodId" className="text-right">
-                  Billing Period
-                </Label>
-                <select
-                  id="edit-billingPeriodId"
-                  name="billingPeriodId"
-                  value={formData.billingPeriodId}
-                  onChange={handleInputChange}
-                  className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                  aria-label="Select Billing Period"
-                  title="Select Billing Period"
-                >
-                  <option value="">Select a billing period</option>
-                  {billingPeriods?.map((period) => (
-                    <option key={period.id} value={period.id}>
-                      {period.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-billingDate" className="text-right">
-                  Billing Date
-                </Label>
-                <Input
-                  id="edit-billingDate"
-                  name="billingDate"
-                  type="date"
-                  value={formData.billingDate}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-billingAmount" className="text-right">
-                  Amount
-                </Label>
-                <Input
-                  id="edit-billingAmount"
-                  name="billingAmount"
-                  type="number"
-                  step="0.01"
-                  value={formData.billingAmount}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-notes" className="text-right">
-                  Notes
-                </Label>
-                <Input
-                  id="edit-notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  placeholder="Optional notes"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={updateBill.isPending}>
-                {updateBill.isPending ? "Updating..." : "Update"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Slide-in Form */}
+      <SlideInFormWithActions
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        title="Edit Utility Bill"
+        description="Update the utility bill details"
+        size="lg"
+        position="right"
+        onSubmit={handleEditSubmit}
+        actions={[
+          {
+            label: 'Cancel',
+            onClick: () => setIsEditDialogOpen(false),
+            variant: 'outline'
+          },
+          {
+            label: updateBill.isPending ? 'Updating...' : 'Update',
+            onClick: () => {},
+            variant: 'default',
+            disabled: updateBill.isPending,
+            loading: updateBill.isPending
+          }
+        ]}
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="edit-propertyId" className="text-white">Property *</Label>
+            <select
+              id="edit-propertyId"
+              name="propertyId"
+              value={formData.propertyId}
+              onChange={handleInputChange}
+              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+              required
+              aria-label="Select Property"
+              title="Select Property"
+            >
+              <option value="">Select a property</option>
+              {properties?.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="edit-utilityTypeId" className="text-white">Utility Type *</Label>
+            <select
+              id="edit-utilityTypeId"
+              name="utilityTypeId"
+              value={formData.utilityTypeId}
+              onChange={handleInputChange}
+              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+              required
+              aria-label="Select Utility Type"
+              title="Select Utility Type"
+            >
+              <option value="">Select a utility type</option>
+              {utilityTypes?.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="edit-billingPeriodId" className="text-white">Billing Period *</Label>
+            <select
+              id="edit-billingPeriodId"
+              name="billingPeriodId"
+              value={formData.billingPeriodId}
+              onChange={handleInputChange}
+              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+              required
+              aria-label="Select Billing Period"
+              title="Select Billing Period"
+            >
+              <option value="">Select a billing period</option>
+              {billingPeriods?.map((period) => (
+                <option key={period.id} value={period.id}>
+                  {period.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="edit-billingDate" className="text-white">Billing Date *</Label>
+            <Input
+              id="edit-billingDate"
+              name="billingDate"
+              type="date"
+              value={formData.billingDate}
+              onChange={handleInputChange}
+              className="bg-gray-800 border-gray-600 text-white"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="edit-billingAmount" className="text-white">Amount *</Label>
+            <Input
+              id="edit-billingAmount"
+              name="billingAmount"
+              type="number"
+              step="0.01"
+              value={formData.billingAmount}
+              onChange={handleInputChange}
+              placeholder="0.00"
+              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="edit-notes" className="text-white">Notes</Label>
+            <Input
+              id="edit-notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              placeholder="Optional notes"
+              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+      </SlideInFormWithActions>
 
-      {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Utility Bill</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this utility bill? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {selectedBill && (
-              <p>
+      {/* Delete Slide-in Form */}
+      <SlideInFormWithActions
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        title="Delete Utility Bill"
+        description="Are you sure you want to delete this utility bill? This action cannot be undone."
+        size="md"
+        position="right"
+        actions={[
+          {
+            label: 'Cancel',
+            onClick: () => setIsDeleteDialogOpen(false),
+            variant: 'outline'
+          },
+          {
+            label: deleteBill.isPending ? 'Deleting...' : 'Delete',
+            onClick: handleDelete,
+            variant: 'destructive',
+            disabled: deleteBill.isPending,
+            loading: deleteBill.isPending
+          }
+        ]}
+      >
+        <div className="space-y-4">
+          {selectedBill && (
+            <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+              <p className="text-sm text-red-200">
                 You are about to delete the utility bill for{" "}
-                <strong>
+                <strong className="font-semibold text-red-100">
                   {properties?.find(p => p.id === selectedBill.propertyId)?.title || "Unknown Property"}
                 </strong>
               </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteBill.isPending}
-            >
-              {deleteBill.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <p className="text-xs text-red-300 mt-2">
+                This action cannot be undone.
+              </p>
+            </div>
+          )}
+        </div>
+      </SlideInFormWithActions>
     </div>
   );
 }

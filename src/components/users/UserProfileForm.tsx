@@ -9,14 +9,7 @@ import { FrontendUser } from '@/integration/supabase/types';
 import { useRoles } from '@/hooks/role/useRole';
 import { Role } from '@/integration/supabase/types/rbac-types';
 import { Eye, EyeOff, RefreshCw, AlertCircle, Plus, X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
+import { SlideInFormWithActions } from '@/components/utilities';
 
 interface UserProfileFormProps {
   user: FrontendUser;
@@ -291,58 +284,54 @@ export const UserProfileForm: React.FC<UserProfileFormProps> = ({
         )}
       </div>
       
-      {/* Role Selection Dialog */}
-      <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
-        <DialogContent className="bg-black/90 border-white/10 text-white">
-          <DialogHeader>
-            <DialogTitle>Add Role</DialogTitle>
-            <DialogDescription className="text-white/70">
-              Select a role to assign to this user
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="max-h-[300px] overflow-y-auto py-4">
-            {availableRoles.length === 0 ? (
-              <div className="text-white/60 text-center py-4">
-                No more roles available to assign
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {availableRoles.map((role) => (
-                  <div 
-                    key={role.id} 
-                    className="flex items-center justify-between p-2 hover:bg-white/5 rounded-md"
-                  >
-                    <div>
-                      <h3 className="text-white text-sm font-medium">{role.name}</h3>
-                      <p className="text-white/60 text-xs">{role.description || 'No description'}</p>
-                    </div>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleAddRole(role.id)}
-                      className="text-white/70 border-white/20 hover:bg-white/10 text-xs"
-                    >
-                      Add
-                    </Button>
+      {/* Role Selection Slide-in Form */}
+      <SlideInFormWithActions
+        isOpen={showRoleDialog}
+        onClose={() => setShowRoleDialog(false)}
+        title="Add Role"
+        description="Select a role to assign to this user"
+        size="md"
+        position="right"
+        className="bg-black/90 border-white/10 text-white"
+        actions={[
+          {
+            label: 'Cancel',
+            onClick: () => setShowRoleDialog(false),
+            variant: 'outline'
+          }
+        ]}
+      >
+        <div className="max-h-[400px] overflow-y-auto">
+          {availableRoles.length === 0 ? (
+            <div className="text-white/60 text-center py-8">
+              No more roles available to assign
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {availableRoles.map((role) => (
+                <div 
+                  key={role.id} 
+                  className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg border border-white/10"
+                >
+                  <div className="flex-1">
+                    <h3 className="text-white text-sm font-medium">{role.name}</h3>
+                    <p className="text-white/60 text-xs mt-1">{role.description || 'No description'}</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowRoleDialog(false)}
-              className="bg-transparent border-white/20 text-white hover:bg-white/10"
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleAddRole(role.id)}
+                    className="ml-3 text-white/70 border-white/20 hover:bg-white/10 text-xs"
+                  >
+                    Add
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </SlideInFormWithActions>
     </div>
   );
 };
