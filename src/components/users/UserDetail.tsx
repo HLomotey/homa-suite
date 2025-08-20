@@ -71,7 +71,7 @@ export function UserDetail() {
     email: '',
     role: 'staff' as UserRole,
     roleId: '',
-    department: '',
+    department: 'admin', // Set default department to avoid validation error
     status: 'pending' as UserStatus,
     lastActive: new Date().toISOString(),
     permissions: [],
