@@ -11,6 +11,7 @@ import { FrontendRole } from '@/integration/supabase/types';
 import { useRole, useCreateRole, useUpdateRole } from '@/hooks/role/useRole';
 import { RolePermissionsTab } from '@/components/roles/RolePermissionsTab';
 import { RoleUsersTab } from '@/components/roles/RoleUsersTab';
+import { PermissionsGrid } from '@/components/users/PermissionsGrid';
 import { Shield, Users } from 'lucide-react';
 
 export function RoleDetail() {
@@ -77,6 +78,23 @@ export function RoleDetail() {
   // Handle permissions update
   const handlePermissionsUpdate = (permissions: string[]) => {
     setRole(prev => ({ ...prev, permissions }));
+  };
+
+  // Handle individual permission toggle for PermissionsGrid
+  const handleRolePermissionToggle = (permission: string) => {
+    const currentPermissions = role.permissions || [];
+    const isCurrentlySelected = currentPermissions.includes(permission);
+    
+    let newPermissions: string[];
+    if (isCurrentlySelected) {
+      // Remove permission
+      newPermissions = currentPermissions.filter(p => p !== permission);
+    } else {
+      // Add permission
+      newPermissions = [...currentPermissions, permission];
+    }
+    
+    setRole(prev => ({ ...prev, permissions: newPermissions }));
   };
   
   // Handle form submission
@@ -171,7 +189,6 @@ export function RoleDetail() {
                 <TabsTrigger 
                   value="permissions" 
                   className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                  disabled={isNewRole}
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Permissions
@@ -215,13 +232,26 @@ export function RoleDetail() {
               </TabsContent>
               
               <TabsContent value="permissions" className="space-y-6 mt-6">
-                {!isNewRole && role.id && (
-                  <RolePermissionsTab
-                    roleId={role.id}
-                    permissions={role.permissions || []}
-                    onPermissionsUpdate={handlePermissionsUpdate}
-                  />
-                )}
+                <PermissionsGrid
+                  user={{
+                    id: role.id || 'new',
+                    name: role.name || '',
+                    email: '',
+                    role: 'admin',
+                    roleId: '',
+                    department: '',
+                    status: 'active',
+                    lastActive: new Date().toISOString(),
+                    permissions: role.permissions || [],
+                    createdAt: new Date().toISOString(),
+                    avatar: ''
+                  }}
+                  customPermissionsEnabled={true}
+                  onCustomPermissionsToggle={() => {}}
+                  onPermissionToggle={handleRolePermissionToggle}
+                  isLoading={isLoading}
+                  isNewUser={isNewRole}
+                />
               </TabsContent>
               
               <TabsContent value="users" className="space-y-6 mt-6">

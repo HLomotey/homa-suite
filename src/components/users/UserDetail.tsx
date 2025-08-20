@@ -768,20 +768,13 @@ export function UserDetail() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-black/20">
+              <TabsList className="grid w-full grid-cols-2 bg-black/20">
                 <TabsTrigger 
                   value="profile" 
                   className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                 >
                   <UserIcon className="h-4 w-4 mr-2" />
                   Profile
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="permissions" 
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Access & Permissions
                 </TabsTrigger>
                 <TabsTrigger 
                   value="activity" 
@@ -803,17 +796,6 @@ export function UserDetail() {
                   isNewUser={isNewUser}
                   userRoles={userRoles}
                   onRolesChange={handleRolesChange}
-                />
-              </TabsContent>
-              
-              <TabsContent value="permissions" className="space-y-6 mt-6">
-                <PermissionsGrid
-                  user={user}
-                  customPermissionsEnabled={customPermissionsEnabled}
-                  onCustomPermissionsToggle={handleCustomPermissionsToggle}
-                  onPermissionToggle={handlePermissionToggle}
-                  isLoading={isLoading}
-                  isNewUser={isNewUser}
                 />
               </TabsContent>
               
