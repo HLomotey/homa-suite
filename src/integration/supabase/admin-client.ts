@@ -172,6 +172,38 @@ export const adminUserService = {
   },
 
   /**
+   * Update a user's password using admin privileges
+   */
+  async updateUserPassword(userId: string, newPassword: string) {
+    try {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: newPassword,
+        user_metadata: {
+          require_password_change: true
+        }
+      });
+
+      if (error) {
+        console.error('Error updating user password:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error) {
+      console.error('Error in updateUserPassword:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  /**
    * Delete a user by email address
    */
   async deleteUserByEmail(email: string) {

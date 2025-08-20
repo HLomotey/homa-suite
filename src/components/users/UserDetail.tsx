@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { FrontendUser, UserRole, UserStatus, UserWithProfile } from '@/integration/supabase/types';
 import { useUser, useUserWithProfile, useCreateUser, useUpdateUser, useUpsertProfile, useDeleteUser } from '@/hooks/user-profile';
@@ -17,7 +20,7 @@ import { UserProfileForm } from './UserProfileForm';
 import { PermissionsGrid } from './PermissionsGrid';
 import { UserActivityTab } from './UserActivityTab';
 import { UserFormActions } from './UserFormActions';
-import { Shield, User as UserIcon, Activity } from 'lucide-react';
+import { Shield, User as UserIcon, Activity, Key, Eye, EyeOff, RefreshCw } from 'lucide-react';
 
 export function UserDetail() {
   const { toast } = useToast();
@@ -30,6 +33,10 @@ export function UserDetail() {
   const [defaultPassword, setDefaultPassword] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [userRoles, setUserRoles] = useState<{ roleId: string, isPrimary: boolean }[]>([]);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Fetch user data if editing existing user using enhanced API
   const { users: allUsers, loading: fetchingUsers, error: usersError } = useEnhancedUsers();
@@ -718,6 +725,99 @@ export function UserDetail() {
     }
   };
 
+  // Generate a random password
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let result = '';
+    for (let i = 0; i < 12; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(result);
+    setConfirmPassword(result);
+  };
+
+  // Handle manual password reset
+  const handleManualPasswordReset = async () => {
+    if (!user.id || !user.email) {
+      toast({
+        title: 'Error',
+        description: 'User ID or email is missing.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!newPassword) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a new password.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Validation Error',
+        description: 'Passwords do not match.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast({
+        title: 'Validation Error',
+        description: 'Password must be at least 8 characters long.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+
+    try {
+      // Update the user's password using admin service
+      const result = await adminUserService.updateUserPassword(user.id, newPassword);
+
+      if (result.success) {
+        toast({
+          title: 'Password updated successfully',
+          description: `Password has been reset for ${user.name}. They will be required to change it on next login.`
+        });
+        
+        // Clear the password fields
+        setNewPassword('');
+        setConfirmPassword('');
+        
+        // Send notification email
+        const emailResult = await adminUserService.sendPasswordResetEmail(user.email);
+        if (!emailResult.success) {
+          toast({
+            title: 'Password updated, email failed',
+            description: 'Password was reset but notification email could not be sent.',
+            variant: 'default'
+          });
+        }
+      } else {
+        toast({
+          title: 'Error updating password',
+          description: result.error || 'Failed to update password.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update password. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
 
 
   // Handle cancel/back navigation
@@ -768,13 +868,21 @@ export function UserDetail() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-black/20">
+              <TabsList className="grid w-full grid-cols-3 bg-black/20">
                 <TabsTrigger 
                   value="profile" 
                   className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                 >
                   <UserIcon className="h-4 w-4 mr-2" />
                   Profile
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="password" 
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  disabled={isNewUser}
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Password Reset
                 </TabsTrigger>
                 <TabsTrigger 
                   value="activity" 
@@ -797,6 +905,157 @@ export function UserDetail() {
                   userRoles={userRoles}
                   onRolesChange={handleRolesChange}
                 />
+              </TabsContent>
+              
+              <TabsContent value="password" className="space-y-6 mt-6">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-white">Password Management</h3>
+                      <p className="text-sm text-white/60">Reset the user's password or send a password reset email</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Email Reset Option */}
+                    <div className="space-y-4 p-4 bg-black/20 border border-white/10 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Key className="h-5 w-5 text-blue-400" />
+                        <h4 className="font-medium text-white">Email Password Reset</h4>
+                      </div>
+                      <p className="text-sm text-white/60">
+                        Send a secure password reset link to the user's email address.
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={handlePasswordReset}
+                        disabled={isResettingPassword || !user.email}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {isResettingPassword ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send Reset Email'
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Manual Reset Option */}
+                    <div className="space-y-4 p-4 bg-black/20 border border-white/10 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-5 w-5 text-orange-400" />
+                        <h4 className="font-medium text-white">Manual Password Reset</h4>
+                      </div>
+                      <p className="text-sm text-white/60">
+                        Set a new password directly. User will be required to change it on next login.
+                      </p>
+                      
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword" className="text-white text-sm">New Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="newPassword"
+                              type={showNewPassword ? 'text' : 'password'}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Enter new password"
+                              className="bg-black/20 border-white/10 text-white placeholder:text-white/50 pr-10"
+                              disabled={isResettingPassword}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              disabled={isResettingPassword}
+                            >
+                              {showNewPassword ? (
+                                <EyeOff className="h-4 w-4 text-white/60" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-white/60" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword" className="text-white text-sm">Confirm Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="confirmPassword"
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirm new password"
+                              className="bg-black/20 border-white/10 text-white placeholder:text-white/50 pr-10"
+                              disabled={isResettingPassword}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              disabled={isResettingPassword}
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-4 w-4 text-white/60" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-white/60" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={generateRandomPassword}
+                            disabled={isResettingPassword}
+                            className="bg-black/20 border-white/10 text-white hover:bg-white/10"
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Generate
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleManualPasswordReset}
+                            disabled={isResettingPassword || !newPassword || !confirmPassword}
+                            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                          >
+                            {isResettingPassword ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Reset Password'
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <Shield className="h-5 w-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-yellow-400">Security Notice</h4>
+                        <p className="text-sm text-yellow-200/80 mt-1">
+                          Both methods will require the user to change their password on the next login. 
+                          Manual password reset should only be used when email delivery is not possible.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
               
               <TabsContent value="activity" className="space-y-6 mt-6">
