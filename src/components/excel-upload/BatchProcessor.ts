@@ -24,6 +24,8 @@ export class BatchProcessor {
 
   async processFinanceData(jsonData: any[]): Promise<number> {
     let processed = 0;
+    let updated = 0;
+    let inserted = 0;
     const totalRecords = jsonData.length;
 
     for (let i = 0; i < jsonData.length; i += this.batchSize) {
@@ -32,14 +34,18 @@ export class BatchProcessor {
       // Convert batch data to match finance_invoices table schema
       const invoiceBatch: FinanceInvoiceData[] = batch.map(mapToFinanceInvoice);
 
-      // Save batch to database
-      const { error: insertError } = await supabase
+      // Use UPSERT to handle duplicates - update existing records or insert new ones
+      const { data, error: upsertError } = await supabase
         .from('finance_invoices')
-        .insert(invoiceBatch);
+        .upsert(invoiceBatch, { 
+          onConflict: 'invoice_number',
+          ignoreDuplicates: false 
+        })
+        .select('id');
 
-      if (insertError) {
-        console.error(`Error inserting batch ${Math.floor(i/this.batchSize) + 1}:`, insertError);
-        throw new Error(`Database error in batch ${Math.floor(i/this.batchSize) + 1}: ${insertError.message}`);
+      if (upsertError) {
+        console.error(`Error upserting batch ${Math.floor(i/this.batchSize) + 1}:`, upsertError);
+        throw new Error(`Database error in batch ${Math.floor(i/this.batchSize) + 1}: ${upsertError.message}`);
       }
       
       processed += batch.length;
@@ -54,12 +60,13 @@ export class BatchProcessor {
         this.onBatchComplete(Math.floor(i/this.batchSize) + 1, batch.length);
       }
       
-      console.log(`Saved batch ${Math.floor(i/this.batchSize) + 1}: ${batch.length} rows (${processed}/${totalRecords} total)`);
+      console.log(`Processed batch ${Math.floor(i/this.batchSize) + 1}: ${batch.length} rows (${processed}/${totalRecords} total) - UPSERT mode`);
       
       // Small delay to prevent overwhelming the database
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
+    console.log(`Batch processing complete: ${processed} records processed (updated existing or inserted new)`);
     return processed;
   }
 }

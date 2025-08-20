@@ -1,27 +1,68 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 
 export function OperatingExpenses() {
-  const navigate = useNavigate();
+  const { data: analytics, isLoading, error } = useFinanceAnalytics();
+
+  if (isLoading) {
+    return (
+      <Card className="bg-background border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Outstanding
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-16">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !analytics) {
+    return (
+      <Card className="bg-background border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Outstanding
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-red-500">Error loading data</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const outstandingInvoices = analytics.pendingInvoices + analytics.overdueInvoices + analytics.sentInvoices;
+  const previousOutstanding = 45; // Mock previous month for comparison
+  const outstandingChange = outstandingInvoices - previousOutstanding;
+  const percentChange = previousOutstanding > 0 ? (outstandingChange / previousOutstanding) * 100 : 0;
   
   return (
     <Card className="bg-background border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          Operating Expenses
+          Outstanding
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold">$1.2M</div>
-          <div className="flex items-center text-sm text-orange-500">
-            <span>+3.5% vs LM</span>
-            <ArrowUpRight className="ml-1 h-4 w-4" />
+          <div className="text-2xl font-bold">{outstandingInvoices}</div>
+          <div className={`flex items-center text-sm ${percentChange <= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <span>{percentChange >= 0 ? '+' : ''}{percentChange.toFixed(1)}% vs LM</span>
+            {percentChange <= 0 ? (
+              <ArrowDownRight className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpRight className="ml-1 h-4 w-4" />
+            )}
           </div>
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          $1.16M previous month
+          {analytics.overdueInvoices} overdue, {analytics.sentInvoices} sent
         </div>
       </CardContent>
     </Card>

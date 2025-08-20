@@ -1,27 +1,71 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 
 export function GrossMargin() {
-  const navigate = useNavigate();
+  const { data: analytics, isLoading, error } = useFinanceAnalytics();
+
+  if (isLoading) {
+    return (
+      <Card className="bg-background border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Gross Margin
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-16">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !analytics) {
+    return (
+      <Card className="bg-background border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Gross Margin
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-red-500">Error loading data</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Calculate gross margin based on paid invoices vs total revenue
+  const grossMargin = analytics.totalInvoices > 0 
+    ? ((analytics.paidInvoices / analytics.totalInvoices) * 100)
+    : 0;
+  
+  const previousMargin = 85; // Mock previous month for comparison
+  const marginChange = grossMargin - previousMargin;
   
   return (
     <Card className="bg-background border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          Gross Margin
+          Payment Rate
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold">58%</div>
-          <div className="flex items-center text-sm text-blue-500">
-            <span>+2.3% vs LM</span>
-            <ArrowUpRight className="ml-1 h-4 w-4" />
+          <div className="text-2xl font-bold">{grossMargin.toFixed(1)}%</div>
+          <div className={`flex items-center text-sm ${marginChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <span>{marginChange >= 0 ? '+' : ''}{marginChange.toFixed(1)}% vs LM</span>
+            {marginChange >= 0 ? (
+              <ArrowUpRight className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowDownRight className="ml-1 h-4 w-4" />
+            )}
           </div>
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          55.7% previous month
+          {analytics.paidInvoices} of {analytics.totalInvoices} invoices paid
         </div>
       </CardContent>
     </Card>
