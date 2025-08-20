@@ -187,10 +187,13 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
             <CardContent className="py-2 space-y-2">
               {actions.map((action) => {
                 const permissionKey = `${module.name}:${action.name}`;
-                const isChecked = userEffectivePermissions.includes(permissionKey) || 
-                                userEffectivePermissions.includes('*:*') || 
-                                userEffectivePermissions.includes(`${module.name}:*`) ||
-                                userEffectivePermissions.includes(`*:${action.name}`);
+                // For new users, check against user.permissions array instead of userEffectivePermissions
+                const isChecked = (!user.id || user.id === 'new') 
+                  ? (user.permissions || []).includes(permissionKey)
+                  : (userEffectivePermissions.includes(permissionKey) || 
+                     userEffectivePermissions.includes('*:*') || 
+                     userEffectivePermissions.includes(`${module.name}:*`) ||
+                     userEffectivePermissions.includes(`*:${action.name}`));
                 
                 return (
                   <div key={action.id} className="flex items-center justify-between">
@@ -210,7 +213,8 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
                         console.log('Switch should be enabled:', customPermissionsEnabled && !isLoading);
                         onPermissionToggle(permissionKey);
                       }}
-                      disabled={!customPermissionsEnabled} // Only disable if custom permissions are not enabled
+                      disabled={!customPermissionsEnabled || isLoading} // Disable if custom permissions not enabled or loading
+                      className={!customPermissionsEnabled ? "opacity-50" : ""}
                     />
                   </div>
                 );
