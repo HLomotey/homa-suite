@@ -130,11 +130,11 @@ export const fetchRoles = async (): Promise<FrontendRole[]> => {
 export const fetchRoleById = async (
   id: string
 ): Promise<FrontendRole> => {
-  // Fetch role data
-  const { data: roleData, error: roleError } = await supabase
+  // Use admin client to bypass RLS issues
+  const { data: roleData, error: roleError } = await supabaseAdmin
     .from("roles")
     .select("*")
-    .eq("id", id) // Use string ID directly (UUID)
+    .eq("id", parseInt(id)) // Convert to integer since roles table uses integer IDs
     .single();
 
   if (roleError) {
@@ -142,18 +142,11 @@ export const fetchRoleById = async (
     throw new Error(roleError.message);
   }
 
-  // Fetch role permissions
-  const { data: permissionsData, error: permissionsError } = await supabase
+  // Fetch role permissions using admin client
+  const { data: permissionsData, error: permissionsError } = await supabaseAdmin
     .from("role_permissions")
-    .select(`
-      permission_id,
-      permissions:permission_id (
-        id,
-        name,
-        display_name
-      )
-    `)
-    .eq("role_id", parseInt(id)); // Convert string ID to number for database query
+    .select("permission_id")
+    .eq("role_id", parseInt(id)); // Use integer ID for role_permissions
 
   if (permissionsError) {
     console.error(`Error fetching permissions for role ${id}:`, permissionsError);
@@ -271,7 +264,7 @@ export const updateRole = async (
   const { error: deleteError } = await supabaseAdmin
     .from("role_permissions")
     .delete()
-    .eq("role_id", id); // Use string ID directly (UUID)
+    .eq("role_id", parseInt(id)); // Convert to integer for role_permissions
 
   if (deleteError) {
     console.error(`Error deleting role permissions with ID ${id}:`, deleteError);
@@ -280,7 +273,7 @@ export const updateRole = async (
   const { data, error } = await supabaseAdmin
     .from("roles")
     .update(dbRole)
-    .eq("id", id) // Use string ID directly (UUID)
+    .eq("id", parseInt(id)) // Convert to integer for roles table
     .select()
     .single();
 
@@ -302,7 +295,7 @@ export const deleteRole = async (id: string): Promise<void> => {
   const { error } = await supabaseAdmin
     .from("roles")
     .delete()
-    .eq("id", id); // Use string ID directly (UUID)
+    .eq("id", parseInt(id)); // Convert to integer for roles table
 
   if (error) {
     console.error(`Error deleting role with ID ${id}:`, error);
@@ -321,24 +314,24 @@ export const updateRolePermissions = async (
   permissions: string[]
 ): Promise<FrontendRole> => {
   // First, remove existing permissions for this role
-  const { data: permissionsData, error: permissionsError } = await supabase
+  const { error: deleteError } = await supabaseAdmin
     .from("role_permissions")
-    .select("permission_id")
-    .eq("role_id", id); // Use string ID directly (UUID)
+    .delete()
+    .eq("role_id", parseInt(id)); // Convert to integer for role_permissions
 
-  if (permissionsError) {
-    console.error(`Error removing existing permissions for role ${id}:`, permissionsError);
-    throw new Error(permissionsError.message);
+  if (deleteError) {
+    console.error(`Error removing existing permissions for role ${id}:`, deleteError);
+    throw new Error(deleteError.message);
   }
 
   // Then add new permissions
   if (permissions.length > 0) {
-    // Filter out invalid permission IDs (UUIDs)
+    // Filter out invalid permission IDs
     const validPermissions = permissions
       .filter(permissionId => permissionId && permissionId !== '')
       .map(permissionId => ({
-        role_id: id, // role_id is UUID
-        permission_id: permissionId // permission_id is UUID
+        role_id: parseInt(id), // role_id is integer
+        permission_id: parseInt(permissionId) // permission_id is integer
       }));
 
     if (validPermissions.length > 0) {
