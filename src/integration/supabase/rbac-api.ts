@@ -281,7 +281,7 @@ export const userRolesApi = {
         user_id,
         is_primary,
         user:auth.users!user_id(id, email),
-        profiles:profiles!user_id(name, avatar)
+        profiles:profiles!id(full_name)
       `)
       .eq('role_id', roleId);
     
@@ -291,8 +291,8 @@ export const userRolesApi = {
     return (data || []).map((item: any) => ({
       id: item.user.id,
       email: item.user.email,
-      name: item.profiles?.name || '',
-      avatar: item.profiles?.avatar || '',
+      name: item.profiles?.full_name || '',
+      avatar: '', // No avatar column in simplified profiles table
       is_primary_role: item.is_primary
     }));
   },

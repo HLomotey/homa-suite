@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
@@ -47,15 +47,15 @@ const defaultPermissions: Permission[] = [
   },
 ];
 
-// Helper function to convert roles to permissions format
-const rolesToPermissions = (roles: FrontendRole[], userPermissions: string[] = []): Permission[] => {
+// Helper function to convert roles to role assignment format
+const rolesToRoleAssignments = (roles: FrontendRole[], userRoles: string[] = []): Permission[] => {
   if (!roles || roles.length === 0) return defaultPermissions;
   
   return roles.map(role => ({
     id: role.id,
     name: role.name,
-    description: role.description || `Permission for ${role.name}`,
-    checked: userPermissions.includes(role.id)
+    description: role.description || `Role: ${role.name}`,
+    checked: userRoles.includes(role.id)
   }));
 };
 
@@ -74,18 +74,19 @@ export function UserPermissions() {
   const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
   const isLoading = fetchingUser || updatingUser || fetchingRoles;
   
-  // Load roles and user permissions when data is available
+  // Load roles and user role when data is available
   useEffect(() => {
     if (roles && roles.length > 0 && user) {
-      // Convert roles to permissions format and check which ones the user has
-      const mappedPermissions = rolesToPermissions(roles, user.permissions);
-      setPermissions(mappedPermissions);
-    } else if (user && user.permissions) {
+      // Convert roles to role assignment format and check which one the user has
+      const userRoleIds = user.roleId ? [user.roleId] : [];
+      const mappedRoles = rolesToRoleAssignments(roles, userRoleIds);
+      setPermissions(mappedRoles);
+    } else if (user && user.roleId) {
       // Fallback to default permissions if roles aren't available
       setPermissions(prevPermissions => 
         prevPermissions.map(permission => ({
           ...permission,
-          checked: user.permissions?.includes(permission.id) || false
+          checked: permission.id === user.roleId
         }))
       );
     }
@@ -115,38 +116,46 @@ export function UserPermissions() {
     }
   }, [rolesError, toast]);
   
-  const handlePermissionChange = (permissionId: string, checked: boolean) => {
-    setPermissions(permissions.map(permission => 
-      permission.id === permissionId ? { ...permission, checked } : permission
-    ));
+  const handleRoleChange = (roleId: string) => {
+    // Only one role can be selected at a time
+    setPermissions(permissions.map(permission => ({
+      ...permission,
+      checked: permission.id === roleId
+    })));
   };
   
   const handleSave = async () => {
     if (!user || !user.id) return;
     
     try {
-      // Extract permission IDs that are checked
-      const selectedPermissions = permissions
-        .filter(p => p.checked)
-        .map(p => p.id);
+      // Extract the single role ID that is checked (only one role per user)
+      const selectedRole = permissions.find(p => p.checked);
       
-      // Update user permissions
-      await update(user.id, {
-        permissions: selectedPermissions
-      });
+      if (!selectedRole) {
+        toast({
+          title: "No role selected",
+          description: "Please select a role for the user.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Update user role using the enhanced user API
+      const { updateUserRole } = await import("@/integration/supabase/enhanced-user-api");
+      await updateUserRole(user.id, selectedRole.id);
       
       toast({
-        title: "Permissions updated",
-        description: `Permissions for ${user?.name} have been updated successfully.`,
+        title: "Role updated",
+        description: `Role for ${user?.name || user?.email} has been updated successfully.`,
       });
       
       // Navigate back to the user list
       navigate("/users");
     } catch (error) {
-      console.error("Error updating permissions:", error);
+      console.error("Error updating role:", error);
       toast({
         title: "Error",
-        description: "Failed to update permissions. Please try again.",
+        description: "Failed to update role. Please try again.",
         variant: "destructive"
       });
     }
@@ -187,9 +196,9 @@ export function UserPermissions() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <CardTitle className="text-white text-xl">User Permissions</CardTitle>
+            <CardTitle className="text-white text-xl">User Role Assignment</CardTitle>
             <CardDescription className="text-white/60">
-              Manage permissions for {user.name}
+              Assign a role to {user.name || user.email}
             </CardDescription>
           </div>
         </div>
@@ -214,35 +223,37 @@ export function UserPermissions() {
             </>
           ) : permissions.length === 0 ? (
             <div className="text-center py-4 text-white/60">
-              No permissions available
+              No roles available
             </div>
           ) : (
-            // Show actual permissions
-            permissions.map((permission) => (
-              <div 
-                key={permission.id} 
-                className="flex items-start space-x-2 rounded-md border border-white/10 p-4"
-              >
-                <Checkbox
-                  id={permission.id}
-                  checked={permission.checked}
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange(permission.id, checked === true)
-                  }
-                />
-                <div className="space-y-1 leading-none">
-                  <Label
-                    htmlFor={permission.id}
-                    className="text-sm font-medium leading-none text-white cursor-pointer"
-                  >
-                    {permission.name}
-                  </Label>
-                  <p className="text-sm text-white/60">
-                    {permission.description}
-                  </p>
+            // Show actual roles as radio buttons
+            <RadioGroup 
+              value={permissions.find(p => p.checked)?.id || ""} 
+              onValueChange={handleRoleChange}
+            >
+              {permissions.map((permission) => (
+                <div 
+                  key={permission.id} 
+                  className="flex items-start space-x-2 rounded-md border border-white/10 p-4"
+                >
+                  <RadioGroupItem
+                    value={permission.id}
+                    id={permission.id}
+                  />
+                  <div className="space-y-1 leading-none">
+                    <Label
+                      htmlFor={permission.id}
+                      className="text-sm font-medium leading-none text-white cursor-pointer"
+                    >
+                      {permission.name}
+                    </Label>
+                    <p className="text-sm text-white/60">
+                      {permission.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </RadioGroup>
           )}
         </div>
       </CardContent>

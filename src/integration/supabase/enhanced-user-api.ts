@@ -66,33 +66,76 @@ const getUserEmails = async (userIds: string[]): Promise<Map<string, string>> =>
 };
 
 /**
- * Get all users with their role information
+ * Get all users with their role information and profile data
  */
 export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
   try {
-    const { data: profiles, error } = await supabase
+    console.log('🔍 Fetching users with roles...');
+    
+    // Get all profiles first
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
+      .select('*')
+
       .select(`
         *,
         user_roles!inner(
           role:roles(*)
         )
       `)
+
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching users with roles:', error);
-      return { users: [], total: 0, error };
+    if (profilesError) {
+      console.error('❌ Error fetching profiles:', profilesError);
+      return { users: [], total: 0, error: profilesError };
     }
 
-    // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
+    console.log(`✅ Found ${profiles?.length || 0} profiles`);
+
+    // Get user emails from auth.users (if needed)
+    const userIds = profiles?.map(p => p.id) || [];
     const emailMap = await getUserEmails(userIds);
 
-    // Map profiles to frontend users
+    console.log('📋 Sample profile data:', profiles?.[0]);
+
+    // Get role information separately if role_id exists
+    const roleIds = profiles?.map(p => p.role_id).filter(Boolean) || [];
+    let rolesMap = new Map();
+    
+    if (roleIds.length > 0) {
+      const { data: roles, error: rolesError } = await supabase
+        .from('roles')
+        .select('*')
+        .in('id', roleIds);
+        
+      if (!rolesError && roles) {
+        roles.forEach(role => rolesMap.set(role.id, role));
+      }
+    }
+
+    // Transform the data to match FrontendUser interface
     const users: FrontendUser[] = (profiles || []).map(profile => {
-      const email = emailMap.get(profile.user_id) || `user-${profile.user_id.slice(0, 8)}@example.com`;
-      return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
+      const email = emailMap.get(profile.id) || profile.email || `user-${profile.id.slice(0, 8)}@example.com`;
+      const role = rolesMap.get(profile.role_id);
+      
+      return {
+        id: profile.id,
+        name: profile?.full_name || profile?.name || '',
+        email: email,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        department: profile?.department || '',
+        role: role?.name || 'No Role',
+        roleId: profile?.role_id || '',
+        status: profile?.status || 'active',
+        lastActive: profile?.last_active || new Date().toISOString(),
+        createdAt: profile?.created_at || new Date().toISOString(),
+        updatedAt: profile?.updated_at || new Date().toISOString(),
+        avatar: profile?.avatar_url || '',
+        permissions: [] // Will be populated separately if needed
+      };
     });
 
     return {
@@ -107,12 +150,34 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
 };
 
 /**
- * Get users filtered by role
+ * Get users filtered by role with profile data
  */
 export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuery> => {
   try {
-    const { data: profiles, error } = await supabase
+    // Get all users with roles first, then filter
+    const { data: usersWithRoles, error: rolesError } = await supabase
+      .rpc('get_users_with_roles');
+
+    if (rolesError) {
+      console.error('Error fetching users by role:', rolesError);
+      return { users: [], total: 0, error: rolesError };
+    }
+
+    // Filter by role name
+    const filteredUsers = (usersWithRoles || []).filter(userRole => 
+      userRole.role_name === roleName
+    );
+
+    // Get user IDs to fetch their profiles
+    const userIds = filteredUsers.map(user => user.id);
+    
+    // Fetch profiles for filtered users
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
+      .select('*')
+      .in('id', userIds);
+
       .select(`
         *,
         user_roles!inner(
@@ -122,19 +187,37 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
       .eq('user_roles.role.name', roleName)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching users by role:', error);
-      return { users: [], total: 0, error };
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      // Continue without profiles rather than failing completely
     }
 
-    // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
-    const emailMap = await getUserEmails(userIds);
+    // Create a map of profiles by user ID for easy lookup
+    const profilesMap = new Map();
+    (profiles || []).forEach(profile => {
+      profilesMap.set(profile.id, profile);
+    });
 
-    // Map profiles to frontend users
-    const users: FrontendUser[] = (profiles || []).map(profile => {
-      const email = emailMap.get(profile.user_id) || `user-${profile.user_id.slice(0, 8)}@example.com`;
-      return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
+    // Transform the data to match FrontendUser interface
+    const users: FrontendUser[] = filteredUsers.map(userRole => {
+      const profile = profilesMap.get(userRole.id);
+      
+      return {
+        id: userRole.id,
+        name: profile?.full_name || profile?.name || '',
+        email: userRole.email || profile?.email || `user-${userRole.id.slice(0, 8)}@example.com`,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        department: profile?.department || '',
+        role: userRole.role_name || 'No Role',
+        roleId: userRole.role_id?.toString() || '',
+        status: profile?.status || 'active',
+        lastActive: profile?.last_active || new Date().toISOString(),
+        createdAt: profile?.created_at || new Date().toISOString(),
+        updatedAt: profile?.updated_at || new Date().toISOString(),
+        avatar: profile?.avatar_url || '',
+        permissions: []
+      };
     });
 
     return {
@@ -149,12 +232,30 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
 };
 
 /**
- * Get users filtered by department
+ * Get users filtered by department with profile data
  */
 export const getUsersByDepartment = async (department: string): Promise<EnhancedUserQuery> => {
   try {
-    const { data: profiles, error } = await supabase
+    // First get all users with roles
+    const { data: usersWithRoles, error: rolesError } = await supabase
+      .rpc('get_users_with_roles');
+
+    if (rolesError) {
+      console.error('Error fetching users with roles:', rolesError);
+      return { users: [], total: 0, error: rolesError };
+    }
+
+    // Get all user IDs to fetch their profiles
+    const userIds = (usersWithRoles || []).map(user => user.id);
+    
+    // Fetch profiles for all users and filter by department
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
+
+      .select('*')
+      .in('id', userIds)
+      .eq('department', department);
+
       .select(`
         *,
         user_roles(
@@ -164,19 +265,43 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
       .eq('department', department)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching users by department:', error);
-      return { users: [], total: 0, error };
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      return { users: [], total: 0, error: profilesError };
     }
 
-    // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
-    const emailMap = await getUserEmails(userIds);
+    // Create a map of profiles by user ID for easy lookup
+    const profilesMap = new Map();
+    (profiles || []).forEach(profile => {
+      profilesMap.set(profile.id, profile);
+    });
 
-    // Map profiles to frontend users
-    const users: FrontendUser[] = (profiles || []).map(profile => {
-      const email = emailMap.get(profile.user_id) || `user-${profile.user_id.slice(0, 8)}@example.com`;
-      return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
+    // Filter users with roles to only include those with matching department profiles
+    const filteredUsers = (usersWithRoles || []).filter(userRole => 
+      profilesMap.has(userRole.id)
+    );
+
+    // Transform the data to match FrontendUser interface
+    const users: FrontendUser[] = filteredUsers.map(userRole => {
+      const profile = profilesMap.get(userRole.id);
+      
+      return {
+        id: userRole.id,
+        name: profile?.full_name || profile?.name || '',
+        email: userRole.email || profile?.email || `user-${userRole.id.slice(0, 8)}@example.com`,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        department: profile?.department || '',
+        role: userRole.role_name || 'No Role',
+        roleId: userRole.role_id?.toString() || '',
+        status: profile?.status || 'active',
+        lastActive: profile?.last_active || new Date().toISOString(),
+        createdAt: profile?.created_at || new Date().toISOString(),
+        updatedAt: profile?.updated_at || new Date().toISOString(),
+        avatar: profile?.avatar_url || '',
+        permissions: []
+      };
     });
 
     return {
@@ -191,10 +316,15 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
 };
 
 /**
- * Search users by name, email, or department
+ * Search users by name, email, or department with profile data
  */
 export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery> => {
   try {
+
+    // First get all users with roles
+    const { data: usersWithRoles, error: rolesError } = await supabase
+      .rpc('get_users_with_roles');
+
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select(`
@@ -206,38 +336,73 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
       .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error searching users:', error);
-      return { users: [], total: 0, error };
+
+    if (rolesError) {
+      console.error('Error fetching users with roles:', rolesError);
+      return { users: [], total: 0, error: rolesError };
     }
 
-    // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
-    const emailMap = await getUserEmails(userIds);
+    // Get all user IDs to fetch their profiles
+    const userIds = (usersWithRoles || []).map(user => user.id);
+    
+    // Search profiles by name, department, or full_name
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', userIds)
+      .or(`full_name.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
 
-    // Filter by email if search term looks like email
-    const emailMatches = new Set<string>();
-    emailMap.forEach((email, userId) => {
-      if (email.toLowerCase().includes(searchTerm.toLowerCase())) {
-        emailMatches.add(userId);
-      }
+    if (profilesError) {
+      console.error('Error searching profiles:', profilesError);
+      // Continue without profiles rather than failing completely
+    }
+
+    // Create a map of profiles by user ID for easy lookup
+    const profilesMap = new Map();
+    (profiles || []).forEach(profile => {
+      profilesMap.set(profile.id, profile);
     });
 
-    // Combine profile matches and email matches
-    const allMatchedProfiles = profiles || [];
-    const emailMatchedProfiles = Array.from(emailMatches).map(userId => {
-      return allMatchedProfiles.find(p => p.user_id === userId);
-    }).filter(Boolean);
-
-    // Remove duplicates
-    const uniqueProfiles = [...allMatchedProfiles, ...emailMatchedProfiles].filter((profile, index, self) => 
-      index === self.findIndex(p => p?.user_id === profile?.user_id)
+    // Also search by email in the users with roles data
+    const emailMatches = (usersWithRoles || []).filter(userRole => 
+      userRole.email && userRole.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Map profiles to frontend users
-    const users: FrontendUser[] = uniqueProfiles.map(profile => {
-      const email = emailMap.get(profile!.user_id) || `user-${profile!.user_id.slice(0, 8)}@example.com`;
-      return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
+    // Combine profile matches and email matches
+    const profileMatchedUsers = (usersWithRoles || []).filter(userRole => 
+      profilesMap.has(userRole.id)
+    );
+
+    // Remove duplicates by creating a Set of user IDs
+    const matchedUserIds = new Set([
+      ...profileMatchedUsers.map(u => u.id),
+      ...emailMatches.map(u => u.id)
+    ]);
+
+    const filteredUsers = (usersWithRoles || []).filter(userRole => 
+      matchedUserIds.has(userRole.id)
+    );
+
+    // Transform the data to match FrontendUser interface
+    const users: FrontendUser[] = filteredUsers.map(userRole => {
+      const profile = profilesMap.get(userRole.id);
+      
+      return {
+        id: userRole.id,
+        name: profile?.full_name || profile?.name || '',
+        email: userRole.email || profile?.email || `user-${userRole.id.slice(0, 8)}@example.com`,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        department: profile?.department || '',
+        role: userRole.role_name || 'No Role',
+        roleId: userRole.role_id?.toString() || '',
+        status: profile?.status || 'active',
+        lastActive: profile?.last_active || new Date().toISOString(),
+        createdAt: profile?.created_at || new Date().toISOString(),
+        updatedAt: profile?.updated_at || new Date().toISOString(),
+        avatar: profile?.avatar_url || '',
+        permissions: []
+      };
     });
 
     return {
@@ -252,18 +417,35 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
 };
 
 /**
- * Update user role
+ * Update user role - now uses user_roles junction table
  */
 export const updateUserRole = async (userId: string, roleId: string): Promise<{ success: boolean; error?: Error }> => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role_id: roleId })
-      .eq('user_id', userId);
+    // First, remove any existing primary role for this user
+    const { error: deleteError } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('is_primary', true);
 
-    if (error) {
-      console.error('Error updating user role:', error);
-      return { success: false, error };
+    if (deleteError) {
+      console.error('Error removing existing role:', deleteError);
+      return { success: false, error: deleteError };
+    }
+
+    // Then add the new primary role
+    const { error: insertError } = await supabase
+      .from('user_roles')
+      .insert({
+        user_id: userId,
+        role_id: parseInt(roleId),
+        is_primary: true,
+        assigned_by: userId // For now, user assigns their own role
+      });
+
+    if (insertError) {
+      console.error('Error assigning new role:', insertError);
+      return { success: false, error: insertError };
     }
 
     return { success: true };

@@ -4,11 +4,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { modulesApi, actionsApi } from '@/integration/supabase/permissions-api';
-import { Module, Action } from '@/integration/supabase/permissions-types';
-import { useUpdateRolePermissions } from '@/hooks/role/useRole';
+import { permissionsApi, rolesApi } from '@/integration/supabase/permissions-api';
+import { PermissionWithDetails } from '@/integration/supabase/permissions-types';
+import { updateRolePermissions } from '@/hooks/role/api';
 import { Separator } from '@/components/ui/separator';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 
 interface RolePermissionsTabProps {
   roleId: string;
@@ -22,27 +22,30 @@ export const RolePermissionsTab: React.FC<RolePermissionsTabProps> = ({
   onPermissionsUpdate
 }) => {
   const { toast } = useToast();
-  const { updatePermissions, loading: updating } = useUpdateRolePermissions();
   
-  const [modules, setModules] = useState<Module[]>([]);
-  const [actions, setActions] = useState<Action[]>([]);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(permissions || []);
+  const [availablePermissions, setAvailablePermissions] = useState<PermissionWithDetails[]>([]);
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Fetch modules and actions
+  // Fetch all available permissions and current role permissions
   useEffect(() => {
     const fetchPermissionsData = async () => {
       try {
         setLoadingData(true);
         
-        const [modulesResult, actionsResult] = await Promise.all([
-          modulesApi.getAll(),
-          actionsApi.getAll()
+        const [allPermissions, roleWithPermissions] = await Promise.all([
+          permissionsApi.getAll(),
+          rolesApi.getWithPermissions(roleId)
         ]);
         
-        setModules(modulesResult);
-        setActions(actionsResult);
+        setAvailablePermissions(allPermissions);
+        
+        // Set currently selected permissions
+        const currentPermissionIds = roleWithPermissions?.permissions?.map(p => p.id) || [];
+        setSelectedPermissionIds(currentPermissionIds);
+        
       } catch (error) {
         console.error('Error fetching permissions data:', error);
         toast({
@@ -55,52 +58,56 @@ export const RolePermissionsTab: React.FC<RolePermissionsTabProps> = ({
       }
     };
 
-    fetchPermissionsData();
-  }, [toast]);
-
-  // Update selected permissions when props change
-  useEffect(() => {
-    setSelectedPermissions(permissions || []);
-    setHasChanges(false);
-  }, [permissions]);
+    if (roleId) {
+      fetchPermissionsData();
+    }
+  }, [roleId, toast]);
 
   // Handle permission toggle
-  const handlePermissionToggle = (permissionKey: string) => {
-    const isSelected = selectedPermissions.includes(permissionKey);
+  const handlePermissionToggle = (permissionId: string) => {
+    const isSelected = selectedPermissionIds.includes(permissionId);
     
-    const newPermissions = isSelected
-      ? selectedPermissions.filter(p => p !== permissionKey)
-      : [...selectedPermissions, permissionKey];
+    const newPermissionIds = isSelected
+      ? selectedPermissionIds.filter(p => p !== permissionId)
+      : [...selectedPermissionIds, permissionId];
     
-    setSelectedPermissions(newPermissions);
+    setSelectedPermissionIds(newPermissionIds);
     setHasChanges(true);
   };
 
   // Handle module toggle (all permissions for a module)
   const handleModuleToggle = (moduleName: string) => {
-    const modulePermissions = actions.map(action => `${moduleName}:${action.name}`);
-    const allModulePermissionsSelected = modulePermissions.every(p => selectedPermissions.includes(p));
+    const modulePermissions = availablePermissions.filter(p => p.module?.name === moduleName);
+    const modulePermissionIds = modulePermissions.map(p => p.id);
+    const allModulePermissionsSelected = modulePermissionIds.every(id => selectedPermissionIds.includes(id));
     
-    let newPermissions: string[];
+    let newPermissionIds: string[];
     
     if (allModulePermissionsSelected) {
       // Remove all module permissions
-      newPermissions = selectedPermissions.filter(p => !p.startsWith(`${moduleName}:`));
+      newPermissionIds = selectedPermissionIds.filter(id => !modulePermissionIds.includes(id));
     } else {
       // Add all module permissions
-      const existingNonModulePermissions = selectedPermissions.filter(p => !p.startsWith(`${moduleName}:`));
-      newPermissions = [...existingNonModulePermissions, ...modulePermissions];
+      const existingNonModulePermissions = selectedPermissionIds.filter(id => !modulePermissionIds.includes(id));
+      newPermissionIds = [...existingNonModulePermissions, ...modulePermissionIds];
     }
     
-    setSelectedPermissions(newPermissions);
+    setSelectedPermissionIds(newPermissionIds);
     setHasChanges(true);
   };
 
   // Save changes
   const handleSaveChanges = async () => {
     try {
-      await updatePermissions(roleId, selectedPermissions);
-      onPermissionsUpdate(selectedPermissions);
+      setUpdating(true);
+      await updateRolePermissions(roleId, selectedPermissionIds);
+      
+      // Update the parent component with permission keys
+      const selectedPermissionKeys = availablePermissions
+        .filter(p => selectedPermissionIds.includes(p.id))
+        .map(p => p.permission_key);
+      onPermissionsUpdate(selectedPermissionKeys);
+      
       setHasChanges(false);
       toast({
         title: 'Permissions updated',
@@ -113,18 +120,32 @@ export const RolePermissionsTab: React.FC<RolePermissionsTabProps> = ({
         description: 'Failed to update permissions',
         variant: 'destructive'
       });
+    } finally {
+      setUpdating(false);
     }
   };
 
   // Reset changes
-  const handleResetChanges = () => {
-    setSelectedPermissions(permissions || []);
-    setHasChanges(false);
+  const handleResetChanges = async () => {
+    try {
+      setLoadingData(true);
+      const roleWithPermissions = await rolesApi.getWithPermissions(roleId);
+      const currentPermissionIds = roleWithPermissions?.permissions?.map(p => p.id) || [];
+      setSelectedPermissionIds(currentPermissionIds);
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Error resetting permissions:', error);
+    } finally {
+      setLoadingData(false);
+    }
   };
 
   if (loadingData) {
     return (
-      <div className="text-white/60 text-center py-8">Loading permissions data...</div>
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-white/60 mr-2" />
+        <span className="text-white/60">Loading permissions data...</span>
+      </div>
     );
   }
 
@@ -155,38 +176,41 @@ export const RolePermissionsTab: React.FC<RolePermissionsTabProps> = ({
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {modules.map((module) => {
-          const modulePermissions = actions.map(action => `${module.name}:${action.name}`);
-          const allModulePermissionsSelected = modulePermissions.every(p => selectedPermissions.includes(p));
-          const someModulePermissionsSelected = modulePermissions.some(p => selectedPermissions.includes(p));
+        {/* Group permissions by module */}
+        {Array.from(new Set(availablePermissions.map(p => p.module?.name).filter(Boolean))).map((moduleName) => {
+          const modulePermissions = availablePermissions.filter(p => p.module?.name === moduleName);
+          const modulePermissionIds = modulePermissions.map(p => p.id);
+          const allModulePermissionsSelected = modulePermissionIds.every(id => selectedPermissionIds.includes(id));
+          const someModulePermissionsSelected = modulePermissionIds.some(id => selectedPermissionIds.includes(id));
           
           return (
-            <Card key={module.id} className="bg-black/20 border-white/5">
+            <Card key={moduleName} className="bg-black/20 border-white/5">
               <CardHeader className="py-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm text-white">{module.display_name}</CardTitle>
+                <CardTitle className="text-sm text-white">
+                  {modulePermissions[0]?.module?.display_name || moduleName}
+                </CardTitle>
                 <Switch 
                   checked={allModulePermissionsSelected}
-                  onCheckedChange={() => handleModuleToggle(module.name)}
+                  onCheckedChange={() => handleModuleToggle(moduleName)}
                   className={someModulePermissionsSelected && !allModulePermissionsSelected ? "data-[state=checked]:bg-blue-600/50" : ""}
                 />
               </CardHeader>
               <CardContent className="py-2 space-y-2">
-                {actions.map((action) => {
-                  const permissionKey = `${module.name}:${action.name}`;
-                  const isChecked = selectedPermissions.includes(permissionKey);
+                {modulePermissions.map((permission) => {
+                  const isChecked = selectedPermissionIds.includes(permission.id);
                   
                   return (
-                    <div key={action.id} className="flex items-center justify-between">
+                    <div key={permission.id} className="flex items-center justify-between">
                       <Label 
-                        htmlFor={`perm-${module.name}-${action.name}`} 
+                        htmlFor={`perm-${permission.id}`} 
                         className="text-white/80 text-sm"
                       >
-                        {action.display_name} {module.display_name}
+                        {permission.display_name}
                       </Label>
                       <Switch 
-                        id={`perm-${module.name}-${action.name}`}
+                        id={`perm-${permission.id}`}
                         checked={isChecked}
-                        onCheckedChange={() => handlePermissionToggle(permissionKey)}
+                        onCheckedChange={() => handlePermissionToggle(permission.id)}
                       />
                     </div>
                   );
@@ -197,9 +221,24 @@ export const RolePermissionsTab: React.FC<RolePermissionsTabProps> = ({
         })}
       </div>
       
-      {modules.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-white/60">No permission modules found. Please check your database configuration.</p>
+      {availablePermissions.length === 0 && (
+        <div className="text-center py-8 space-y-4">
+          <p className="text-white/60">No permissions found in the database.</p>
+          <div className="text-sm text-white/40">
+            <p>This could mean:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>The permissions table hasn't been populated yet</li>
+              <li>The RBAC migration needs to be applied</li>
+              <li>There's a database connection issue</li>
+            </ul>
+          </div>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+            className="border-white/20 hover:bg-white/10"
+          >
+            Refresh Page
+          </Button>
         </div>
       )}
       
