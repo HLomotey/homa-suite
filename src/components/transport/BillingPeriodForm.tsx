@@ -7,13 +7,13 @@ import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Form,
   FormControl,
@@ -115,18 +115,18 @@ export function BillingPeriodForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-black/90 border-white/10 text-white">
-        <DialogHeader>
-          <DialogTitle>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-[425px] bg-black/90 border-white/10 text-white">
+        <SheetHeader>
+          <SheetTitle>
             {editingPeriod ? "Edit Billing Period" : "Create Billing Period"}
-          </DialogTitle>
-          <DialogDescription className="text-white/60">
+          </SheetTitle>
+          <SheetDescription className="text-white/60">
             {editingPeriod
               ? "Update the billing period details below."
               : "Enter the details for the new billing period."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -257,7 +257,7 @@ export function BillingPeriodForm({
               )}
             />
 
-            <DialogFooter>
+            <SheetFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -269,10 +269,10 @@ export function BillingPeriodForm({
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Saving..." : editingPeriod ? "Update" : "Create"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
