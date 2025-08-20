@@ -221,44 +221,91 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
   try {
     console.log('🔍 Fetching users with roles...');
     
-    // Get all profiles with role information
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-
-
+    // Use the user_management_view we created earlier for a cleaner approach
+    const { data: userManagementData, error: viewError } = await supabase
+      .from('user_management_view')
       .select('*')
+      .order('auth_created_at', { ascending: false });
 
-      .select(`
-        *,
-        user_roles!inner(
-          role:roles(*)
-        )
-      `)
-      .order('created_at', { ascending: false });
+    if (viewError) {
+      console.error('❌ Error fetching from user_management_view:', viewError);
+      
+      // Fallback: Get profiles and join manually with user_roles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (profilesError) {
-      console.error('❌ Error fetching profiles:', profilesError);
-      return { users: [], total: 0, error: profilesError };
+      if (profilesError) {
+        console.error('❌ Error fetching profiles:', profilesError);
+        return { users: [], total: 0, error: profilesError };
+      }
+
+      // Get user roles separately
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          is_primary,
+          roles (
+            id,
+            name,
+            display_name,
+            permissions
+          )
+        `)
+        .eq('is_primary', true);
+
+      if (rolesError) {
+        console.error('❌ Error fetching user roles:', rolesError);
+      }
+
+      // Create a map of user roles for easy lookup
+      const roleMap = new Map();
+      (userRoles || []).forEach(ur => {
+        roleMap.set(ur.user_id, ur.roles);
+      });
+
+      // Transform profiles with role data
+      const users: FrontendUser[] = (profiles || []).map(profile => {
+        const userRole = roleMap.get(profile.id);
+        
+        return {
+          id: profile.id,
+          name: profile.full_name || profile.first_name || profile.last_name || profile.email?.split('@')[0] || '',
+          email: profile.email || `user-${profile.id.slice(0, 8)}@example.com`,
+          role: userRole?.name || 'No Role',
+          roleId: userRole?.id?.toString() || '',
+          department: profile.department || '',
+          status: 'active', // Default to active since we don't have status in profiles
+          lastActive: new Date().toISOString(),
+          permissions: userRole?.permissions || [],
+          createdAt: profile.created_at || new Date().toISOString(),
+        };
+      });
+
+      return {
+        users,
+        total: users.length,
+        error: null
+      };
     }
 
-    console.log(`✅ Found ${profiles?.length || 0} profiles`);
+    console.log(`✅ Found ${userManagementData?.length || 0} users from view`);
 
-    // Transform the data to match FrontendUser interface
-    const users: FrontendUser[] = (profiles || []).map(profile => {
-      const userRole = profile.user_roles?.[0]?.role;
-      
+    // Transform the view data to match FrontendUser interface
+    const users: FrontendUser[] = (userManagementData || []).map(userData => {
       return {
-        id: profile.id,
-        name: profile?.full_name || profile?.name || '',
-        email: profile?.email || `user-${profile.id.slice(0, 8)}@example.com`,
-        role: userRole?.name || 'No Role',
-        roleId: userRole?.id?.toString() || '',
-        department: profile?.department || '',
-        status: profile?.status === 'active' ? 'active' : 'inactive',
-        lastActive: profile?.last_active || new Date().toISOString(),
-        permissions: userRole?.permissions || [],
-        createdAt: profile?.created_at || new Date().toISOString(),
-        avatar: profile?.avatar_url || ''
+        id: userData.id,
+        name: userData.full_name || userData.email?.split('@')[0] || '',
+        email: userData.email || `user-${userData.id.slice(0, 8)}@example.com`,
+        role: userData.role_name || 'No Role',
+        roleId: userData.role_name || '',
+        department: userData.department || '',
+        status: 'active', // Default to active
+        lastActive: userData.last_sign_in_at || userData.auth_created_at,
+        permissions: [],
+        createdAt: userData.auth_created_at || new Date().toISOString(),
       };
     });
 
@@ -278,40 +325,93 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
  */
 export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuery> => {
   try {
-    // Fetch profiles with specific role
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-    
-      .select(`
-        *,
-        user_roles!inner(
-          role:roles!inner(*)
-        )
-      `)
-      .eq('user_roles.role.name', roleName)
-      .order('created_at', { ascending: false });
+    // Use the user_management_view with role filtering
+    const { data: userManagementData, error: viewError } = await supabase
+      .from('user_management_view')
+      .select('*')
+      .eq('role_name', roleName)
+      .order('auth_created_at', { ascending: false });
 
-    if (profilesError) {
-      console.error('Error fetching users by role:', profilesError);
-      return { users: [], total: 0, error: profilesError };
+    if (viewError) {
+      console.error('Error fetching users by role from view:', viewError);
+      
+      // Fallback: Manual join approach
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          is_primary,
+          roles!inner (
+            id,
+            name,
+            display_name,
+            permissions
+          )
+        `)
+        .eq('roles.name', roleName)
+        .eq('is_primary', true);
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        return { users: [], total: 0, error: rolesError };
+      }
+
+      // Get profiles for these users
+      const userIds = (userRoles || []).map(ur => ur.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        return { users: [], total: 0, error: profilesError };
+      }
+
+      // Create role map
+      const roleMap = new Map();
+      (userRoles || []).forEach(ur => {
+        roleMap.set(ur.user_id, ur.roles);
+      });
+
+      // Transform data
+      const users: FrontendUser[] = (profiles || []).map(profile => {
+        const userRole = roleMap.get(profile.id);
+        
+        return {
+          id: profile.id,
+          name: profile.full_name || profile.first_name || profile.last_name || profile.email?.split('@')[0] || '',
+          email: profile.email || `user-${profile.id.slice(0, 8)}@example.com`,
+          role: userRole?.name || 'No Role',
+          roleId: userRole?.id?.toString() || '',
+          department: profile.department || '',
+          status: 'active',
+          lastActive: new Date().toISOString(),
+          permissions: userRole?.permissions || [],
+          createdAt: profile.created_at || new Date().toISOString(),
+        };
+      });
+
+      return {
+        users,
+        total: users.length,
+        error: null
+      };
     }
 
-    // Transform the data to match FrontendUser interface
-    const users: FrontendUser[] = (profiles || []).map(profile => {
-      const userRole = profile.user_roles?.[0]?.role;
-      
+    // Transform view data
+    const users: FrontendUser[] = (userManagementData || []).map(userData => {
       return {
-        id: profile.id,
-        name: profile?.full_name || profile?.name || '',
-        email: profile?.email || `user-${profile.id.slice(0, 8)}@example.com`,
-        role: userRole?.name || 'No Role',
-        roleId: userRole?.id?.toString() || '',
-        department: profile?.department || '',
-        status: profile?.status === 'active' ? 'active' : 'inactive',
-        lastActive: profile?.last_active || new Date().toISOString(),
-        permissions: userRole?.permissions || [],
-        createdAt: profile?.created_at || new Date().toISOString(),
-        avatar: profile?.avatar_url || ''
+        id: userData.id,
+        name: userData.full_name || userData.email?.split('@')[0] || '',
+        email: userData.email || `user-${userData.id.slice(0, 8)}@example.com`,
+        role: userData.role_name || 'No Role',
+        roleId: userData.role_name || '',
+        department: userData.department || '',
+        status: 'active',
+        lastActive: userData.last_sign_in_at || userData.auth_created_at,
+        permissions: [],
+        createdAt: userData.auth_created_at || new Date().toISOString(),
       };
     });
 
@@ -331,42 +431,93 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
  */
 export const getUsersByDepartment = async (department: string): Promise<EnhancedUserQuery> => {
   try {
-    // Fetch profiles filtered by department
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-
-
-      .select(`
-        *,
-        user_roles(
-          role:roles(*)
-        )
-      `)
+    // Use the user_management_view with department filtering
+    const { data: userManagementData, error: viewError } = await supabase
+      .from('user_management_view')
+      .select('*')
       .eq('department', department)
-      .order('created_at', { ascending: false });
+      .order('auth_created_at', { ascending: false });
 
+    if (viewError) {
+      console.error('Error fetching users by department from view:', viewError);
+      
+      // Fallback: Get profiles filtered by department
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('department', department)
+        .order('created_at', { ascending: false });
 
-    if (profilesError) {
-      console.error('Error fetching users by department:', profilesError);
-      return { users: [], total: 0, error: profilesError };
+      if (profilesError) {
+        console.error('Error fetching profiles by department:', profilesError);
+        return { users: [], total: 0, error: profilesError };
+      }
+
+      // Get user roles for these users
+      const userIds = (profiles || []).map(p => p.id);
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          is_primary,
+          roles (
+            id,
+            name,
+            display_name,
+            permissions
+          )
+        `)
+        .in('user_id', userIds)
+        .eq('is_primary', true);
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+      }
+
+      // Create role map
+      const roleMap = new Map();
+      (userRoles || []).forEach(ur => {
+        roleMap.set(ur.user_id, ur.roles);
+      });
+
+      // Transform data
+      const users: FrontendUser[] = (profiles || []).map(profile => {
+        const userRole = roleMap.get(profile.id);
+        
+        return {
+          id: profile.id,
+          name: profile.full_name || profile.first_name || profile.last_name || profile.email?.split('@')[0] || '',
+          email: profile.email || `user-${profile.id.slice(0, 8)}@example.com`,
+          role: userRole?.name || 'No Role',
+          roleId: userRole?.id?.toString() || '',
+          department: profile.department || '',
+          status: 'active',
+          lastActive: new Date().toISOString(),
+          permissions: userRole?.permissions || [],
+          createdAt: profile.created_at || new Date().toISOString(),
+        };
+      });
+
+      return {
+        users,
+        total: users.length,
+        error: null
+      };
     }
 
-    // Transform the data to match FrontendUser interface
-    const users: FrontendUser[] = (profiles || []).map(profile => {
-      const userRole = profile.user_roles?.[0]?.role;
-      
+    // Transform view data
+    const users: FrontendUser[] = (userManagementData || []).map(userData => {
       return {
-        id: profile.id,
-        name: profile?.full_name || profile?.name || '',
-        email: profile?.email || `user-${profile.id.slice(0, 8)}@example.com`,
-        role: userRole?.name || 'No Role',
-        roleId: userRole?.id?.toString() || '',
-        department: profile?.department || '',
-        status: profile?.status === 'active' ? 'active' : 'inactive',
-        lastActive: profile?.last_active || new Date().toISOString(),
-        permissions: userRole?.permissions || [],
-        createdAt: profile?.created_at || new Date().toISOString(),
-        avatar: profile?.avatar_url || ''
+        id: userData.id,
+        name: userData.full_name || userData.email?.split('@')[0] || '',
+        email: userData.email || `user-${userData.id.slice(0, 8)}@example.com`,
+        role: userData.role_name || 'No Role',
+        roleId: userData.role_name || '',
+        department: userData.department || '',
+        status: 'active',
+        lastActive: userData.last_sign_in_at || userData.auth_created_at,
+        permissions: [],
+        createdAt: userData.auth_created_at || new Date().toISOString(),
       };
     });
 
@@ -386,40 +537,93 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
  */
 export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery> => {
   try {
+    // Use the user_management_view with search filtering
+    const { data: userManagementData, error: viewError } = await supabase
+      .from('user_management_view')
+      .select('*')
+      .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
+      .order('auth_created_at', { ascending: false });
 
-    // Search profiles by name, department, or full_name
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        user_roles(
-          role:roles(*)
-        )
-      `)
-      .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-      .order('created_at', { ascending: false });
+    if (viewError) {
+      console.error('Error searching users from view:', viewError);
+      
+      // Fallback: Search profiles manually
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+        .order('created_at', { ascending: false });
 
-    if (profilesError) {
-      console.error('Error searching users:', profilesError);
-      return { users: [], total: 0, error: profilesError };
+      if (profilesError) {
+        console.error('Error searching profiles:', profilesError);
+        return { users: [], total: 0, error: profilesError };
+      }
+
+      // Get user roles for these users
+      const userIds = (profiles || []).map(p => p.id);
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          is_primary,
+          roles (
+            id,
+            name,
+            display_name,
+            permissions
+          )
+        `)
+        .in('user_id', userIds)
+        .eq('is_primary', true);
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+      }
+
+      // Create role map
+      const roleMap = new Map();
+      (userRoles || []).forEach(ur => {
+        roleMap.set(ur.user_id, ur.roles);
+      });
+
+      // Transform data
+      const users: FrontendUser[] = (profiles || []).map(profile => {
+        const userRole = roleMap.get(profile.id);
+        
+        return {
+          id: profile.id,
+          name: profile.full_name || profile.first_name || profile.last_name || profile.email?.split('@')[0] || '',
+          email: profile.email || `user-${profile.id.slice(0, 8)}@example.com`,
+          role: userRole?.name || 'No Role',
+          roleId: userRole?.id?.toString() || '',
+          department: profile.department || '',
+          status: 'active',
+          lastActive: new Date().toISOString(),
+          permissions: userRole?.permissions || [],
+          createdAt: profile.created_at || new Date().toISOString(),
+        };
+      });
+
+      return {
+        users,
+        total: users.length,
+        error: null
+      };
     }
 
-    // Transform the data to match FrontendUser interface
-    const users: FrontendUser[] = (profiles || []).map(profile => {
-      const userRole = profile.user_roles?.[0]?.role;
-      
+    // Transform view data
+    const users: FrontendUser[] = (userManagementData || []).map(userData => {
       return {
-        id: profile.id,
-        name: profile?.full_name || profile?.name || '',
-        email: profile?.email || `user-${profile.id.slice(0, 8)}@example.com`,
-        role: userRole?.name || 'No Role',
-        roleId: userRole?.id?.toString() || '',
-        department: profile?.department || '',
-        status: profile?.status === 'active' ? 'active' : 'inactive',
-        lastActive: profile?.last_active || new Date().toISOString(),
-        permissions: userRole?.permissions || [],
-        createdAt: profile?.created_at || new Date().toISOString(),
-        avatar: profile?.avatar_url || ''
+        id: userData.id,
+        name: userData.full_name || userData.email?.split('@')[0] || '',
+        email: userData.email || `user-${userData.id.slice(0, 8)}@example.com`,
+        role: userData.role_name || 'No Role',
+        roleId: userData.role_name || '',
+        department: userData.department || '',
+        status: 'active',
+        lastActive: userData.last_sign_in_at || userData.auth_created_at,
+        permissions: [],
+        createdAt: userData.auth_created_at || new Date().toISOString(),
       };
     });
 
