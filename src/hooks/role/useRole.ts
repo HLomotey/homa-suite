@@ -20,14 +20,19 @@ export const useRoles = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('🔄 useRoles: Starting to fetch roles...');
       const data = await roleApi.fetchRoles();
+      console.log('✅ useRoles: Received data from API:', data);
       setRoles(data);
+      console.log('📊 useRoles: Roles state updated, count:', data.length);
     } catch (err) {
+      console.error('❌ useRoles: Error in fetchData:', err);
       setError(
         err instanceof Error ? err : new Error("An unknown error occurred")
       );
     } finally {
       setLoading(false);
+      console.log('🏁 useRoles: Fetch completed');
     }
   }, []);
 

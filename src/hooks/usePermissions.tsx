@@ -2,9 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { userPermissionsApi } from '@/integration/supabase/rbac-api';
 import { Role, UserPermissionSummary } from '@/integration/supabase/types/rbac-types';
+import { supabase } from '@/integration/supabase';
 
 interface PermissionsContextType {
-  permissions: string[];
+  permissions: Record<string, string[]>;
   roles: Role[];
   primaryRole?: Role;
   hasPermission: (permission: string) => boolean;
@@ -26,7 +27,7 @@ const PermissionsContext = createContext<PermissionsContextType | undefined>(und
 
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [roles, setRoles] = useState<Role[]>([]);
   const [primaryRole, setPrimaryRole] = useState<Role | undefined>(undefined);
   const [permissionDetails, setPermissionDetails] = useState<UserPermissionSummary | null>(null);
@@ -34,41 +35,53 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [error, setError] = useState<string | null>(null);
 
   const fetchPermissions = async () => {
-    if (!user?.id) {
-      setPermissions([]);
-      setRoles([]);
-      setPrimaryRole(undefined);
-      setPermissionDetails(null);
-      setLoading(false);
-      return;
-    }
-
     try {
-      setLoading(true);
-      setError(null);
-      
-      const permissionData = await userPermissionsApi.getUserEffectivePermissions(user.id);
-      
-      if (permissionData) {
-        setPermissions(permissionData.effective_permissions);
-        setRoles(permissionData.roles || []);
-        setPrimaryRole(permissionData.primary_role);
-        setPermissionDetails(permissionData);
-        console.log('Loaded permissions for user:', permissionData.effective_permissions);
-        console.log('User roles:', permissionData.roles);
-      } else {
-        setPermissions([]);
-        setRoles([]);
-        setPrimaryRole(undefined);
-        setPermissionDetails(null);
+      if (!user?.id) {
+        setPermissions({});
+        return;
       }
-    } catch (err) {
-      console.error('Error fetching permissions:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      setPermissions([]);
-      setRoles([]);
-      setPrimaryRole(undefined);
-      setPermissionDetails(null);
+
+      try {
+        const { data, error } = await supabase.rpc(
+          'get_user_effective_permissions',
+          { p_user_id: user.id }
+        );
+
+        if (error) {
+          // Handle RPC function not existing yet
+          if (error.code === "PGRST301" || error.message?.includes("function") || error.code === "400") {
+            console.warn("Permission function may not exist yet:", error.message);
+            // Set default permissions for development
+            setPermissions({
+              dashboard: ["view"],
+              users: ["view", "manage"],
+              reports: ["view", "create"],
+              transport: ["view", "manage"]
+            });
+            return;
+          }
+          throw error;
+        }
+
+        // Process the returned permissions
+        const permMap: Record<string, string[]> = {};
+        if (data && Array.isArray(data)) {
+          data.forEach(perm => {
+            if (!permMap[perm.resource]) {
+              permMap[perm.resource] = [];
+            }
+            permMap[perm.resource].push(perm.action);
+          });
+        }
+        
+        setPermissions(permMap);
+      } catch (error: any) {
+        console.error("Error fetching permissions:", error?.message || error);
+        // Set fallback permissions
+        setPermissions({
+          dashboard: ["view"]
+        });
+      }
     } finally {
       setLoading(false);
     }

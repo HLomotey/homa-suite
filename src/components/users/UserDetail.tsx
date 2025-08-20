@@ -312,50 +312,102 @@ export function UserDetail() {
     
     try {
       if (isNewUser) {
-        // Create Supabase Auth user using admin client
-        console.log('Creating auth user with admin client...');
+        let authUserId: string | null = null;
         
-        const authResult = await adminUserService.createAuthUser({
-          email: user.email,
-          password: defaultPassword,
-          name: user.name,
-          role: user.role,
-          department: user.department,
-          requirePasswordChange: true
-        });
+        try {
+          // Create Supabase Auth user using admin client
+          console.log('Creating auth user with admin client...');
+          
+          const authResult = await adminUserService.createAuthUser({
+            email: user.email,
+            password: defaultPassword,
+            name: user.name,
+            role: user.role,
+            department: user.department,
+            requirePasswordChange: true
+          });
 
-        if (!authResult.success) {
-          // Check if it's a duplicate email error
-          if (authResult.error?.includes('already been registered')) {
-            toast({
-              title: 'Email Already Exists',
-              description: `The email ${user.email} is already registered. Please use a different email address.`,
-              variant: 'destructive'
-            });
+          if (!authResult.success) {
+            // Check if it's a duplicate email error - overwrite existing user
+            if (authResult.error?.includes('already been registered')) {
+              console.log('Email already exists, attempting to overwrite existing user...');
+              
+              try {
+                // First, find and delete the existing auth user
+                const existingAuthResult = await adminUserService.deleteUserByEmail(user.email);
+                
+                if (existingAuthResult.success) {
+                  console.log('Existing auth user deleted, creating new one...');
+                  
+                  // Try creating the auth user again
+                  const retryAuthResult = await adminUserService.createAuthUser({
+                    email: user.email,
+                    password: defaultPassword,
+                    name: user.name,
+                    role: user.role,
+                    department: user.department,
+                    requirePasswordChange: true
+                  });
+                  
+                  if (!retryAuthResult.success) {
+                    toast({
+                      title: 'Authentication Error',
+                      description: `Failed to create auth user after cleanup: ${retryAuthResult.error}`,
+                      variant: 'destructive'
+                    });
+                    return;
+                  }
+                  
+                  // Update authUserId with the new user ID
+                  authUserId = retryAuthResult.user?.id || null;
+                  console.log('New auth user created successfully with ID:', authUserId);
+                  
+                  toast({
+                    title: 'Existing User Overwritten',
+                    description: `Existing user with email ${user.email} has been replaced with the new user data.`,
+                    variant: 'default'
+                  });
+                } else {
+                  toast({
+                    title: 'Cleanup Failed',
+                    description: `Could not remove existing user: ${existingAuthResult.message || 'Unknown error'}`,
+                    variant: 'destructive'
+                  });
+                  return;
+                }
+              } catch (overwriteError) {
+                console.error('Error during user overwrite:', overwriteError);
+                toast({
+                  title: 'Overwrite Failed',
+                  description: 'Failed to overwrite existing user. Please try again.',
+                  variant: 'destructive'
+                });
+                return;
+              }
+            } else {
+              toast({
+                title: 'Authentication Error',
+                description: `Failed to create auth user: ${authResult.error}`,
+                variant: 'destructive'
+              });
+              return;
+            }
           } else {
-            toast({
-              title: 'Authentication Error',
-              description: `Failed to create auth user: ${authResult.error}`,
-              variant: 'destructive'
-            });
+            // Store auth user ID for normal creation flow
+            authUserId = authResult.user?.id || null;
+            console.log('Auth user created successfully with ID:', authUserId);
           }
-          return;
-        }
-
-        // Create user in custom users table using the auth user ID
-        const authUserId = authResult.user?.id;
-        console.log('Auth user created successfully with ID:', authUserId);
-        
-        // Get the primary role for the user
-        const primaryRole = userRoles.find(r => r.isPrimary);
-        let userRole = user.role;
-        
-        if (primaryRole) {
-          const selectedRole = roles.find(r => r.id === primaryRole.roleId);
-          if (selectedRole) {
-            userRole = selectedRole.name as UserRole;
+          
+          // Get the primary role for the user
+          const primaryRole = userRoles.find(r => r.isPrimary);
+          let userRole = user.role;
+          
+          if (primaryRole) {
+            const selectedRole = roles.find(r => r.id === primaryRole.roleId);
+            if (selectedRole) {
+              userRole = selectedRole.name as UserRole;
+            }
           }
-        }
         
         const userWithAuthId = {
           ...user,
@@ -372,16 +424,26 @@ export function UserDetail() {
         console.log('User roles:', userRoles);
         console.log('=====================');
         
-        const createdUser = await create(userWithAuthId);
-        
-        if (!createdUser) {
-          toast({
-            title: 'User Creation Error',
-            description: 'Failed to create user in database',
-            variant: 'destructive'
-          });
-          return;
-        }
+          const createdUser = await create(userWithAuthId);
+          
+          if (!createdUser) {
+            // Rollback: Delete the auth user if database user creation failed
+            if (authUserId) {
+              try {
+                await adminUserService.deleteAuthUser(authUserId);
+                console.log('Rolled back auth user creation due to database failure');
+              } catch (rollbackError) {
+                console.error('Failed to rollback auth user:', rollbackError);
+              }
+            }
+            
+            toast({
+              title: 'User Creation Error',
+              description: 'Failed to create user in database. Auth user has been cleaned up.',
+              variant: 'destructive'
+            });
+            return;
+          }
 
         // Verify ID synchronization
         console.log('ID Synchronization Check:');
@@ -432,12 +494,12 @@ export function UserDetail() {
             try {
               console.log('=== COMPLETE ID SYNCHRONIZATION VERIFICATION ===');
               
-              // Check if profile exists with correct user_id
+              // Check if profile exists with correct id
               // Don't use .single() as it causes errors when multiple profiles exist
               const { data: profilesData, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, user_id, first_name, last_name')
-                .eq('user_id', createdUser.id);
+                .select('id, full_name')
+                .eq('id', createdUser.id);
               
               // Get the first profile if multiple exist
               const profileData = profilesData && profilesData.length > 0 ? profilesData[0] : null;
@@ -447,18 +509,17 @@ export function UserDetail() {
               } else {
                 console.log('✅ Profile found:');
                 console.log('- Profile ID:', profileData.id);
-                console.log('- Profile user_id:', profileData.user_id);
-                console.log('- Profile user_id matches:', profileData.user_id === createdUser.id);
+                console.log('- Profile matches auth user ID:', profileData.id === createdUser.id);
               }
               
               // Summary of all IDs
               console.log('=== ID SYNCHRONIZATION SUMMARY ===');
               console.log('Auth User ID:', authUserId);
               console.log('Database User ID:', createdUser.id);
-              console.log('Profile user_id:', profileData?.user_id);
+              console.log('Profile ID:', profileData?.id);
               console.log('All IDs synchronized:', 
                 authUserId === createdUser.id && 
-                createdUser.id === profileData?.user_id
+                createdUser.id === profileData?.id
               );
               console.log('=======================================');
               
@@ -468,16 +529,38 @@ export function UserDetail() {
           }, 1000); // Wait 1 second for database trigger to complete
         }
 
-        // Send password reset email using admin client
-        const resetResult = await adminUserService.sendPasswordResetEmail(user.email);
-        
-        toast({
-          title: 'User created successfully',
-          description: `${user.name} has been added to the system. ${resetResult.success ? 'A password reset email has been sent.' : 'Please manually send password reset instructions.'}`
-        });
+          // Send password reset email using admin client
+          const resetResult = await adminUserService.sendPasswordResetEmail(user.email);
+          
+          toast({
+            title: 'User created successfully',
+            description: `${user.name} has been added to the system. ${resetResult.success ? 'A password reset email has been sent.' : 'Please manually send password reset instructions.'}`
+          });
 
-        // Set refresh flag for users list
-        sessionStorage.setItem('refreshUsers', 'true');
+          // Set refresh flag for users list
+          sessionStorage.setItem('refreshUsers', 'true');
+          
+        } catch (userCreationError) {
+          // Handle any errors during user creation process
+          console.error('User creation failed:', userCreationError);
+          
+          // Rollback: Delete the auth user if any step failed
+          if (authUserId) {
+            try {
+              await adminUserService.deleteAuthUser(authUserId);
+              console.log('Rolled back auth user creation due to process failure');
+            } catch (rollbackError) {
+              console.error('Failed to rollback auth user:', rollbackError);
+            }
+          }
+          
+          toast({
+            title: 'User Creation Failed',
+            description: 'Failed to create user. Any partial changes have been rolled back.',
+            variant: 'destructive'
+          });
+          return;
+        }
       } else {
         if (user.id) {
           // Get the primary role for the user profile
@@ -746,7 +829,7 @@ export function UserDetail() {
                 onDelete={handleDelete}
                 onCancel={handleCancel}
                 onPasswordReset={handlePasswordReset}
-                canDelete={!isNewUser && user.role !== 'admin'}
+                canDelete={!isNewUser} // Role restrictions removed - allow deletion of all users
                 isResettingPassword={isResettingPassword}
               />
             </div>

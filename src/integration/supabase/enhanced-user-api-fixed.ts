@@ -66,12 +66,12 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
     }
 
     // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
+    const userIds = profiles?.map(p => p.id) || [];
     const emailMap = await getUserEmails(userIds);
 
     // Map profiles to frontend users
     const users: FrontendUser[] = (profiles || []).map(profile => {
-      const email = emailMap.get(profile.user_id) || `user-${profile.user_id.slice(0, 8)}@example.com`;
+      const email = emailMap.get(profile.id) || `user-${profile.id.slice(0, 8)}@example.com`;
       return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
     });
 
@@ -106,12 +106,12 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
     }
 
     // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
+    const userIds = profiles?.map(p => p.id) || [];
     const emailMap = await getUserEmails(userIds);
 
     // Map profiles to frontend users
     const users: FrontendUser[] = (profiles || []).map(profile => {
-      const email = emailMap.get(profile.user_id) || `user-${profile.user_id.slice(0, 8)}@example.com`;
+      const email = emailMap.get(profile.id) || `user-${profile.id.slice(0, 8)}@example.com`;
       return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
     });
 
@@ -146,12 +146,12 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
     }
 
     // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
+    const userIds = profiles?.map(p => p.id) || [];
     const emailMap = await getUserEmails(userIds);
 
     // Map profiles to frontend users
     const users: FrontendUser[] = (profiles || []).map(profile => {
-      const email = emailMap.get(profile.user_id) || `user-${profile.user_id.slice(0, 8)}@example.com`;
+      const email = emailMap.get(profile.id) || `user-${profile.id.slice(0, 8)}@example.com`;
       return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
     });
 
@@ -186,7 +186,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
     }
 
     // Get user emails
-    const userIds = profiles?.map(p => p.user_id) || [];
+    const userIds = profiles?.map(p => p.id) || [];
     const emailMap = await getUserEmails(userIds);
 
     // Filter by email if search term looks like email
@@ -200,17 +200,17 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
     // Combine profile matches and email matches
     const allMatchedProfiles = profiles || [];
     const emailMatchedProfiles = Array.from(emailMatches).map(userId => {
-      return allMatchedProfiles.find(p => p.user_id === userId);
+      return allMatchedProfiles.find(p => p.id === userId);
     }).filter(Boolean);
 
     // Remove duplicates
     const uniqueProfiles = [...allMatchedProfiles, ...emailMatchedProfiles].filter((profile, index, self) => 
-      index === self.findIndex(p => p?.user_id === profile?.user_id)
+      index === self.findIndex(p => p?.id === profile?.id)
     );
 
     // Map profiles to frontend users
     const users: FrontendUser[] = uniqueProfiles.map(profile => {
-      const email = emailMap.get(profile!.user_id) || `user-${profile!.user_id.slice(0, 8)}@example.com`;
+      const email = emailMap.get(profile!.id) || `user-${profile!.id.slice(0, 8)}@example.com`;
       return mapProfileWithRoleToFrontendUser(profile as ProfileWithRole, email);
     });
 
@@ -233,7 +233,7 @@ export const updateUserRole = async (userId: string, roleId: string): Promise<{ 
     const { error } = await supabase
       .from('profiles')
       .update({ role_id: roleId })
-      .eq('user_id', userId);
+      .eq('id', userId);
 
     if (error) {
       console.error('Error updating user role:', error);

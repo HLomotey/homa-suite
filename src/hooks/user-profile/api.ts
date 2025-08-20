@@ -5,14 +5,10 @@
 
 import { supabase } from "../../integration/supabase/client";
 import {
+  FrontendUser,
   User,
   Profile,
-  FrontendUser,
-  UserWithProfile,
-  UserStatus,
   UserRole,
-  UserPreferences,
-  UserActivity,
   mapDatabaseUserToFrontend,
   mapDatabaseProfileToProfile
 } from "../../integration/supabase/types";
@@ -23,17 +19,68 @@ import {
  * @returns Promise with array of users
  */
 export const fetchUsers = async (): Promise<FrontendUser[]> => {
-  const { data, error } = await supabase
+  console.log('🔍 [UPDATED API] Fetching users from database...', new Date().toISOString());
+  
+  // Check authentication status
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  console.log('🔐 Auth status for users:', { user: user?.email || 'Not authenticated', authError });
+  
+  // Try to fetch from users table first
+  const { data: usersData, error: usersError } = await supabase
     .from("users")
     .select("*")
-    .order("email", { ascending: true }); // Using email instead of name which doesn't exist
+    .order("email", { ascending: true });
 
-  if (error) {
-    console.error("Error fetching users:", error);
-    throw new Error(error.message);
+  console.log('👥 Users table query result:', { 
+    count: usersData?.length || 0, 
+    data: usersData, 
+    error: usersError 
+  });
+
+  // Also try to fetch from profiles table
+  const { data: profilesData, error: profilesError } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("email", { ascending: true });
+
+  console.log('📋 Profiles table query result:', { 
+    count: profilesData?.length || 0, 
+    data: profilesData, 
+    error: profilesError 
+  });
+
+  // If we have users data, use it
+  if (usersData && usersData.length > 0) {
+    console.log(`✅ Found ${usersData.length} users from users table`);
+    return (usersData as User[]).map(mapDatabaseUserToFrontend);
   }
 
-  return (data as User[]).map(mapDatabaseUserToFrontend);
+  // If we have profiles data, use it
+  if (profilesData && profilesData.length > 0) {
+    console.log(`✅ Found ${profilesData.length} profiles from profiles table`);
+    return (profilesData as Profile[]).map(profile => ({
+      id: profile.id,
+      name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email.split('@')[0],
+      email: profile.email,
+      role: 'staff' as UserRole, // Default role since profiles table doesn't have role
+      department: profile.department || '',
+      status: profile.status === 'active' ? 'active' : profile.status === 'inactive' ? 'inactive' : 'pending',
+      lastActive: undefined,
+      permissions: [],
+      createdAt: profile.created_at
+    }));
+  }
+
+  // If both queries failed, log errors
+  if (usersError) {
+    console.error("❌ Error fetching users:", usersError);
+  }
+  if (profilesError) {
+    console.error("❌ Error fetching profiles:", profilesError);
+  }
+
+  console.log('⚠️ No data found in users or profiles tables');
+  return [];
 };
 
 /**
@@ -186,36 +233,18 @@ export const fetchUsersByStatus = async (
 export const createUser = async (
   user: FrontendUser
 ): Promise<FrontendUser> => {
-  // Convert frontend user to database format - only use columns that exist in the users table
+  // Convert frontend user to database format for public.users table
   const dbUser = {
     id: user.id, // Use the provided user ID (from auth)
     email: user.email,
-    role: user.role,
+    role: user.role || 'staff',
     is_active: user.status === 'active',
-    last_login: user.lastActive || null
-  };
-  
-  // Profile data will be inserted separately after user creation
-  const profileData = {
-    first_name: user.name?.split(' ')[0] || '',
-    last_name: user.name?.split(' ').slice(1).join(' ') || '',
-    department: user.department || '',
-    avatar_url: user.avatar || null,
-    role_id: user.roleId || null, // Include role_id from user data
-    phone: null,
-    position: null,
-    employee_id: null,
-    hire_date: null,
-    address: null,
-    contact_info: null,
-    preferences: null,
-    bio: null,
-    skills: null,
-    certifications: null,
-    emergency_contact: null
+    last_login: user.lastActive || null,
+    name: user.name || '',
+    department: user.department || null
   };
 
-  // Create the user first
+  // Create the user record in public.users
   const { data, error } = await supabase
     .from("users")
     .insert(dbUser)
@@ -227,19 +256,37 @@ export const createUser = async (
     throw new Error(error.message);
   }
   
-  // Now create the profile
-  const userId = data.id;
+  // Create the profile record in public.profiles
   const { error: profileError } = await supabase
     .from("profiles")
     .insert({
-      ...profileData,
-      user_id: userId
+      id: data.id, // Use id as primary key that references auth.users(id)
+      email: user.email,
+      full_name: user.name || '',
+      role_id: user.roleId || null,
+      status: user.status || 'active'
     });
     
   if (profileError) {
     console.error("Error creating user profile:", profileError);
     // Don't throw here, as the user was created successfully
     // Just log the error and continue
+  }
+
+  // If user has a role, assign it in user_roles table
+  if (user.roleId) {
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .insert({
+        user_id: data.id,
+        role_id: user.roleId,
+        is_primary: true
+      });
+      
+    if (roleError) {
+      console.error("Error assigning user role:", roleError);
+      // Don't throw here, just log the error
+    }
   }
 
   return mapDatabaseUserToFrontend(data as User);
