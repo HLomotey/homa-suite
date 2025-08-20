@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,13 +24,23 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { ReportsList } from "@/components/dashboard/ReportsList";
 import { AnalyticsTab } from "@/components/dashboard/AnalyticsTab";
 import { ReportsTab } from "@/components/dashboard/ReportsTab";
+import { DateFilter } from "@/components/ui/date-filter";
 
 export default function Dashboard() {
+  const [selectedYear, setSelectedYear] = useState<number>();
+  const [selectedMonth, setSelectedMonth] = useState<number>();
+
+  const handleDateChange = (year: number | undefined, month: number | undefined) => {
+    setSelectedYear(year);
+    setSelectedMonth(month);
+  };
+
   return (
     <div className="flex-1 h-full p-4 md:p-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center space-x-2">
+          <DateFilter onDateChange={handleDateChange} />
           <Button>Download Report</Button>
         </div>
       </div>
@@ -103,7 +114,7 @@ export default function Dashboard() {
               <HRAnalytics />
             </div>
             <div className="bg-card/20 rounded-lg p-4 border border-border/50">
-              <FinanceAnalytics />
+              <FinanceAnalytics year={selectedYear} month={selectedMonth} />
             </div>
             <div className="bg-card/20 rounded-lg p-4 border border-border/50">
               <OperationsAnalytics />

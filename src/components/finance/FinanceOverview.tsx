@@ -7,7 +7,12 @@ import { RevenueByClient } from "./overview/RevenueByClient";
 import { WeeklyCashFlow } from "./overview/WeeklyCashFlow";
 import { ExpenseBreakdown } from "./overview/ExpenseBreakdown";
 
-export function FinanceOverview() {
+interface FinanceOverviewProps {
+  year?: number;
+  month?: number;
+}
+
+export function FinanceOverview({ year, month }: FinanceOverviewProps) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold tracking-tight">Finance & Accounting Dashboard</h2>
@@ -15,10 +20,10 @@ export function FinanceOverview() {
       
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MonthlyRevenue />
-        <GrossMargin />
-        <EBITDA />
-        <OperatingExpenses />
+        <MonthlyRevenue year={year} month={month} />
+        <GrossMargin year={year} month={month} />
+        <EBITDA year={year} month={month} />
+        <OperatingExpenses year={year} month={month} />
       </div>
       
       {/* Charts Row 1 */}

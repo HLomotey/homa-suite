@@ -1,9 +1,14 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
 
-export function MonthlyRevenue() {
-  const { data: revenue, isLoading, error } = useRevenueMetrics();
+interface MonthlyRevenueProps {
+  year?: number;
+  month?: number;
+}
+
+export function MonthlyRevenue({ year, month }: MonthlyRevenueProps) {
+  const { data: revenue, isLoading, error } = useRevenueMetrics(year, month);
 
   const formatCurrency = (value: number): string => {
     if (value >= 1000000) {

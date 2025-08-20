@@ -3,9 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingDown, TrendingUp, Loader2 } from "lucide-react";
 import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
 
-export function FinanceAnalytics() {
-  const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useFinanceAnalytics();
-  const { data: revenue, isLoading: revenueLoading } = useRevenueMetrics();
+interface FinanceAnalyticsProps {
+  year?: number;
+  month?: number;
+}
+
+export function FinanceAnalytics({ year, month }: FinanceAnalyticsProps) {
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useFinanceAnalytics(year, month);
+  const { data: revenue, isLoading: revenueLoading } = useRevenueMetrics(year, month);
 
   // Format currency values
   const formatCurrency = (value: number): string => {

@@ -1,9 +1,14 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 
-export function EBITDA() {
-  const { data: analytics, isLoading, error } = useFinanceAnalytics();
+interface EBITDAProps {
+  year?: number;
+  month?: number;
+}
+
+export function EBITDA({ year, month }: EBITDAProps) {
+  const { data: analytics, isLoading, error } = useFinanceAnalytics(year, month);
 
   const formatCurrency = (value: number): string => {
     if (value >= 1000000) {
