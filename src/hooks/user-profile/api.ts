@@ -96,8 +96,8 @@ export const fetchUsers = async (): Promise<FrontendUser[]> => {
 export const fetchUserById = async (
   id: string
 ): Promise<FrontendUser> => {
-  const { data, error } = await supabase
-    .from("users")
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
     .select("*")
     .eq("id", id)
     .single();
@@ -118,33 +118,19 @@ export const fetchUserById = async (
 export const fetchUserWithProfile = async (
   id: string
 ): Promise<UserWithProfile> => {
-  // Fetch user
-  const { data: userData, error: userError } = await supabase
-    .from("users")
+  // Fetch profile data directly (profiles table contains user info)
+  const { data: profileData, error: profileError } = await supabaseAdmin
+    .from("profiles")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (userError) {
-    console.error(`Error fetching user with ID ${id}:`, userError);
-    throw new Error(userError.message);
-  }
-
-  const user = mapDatabaseUserToFrontend(userData as User);
-
-  // Fetch profile
-  const { data: profileData, error: profileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", id)
-    .single();
-
-  if (profileError && profileError.code !== 'PGRST116') {
-    // PGRST116 is "no rows returned" which is fine - user might not have a profile yet
-    console.error(`Error fetching profile for user ${id}:`, profileError);
+  if (profileError) {
+    console.error(`Error fetching profile with ID ${id}:`, profileError);
     throw new Error(profileError.message);
   }
 
+  const user = mapDatabaseUserToFrontend(profileData as User);
   const profile = profileData 
     ? mapDatabaseProfileToProfile(profileData as Profile)
     : undefined;
@@ -164,8 +150,8 @@ export const fetchUsersByRole = async (
   role?: UserRole | null
 ): Promise<FrontendUser[]> => {
   // If role is null or undefined, fetch all users instead of filtering by role
-  let query = supabase
-    .from("users")
+  let query = supabaseAdmin
+    .from("profiles")
     .select("*")
     .order("email", { ascending: true }); // Using email instead of name which doesn't exist
   
@@ -192,11 +178,11 @@ export const fetchUsersByRole = async (
 export const fetchUsersByDepartment = async (
   department: string
 ): Promise<FrontendUser[]> => {
-  // Join with profiles table to filter by department since department is in profiles, not users
-  const { data, error } = await supabase
-    .from("users")
-    .select("*, profiles!inner(department)")
-    .eq("profiles.department", department)
+  // Fetch directly from profiles table since department is stored there
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .eq("department", department)
     .order("email", { ascending: true });
 
   if (error) {
@@ -215,11 +201,11 @@ export const fetchUsersByDepartment = async (
 export const fetchUsersByStatus = async (
   status: UserStatus
 ): Promise<FrontendUser[]> => {
-  // Use is_active instead of status since status doesn't exist in users table
-  const { data, error } = await supabase
-    .from("users")
+  // Fetch from profiles table and filter by status
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
     .select("*")
-    .eq("is_active", status === 'active' ? true : false)
+    .eq("status", status)
     .order("email", { ascending: true });
 
   if (error) {
