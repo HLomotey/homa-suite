@@ -169,7 +169,7 @@ export function FinanceTransactions() {
         "Item Description",
         "Quantity",
         "Tax 1 Type",
-        "Amount",
+
         "Currency",
       ];
       const csvContent = [
@@ -331,9 +331,9 @@ export function FinanceTransactions() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
             </SelectContent>
           </Select>
           <span className="text-sm text-muted-foreground">per page</span>
@@ -365,9 +365,8 @@ export function FinanceTransactions() {
                 <TableHead>Date</TableHead>
                 <TableHead>Invoice Status</TableHead>
                 <TableHead>Item Description</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Tax 1 Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead className="text-right">Tax 1 Type</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -397,12 +396,11 @@ export function FinanceTransactions() {
                   >
                     {invoice.item_description}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     {invoice.quantity}
                   </TableCell>
-                  <TableCell>{invoice.tax_1_type || "N/A"}</TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(invoice.line_total)}
+                    {invoice.tax_1_type || "0"}
                   </TableCell>
                 </TableRow>
               ))}
