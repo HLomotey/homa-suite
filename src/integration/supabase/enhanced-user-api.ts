@@ -447,7 +447,7 @@ export const updateUserRole = async (userId: string, roleId: string): Promise<{ 
       .from('user_roles')
       .insert({
         user_id: userId,
-        role_id: parseInt(roleId),
+        role_id: roleId,
         is_primary: true,
         assigned_by: userId // For now, user assigns their own role
       });
