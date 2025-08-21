@@ -34,6 +34,11 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [uploadStats, setUploadStats] = useState<{
+    processed: number;
+    skipped: number;
+    total: number;
+  } | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -65,12 +70,36 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
         }
       });
 
+      // Track skipped duplicates
+      let skippedCount = 0;
+      const originalConsoleLog = console.log;
+      console.log = function(...args) {
+        if (typeof args[0] === 'string' && args[0].includes('Skipping duplicate invoice number')) {
+          skippedCount++;
+        }
+        originalConsoleLog.apply(console, args);
+      };
+      
       // Process the data
       const processedCount = await batchProcessor.processFinanceData(processedData.data);
+      
+      // Restore original console.log
+      console.log = originalConsoleLog;
+      
+      // Update stats
+      const stats = {
+        processed: processedCount,
+        skipped: skippedCount,
+        total: processedData.data.length
+      };
+      setUploadStats(stats);
 
       setUploading(false);
       setUploadStatus("success");
-      toast.success(`${title} file uploaded successfully! Processed ${processedCount} rows.`);
+      toast.success(
+        `${title} file uploaded successfully! Processed ${processedCount} rows. ` + 
+        (skippedCount > 0 ? `Skipped ${skippedCount} duplicate invoice numbers.` : '')
+      );
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -142,7 +171,18 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
             <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                File uploaded successfully! Data has been processed and saved to the database.
+                <div className="space-y-1">
+                  <p>File uploaded successfully! Data has been processed and saved to the database.</p>
+                  {uploadStats && (
+                    <div className="text-xs mt-1">
+                      <p>Total rows: {uploadStats.total}</p>
+                      <p>Processed: {uploadStats.processed}</p>
+                      {uploadStats.skipped > 0 && (
+                        <p>Skipped duplicates: {uploadStats.skipped}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </AlertDescription>
             </Alert>
           )}

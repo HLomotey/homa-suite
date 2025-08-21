@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import {
   Card,
   CardContent,
@@ -50,6 +51,7 @@ export function FinanceTransactions() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch invoices with pagination and search
@@ -123,14 +125,11 @@ export function FinanceTransactions() {
 
   const handleDelete = () => {
     if (selectedIds.length === 0) return;
+    setIsDeleteDialogOpen(true);
+  };
 
-    if (
-      confirm(
-        `Are you sure you want to delete ${selectedIds.length} invoice(s)? This action cannot be undone.`
-      )
-    ) {
-      deleteMutation.mutate(selectedIds);
-    }
+  const confirmDelete = () => {
+    deleteMutation.mutate(selectedIds);
   };
 
   const handleItemsPerPageChange = (value: string) => {
@@ -271,6 +270,13 @@ export function FinanceTransactions() {
 
   return (
     <div className="space-y-4">
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        itemCount={selectedIds.length}
+        isDeleting={deleteMutation.isPending}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">

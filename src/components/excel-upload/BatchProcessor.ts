@@ -27,14 +27,46 @@ export class BatchProcessor {
     let updated = 0;
     let inserted = 0;
     const totalRecords = jsonData.length;
+    
+    // Track processed invoice numbers to avoid duplicates within the entire dataset
+    const processedInvoiceNumbers = new Set<string>();
 
     for (let i = 0; i < jsonData.length; i += this.batchSize) {
       const batch = jsonData.slice(i, i + this.batchSize);
       
       // Convert batch data to match finance_invoices table schema
-      const invoiceBatch: FinanceInvoiceData[] = batch.map(mapToFinanceInvoice);
+      const rawInvoiceBatch: FinanceInvoiceData[] = batch.map(mapToFinanceInvoice);
+      
+      // Handle duplicates within the same batch by keeping only the first occurrence of each invoice number
+      const invoiceMap = new Map<string, FinanceInvoiceData>();
+      const invoiceBatch: FinanceInvoiceData[] = [];
+      
+      for (const invoice of rawInvoiceBatch) {
+        const invoiceNumber = invoice.invoice_number;
+        
+        // Skip if we've already processed this invoice number in a previous batch
+        if (processedInvoiceNumbers.has(invoiceNumber)) {
+          console.log(`Skipping duplicate invoice number across batches: ${invoiceNumber}`);
+          continue;
+        }
+        
+        // For duplicates within the same batch, keep only the first occurrence
+        if (!invoiceMap.has(invoiceNumber)) {
+          invoiceMap.set(invoiceNumber, invoice);
+          invoiceBatch.push(invoice);
+          processedInvoiceNumbers.add(invoiceNumber);
+        } else {
+          console.log(`Skipping duplicate invoice number within batch: ${invoiceNumber}`);
+        }
+      }
+      
+      // Skip empty batches (could happen if all were duplicates)
+      if (invoiceBatch.length === 0) {
+        console.log(`Batch ${Math.floor(i/this.batchSize) + 1} has no unique invoices, skipping`);
+        continue;
+      }
 
-      // Use UPSERT to handle duplicates - update existing records or insert new ones
+      // Use UPSERT to handle duplicates with existing database records
       const { data, error: upsertError } = await supabase
         .from('finance_invoices')
         .upsert(invoiceBatch, { 
