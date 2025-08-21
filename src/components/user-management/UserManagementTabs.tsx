@@ -181,6 +181,7 @@ export function UserManagementTabs() {
       </Card>
     </div>
   );
+  
 
   return (
     <div className="space-y-6">
@@ -217,6 +218,7 @@ export function UserManagementTabs() {
               {userStats.total}
             </Badge>
           </TabsTrigger>
+          
           <TabsTrigger
             value="roles"
             className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60"
@@ -230,17 +232,19 @@ export function UserManagementTabs() {
               {roleStats.total}
             </Badge>
           </TabsTrigger>
+          
         </TabsList>
 
-        <TabsContent value="users" className="space-y-6">
-          <UserDashboardCards />
+        <TabsContent value="users" className="space-y-4">
+          {UserDashboardCards()}
           <UserManagementContent />
         </TabsContent>
 
-        <TabsContent value="roles" className="space-y-6">
-          <RoleDashboardCards />
+        <TabsContent value="roles" className="space-y-4">
+          {RoleDashboardCards()}
           <RoleManagementContent />
         </TabsContent>
+        
       </Tabs>
     </div>
   );

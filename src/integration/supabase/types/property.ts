@@ -61,7 +61,25 @@ export interface FrontendProperty {
 /**
  * Maps a database property to the frontend property format
  */
-export const mapDatabasePropertyToFrontend = (dbProperty: Property): FrontendProperty => {
+export const mapDatabasePropertyToFrontend = (dbProperty: any): FrontendProperty => {
+  // Handle the joined location data from company_locations
+  let location = null;
+  if (dbProperty.company_locations) {
+    const locationData = dbProperty.company_locations;
+    location = {
+      id: locationData.id,
+      name: locationData.name,
+      address: locationData.address,
+      city: locationData.city,
+      state: locationData.state,
+      zipCode: locationData.zip_code,
+      country: locationData.country,
+      phone: locationData.phone,
+      email: locationData.email,
+      isActive: locationData.is_active
+    };
+  }
+
   return {
     id: dbProperty.id,
     title: dbProperty.title,
@@ -75,7 +93,8 @@ export const mapDatabasePropertyToFrontend = (dbProperty: Property): FrontendPro
     image: dbProperty.image,
     description: dbProperty.description,
     dateAdded: dbProperty.date_added,
-    locationId: dbProperty.location_id
+    locationId: dbProperty.location_id,
+    location: location
   };
 };
 

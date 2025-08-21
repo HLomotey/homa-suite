@@ -22,7 +22,10 @@ export const fetchProperties = async (): Promise<FrontendProperty[]> => {
   try {
     const { data, error } = await supabase
       .from("properties")
-      .select("*")
+      .select(`
+        *,
+        company_locations(*)
+      `)
       .order("created_at", { ascending: false });
 
     console.log("Supabase properties query result:", { data, error });
@@ -60,7 +63,10 @@ export const fetchPropertyById = async (
 ): Promise<FrontendProperty> => {
   const { data, error } = await supabase
     .from("properties")
-    .select("*")
+    .select(`
+      *,
+      company_locations(*)
+    `)
     .eq("id", id)
     .single();
 
@@ -177,7 +183,10 @@ export const fetchPropertiesByStatus = async (
 ): Promise<FrontendProperty[]> => {
   const { data, error } = await supabase
     .from("properties")
-    .select("*")
+    .select(`
+      *,
+      company_locations(*)
+    `)
     .eq("status", status)
     .order("created_at", { ascending: false });
 
@@ -199,7 +208,10 @@ export const fetchPropertiesByType = async (
 ): Promise<FrontendProperty[]> => {
   const { data, error } = await supabase
     .from("properties")
-    .select("*")
+    .select(`
+      *,
+      company_locations(*)
+    `)
     .eq("type", type)
     .order("created_at", { ascending: false });
 
