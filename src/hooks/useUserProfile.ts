@@ -1,33 +1,28 @@
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
-
-// Define UserFormData interface
-interface UserFormData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-}
+import { createUser, hasPermission } from "@/lib/api"; // Adjust the import based on your project structure
 
 export function useUserProfile() {
   const [isLoading, setIsLoading] = useState(false);
 
   const createUserProfile = async (userData: UserFormData) => {
     try {
-      // Role restrictions removed - all users can create users
+      // Check if the user has permission to create users
+      if (!hasPermission('users', 'create')) {
+        throw new Error("You don't have permission to create users");
+      }
 
       setIsLoading(true);
       
       // Create user with proper error handling
-      // Note: createUser function needs to be implemented or imported from appropriate API module
-      const newUser = {
-        id: Date.now().toString(),
+      const newUser = await createUser({
         email: userData.email,
+        password: userData.password,
         firstName: userData.firstName,
         lastName: userData.lastName,
         role: userData.role,
-      };
+        // other fields...
+      });
       
       // Handle successful creation
       toast({
