@@ -121,27 +121,28 @@ export function UserDetail() {
   // Load user roles from the database
   const loadUserRoles = async (userId: string) => {
     try {
-      // Get user roles directly from the user_roles table instead
-      const { data: userRolesData, error } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', userId);
+      // Get user role from the profiles table (simplified role system)
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('role_id')
+        .eq('id', userId)
+        .single();
         
       if (error) throw error;
       
-      console.log('Loaded user roles:', userRolesData);
+      console.log('Loaded user profile with role:', profileData);
       
-      if (Array.isArray(userRolesData)) {
+      if (profileData && profileData.role_id) {
         // Transform to the format expected by the UserProfileForm
-        const formattedRoles = userRolesData.map(ur => ({
-          roleId: String(ur.role_id), // Convert to string to match role.id format
-          isPrimary: ur.is_primary || false
-        }));
+        const formattedRoles = [{
+          roleId: String(profileData.role_id), // Convert to string to match role.id format
+          isPrimary: true // Single role is always primary
+        }];
         
         console.log('Formatted roles for form:', formattedRoles);
         setUserRoles(formattedRoles);
       } else {
-        console.error('User roles data is not an array:', userRolesData);
+        console.log('No role assigned to user');
         setUserRoles([]);
       }
     } catch (error) {
