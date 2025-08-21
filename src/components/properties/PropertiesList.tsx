@@ -56,10 +56,14 @@ export const PropertiesList = ({
 
   // Filter properties based on search query and status filter
   const filteredProperties = properties.filter((property) => {
+    const locationText = property.location ? 
+      `${property.location.city} ${property.location.state}`.toLowerCase() : '';
+      
     const matchesSearch =
       property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.type.toLowerCase().includes(searchQuery.toLowerCase());
+      property.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      locationText.includes(searchQuery.toLowerCase());
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -77,6 +81,7 @@ export const PropertiesList = ({
       const exportData = filteredProperties.map(property => ({
         'Property': property.title,
         'Address': property.address,
+        'Location': property.location ? `${property.location.city}, ${property.location.state}` : 'Not assigned',
         'Type': property.type,
         'Price': `$${property.price.toLocaleString()}`,
         'Status': property.status,
@@ -217,6 +222,7 @@ export const PropertiesList = ({
               <TableRow>
                 <TableHead>Property</TableHead>
                 <TableHead>Address</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
@@ -235,6 +241,11 @@ export const PropertiesList = ({
                     {property.title}
                   </TableCell>
                   <TableCell>{property.address}</TableCell>
+                  <TableCell>
+                    {property.location ? 
+                      `${property.location.city}, ${property.location.state}` : 
+                      <span className="text-muted-foreground italic">Not assigned</span>}
+                  </TableCell>
                   <TableCell>{property.type}</TableCell>
                   <TableCell>${property.price.toLocaleString()}</TableCell>
                   <TableCell>
@@ -306,9 +317,15 @@ const PropertyCard = ({
         <h3 className="text-lg font-semibold text-white mb-1">
           {property.title}
         </h3>
-        <p className="text-white/60 flex items-center text-sm mb-3">
+        <p className="text-white/60 flex items-center text-sm mb-1">
           <MapPin className="h-3 w-3 mr-1" />
           {property.address}
+        </p>
+        <p className="text-white/60 flex items-center text-sm mb-3">
+          <Home className="h-3 w-3 mr-1" />
+          {property.location ? 
+            `${property.location.city}, ${property.location.state}` : 
+            <span className="italic">No location assigned</span>}
         </p>
         <div className="flex justify-between mb-4">
           <div className="text-white font-bold">
