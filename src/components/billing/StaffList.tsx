@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, UserPlus, MoreHorizontal, Pencil, Trash2, Loader2, Settings, Eye, EyeOff, Upload } from "lucide-react";
 import { FrontendBillingStaff } from "../../integration/supabase/types/billing";
-import { StaffForm } from "./StaffForm";
+import { StaffForm } from "./StaffForm/";
 
 import { useToast } from "@/components/ui/use-toast";
 import ColumnCustomizer, { ColumnOption } from "./ColumnCustomizer";

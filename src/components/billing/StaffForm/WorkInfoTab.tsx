@@ -57,8 +57,20 @@ export const WorkInfoTab = React.memo(({ staff }: WorkInfoTabProps) => {
       
       {/* Use our optimized StaffLocationSelect component */}
       <StaffLocationSelect 
-        defaultValue={staff?.staffLocationId || ""}
-        label="Location"
+        value={staff?.staffLocationId || ""}
+        onValueChange={(value) => {
+          // Update the hidden input for form submission
+          const hiddenInput = document.querySelector('input[name="staffLocationId"]') as HTMLInputElement;
+          if (hiddenInput) {
+            hiddenInput.value = value;
+          }
+        }}
+      />
+      {/* Hidden input for form submission */}
+      <input 
+        type="hidden" 
+        name="staffLocationId" 
+        defaultValue={staff?.staffLocationId || ""} 
       />
       
       {/* Keep the legacy location field for backward compatibility */}

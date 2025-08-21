@@ -245,7 +245,7 @@ export const fetchBillingStaff = async (): Promise<FrontendBillingStaff[]> => {
   
   if (error) {
     console.error("Error fetching billing staff:", error);
-    throw new Error(error.message);
+    // Don't throw error, fall back to direct query
   }
   
   // If we got data from RPC, use it
@@ -255,13 +255,25 @@ export const fetchBillingStaff = async (): Promise<FrontendBillingStaff[]> => {
     return mappedData;
   }
   
-  // Fallback to direct table query if RPC doesn't work
-  console.log('Falling back to direct table query...');
+  // Fallback to direct table query with staff location join
+  console.log('Falling back to direct table query with staff location join...');
   const { data: tableData, error: tableError } = await supabase
     .from("billing_staff")
-    .select("*");
+    .select(`
+      *,
+      staff_locations (
+        id,
+        location_code,
+        location_description,
+        company_location_id,
+        company_locations (
+          name
+        )
+      )
+    `)
+    .order("legal_name", { ascending: true });
   
-  console.log('Billing staff raw data from table query:', tableData);
+  console.log('Billing staff raw data from table query with joins:', tableData);
   
   if (tableError) {
     console.error("Error fetching billing staff from table:", tableError);
@@ -272,21 +284,32 @@ export const fetchBillingStaff = async (): Promise<FrontendBillingStaff[]> => {
   if (!tableData || tableData.length === 0) {
     console.log('No data from database, using hardcoded staff data');
     const hardcodedStaff = [
-      { id: '1', name: 'John Smith', department: 'Finance' },
-      { id: '2', name: 'Sarah Johnson', department: 'HR' },
-      { id: '3', name: 'Michael Brown', department: 'Operations' },
-      { id: '4', name: 'Emily Davis', department: 'Finance' },
-      { id: '5', name: 'David Wilson', department: 'IT' }
+      { id: '1', legalName: 'John Smith', department: 'Finance', jobTitle: 'Accountant', email: 'john@example.com', employmentStatus: 'Full-time', hireDate: '2023-01-01' },
+      { id: '2', legalName: 'Sarah Johnson', department: 'HR', jobTitle: 'HR Manager', email: 'sarah@example.com', employmentStatus: 'Full-time', hireDate: '2023-02-01' },
+      { id: '3', legalName: 'Michael Brown', department: 'Operations', jobTitle: 'Operations Manager', email: 'michael@example.com', employmentStatus: 'Full-time', hireDate: '2023-03-01' },
+      { id: '4', legalName: 'Emily Davis', department: 'Finance', jobTitle: 'Financial Analyst', email: 'emily@example.com', employmentStatus: 'Full-time', hireDate: '2023-04-01' },
+      { id: '5', legalName: 'David Wilson', department: 'IT', jobTitle: 'IT Specialist', email: 'david@example.com', employmentStatus: 'Full-time', hireDate: '2023-05-01' }
     ];
     
-    return hardcodedStaff.map(staff => ({
-      id: staff.id,
-      name: staff.name,
-      department: staff.department
-    }));
+    return hardcodedStaff as FrontendBillingStaff[];
   }
   
-  const mappedTableData = (tableData as BillingStaff[]).map(mapDatabaseBillingStaffToFrontend);
+  // Map the data and include staff location information
+  const mappedTableData = tableData.map(staff => {
+    const mappedStaff = mapDatabaseBillingStaffToFrontend(staff);
+    
+    // Add staff location name if available
+    if (staff.staff_locations) {
+      mappedStaff.staffLocationName = `${staff.staff_locations.location_code} - ${staff.staff_locations.location_description}`;
+      // Also include company location name if available
+      if (staff.staff_locations.company_locations) {
+        mappedStaff.staffLocationName += ` (${staff.staff_locations.company_locations.name})`;
+      }
+    }
+    
+    return mappedStaff;
+  });
+  
   console.log('Mapped billing staff data from table query:', mappedTableData);
   return mappedTableData;
 };
