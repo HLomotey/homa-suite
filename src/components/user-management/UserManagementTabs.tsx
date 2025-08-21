@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { UserManagementContent } from "./UserManagementContent";
 import { RoleManagementContent } from "./RoleManagementContent";
-import { useUsers } from "@/hooks/user-profile";
+import { useEnhancedUsers } from "@/hooks/user-profile";
 import { useRoles } from "@/hooks/role/useRole";
 
 export function UserManagementTabs() {
@@ -28,7 +28,7 @@ export function UserManagementTabs() {
   const tabFromUrl = urlParams.get('tab') || 'users';
   
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const { users, loading: usersLoading } = useUsers();
+  const { users, loading: usersLoading } = useEnhancedUsers();
   const { roles, loading: rolesLoading } = useRoles();
 
   // Update active tab when URL changes
