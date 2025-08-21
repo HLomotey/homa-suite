@@ -4,6 +4,8 @@
  */
 
 import { Json } from './database';
+import { Location } from './location';
+
 
 /**
  * Property interface representing the properties table in Supabase
@@ -23,6 +25,7 @@ export interface Property {
   date_added: string;
   created_at: string;
   updated_at: string | null;
+  location_id: string | null;
 }
 
 /**
@@ -51,6 +54,8 @@ export interface FrontendProperty {
   image: string;
   description: string;
   dateAdded: string;
+  locationId: string | null;
+  location?: Location | null;
 }
 
 /**
@@ -69,6 +74,28 @@ export const mapDatabasePropertyToFrontend = (dbProperty: Property): FrontendPro
     status: dbProperty.status as PropertyStatus,
     image: dbProperty.image,
     description: dbProperty.description,
-    dateAdded: dbProperty.date_added
+    dateAdded: dbProperty.date_added,
+    locationId: dbProperty.location_id
+  };
+};
+
+/**
+ * Maps a frontend property to the database property format
+ */
+export const mapFrontendPropertyToDatabase = (frontendProperty: FrontendProperty): Omit<Property, 'created_at' | 'updated_at'> => {
+  return {
+    id: frontendProperty.id,
+    title: frontendProperty.title,
+    address: frontendProperty.address,
+    price: frontendProperty.price,
+    bedrooms: frontendProperty.bedrooms,
+    bathrooms: frontendProperty.bathrooms,
+    area: frontendProperty.area,
+    type: frontendProperty.type,
+    status: frontendProperty.status,
+    image: frontendProperty.image,
+    description: frontendProperty.description,
+    date_added: frontendProperty.dateAdded,
+    location_id: frontendProperty.locationId
   };
 };

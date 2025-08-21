@@ -92,6 +92,7 @@ export const createProperty = async (
     status: property.status,
     image: property.image,
     description: property.description,
+    location_id: property.locationId,
     date_added: new Date().toISOString(),
   };
 
@@ -134,6 +135,8 @@ export const updateProperty = async (
   if (property.image !== undefined) dbProperty.image = property.image;
   if (property.description !== undefined)
     dbProperty.description = property.description;
+  if (property.locationId !== undefined)
+    dbProperty.location_id = property.locationId;
 
   const { data, error } = await supabase
     .from("properties")

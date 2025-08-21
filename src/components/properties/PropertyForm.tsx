@@ -2,9 +2,12 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, Upload, Image as ImageIcon } from "lucide-react";
+import { X, Upload, Image as ImageIcon, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FrontendProperty, PropertyType, PropertyStatus } from "@/integration/supabase/types";
+import { FrontendLocation } from "@/integration/supabase/types/location";
+import { useLocation } from "@/hooks/transport/useLocation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Property Form Component
 export interface PropertyFormProps {
@@ -18,6 +21,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   onSave,
   onCancel,
 }) => {
+  const { locations, loading: locationsLoading } = useLocation();
   const [formData, setFormData] = React.useState<Omit<FrontendProperty, "id" | "dateAdded">>({
     title: property?.title || "",
     address: property?.address || "",
@@ -29,6 +33,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
     status: property?.status || "Available" as PropertyStatus,
     image: property?.image || "",
     description: property?.description || "",
+    locationId: property?.locationId || null,
   });
 
   const handleChange = (
@@ -97,6 +102,37 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                 className="mt-2"
                 required
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="location"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Location
+              </label>
+              <Select
+                value={formData.locationId || undefined}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, locationId: value || null }))}
+              >
+                <SelectTrigger className="w-full mt-2 h-10">
+                  <SelectValue placeholder="Select location..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locationsLoading ? (
+                    <SelectItem value="loading" disabled>Loading locations...</SelectItem>
+                  ) : locations && locations.length > 0 ? (
+                    locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name} {location.city && location.state ? `(${location.city}, ${location.state})` : ''}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>No locations available</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {locationsLoading && <p className="text-xs text-muted-foreground mt-1">Loading locations...</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
