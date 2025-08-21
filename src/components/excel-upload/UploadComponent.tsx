@@ -36,7 +36,6 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [uploadStats, setUploadStats] = useState<{
     processed: number;
-    skipped: number;
     total: number;
   } | null>(null);
 
@@ -70,36 +69,19 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
         }
       });
 
-      // Track skipped duplicates
-      let skippedCount = 0;
-      const originalConsoleLog = console.log;
-      console.log = function(...args) {
-        if (typeof args[0] === 'string' && args[0].includes('Skipping duplicate invoice number')) {
-          skippedCount++;
-        }
-        originalConsoleLog.apply(console, args);
-      };
-      
       // Process the data
       const processedCount = await batchProcessor.processFinanceData(processedData.data);
-      
-      // Restore original console.log
-      console.log = originalConsoleLog;
       
       // Update stats
       const stats = {
         processed: processedCount,
-        skipped: skippedCount,
         total: processedData.data.length
       };
       setUploadStats(stats);
 
       setUploading(false);
       setUploadStatus("success");
-      toast.success(
-        `${title} file uploaded successfully! Processed ${processedCount} rows. ` + 
-        (skippedCount > 0 ? `Skipped ${skippedCount} duplicate invoice numbers.` : '')
-      );
+      toast.success(`${title} file uploaded successfully! Processed ${processedCount} rows.`);
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -177,9 +159,6 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
                     <div className="text-xs mt-1">
                       <p>Total rows: {uploadStats.total}</p>
                       <p>Processed: {uploadStats.processed}</p>
-                      {uploadStats.skipped > 0 && (
-                        <p>Skipped duplicates: {uploadStats.skipped}</p>
-                      )}
                     </div>
                   )}
                 </div>
