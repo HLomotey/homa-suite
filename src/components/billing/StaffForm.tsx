@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { FrontendBillingStaff } from "../../integration/supabase/types/billing";
+import { FrontendStaffLocation } from "@/integration/supabase/types/staffLocation";
+import { supabase } from "@/integration/supabase/client";
 import { Loader2 } from "lucide-react";
 import useStaffLocation from "@/hooks/transport/useStaffLocation";
 
@@ -21,13 +23,81 @@ interface StaffFormProps {
 
 export function StaffForm({ open, onOpenChange, onSubmit, isLoading = false, staff }: StaffFormProps) {
   const isEditing = !!staff;
+  const [activeTab, setActiveTab] = React.useState<string>("personal");
+  const [forceRefresh, setForceRefresh] = React.useState<number>(0);
+  const [directStaffLocations, setDirectStaffLocations] = React.useState<FrontendStaffLocation[]>([]);
+  const [directLoading, setDirectLoading] = React.useState<boolean>(false);
+  
+  // Use the hook but also implement direct fetching as a fallback
   const { staffLocations, fetchStaffLocations, loading: locationsLoading } = useStaffLocation();
+  
+  console.log('StaffForm render - staffLocations:', staffLocations);
+  console.log('StaffForm render - locationsLoading:', locationsLoading);
+  console.log('StaffForm render - directStaffLocations:', directStaffLocations);
+  
+  // Direct fetch function as a fallback
+  const fetchDirectStaffLocations = async () => {
+    console.log('StaffForm - direct fetching staff locations');
+    setDirectLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from("staff_locations")
+        .select("*, company_locations(name)");
+      
+      console.log('Direct staff locations response:', { data, error });
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const mappedData = data.map((item) => ({
+          id: item.id,
+          companyLocationId: item.company_location_id,
+          companyLocationName: item.company_locations?.name || "Unknown",
+          locationCode: item.location_code,
+          locationDescription: item.location_description,
+          isActive: item.is_active,
+        }));
+        
+        console.log('Mapped direct staff locations:', mappedData);
+        setDirectStaffLocations(mappedData);
+      } else {
+        setDirectStaffLocations([]);
+      }
+    } catch (err) {
+      console.error("Error direct fetching staff locations:", err);
+    } finally {
+      setDirectLoading(false);
+    }
+  };
   
   useEffect(() => {
     if (open) {
+      console.log('StaffForm - form opened, fetching locations');
       fetchStaffLocations();
+      
+      // Also fetch directly as a backup
+      fetchDirectStaffLocations();
+      
+      // Force a refresh after 2 seconds if still loading
+      const timer = setTimeout(() => {
+        if (locationsLoading) {
+          console.log('StaffForm - forcing refresh after timeout');
+          setForceRefresh(prev => prev + 1);
+          fetchStaffLocations();
+          fetchDirectStaffLocations();
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [open, fetchStaffLocations]);
+  }, [open, fetchStaffLocations, locationsLoading]);
+  
+  // Add another effect to monitor location loading state
+  useEffect(() => {
+    console.log('StaffForm - locationsLoading changed:', locationsLoading);
+    console.log('StaffForm - staffLocations count:', staffLocations.length);
+  }, [locationsLoading, staffLocations]);
   
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -136,7 +206,7 @@ export function StaffForm({ open, onOpenChange, onSubmit, isLoading = false, sta
         </SheetHeader>
         
         <form onSubmit={handleSubmit} className="mt-6">
-          <Tabs defaultValue="personal" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="personal" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="personal">Personal</TabsTrigger>
               <TabsTrigger value="work">Work Info</TabsTrigger>
@@ -326,19 +396,56 @@ export function StaffForm({ open, onOpenChange, onSubmit, isLoading = false, sta
                 
                 <div className="space-y-2">
                   <Label htmlFor="staffLocationId">Location</Label>
-                  <Select name="staffLocationId" defaultValue={staff?.staffLocationId || ""}>
+                  {/* Add key with forceRefresh to ensure component re-renders */}
+                  <Select 
+                    key={`location-select-${forceRefresh}`}
+                    name="staffLocationId" 
+                    defaultValue={staff?.staffLocationId || ""} 
+                    disabled={locationsLoading && directLoading}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select staff location" />
+                      <SelectValue 
+                        placeholder={
+                          locationsLoading && directLoading 
+                            ? "Loading locations..." 
+                            : "Select staff location"
+                        } 
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {staffLocations.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.locationCode} - {location.locationDescription}
+                      {locationsLoading && directLoading ? (
+                        <SelectItem value="loading" disabled>
+                          <div className="flex items-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading locations...
+                          </div>
                         </SelectItem>
-                      ))}
+                      ) : staffLocations.length > 0 || directStaffLocations.length > 0 ? (
+                        // Use direct locations as fallback if hook locations are empty
+                        (staffLocations.length > 0 ? staffLocations : directStaffLocations).map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.locationCode} - {location.locationDescription}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>No locations found</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  {locationsLoading && <div className="text-sm text-muted-foreground mt-1">Loading locations...</div>}
+                  {/* Add debug button in development */}
+                  {process.env.NODE_ENV !== 'production' && locationsLoading && (
+                    <button 
+                      type="button" 
+                      className="text-xs text-blue-500 mt-1"
+                      onClick={() => {
+                        console.log('Manual refresh triggered');
+                        setForceRefresh(prev => prev + 1);
+                        fetchStaffLocations();
+                      }}
+                    >
+                      Refresh locations
+                    </button>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
