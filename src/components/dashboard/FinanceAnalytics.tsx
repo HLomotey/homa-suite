@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingDown, TrendingUp, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, TrendingDown, TrendingUp, Loader2, RefreshCw } from "lucide-react";
 import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FinanceAnalyticsProps {
   year?: number;
@@ -9,8 +11,16 @@ interface FinanceAnalyticsProps {
 }
 
 export function FinanceAnalytics({ year, month }: FinanceAnalyticsProps) {
-  const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useFinanceAnalytics(year, month);
-  const { data: revenue, isLoading: revenueLoading } = useRevenueMetrics(year, month);
+  const queryClient = useQueryClient();
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useFinanceAnalytics(year, month);
+  const { data: revenue, isLoading: revenueLoading, refetch: refetchRevenue } = useRevenueMetrics(year, month);
+  
+  const handleRefresh = async () => {
+    await Promise.all([
+      refetchAnalytics(),
+      refetchRevenue()
+    ]);
+  };
 
   // Format currency values
   const formatCurrency = (value: number): string => {
@@ -57,6 +67,16 @@ export function FinanceAnalytics({ year, month }: FinanceAnalyticsProps) {
         <p className="text-sm text-muted-foreground ml-auto">
           Financial performance and revenue analytics
         </p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh} 
+          disabled={analyticsLoading || revenueLoading}
+          className="ml-2"
+        >
+          <RefreshCw className="h-3 w-3 mr-1" />
+          Refresh
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

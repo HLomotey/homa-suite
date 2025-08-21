@@ -2,8 +2,15 @@
  * Finance Analytics Hook - Fetches real data from finance_invoices table
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integration/supabase/client";
+
+// Function to invalidate finance analytics cache after batch uploads
+export const invalidateFinanceCache = () => {
+  const queryClient = useQueryClient();
+  queryClient.invalidateQueries({ queryKey: ["finance-analytics"] });
+  queryClient.invalidateQueries({ queryKey: ["revenue-metrics"] });
+};
 
 export interface FinanceMetrics {
   totalRevenue: number;
@@ -130,7 +137,7 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         topClients,
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds
     refetchOnWindowFocus: false,
   });
 };
@@ -196,6 +203,6 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
         ),
       };
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30 * 1000, // 30 seconds
   });
 };

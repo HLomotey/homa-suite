@@ -4,6 +4,7 @@
 
 import { supabase } from '@/integration/supabase/client';
 import { FinanceInvoiceData, mapToFinanceInvoice } from './DataMapper';
+import { invalidateFinanceCache } from '@/hooks/finance/useFinanceAnalytics';
 
 export interface BatchProcessorOptions {
   batchSize?: number;
@@ -68,6 +69,15 @@ export class BatchProcessor {
     }
 
     console.log(`Batch processing complete: ${processed} records processed (updated existing or inserted new)`);
+    
+    // Invalidate finance analytics cache to refresh dashboard data
+    try {
+      invalidateFinanceCache();
+      console.log('Finance analytics cache invalidated successfully');
+    } catch (error) {
+      console.warn('Could not invalidate finance cache:', error);
+    }
+    
     return processed;
   }
 }
