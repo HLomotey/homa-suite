@@ -74,7 +74,8 @@ export interface BillingStaff {
   employee_id?: string;
   job_title: string;
   department: string;
-  location?: string;
+  location?: string; // DEPRECATED: Use staff_location_id instead
+  staff_location_id?: string; // UUID reference to staff_locations table
   employment_status: string;
   hire_date: string;
   termination_date?: string;
@@ -150,7 +151,9 @@ export interface FrontendBillingStaff {
   employeeId?: string;
   jobTitle: string;
   department: string;
-  location?: string;
+  location?: string; // DEPRECATED: Use staffLocationId instead
+  staffLocationId?: string; // UUID reference to staff_locations table
+  staffLocationName?: string; // Name of the staff location for display
   employmentStatus: string;
   hireDate: string;
   terminationDate?: string;
@@ -260,7 +263,8 @@ export const mapDatabaseBillingStaffToFrontend = (
     employeeId: dbStaff.employee_id,
     jobTitle: dbStaff.job_title,
     department: dbStaff.department,
-    location: dbStaff.location,
+    location: dbStaff.location, // DEPRECATED
+    staffLocationId: dbStaff.staff_location_id,
     employmentStatus: dbStaff.employment_status,
     hireDate: dbStaff.hire_date,
     terminationDate: dbStaff.termination_date,
