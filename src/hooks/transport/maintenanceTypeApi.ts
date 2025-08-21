@@ -91,11 +91,11 @@ export const updateMaintenanceType = async (
   const dbMaintenanceType = mapFrontendMaintenanceTypeToDatabase(fullMaintenanceType);
 
   // Remove id from the update payload
-  delete dbMaintenanceType.id;
+  const { id: _, ...updatePayload } = dbMaintenanceType;
 
   const { data, error } = await supabase
     .from("maintenance_types")
-    .update(dbMaintenanceType)
+    .update(updatePayload)
     .eq("id", id)
     .select()
     .single();
