@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +10,13 @@ interface WorkInfoTabProps {
 }
 
 export const WorkInfoTab = React.memo(({ staff }: WorkInfoTabProps) => {
+  // Memoize the callback to prevent re-renders
+  const handleLocationChange = useCallback((value: string) => {
+    const hiddenInput = document.querySelector('input[name="staffLocationId"]') as HTMLInputElement;
+    if (hiddenInput) {
+      hiddenInput.value = value;
+    }
+  }, []);
   return (
     <div className="grid grid-cols-1 gap-4">
       <div className="space-y-2">
@@ -58,13 +65,7 @@ export const WorkInfoTab = React.memo(({ staff }: WorkInfoTabProps) => {
       {/* Use our optimized StaffLocationSelect component */}
       <StaffLocationSelect 
         value={staff?.staffLocationId || ""}
-        onValueChange={(value) => {
-          // Update the hidden input for form submission
-          const hiddenInput = document.querySelector('input[name="staffLocationId"]') as HTMLInputElement;
-          if (hiddenInput) {
-            hiddenInput.value = value;
-          }
-        }}
+        onValueChange={handleLocationChange}
       />
       {/* Hidden input for form submission */}
       <input 

@@ -181,8 +181,10 @@ export function StaffForm({
   );
 
   // Memoize the form content to prevent unnecessary re-renders
-  const formContent = useMemo(
-    () => (
+  const formContent = useMemo(() => {
+    console.log('StaffForm render - locationsLoading:', false);
+    
+    return (
       <form onSubmit={handleSubmit} className="mt-6">
         <Tabs
           value={activeTab}
@@ -232,9 +234,17 @@ export function StaffForm({
           </Button>
         </div>
       </form>
-    ),
-    [activeTab, handleTabChange, handleSubmit, isEditing, isLoading, staff]
-  );
+    );
+  }, [
+    // Only include stable dependencies that won't change on every render
+    activeTab, 
+    handleTabChange, 
+    handleSubmit, 
+    isEditing, 
+    isLoading,
+    // Use staff?.id instead of the entire staff object to prevent unnecessary re-renders
+    staff?.id
+  ]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
