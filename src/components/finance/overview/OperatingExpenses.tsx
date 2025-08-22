@@ -10,51 +10,24 @@ interface OperatingExpensesProps {
 export function OperatingExpenses({ year, month }: OperatingExpensesProps) {
   const { data: analytics, isLoading, error } = useFinanceAnalytics(year, month);
 
+  // Prepare content based on loading/error state
+  let content;
   if (isLoading) {
-    return (
-      <Card className="bg-background border-border">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Outstanding
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-16">
-            <Loader2 className="h-4 w-4 animate-spin" />
-          </div>
-        </CardContent>
-      </Card>
+    content = (
+      <div className="flex items-center justify-center h-16">
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </div>
     );
-  }
-
-  if (error || !analytics) {
-    return (
-      <Card className="bg-background border-border">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Outstanding
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-red-500">Error loading data</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const outstandingInvoices = analytics.pendingInvoices + analytics.overdueInvoices + analytics.sentInvoices;
-  const previousOutstanding = 45; // Mock previous month for comparison
-  const outstandingChange = outstandingInvoices - previousOutstanding;
-  const percentChange = previousOutstanding > 0 ? (outstandingChange / previousOutstanding) * 100 : 0;
-  
-  return (
-    <Card className="bg-background border-border">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Outstanding
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+  } else if (error || !analytics) {
+    content = <div className="text-sm text-red-500">Error loading data</div>;
+  } else {
+    const outstandingInvoices = analytics.pendingInvoices + analytics.overdueInvoices + analytics.sentInvoices;
+    const previousOutstanding = 45; // Mock previous month for comparison
+    const outstandingChange = outstandingInvoices - previousOutstanding;
+    const percentChange = previousOutstanding > 0 ? (outstandingChange / previousOutstanding) * 100 : 0;
+    
+    content = (
+      <>
         <div className="flex items-center justify-between">
           <div className="text-2xl font-bold">{outstandingInvoices}</div>
           <div className={`flex items-center text-sm ${percentChange <= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -69,6 +42,20 @@ export function OperatingExpenses({ year, month }: OperatingExpensesProps) {
         <div className="text-xs text-muted-foreground mt-1">
           {analytics.overdueInvoices} overdue, {analytics.sentInvoices} sent
         </div>
+      </>
+    );
+  }
+  
+  // Always return the same component structure
+  return (
+    <Card className="bg-background border-border">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          Outstanding
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {content}
       </CardContent>
     </Card>
   );

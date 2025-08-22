@@ -54,8 +54,13 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
       if (error) throw error;
 
       const totalInvoices = invoices.length;
+      // Ensure we're parsing all line_total values exactly as they are, including negative and zero values
       const totalRevenue = invoices.reduce(
-        (sum, inv) => sum + parseFloat(inv.line_total),
+        (sum, inv) => {
+          const lineTotal = parseFloat(inv.line_total);
+          // Handle NaN values gracefully
+          return sum + (isNaN(lineTotal) ? 0 : lineTotal);
+        },
         0
       );
 
@@ -75,7 +80,8 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
           acc[month] = { revenue: 0, invoices: 0 };
         }
 
-        acc[month].revenue += parseFloat(inv.line_total);
+        const lineTotal = parseFloat(inv.line_total);
+        acc[month].revenue += isNaN(lineTotal) ? 0 : lineTotal;
         acc[month].invoices += 1;
 
         return acc;
@@ -106,7 +112,8 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         if (!acc[taxType]) {
           acc[taxType] = { total_revenue: 0, invoice_count: 0 };
         }
-        acc[taxType].total_revenue += parseFloat(inv.line_total);
+        const lineTotal = parseFloat(inv.line_total);
+        acc[taxType].total_revenue += isNaN(lineTotal) ? 0 : lineTotal;
         acc[taxType].invoice_count += 1;
         return acc;
       }, {} as Record<string, { total_revenue: number; invoice_count: number }>);
@@ -173,7 +180,10 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
             invDate.getFullYear() === targetYear
           );
         })
-        .reduce((sum, inv) => sum + parseFloat(inv.line_total), 0);
+        .reduce((sum, inv) => {
+          const lineTotal = parseFloat(inv.line_total);
+          return sum + (isNaN(lineTotal) ? 0 : lineTotal);
+        }, 0);
 
       const lastMonth = targetMonth === 0 ? 11 : targetMonth - 1;
       const lastMonthYear = targetMonth === 0 ? targetYear - 1 : targetYear;
@@ -186,7 +196,10 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
             invDate.getFullYear() === lastMonthYear
           );
         })
-        .reduce((sum, inv) => sum + parseFloat(inv.line_total), 0);
+        .reduce((sum, inv) => {
+          const lineTotal = parseFloat(inv.line_total);
+          return sum + (isNaN(lineTotal) ? 0 : lineTotal);
+        }, 0);
 
       const growthRate =
         lastMonthRevenue > 0
@@ -198,7 +211,10 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
         lastMonthRevenue,
         growthRate,
         totalRevenue: data.reduce(
-          (sum, inv) => sum + parseFloat(inv.line_total),
+          (sum, inv) => {
+            const lineTotal = parseFloat(inv.line_total);
+            return sum + (isNaN(lineTotal) ? 0 : lineTotal);
+          },
           0
         ),
       };
