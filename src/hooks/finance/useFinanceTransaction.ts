@@ -1,13 +1,13 @@
 /**
- * Finance Transaction hooks for Supabase integration
- * These hooks provide data fetching and state management for finance transaction data
+ * Finance Invoice hooks for Supabase integration
+ * These hooks provide data fetching and state management for finance invoice data
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  FinanceTransaction,
-  FrontendFinanceTransaction,
-  mapDatabaseFinanceTransactionToFrontend
+  Invoice,
+  FrontendInvoice,
+  mapDatabaseInvoiceToFrontend
 } from "@/integration/supabase/types/finance";
 import { supabase } from "@/integration/supabase/client";
 import * as XLSX from 'xlsx';
@@ -19,7 +19,7 @@ import { toast } from "sonner";
  * @returns Object containing transactions data, loading state, error state, and refetch function
  */
 export const useFinanceTransactions = () => {
-  const [transactions, setTransactions] = useState<FrontendFinanceTransaction[]>([]);
+  const [transactions, setTransactions] = useState<FrontendInvoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -29,13 +29,13 @@ export const useFinanceTransactions = () => {
       setError(null);
       
       const { data, error: supabaseError } = await supabase
-        .from("finance_transactions")
+        .from("finance_invoices")
         .select("*")
         .order("date", { ascending: false });
       
       if (supabaseError) throw new Error(supabaseError.message);
       
-      setTransactions(data.map(mapDatabaseFinanceTransactionToFrontend));
+      setTransactions(data.map(mapDatabaseInvoiceToFrontend));
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error("An unknown error occurred")
@@ -58,7 +58,7 @@ export const useFinanceTransactions = () => {
  * @returns Object containing transaction data, loading state, error state, and refetch function
  */
 export const useFinanceTransaction = (id: string) => {
-  const [transaction, setTransaction] = useState<FrontendFinanceTransaction | null>(null);
+  const [transaction, setTransaction] = useState<FrontendInvoice | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -70,14 +70,14 @@ export const useFinanceTransaction = (id: string) => {
       setError(null);
       
       const { data, error: supabaseError } = await supabase
-        .from("finance_transactions")
+        .from("finance_invoices")
         .select("*")
         .eq("id", id)
         .single();
       
       if (supabaseError) throw new Error(supabaseError.message);
       
-      setTransaction(mapDatabaseFinanceTransactionToFrontend(data));
+      setTransaction(mapDatabaseInvoiceToFrontend(data));
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error("An unknown error occurred")
@@ -95,51 +95,52 @@ export const useFinanceTransaction = (id: string) => {
 };
 
 /**
- * Hook for creating a new finance transaction
+ * Hook for creating a new finance invoice
  * @returns Object containing create function, loading state, and error state
  */
 export const useCreateFinanceTransaction = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const [createdTransaction, setCreatedTransaction] = useState<FrontendFinanceTransaction | null>(null);
+  const [createdInvoice, setCreatedInvoice] = useState<FrontendInvoice | null>(null);
 
   const create = useCallback(
-    async (transactionData: Omit<FrontendFinanceTransaction, "id">) => {
+    async (invoiceData: Omit<FrontendInvoice, "id">) => {
       try {
         setLoading(true);
         setError(null);
         
         // Convert frontend data to database format
-        const dbTransactionData = {
-          client: transactionData.client,
-          invoice_id: transactionData.invoiceId,
-          date: transactionData.date,
-          status: transactionData.status,
-          date_paid: transactionData.datePaid,
-          description: transactionData.description,
-          rate: transactionData.rate,
-          quantity: transactionData.quantity,
-          discount_percentage: transactionData.discountPercentage,
-          line_subtotal: transactionData.lineSubtotal,
-          tax_1_type: transactionData.tax1Type,
-          tax_1_amount: transactionData.tax1Amount,
-          tax_2_type: transactionData.tax2Type,
-          tax_2_amount: transactionData.tax2Amount,
-          amount: transactionData.amount,
-          currency: transactionData.currency
+        const dbInvoiceData = {
+          client_name: invoiceData.clientName,
+          invoice_number: invoiceData.invoiceNumber,
+          date_issued: invoiceData.dateIssued,
+          invoice_status: invoiceData.invoiceStatus,
+          date_paid: invoiceData.datePaid,
+          item_name: invoiceData.itemName,
+          item_description: invoiceData.itemDescription,
+          rate: invoiceData.rate,
+          quantity: invoiceData.quantity,
+          discount_percentage: invoiceData.discountPercentage,
+          line_subtotal: invoiceData.lineSubtotal,
+          tax_1_type: invoiceData.tax1Type,
+          tax_1_amount: invoiceData.tax1Amount,
+          tax_2_type: invoiceData.tax2Type,
+          tax_2_amount: invoiceData.tax2Amount,
+          line_total: invoiceData.lineTotal,
+          currency: invoiceData.currency
         };
         
         const { data, error: supabaseError } = await supabase
-          .from("finance_transactions")
-          .insert(dbTransactionData)
+          .from("finance_invoices")
+          .insert(dbInvoiceData)
           .select()
           .single();
         
         if (supabaseError) throw new Error(supabaseError.message);
         
-        const newTransaction = mapDatabaseFinanceTransactionToFrontend(data);
-        setCreatedTransaction(newTransaction);
-        return newTransaction;
+        const newInvoice = mapDatabaseInvoiceToFrontend(data);
+        setCreatedInvoice(newInvoice);
+        return newInvoice;
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error("An unknown error occurred")
@@ -152,59 +153,60 @@ export const useCreateFinanceTransaction = () => {
     []
   );
 
-  return { create, loading, error, createdTransaction };
+  return { create, loading, error, createdInvoice };
 };
 
 /**
- * Hook for updating a finance transaction
+ * Hook for updating a finance invoice
  * @returns Object containing update function, loading state, and error state
  */
 export const useUpdateFinanceTransaction = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const [updatedTransaction, setUpdatedTransaction] = useState<FrontendFinanceTransaction | null>(null);
+  const [updatedInvoice, setUpdatedInvoice] = useState<FrontendInvoice | null>(null);
 
   const update = useCallback(
     async (
       id: string,
-      transactionData: Partial<Omit<FrontendFinanceTransaction, "id">>
+      invoiceData: Partial<Omit<FrontendInvoice, "id">>
     ) => {
       try {
         setLoading(true);
         setError(null);
         
         // Convert frontend data to database format
-        const dbTransactionData: Record<string, any> = {};
+        const dbInvoiceData: Record<string, any> = {};
         
-        if (transactionData.client !== undefined) dbTransactionData.client = transactionData.client;
-        if (transactionData.invoiceId !== undefined) dbTransactionData.invoice_id = transactionData.invoiceId;
-        if (transactionData.date !== undefined) dbTransactionData.date = transactionData.date;
-        if (transactionData.status !== undefined) dbTransactionData.status = transactionData.status;
-        if (transactionData.datePaid !== undefined) dbTransactionData.date_paid = transactionData.datePaid;
-        if (transactionData.description !== undefined) dbTransactionData.description = transactionData.description;
-        if (transactionData.rate !== undefined) dbTransactionData.rate = transactionData.rate;
-        if (transactionData.quantity !== undefined) dbTransactionData.quantity = transactionData.quantity;
-        if (transactionData.discountPercentage !== undefined) dbTransactionData.discount_percentage = transactionData.discountPercentage;
-        if (transactionData.lineSubtotal !== undefined) dbTransactionData.line_subtotal = transactionData.lineSubtotal;
-        if (transactionData.tax1Type !== undefined) dbTransactionData.tax_1_type = transactionData.tax1Type;
-        if (transactionData.tax1Amount !== undefined) dbTransactionData.tax_1_amount = transactionData.tax1Amount;
-        if (transactionData.tax2Type !== undefined) dbTransactionData.tax_2_type = transactionData.tax2Type;
-        if (transactionData.tax2Amount !== undefined) dbTransactionData.tax_2_amount = transactionData.tax2Amount;
-        if (transactionData.amount !== undefined) dbTransactionData.amount = transactionData.amount;
-        if (transactionData.currency !== undefined) dbTransactionData.currency = transactionData.currency;
+        if (invoiceData.clientName !== undefined) dbInvoiceData.client_name = invoiceData.clientName;
+        if (invoiceData.invoiceNumber !== undefined) dbInvoiceData.invoice_number = invoiceData.invoiceNumber;
+        if (invoiceData.dateIssued !== undefined) dbInvoiceData.date_issued = invoiceData.dateIssued;
+        if (invoiceData.invoiceStatus !== undefined) dbInvoiceData.invoice_status = invoiceData.invoiceStatus;
+        if (invoiceData.datePaid !== undefined) dbInvoiceData.date_paid = invoiceData.datePaid;
+        if (invoiceData.itemName !== undefined) dbInvoiceData.item_name = invoiceData.itemName;
+        if (invoiceData.itemDescription !== undefined) dbInvoiceData.item_description = invoiceData.itemDescription;
+        if (invoiceData.rate !== undefined) dbInvoiceData.rate = invoiceData.rate;
+        if (invoiceData.quantity !== undefined) dbInvoiceData.quantity = invoiceData.quantity;
+        if (invoiceData.discountPercentage !== undefined) dbInvoiceData.discount_percentage = invoiceData.discountPercentage;
+        if (invoiceData.lineSubtotal !== undefined) dbInvoiceData.line_subtotal = invoiceData.lineSubtotal;
+        if (invoiceData.tax1Type !== undefined) dbInvoiceData.tax_1_type = invoiceData.tax1Type;
+        if (invoiceData.tax1Amount !== undefined) dbInvoiceData.tax_1_amount = invoiceData.tax1Amount;
+        if (invoiceData.tax2Type !== undefined) dbInvoiceData.tax_2_type = invoiceData.tax2Type;
+        if (invoiceData.tax2Amount !== undefined) dbInvoiceData.tax_2_amount = invoiceData.tax2Amount;
+        if (invoiceData.lineTotal !== undefined) dbInvoiceData.line_total = invoiceData.lineTotal;
+        if (invoiceData.currency !== undefined) dbInvoiceData.currency = invoiceData.currency;
         
         const { data, error: supabaseError } = await supabase
-          .from("finance_transactions")
-          .update(dbTransactionData)
+          .from("finance_invoices")
+          .update(dbInvoiceData)
           .eq("id", id)
           .select()
           .single();
         
         if (supabaseError) throw new Error(supabaseError.message);
         
-        const updatedTransaction = mapDatabaseFinanceTransactionToFrontend(data);
-        setUpdatedTransaction(updatedTransaction);
-        return updatedTransaction;
+        const updatedInvoice = mapDatabaseInvoiceToFrontend(data);
+        setUpdatedInvoice(updatedInvoice);
+        return updatedInvoice;
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error("An unknown error occurred")
@@ -217,11 +219,11 @@ export const useUpdateFinanceTransaction = () => {
     []
   );
 
-  return { update, loading, error, updatedTransaction };
+  return { update, loading, error, updatedInvoice };
 };
 
 /**
- * Hook for deleting a finance transaction
+ * Hook for deleting a finance invoice
  * @returns Object containing delete function, loading state, and error state
  */
 export const useDeleteFinanceTransaction = () => {
@@ -229,13 +231,13 @@ export const useDeleteFinanceTransaction = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isDeleted, setIsDeleted] = useState<boolean>(false);
 
-  const deleteTransaction = useCallback(async (id: string) => {
+  const deleteInvoice = useCallback(async (id: string) => {
     try {
       setLoading(true);
       setError(null);
       
       const { error: supabaseError } = await supabase
-        .from("finance_transactions")
+        .from("finance_invoices")
         .delete()
         .eq("id", id);
       
@@ -253,7 +255,7 @@ export const useDeleteFinanceTransaction = () => {
     }
   }, []);
 
-  return { deleteTransaction, loading, error, isDeleted };
+  return { deleteInvoice, loading, error, isDeleted };
 };
 
 /**
@@ -611,7 +613,7 @@ export const useUploadFinanceTransactions = () => {
  * @returns Object containing transactions data, loading state, error state, and refetch function
  */
 export const useFinanceTransactionsByClient = (client: string) => {
-  const [transactions, setTransactions] = useState<FrontendFinanceTransaction[]>([]);
+  const [transactions, setTransactions] = useState<FrontendInvoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -627,14 +629,14 @@ export const useFinanceTransactionsByClient = (client: string) => {
       setError(null);
       
       const { data, error: supabaseError } = await supabase
-        .from("finance_transactions")
+        .from("finance_invoices")
         .select("*")
-        .ilike("client", `%${client}%`)
+        .ilike("client_name", `%${client}%`)
         .order("date", { ascending: false });
       
       if (supabaseError) throw new Error(supabaseError.message);
       
-      setTransactions(data.map(mapDatabaseFinanceTransactionToFrontend));
+      setTransactions(data.map(mapDatabaseInvoiceToFrontend));
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error("An unknown error occurred")
@@ -657,7 +659,7 @@ export const useFinanceTransactionsByClient = (client: string) => {
  * @returns Object containing transactions data, loading state, error state, and refetch function
  */
 export const useFinanceTransactionsBySearchTerm = (searchTerm: string) => {
-  const [transactions, setTransactions] = useState<FrontendFinanceTransaction[]>([]);
+  const [transactions, setTransactions] = useState<FrontendInvoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -674,14 +676,14 @@ export const useFinanceTransactionsBySearchTerm = (searchTerm: string) => {
       
       // Search in both description and client fields
       const { data, error: supabaseError } = await supabase
-        .from("finance_transactions")
+        .from("finance_invoices")
         .select("*")
-        .or(`description.ilike.%${searchTerm}%,client.ilike.%${searchTerm}%`)
+        .or(`item_description.ilike.%${searchTerm}%,client_name.ilike.%${searchTerm}%`)
         .order("date", { ascending: false });
       
       if (supabaseError) throw new Error(supabaseError.message);
       
-      setTransactions(data.map(mapDatabaseFinanceTransactionToFrontend));
+      setTransactions(data.map(mapDatabaseInvoiceToFrontend));
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error("An unknown error occurred")

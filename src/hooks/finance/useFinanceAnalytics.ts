@@ -54,15 +54,57 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
       if (error) throw error;
 
       const totalInvoices = invoices.length;
-      // Ensure we're parsing all line_total values exactly as they are, including negative and zero values
-      const totalRevenue = invoices.reduce(
-        (sum, inv) => {
-          const lineTotal = parseFloat(inv.line_total);
-          // Handle NaN values gracefully
-          return sum + (isNaN(lineTotal) ? 0 : lineTotal);
-        },
-        0
-      );
+      // Fetch total revenue directly from the database
+      const { data: totalRevenueData, error: totalRevenueError } = await supabase
+        .from('finance_invoices')
+        .select('sum(line_total)')
+        .single();
+        
+      let totalRevenue = 0;
+      if (totalRevenueError) {
+        console.error('Error fetching total revenue:', totalRevenueError);
+      } else if (totalRevenueData) {
+        // Log the response to help debug
+        console.log('Total revenue response:', totalRevenueData);
+        
+        try {
+          // Cast to unknown first to avoid TypeScript errors
+          const rawData = totalRevenueData as unknown;
+          
+          // Check all possible response formats
+          if (typeof rawData === 'object') {
+            // Format 1: { sum: "123.45" } or { sum: 123.45 }
+            if ('sum' in rawData && rawData.sum !== null) {
+              if (typeof rawData.sum === 'string') {
+                totalRevenue = parseFloat(rawData.sum) || 0;
+              } else if (typeof rawData.sum === 'number') {
+                totalRevenue = rawData.sum;
+              }
+            }
+            
+            // Format 2: Nested object with sum property
+            const anyData = rawData as any;
+            if (anyData.sum && typeof anyData.sum === 'object') {
+              // Try to access common properties that might contain the sum
+              const possibleProps = ['line_total', 'value', 'total'];
+              for (const prop of possibleProps) {
+                if (prop in anyData.sum) {
+                  const value = anyData.sum[prop];
+                  if (typeof value === 'string') {
+                    totalRevenue = parseFloat(value) || 0;
+                    break;
+                  } else if (typeof value === 'number') {
+                    totalRevenue = value;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing total revenue:', err);
+        }
+      }
 
       const statusCounts = invoices.reduce((acc, inv) => {
         acc[inv.invoice_status] = (acc[inv.invoice_status] || 0) + 1;
@@ -206,17 +248,63 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
           ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
           : 0;
 
+      // Fetch total revenue directly from the database
+      const { data: totalRevenueData, error: totalRevenueError } = await supabase
+        .from('finance_invoices')
+        .select('sum(line_total)')
+        .single();
+        
+      let totalRevenue = 0;
+      if (totalRevenueError) {
+        console.error('Error fetching total revenue in useRevenueMetrics:', totalRevenueError);
+      } else if (totalRevenueData) {
+        // Log the response to help debug
+        console.log('Total revenue response in useRevenueMetrics:', totalRevenueData);
+        
+        try {
+          // Cast to unknown first to avoid TypeScript errors
+          const rawData = totalRevenueData as unknown;
+          
+          // Check all possible response formats
+          if (typeof rawData === 'object') {
+            // Format 1: { sum: "123.45" } or { sum: 123.45 }
+            if ('sum' in rawData && rawData.sum !== null) {
+              if (typeof rawData.sum === 'string') {
+                totalRevenue = parseFloat(rawData.sum) || 0;
+              } else if (typeof rawData.sum === 'number') {
+                totalRevenue = rawData.sum;
+              }
+            }
+            
+            // Format 2: Nested object with sum property
+            const anyData = rawData as any;
+            if (anyData.sum && typeof anyData.sum === 'object') {
+              // Try to access common properties that might contain the sum
+              const possibleProps = ['line_total', 'value', 'total'];
+              for (const prop of possibleProps) {
+                if (prop in anyData.sum) {
+                  const value = anyData.sum[prop];
+                  if (typeof value === 'string') {
+                    totalRevenue = parseFloat(value) || 0;
+                    break;
+                  } else if (typeof value === 'number') {
+                    totalRevenue = value;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing total revenue in useRevenueMetrics:', err);
+        }
+      }
+
       return {
         thisMonthRevenue,
         lastMonthRevenue,
         growthRate,
-        totalRevenue: data.reduce(
-          (sum, inv) => {
-            const lineTotal = parseFloat(inv.line_total);
-            return sum + (isNaN(lineTotal) ? 0 : lineTotal);
-          },
-          0
-        ),
+        totalRevenue
       };
     },
     staleTime: 30 * 1000, // 30 seconds
