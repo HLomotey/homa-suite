@@ -308,7 +308,7 @@ export function ComplaintDetail({ id, onBack }: ComplaintDetailProps) {
                 ) : comments && comments.length > 0 ? (
                   <div className="space-y-4">
                     {comments.map((comment) => (
-                      <div key={comment.id} className={`p-4 rounded-lg ${comment.is_internal ? 'bg-amber-50' : 'bg-slate-50'}`}>
+                      <div key={comment.id} className={`p-4 rounded-lg ${comment.is_internal ? 'bg-amber-900/20' : 'bg-slate-800/50'}`}>
                         <div className="flex items-start gap-3">
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={(comment as any).profiles?.avatar_url || ''} />
