@@ -194,9 +194,9 @@ export const getComplaintById = async (
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
-        created_by_profile:profiles(full_name),
-        assigned_to_profile:profiles(full_name),
-        escalated_to_profile:profiles(full_name),
+        created_by_profile:profiles!created_by(full_name),
+        assigned_to_profile:profiles!assigned_to(full_name),
+        escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
         complaint_comments_count:complaint_comments(count),
@@ -419,9 +419,14 @@ export const updateComplaint = async (
     
     // Insert history entries if any
     if (historyEntries.length > 0) {
-      await supabaseAdmin
+      const { error: historyError } = await supabaseAdmin
         .from("complaint_history")
         .insert(historyEntries);
+      
+      if (historyError) {
+        console.error(`Error inserting complaint history:`, historyError);
+        // Don't fail the entire update if history insertion fails
+      }
     }
 
     // Ensure data is valid before mapping to prevent ParserError issues
@@ -516,10 +521,7 @@ export const getComplaintComments = async (
   try {
     let query = supabase
       .from("complaint_comments")
-      .select(`
-        *,
-        profiles:user_id(full_name, avatar_url)
-      `)
+      .select("*")
       .eq("complaint_id", complaintId);
     
     // Filter out internal comments for non-staff users
@@ -584,10 +586,7 @@ export const getComplaintAttachments = async (
   try {
     let query = supabase
       .from("complaint_attachments")
-      .select(`
-        *,
-        profiles:uploaded_by(full_name)
-      `)
+      .select("*")
       .eq("complaint_id", complaintId);
     
     // Filter out internal attachments for non-staff users
@@ -688,10 +687,7 @@ export const getComplaintHistory = async (
   try {
     const { data, error } = await supabase
       .from("complaint_history")
-      .select(`
-        *,
-        profiles:user_id(full_name)
-      `)
+      .select("*")
       .eq("complaint_id", complaintId)
       .order("created_at");
 

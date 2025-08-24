@@ -649,7 +649,7 @@ export function ComplaintDetail({ id, onBack }: ComplaintDetailProps) {
                       <SelectValue placeholder="Select staff member" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {/* This would be populated from a staff list */}
                       <SelectItem value="staff-1">John Doe</SelectItem>
                       <SelectItem value="staff-2">Jane Smith</SelectItem>
