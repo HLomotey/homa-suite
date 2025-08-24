@@ -28,24 +28,32 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
   useEffect(() => {
     const checkAccess = async () => {
       if (!user?.id) {
+        console.log('No user ID found');
         setLoading(false);
+        setHasAccess(false);
         return;
       }
 
       try {
         setLoading(true);
+        console.log('Checking access for user:', user.id);
         const modules = await getUserModules(user.id);
+        console.log('Retrieved modules:', modules);
         setUserModules(modules);
 
         // Determine which module to check
         const moduleToCheck = module || getModuleByRoute(location.pathname)?.id;
+        console.log('Module to check:', moduleToCheck);
         
         if (!moduleToCheck) {
           // If no module is found, allow access (for public routes)
+          console.log('No module required, allowing access');
           setHasAccess(true);
         } else {
           // Check if user has access to the module
-          setHasAccess(modules.includes(moduleToCheck));
+          const hasModuleAccess = modules.includes(moduleToCheck);
+          console.log('Has module access:', hasModuleAccess);
+          setHasAccess(hasModuleAccess);
         }
       } catch (error) {
         console.error('Error checking module access:', error);

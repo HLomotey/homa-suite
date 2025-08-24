@@ -121,39 +121,45 @@ export const userHasModuleAccess = async (userId: string, moduleId: string): Pro
 // Get user's accessible modules
 export const getUserModules = async (userId: string): Promise<string[]> => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .select(`
-        roles!inner (
-          role_modules (
-            module_id
-          )
-        )
-      `)
-      .eq('id', userId);
-
-    if (error) {
-      console.error('Error fetching user modules:', error);
-      throw error;
-    }
-
-    const modules = new Set<string>();
-    data?.forEach(profile => {
-      if (profile.roles && 'role_modules' in profile.roles) {
-        const roleModules = (profile.roles as any).role_modules;
-        if (Array.isArray(roleModules)) {
-          roleModules.forEach((rm: any) => {
-            if (rm.module_id) {
-              modules.add(rm.module_id);
-            }
-          });
-        }
-      }
+    // Direct SQL query to bypass RLS issues
+    const { data, error } = await supabaseAdmin.rpc('get_user_modules', {
+      input_user_id: userId
     });
 
-    return Array.from(modules);
+    if (error) {
+      console.error('Error fetching user modules via RPC:', error);
+      // Fallback to direct query
+      const { data: profileData, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('role_id')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || !profileData?.role_id) {
+        console.log('User has no role assigned or profile not found');
+        return [];
+      }
+
+      // Get modules for the user's role
+      const { data: moduleData, error: moduleError } = await supabaseAdmin
+        .from('role_modules')
+        .select('module_id')
+        .eq('role_id', profileData.role_id);
+
+      if (moduleError) {
+        console.error('Error fetching role modules:', moduleError);
+        return [];
+      }
+
+      const modules = moduleData?.map(rm => rm.module_id) || [];
+      console.log(`User ${userId} has modules (fallback):`, modules);
+      return modules;
+    }
+
+    console.log(`User ${userId} has modules (RPC):`, data || []);
+    return data || [];
   } catch (error) {
     console.error('Error in getUserModules:', error);
-    throw error;
+    return [];
   }
 };
