@@ -42,14 +42,19 @@ export type BillingPeriodStatus = 'Active' | 'Closed' | 'Archived';
 
 /**
  * Staff interface representing the staff table in Supabase
- * Comprehensive staff information for billing and HR purposes
+ * Enhanced with external system fields while maintaining backward compatibility
  */
 export interface BillingStaff {
   id: string;
-  // Personal Information
-  legal_name: string;
+  
+  // Personal Information (Enhanced with external system fields)
+  legal_name: string; // Computed from first_name + last_name for backward compatibility
+  first_name?: string; // New field from external system
+  last_name?: string; // New field from external system
+  middle_name?: string; // New field from external system
   preferred_name?: string;
   birth_name?: string;
+  date_of_birth?: string; // New field from external system
   
   // Contact Information
   email: string;
@@ -119,48 +124,47 @@ export interface FrontendBill {
 
 /**
  * Frontend staff type that matches the structure in the billing components
- * Comprehensive staff information for billing and HR purposes
+ * Enhanced with external system fields while maintaining backward compatibility
  */
 export interface FrontendBillingStaff {
   id: string;
-  // Personal Information
   legalName: string;
   preferredName?: string;
   birthName?: string;
-  
-  // Contact Information
-  email: string;
+  email?: string;
   phoneNumber?: string;
   address?: string;
-  
-  // Emergency Contacts
+  maritalStatus?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelationship?: string;
-  
-  // Personal Details
-  maritalStatus?: string;
-  
-  // EEO Data
+  employeeId?: string;
+  jobTitle?: string;
+  department?: string;
+  location?: string;
+  employmentStatus?: string;
+  hireDate?: string;
+  terminationDate?: string;
   gender?: string;
   ethnicityRace?: string;
   veteranStatus?: string;
   disabilityStatus?: string;
-  
-  // Work-Related Information
-  employeeId?: string;
-  jobTitle: string;
-  department: string;
-  location?: string; // DEPRECATED: Use staffLocationId instead
-  staffLocationId?: string; // UUID reference to staff_locations table
-  staffLocationName?: string; // Name of the staff location for display
-  employmentStatus: string;
-  hireDate: string;
-  terminationDate?: string;
-  
-  // Compensation Information
   salary?: number;
   hourlyRate?: number;
+  // New fields from external system
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
+  dateOfBirth?: string;
+  staffLocationId?: string;
+  staffLocationName?: string;
+  // Additional external system fields
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  supervisor?: string;
+  payFrequency?: string;
 }
 
 /**
@@ -237,8 +241,12 @@ export const mapDatabaseBillingStaffToFrontend = (
     id: dbStaff.id,
     // Personal Information
     legalName: dbStaff.legal_name,
+    firstName: dbStaff.first_name,
+    lastName: dbStaff.last_name,
+    middleName: dbStaff.middle_name,
     preferredName: dbStaff.preferred_name,
     birthName: dbStaff.birth_name,
+    dateOfBirth: dbStaff.date_of_birth,
     
     // Contact Information
     email: dbStaff.email,

@@ -28,6 +28,7 @@ import {
   Wrench,
   MessageSquare,
   Activity,
+  UserCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -73,6 +74,12 @@ const navigationItems = [
     label: "Staff",
     icon: Users,
     href: ROUTES.STAFF,
+    module: "hr",
+  },
+  {
+    label: "External Staff",
+    icon: UserCheck,
+    href: ROUTES.EXTERNAL_STAFF,
     module: "hr",
   },
   {

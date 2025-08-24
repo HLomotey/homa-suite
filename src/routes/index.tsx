@@ -9,6 +9,7 @@ const Properties = lazy(() => import("@/pages/Properties"));
 const Housing = lazy(() => import("@/pages/Housing"));
 const Billing = lazy(() => import("@/pages/Billing"));
 const Staff = lazy(() => import("@/pages/Staff"));
+const ExternalStaff = lazy(() => import("@/pages/ExternalStaff"));
 const PayrollPage = lazy(() => import("@/pages/PayrollPage"));
 const AttendancePage = lazy(() =>
   import("@/pages/AttendancePage").then((module) => ({
@@ -248,6 +249,16 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <ModuleRouteGuard module="hr">
               <Staff />
+            </ModuleRouteGuard>
+          </LazyWrapper>
+        ),
+      },
+      {
+        path: "external-staff",
+        element: (
+          <LazyWrapper>
+            <ModuleRouteGuard module="hr">
+              <ExternalStaff />
             </ModuleRouteGuard>
           </LazyWrapper>
         ),

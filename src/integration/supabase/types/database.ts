@@ -34,6 +34,9 @@ import {
   Payroll
 } from './billing';
 import {
+  ExternalStaff
+} from './external-staff';
+import {
   Attendance
 } from './attendance';
 import {
@@ -163,6 +166,11 @@ export interface Database {
         Row: BillingStaff;
         Insert: Omit<BillingStaff, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<BillingStaff, "id" | "created_at">>;
+      };
+      external_staff: {
+        Row: ExternalStaff;
+        Insert: Omit<ExternalStaff, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ExternalStaff, "id" | "created_at">>;
       };
       billing_stats: {
         Row: BillingStats;
