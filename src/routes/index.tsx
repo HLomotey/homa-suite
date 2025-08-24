@@ -136,7 +136,7 @@ export const routes: RouteObject[] = [
         path: "staff",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="staff">
+            <ModuleRouteGuard module="hr">
               <Staff />
             </ModuleRouteGuard>
           </LazyWrapper>
@@ -146,7 +146,7 @@ export const routes: RouteObject[] = [
         path: "payroll",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="payroll">
+            <ModuleRouteGuard module="hr">
               <PayrollPage />
             </ModuleRouteGuard>
           </LazyWrapper>
@@ -156,7 +156,7 @@ export const routes: RouteObject[] = [
         path: "attendance",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="attendance">
+            <ModuleRouteGuard module="hr">
               <AttendancePage />
             </ModuleRouteGuard>
           </LazyWrapper>
@@ -186,7 +186,7 @@ export const routes: RouteObject[] = [
         path: "profile",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="profile">
+            <ModuleRouteGuard module="settings">
               <Profile />
             </ModuleRouteGuard>
           </LazyWrapper>
@@ -247,7 +247,7 @@ export const routes: RouteObject[] = [
         path: "excel-uploads",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="uploads">
+            <ModuleRouteGuard module="settings">
               <ExcelUploads />
             </ModuleRouteGuard>
           </LazyWrapper>
@@ -257,7 +257,7 @@ export const routes: RouteObject[] = [
         path: "analytics",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="admin">
+            <ModuleRouteGuard module="operations">
               <Analytics />
             </ModuleRouteGuard>
           </LazyWrapper>
