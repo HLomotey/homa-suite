@@ -11,6 +11,7 @@ import { useComplaints, useComplaintCategories, useComplaintSubcategories } from
 import { ComplaintAssetType, ComplaintPriority, ComplaintStatus } from "@/integration/supabase/types/complaints";
 import { useUsersByRole } from "@/hooks/user-profile/useEnhancedUsers";
 import { FrontendUser } from "@/integration/supabase/types";
+import { useProperties } from "@/hooks/property/useProperty";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,9 +64,11 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   const { createComplaint, isCreating } = useComplaints();
   const [assetType, setAssetType] = useState<ComplaintAssetType>("property");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [properties, setProperties] = useState<{ id: string; title: string; address: string; manager_id?: string; managerName?: string }[]>([]);
   const [vehicles, setVehicles] = useState<{ id: string; make: string; model: string; license_plate: string }[]>([]);
-  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
+  
+  // Fetch properties using the same hook as properties page
+  const { properties, loading: isLoadingProperties } = useProperties();
   
   // Fetch supervisors
   const { users: supervisors, loading: isLoadingSupervisors } = useUsersByRole("supervisor");
@@ -115,51 +118,22 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   useEffect(() => {
     if (watchedAssetId && assetType === "property") {
       const selectedProperty = properties.find(property => property.id === watchedAssetId);
-      if (selectedProperty && selectedProperty.manager_id) {
-        form.setValue("supervisorId", selectedProperty.manager_id);
+      if (selectedProperty && selectedProperty.managerId) {
+        form.setValue("supervisorId", selectedProperty.managerId);
       }
     }
   }, [watchedAssetId, assetType, properties, form]);
 
-  // Fetch properties and vehicles from Supabase
+  // Fetch vehicles from Supabase
   useEffect(() => {
-    const fetchAssets = async () => {
-      setIsLoadingAssets(true);
+    const fetchVehicles = async () => {
+      setIsLoadingVehicles(true);
       try {
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(
           import.meta.env.VITE_SUPABASE_URL!,
           import.meta.env.VITE_SUPABASE_ANON_KEY!
         );
-
-        // Fetch properties with manager information
-        const { data: propertiesData, error: propertiesError } = await supabase
-          .from('properties')
-          .select(`
-            id, 
-            title, 
-            address, 
-            manager_id,
-            billing_staff!properties_manager_id_fkey (
-              id,
-              legal_name
-            )
-          `)
-          .eq('status', 'active');
-        
-        if (propertiesError) {
-          console.error("Error fetching properties:", propertiesError);
-        } else if (propertiesData) {
-          // Map the data to include manager information
-          const mappedProperties = propertiesData.map((property: any) => ({
-            id: property.id,
-            title: property.title,
-            address: property.address,
-            manager_id: property.manager_id,
-            managerName: property.billing_staff?.legal_name || null
-          }));
-          setProperties(mappedProperties);
-        }
 
         // Fetch vehicles
         const { data: vehiclesData, error: vehiclesError } = await supabase
@@ -173,18 +147,18 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
           setVehicles(vehiclesData);
         }
       } catch (error) {
-        console.error("Error fetching assets:", error);
+        console.error("Error fetching vehicles:", error);
         toast({
           title: "Error",
-          description: "Failed to load assets. Please try again.",
+          description: "Failed to load vehicles. Please try again.",
           variant: "destructive",
         });
       } finally {
-        setIsLoadingAssets(false);
+        setIsLoadingVehicles(false);
       }
     };
 
-    fetchAssets();
+    fetchVehicles();
   }, []);
 
   // Handle form submission
@@ -346,7 +320,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                   <FormItem>
                     <FormLabel className="text-blue-400">{assetType === 'property' ? 'Property' : 'Vehicle'} <span className="text-blue-400">*</span></FormLabel>
                     <FormControl>
-                      {isLoadingAssets ? (
+                      {(assetType === 'property' ? isLoadingProperties : isLoadingVehicles) ? (
                         <div className="flex items-center space-x-2 p-3 bg-[#0a1428] border border-[#1e3a5f] rounded-md">
                           <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                           <span className="text-sm text-gray-400">Loading {assetType === 'property' ? 'properties' : 'vehicles'}...</span>
