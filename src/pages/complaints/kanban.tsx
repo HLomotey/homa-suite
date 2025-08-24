@@ -1,22 +1,19 @@
 /**
- * Complaints Kanban board page
+ * Complaints Kanban board page - Redirects to list page with kanban tab selected
  */
 
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ComplaintKanban } from "@/components/complaints";
 
 export default function ComplaintsKanbanPage() {
   const navigate = useNavigate();
   
-  const handleViewDetail = (id: string) => {
-    navigate(`/complaints/${id}`);
-  };
+  // Redirect to the list page with kanban tab selected
+  useEffect(() => {
+    // Use search params to indicate which tab should be active
+    navigate("/complaints?tab=kanban", { replace: true });
+  }, [navigate]);
   
-  return (
-    <div className="space-y-6">
-      <ComplaintKanban 
-        onViewDetail={handleViewDetail} 
-      />
-    </div>
-  );
+  // This component will not render as it immediately redirects
+  return null;
 }
