@@ -4,10 +4,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Upload, Image as ImageIcon, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FrontendProperty, PropertyType, PropertyStatus } from "@/integration/supabase/types";
+import {
+  FrontendProperty,
+  PropertyType,
+  PropertyStatus,
+} from "@/integration/supabase/types";
 import { FrontendLocation } from "@/integration/supabase/types/location";
 import { useLocation } from "@/hooks/transport/useLocation";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useBillingStaff } from "@/hooks/billing";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Property Form Component
 export interface PropertyFormProps {
@@ -22,18 +35,40 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   onCancel,
 }) => {
   const { locations, loading: locationsLoading } = useLocation();
-  const [formData, setFormData] = React.useState<Omit<FrontendProperty, "id" | "dateAdded">>({
+  const { staff, loading: staffLoading } = useBillingStaff();
+  const [managerSearchOpen, setManagerSearchOpen] = React.useState(false);
+  const [managerSearchValue, setManagerSearchValue] = React.useState("");
+
+  // Filter active staff and create search function
+  const activeStaff = staff.filter(member => member.employmentStatus === 'Active');
+  
+  const searchStaff = (searchTerm: string) => {
+    if (!searchTerm.trim()) return activeStaff;
+    
+    const lowercaseSearch = searchTerm.toLowerCase();
+    return activeStaff.filter(
+      (member) =>
+        member.legalName.toLowerCase().includes(lowercaseSearch) ||
+        member.jobTitle.toLowerCase().includes(lowercaseSearch) ||
+        member.department.toLowerCase().includes(lowercaseSearch) ||
+        member.email.toLowerCase().includes(lowercaseSearch)
+    );
+  };
+  const [formData, setFormData] = React.useState<
+    Omit<FrontendProperty, "id" | "dateAdded">
+  >({
     title: property?.title || "",
     address: property?.address || "",
     price: property?.price || 0,
     bedrooms: property?.bedrooms || 1,
     bathrooms: property?.bathrooms || 1,
     area: property?.area || 0,
-    type: property?.type || "Apartment" as PropertyType,
-    status: property?.status || "Available" as PropertyStatus,
+    type: property?.type || ("Apartment" as PropertyType),
+    status: property?.status || ("Available" as PropertyStatus),
     image: property?.image || "",
     description: property?.description || "",
     locationId: property?.locationId || null,
+    managerId: property?.managerId || null,
   });
 
   const handleChange = (
@@ -45,7 +80,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "price" || name === "bedrooms" || name === "bathrooms" || name === "area"
+        name === "price" ||
+        name === "bedrooms" ||
+        name === "bathrooms" ||
+        name === "area"
           ? Number(value)
           : value,
     }));
@@ -113,26 +151,132 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               </label>
               <Select
                 value={formData.locationId || undefined}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, locationId: value || null }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    locationId: value || null,
+                  }))
+                }
               >
                 <SelectTrigger className="w-full mt-2 h-10">
                   <SelectValue placeholder="Select location..." />
                 </SelectTrigger>
                 <SelectContent>
                   {locationsLoading ? (
-                    <SelectItem value="loading" disabled>Loading locations...</SelectItem>
+                    <SelectItem value="loading" disabled>
+                      Loading locations...
+                    </SelectItem>
                   ) : locations && locations.length > 0 ? (
                     locations.map((location) => (
                       <SelectItem key={location.id} value={location.id}>
-                        {location.name} {location.city && location.state ? `(${location.city}, ${location.state})` : ''}
+                        {location.name}{" "}
+                        {location.city && location.state
+                          ? `(${location.city}, ${location.state})`
+                          : ""}
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="none" disabled>No locations available</SelectItem>
+                    <SelectItem value="none" disabled>
+                      No locations available
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              {locationsLoading && <p className="text-xs text-muted-foreground mt-1">Loading locations...</p>}
+              {locationsLoading && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Loading locations...
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="manager"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Property Manager
+              </label>
+              <Popover open={managerSearchOpen} onOpenChange={setManagerSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={managerSearchOpen}
+                    className="w-full mt-2 h-10 justify-between"
+                  >
+                    {formData.managerId
+                      ? activeStaff.find((member) => member.id === formData.managerId)?.legalName ||
+                        "Manager not found"
+                      : "Select manager..."}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search managers..."
+                      value={managerSearchValue}
+                      onValueChange={setManagerSearchValue}
+                    />
+                    <CommandEmpty>
+                      {staffLoading ? "Loading managers..." : "No managers found."}
+                    </CommandEmpty>
+                    <CommandGroup className="max-h-64 overflow-auto">
+                      {searchStaff(managerSearchValue).map((member) => (
+                        <CommandItem
+                          key={member.id}
+                          value={member.id}
+                          onSelect={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              managerId: member.id,
+                            }));
+                            setManagerSearchOpen(false);
+                            setManagerSearchValue("");
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.managerId === member.id
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{member.legalName}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {member.jobTitle} - {member.department}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                      {formData.managerId && (
+                        <CommandItem
+                          value="clear"
+                          onSelect={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              managerId: null,
+                            }));
+                            setManagerSearchOpen(false);
+                            setManagerSearchValue("");
+                          }}
+                          className="text-red-600"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Clear selection
+                        </CommandItem>
+                      )}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {staffLoading && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Loading managers...
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -264,7 +408,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               >
                 Property Image
               </label>
-              <div 
+              <div
                 className={cn(
                   "mt-2 border-2 border-dashed rounded-md p-4 hover:border-primary/50 transition-colors cursor-pointer",
                   formData.image ? "border-primary/70" : "border-border"
@@ -274,9 +418,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                 <div className="flex flex-col items-center justify-center gap-2 text-center">
                   {formData.image ? (
                     <div className="relative w-full h-40">
-                      <img 
-                        src={formData.image} 
-                        alt="Property preview" 
+                      <img
+                        src={formData.image}
+                        alt="Property preview"
                         className="w-full h-full object-cover rounded-md"
                       />
                       <Button
@@ -286,7 +430,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                         className="absolute top-2 right-2 h-6 w-6"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setFormData(prev => ({ ...prev, image: "" }));
+                          setFormData((prev) => ({ ...prev, image: "" }));
                         }}
                       >
                         <X className="h-3 w-3" />
@@ -298,8 +442,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                         <ImageIcon className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Click to upload image</p>
-                        <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (max. 2MB)</p>
+                        <p className="text-sm font-medium">
+                          Click to upload image
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          SVG, PNG, JPG or GIF (max. 2MB)
+                        </p>
                       </div>
                     </>
                   )}
@@ -318,7 +466,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                      setFormData(prev => ({ ...prev, image: event.target?.result as string }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        image: event.target?.result as string,
+                      }));
                     };
                     reader.readAsDataURL(file);
                   }

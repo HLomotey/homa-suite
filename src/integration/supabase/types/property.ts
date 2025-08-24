@@ -26,6 +26,7 @@ export interface Property {
   created_at: string;
   updated_at: string | null;
   location_id: string | null;
+  manager_id: string | null;
 }
 
 /**
@@ -55,7 +56,9 @@ export interface FrontendProperty {
   description: string;
   dateAdded: string;
   locationId: string | null;
+  managerId: string | null;
   location?: Location | null;
+  managerName?: string;
 }
 
 /**
@@ -80,6 +83,12 @@ export const mapDatabasePropertyToFrontend = (dbProperty: any): FrontendProperty
     };
   }
 
+  // Handle the joined manager data from billing_staff
+  let managerName = null;
+  if (dbProperty.billing_staff) {
+    managerName = dbProperty.billing_staff.legal_name;
+  }
+
   return {
     id: dbProperty.id,
     title: dbProperty.title,
@@ -94,7 +103,9 @@ export const mapDatabasePropertyToFrontend = (dbProperty: any): FrontendProperty
     description: dbProperty.description,
     dateAdded: dbProperty.date_added,
     locationId: dbProperty.location_id,
-    location: location
+    managerId: dbProperty.manager_id,
+    location: location,
+    managerName: managerName
   };
 };
 
@@ -115,6 +126,7 @@ export const mapFrontendPropertyToDatabase = (frontendProperty: FrontendProperty
     image: frontendProperty.image,
     description: frontendProperty.description,
     date_added: frontendProperty.dateAdded,
-    location_id: frontendProperty.locationId
+    location_id: frontendProperty.locationId,
+    manager_id: frontendProperty.managerId
   };
 };

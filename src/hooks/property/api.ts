@@ -24,7 +24,8 @@ export const fetchProperties = async (): Promise<FrontendProperty[]> => {
       .from("properties")
       .select(`
         *,
-        company_locations(*)
+        company_locations(*),
+        billing_staff(id, legal_name)
       `)
       .order("created_at", { ascending: false });
 
@@ -65,7 +66,8 @@ export const fetchPropertyById = async (
     .from("properties")
     .select(`
       *,
-      company_locations(*)
+      company_locations(*),
+      billing_staff(id, legal_name)
     `)
     .eq("id", id)
     .single();
@@ -99,6 +101,7 @@ export const createProperty = async (
     image: property.image,
     description: property.description,
     location_id: property.locationId,
+    manager_id: property.managerId,
     date_added: new Date().toISOString(),
   };
 
@@ -143,6 +146,8 @@ export const updateProperty = async (
     dbProperty.description = property.description;
   if (property.locationId !== undefined)
     dbProperty.location_id = property.locationId;
+  if (property.managerId !== undefined)
+    dbProperty.manager_id = property.managerId;
 
   const { data, error } = await supabase
     .from("properties")
@@ -185,7 +190,8 @@ export const fetchPropertiesByStatus = async (
     .from("properties")
     .select(`
       *,
-      company_locations(*)
+      company_locations(*),
+      billing_staff(id, legal_name)
     `)
     .eq("status", status)
     .order("created_at", { ascending: false });
@@ -210,7 +216,8 @@ export const fetchPropertiesByType = async (
     .from("properties")
     .select(`
       *,
-      company_locations(*)
+      company_locations(*),
+      billing_staff(id, legal_name)
     `)
     .eq("type", type)
     .order("created_at", { ascending: false });
