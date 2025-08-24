@@ -40,10 +40,12 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Loader2, Search, Filter, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth";
+import { ComplaintForm } from "./ComplaintForm";
 
 // Status badge colors
 const statusColors: Record<ComplaintStatus, string> = {
@@ -82,6 +84,9 @@ interface ComplaintListProps {
 export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Sheet state for slide-in form
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -145,6 +150,26 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
     } else {
       navigate(`/complaints/${id}`);
     }
+  };
+
+  // Handle create new complaint
+  const handleCreateNew = () => {
+    if (onCreateNew) {
+      onCreateNew();
+    } else {
+      setIsFormOpen(true);
+    }
+  };
+
+  // Handle form success
+  const handleFormSuccess = (id: string) => {
+    setIsFormOpen(false);
+    refetch(); // Refresh the complaints list
+  };
+
+  // Handle form cancel
+  const handleFormCancel = () => {
+    setIsFormOpen(false);
   };
   
   // Generate pagination items
@@ -242,7 +267,7 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
               View and manage all complaints in the system
             </CardDescription>
           </div>
-          <Button onClick={onCreateNew}>
+          <Button onClick={handleCreateNew}>
             <Plus className="mr-2 h-4 w-4" />
             New Complaint
           </Button>
@@ -393,7 +418,7 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
                 ? "Try adjusting your filters or search query"
                 : "No complaints have been submitted yet"}
             </p>
-            <Button onClick={onCreateNew} className="mt-4">
+            <Button onClick={handleCreateNew} className="mt-4">
               <Plus className="mr-2 h-4 w-4" />
               Create New Complaint
             </Button>
@@ -421,6 +446,16 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
           </Pagination>
         </CardFooter>
       )}
+
+      {/* Slide-in Form Sheet */}
+      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <SheetContent side="right" className="sm:max-w-md w-full p-0">
+          <ComplaintForm 
+            onSuccess={handleFormSuccess}
+            onCancel={handleFormCancel}
+          />
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }

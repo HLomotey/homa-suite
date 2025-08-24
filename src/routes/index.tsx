@@ -61,7 +61,6 @@ const ComplaintsLayout = lazy(() => import("@/routes/complaints"));
 const ComplaintsList = lazy(() => import("@/routes/complaints/list"));
 const ComplaintsKanban = lazy(() => import("@/routes/complaints/kanban"));
 const ComplaintDetail = lazy(() => import("@/routes/complaints/detail"));
-const NewComplaint = lazy(() => import("@/routes/complaints/new"));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -551,14 +550,6 @@ export const routes: RouteObject[] = [
             element: (
               <LazyWrapper>
                 <ComplaintDetail />
-              </LazyWrapper>
-            ),
-          },
-          {
-            path: "new",
-            element: (
-              <LazyWrapper>
-                <NewComplaint />
               </LazyWrapper>
             ),
           },

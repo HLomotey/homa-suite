@@ -217,11 +217,20 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   };
 
   return (
-    <div className="w-full text-white">
-      <div className="mb-6">
-        <p className="text-blue-400 mb-2">Fill out the form below to submit a new complaint.</p>
-        <p className="text-sm text-blue-300">All fields marked with <span className="text-blue-400">*</span> are required.</p>
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b">
+        <div>
+          <h2 className="text-lg font-semibold">Add New Complaint</h2>
+          <p className="text-sm text-muted-foreground">Fill in the details to create a new complaint.</p>
+        </div>
       </div>
+      
+      {/* Form Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="mb-6">
+          <p className="text-sm text-muted-foreground">All fields marked with <span className="text-red-500">*</span> are required.</p>
+        </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -229,7 +238,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-blue-400">Title <span className="text-blue-400">*</span></FormLabel>
+                  <FormLabel>Title <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Brief title of your complaint" 
@@ -554,6 +563,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
             </div>
           </form>
         </Form>
+      </div>
     </div>
   );
 }

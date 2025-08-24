@@ -8,10 +8,12 @@ import { FrontendComplaint, ComplaintStatus } from "@/integration/supabase/types
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Loader2, Plus, AlertTriangle, Clock } from "lucide-react";
 import { format, formatDistance, isAfter } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import { ComplaintForm } from "./ComplaintForm";
 
 // Status badge colors
 const statusColors: Record<string, string> = {
@@ -39,7 +41,10 @@ interface ComplaintKanbanProps {
 
 export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanProps) {
   const navigate = useNavigate();
-  const { complaints, isLoading, updateComplaint, groupedComplaints } = useComplaints();
+  const { complaints, isLoading, updateComplaint, groupedComplaints, refetch } = useComplaints();
+  
+  // Sheet state for slide-in form
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   // Handle drag end
   const handleDragEnd = (result: DropResult) => {
@@ -69,6 +74,26 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
     } else {
       navigate(`/complaints/${id}`);
     }
+  };
+
+  // Handle create new complaint
+  const handleCreateNew = () => {
+    if (onCreateNew) {
+      onCreateNew();
+    } else {
+      setIsFormOpen(true);
+    }
+  };
+
+  // Handle form success
+  const handleFormSuccess = (id: string) => {
+    setIsFormOpen(false);
+    refetch(); // Refresh the complaints list
+  };
+
+  // Handle form cancel
+  const handleFormCancel = () => {
+    setIsFormOpen(false);
   };
   
   // Render a complaint card
@@ -179,7 +204,7 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Complaint Management</h2>
-        <Button onClick={onCreateNew}>
+        <Button onClick={handleCreateNew}>
           <Plus className="mr-2 h-4 w-4" />
           New Complaint
         </Button>
@@ -219,6 +244,16 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
           ))}
         </div>
       </DragDropContext>
+
+      {/* Slide-in Form Sheet */}
+      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <SheetContent side="right" className="sm:max-w-md w-full p-0">
+          <ComplaintForm 
+            onSuccess={handleFormSuccess}
+            onCancel={handleFormCancel}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
