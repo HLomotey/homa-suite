@@ -178,10 +178,7 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
 
   // Filter navigation items based on user's modules
   const filteredNavigationItems = navigationItems.filter(item => {
-    // Always show dashboard for authenticated users
-    if (item.module === 'dashboard') return true;
-    
-    // Show item if user has the required module
+    // Show item only if user has the required module (no exceptions)
     return userModules.includes(item.module);
   });
 
