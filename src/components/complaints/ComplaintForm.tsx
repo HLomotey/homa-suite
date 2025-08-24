@@ -63,7 +63,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   const { createComplaint, isCreating } = useComplaints();
   const [assetType, setAssetType] = useState<ComplaintAssetType>("property");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [properties, setProperties] = useState<{ id: string; title: string; address: string }[]>([]);
+  const [properties, setProperties] = useState<{ id: string; title: string; address: string; manager_id?: string; managerName?: string }[]>([]);
   const [vehicles, setVehicles] = useState<{ id: string; make: string; model: string; license_plate: string }[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   
@@ -110,6 +110,17 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
     form.setValue("subcategoryId", "");
   }, [watchedCategoryId, form]);
 
+  // Watch for asset ID changes to auto-populate supervisor ID
+  const watchedAssetId = form.watch("assetId");
+  useEffect(() => {
+    if (watchedAssetId && assetType === "property") {
+      const selectedProperty = properties.find(property => property.id === watchedAssetId);
+      if (selectedProperty && selectedProperty.manager_id) {
+        form.setValue("supervisorId", selectedProperty.manager_id);
+      }
+    }
+  }, [watchedAssetId, assetType, properties, form]);
+
   // Fetch properties and vehicles from Supabase
   useEffect(() => {
     const fetchAssets = async () => {
@@ -121,16 +132,33 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
           import.meta.env.VITE_SUPABASE_ANON_KEY!
         );
 
-        // Fetch properties
+        // Fetch properties with manager information
         const { data: propertiesData, error: propertiesError } = await supabase
           .from('properties')
-          .select('id, title, address')
+          .select(`
+            id, 
+            title, 
+            address, 
+            manager_id,
+            billing_staff!properties_manager_id_fkey (
+              id,
+              legal_name
+            )
+          `)
           .eq('status', 'active');
         
         if (propertiesError) {
           console.error("Error fetching properties:", propertiesError);
         } else if (propertiesData) {
-          setProperties(propertiesData);
+          // Map the data to include manager information
+          const mappedProperties = propertiesData.map((property: any) => ({
+            id: property.id,
+            title: property.title,
+            address: property.address,
+            manager_id: property.manager_id,
+            managerName: property.billing_staff?.legal_name || null
+          }));
+          setProperties(mappedProperties);
         }
 
         // Fetch vehicles
@@ -466,22 +494,33 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
             <FormField
               control={form.control}
               name="supervisorId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-blue-400">Supervisor ID</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter supervisor ID (optional)"
-                      {...field}
-                      className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </FormControl>
-                  <FormDescription className="text-blue-300 text-xs">
-                    Optionally enter a supervisor ID to escalate this complaint to.
-                  </FormDescription>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const selectedProperty = properties.find(p => p.id === form.watch("assetId"));
+                const managerName = selectedProperty?.managerName;
+                
+                return (
+                  <FormItem>
+                    <FormLabel className="text-blue-400">Property Manager</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={managerName || "No manager assigned"}
+                        {...field}
+                        value={managerName || field.value || ""}
+                        readOnly
+                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 cursor-not-allowed opacity-75"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-blue-300 text-xs">
+                      {managerName ? (
+                        <>Automatically assigned based on selected property</>
+                      ) : (
+                        "Property manager will be assigned when you select a property"
+                      )}
+                    </FormDescription>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                );
+              }}
             />
 
             <div className="flex justify-end pt-6 space-x-4">
