@@ -12,6 +12,7 @@ import { ComplaintAssetType, ComplaintPriority, ComplaintStatus } from "@/integr
 import { useUsersByRole } from "@/hooks/user-profile/useEnhancedUsers";
 import { FrontendUser } from "@/integration/supabase/types";
 import { useProperties } from "@/hooks/property/useProperty";
+import { useVehicle } from "@/hooks/transport/useVehicle";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,11 +65,12 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   const { createComplaint, isCreating } = useComplaints();
   const [assetType, setAssetType] = useState<ComplaintAssetType>("property");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [vehicles, setVehicles] = useState<{ id: string; make: string; model: string; license_plate: string }[]>([]);
-  const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
   
   // Fetch properties using the same hook as properties page
   const { properties, loading: isLoadingProperties } = useProperties();
+  
+  // Fetch vehicles using the same hook as transport page
+  const { vehicles, loading: isLoadingVehicles } = useVehicle();
   
   // Fetch supervisors
   const { users: supervisors, loading: isLoadingSupervisors } = useUsersByRole("supervisor");
@@ -124,42 +126,6 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
     }
   }, [watchedAssetId, assetType, properties, form]);
 
-  // Fetch vehicles from Supabase
-  useEffect(() => {
-    const fetchVehicles = async () => {
-      setIsLoadingVehicles(true);
-      try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          import.meta.env.VITE_SUPABASE_URL!,
-          import.meta.env.VITE_SUPABASE_ANON_KEY!
-        );
-
-        // Fetch vehicles
-        const { data: vehiclesData, error: vehiclesError } = await supabase
-          .from('vehicles')
-          .select('id, make, model, license_plate')
-          .eq('status', 'active');
-        
-        if (vehiclesError) {
-          console.error("Error fetching vehicles:", vehiclesError);
-        } else if (vehiclesData) {
-          setVehicles(vehiclesData);
-        }
-      } catch (error) {
-        console.error("Error fetching vehicles:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load vehicles. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingVehicles(false);
-      }
-    };
-
-    fetchVehicles();
-  }, []);
 
   // Handle form submission
   const onSubmit = async (data: ComplaintFormValues) => {
@@ -335,8 +301,8 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                               }))
                             : vehicles.map((vehicle): SearchableSelectOption => ({
                                 value: vehicle.id,
-                                label: `${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`,
-                                searchText: `${vehicle.make} ${vehicle.model} ${vehicle.license_plate}`
+                                label: `${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})`,
+                                searchText: `${vehicle.make} ${vehicle.model} ${vehicle.licensePlate}`
                               }))
                           }
                           value={field.value}
