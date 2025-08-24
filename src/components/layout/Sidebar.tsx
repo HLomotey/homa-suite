@@ -27,6 +27,7 @@ import {
   Gauge,
   Wrench,
   MessageSquare,
+  Activity,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -139,6 +140,12 @@ const navigationItems = [
     icon: Settings,
     href: "/settings",
     module: "settings",
+  },
+  {
+    label: "Activity Log",
+    icon: Activity,
+    href: ROUTES.ACTIVITY_LOG,
+    module: "activity_log",
   },
 ];
 

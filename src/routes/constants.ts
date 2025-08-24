@@ -25,5 +25,7 @@ export const ROUTES = {
   COMPLAINTS: "/complaints",
   COMPLAINTS_NEW: "/complaints/new",
   COMPLAINTS_DETAIL: "/complaints/:id",
-  COMPLAINTS_KANBAN: "/complaints/kanban"
+  COMPLAINTS_KANBAN: "/complaints/kanban",
+  // Activity log route
+  ACTIVITY_LOG: "/activity-log"
 };

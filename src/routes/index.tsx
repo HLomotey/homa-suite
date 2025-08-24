@@ -24,6 +24,7 @@ const Finance = lazy(() => import("@/pages/Finance"));
 const Operations = lazy(() => import("@/pages/Operations"));
 const Utilities = lazy(() => import("@/pages/Utilities"));
 const UploadFinance = lazy(() => import("@/pages/UploadFinance"));
+const ActivityLogPage = lazy(() => import("@/pages/ActivityLogPage"));
 
 // Lazy load HR components
 const HRRecruitment = lazy(() => import("@/components/hr/HRRecruitment").then(module => ({ default: module.HRRecruitment })));
@@ -562,6 +563,16 @@ export const routes: RouteObject[] = [
             ),
           },
         ],
+      },
+      {
+        path: "activity-log",
+        element: (
+          <LazyWrapper>
+            <ModuleRouteGuard module="activity_log">
+              <ActivityLogPage />
+            </ModuleRouteGuard>
+          </LazyWrapper>
+        ),
       },
       {
         path: "*",

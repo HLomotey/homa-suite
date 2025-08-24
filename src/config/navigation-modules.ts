@@ -80,6 +80,14 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     description: 'System settings and configuration',
     icon: 'Settings',
     routes: ['/settings', '/profile', '/utilities', '/excel-uploads']
+  },
+  {
+    id: 'activity_log',
+    name: 'activity_log',
+    displayName: 'Activity Log',
+    description: 'System activity monitoring and audit trails',
+    icon: 'Activity',
+    routes: ['/activity-log']
   }
 ];
 
