@@ -87,24 +87,86 @@ export const useComplaints = (
     }
   });
 
-  // Update complaint mutation
+  // Update complaint mutation with optimistic updates
   const updateComplaintMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Omit<Complaint, "id" | "created_at" | "updated_at">> }) => 
       updateComplaint(id, updates),
+    onMutate: async ({ id, updates }) => {
+      console.log('🔄 onMutate called with:', { id, updates });
+      
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["complaints"] });
+      
+      // Snapshot the previous value
+      const previousComplaints = queryClient.getQueryData(["complaints"]);
+      console.log('📸 Previous complaints snapshot:', previousComplaints);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(["complaints"], (old: any) => {
+        console.log('🔧 Optimistically updating cache, old data:', old);
+        
+        if (!old) return old;
+        
+        // Handle different possible data structures
+        if (Array.isArray(old)) {
+          const updated = old.map(complaint => 
+            complaint.id === id 
+              ? { ...complaint, ...updates }
+              : complaint
+          );
+          console.log('✅ Updated array format:', updated);
+          return updated;
+        }
+        
+        if (old.data && Array.isArray(old.data)) {
+          const updated = {
+            ...old,
+            data: old.data.map(complaint => 
+              complaint.id === id 
+                ? { ...complaint, ...updates }
+                : complaint
+            )
+          };
+          console.log('✅ Updated object format:', updated);
+          return updated;
+        }
+        
+        console.warn('⚠️ Unexpected data structure:', old);
+        return old;
+      });
+      
+      // Return a context object with the snapshotted value
+      return { previousComplaints };
+    },
+    onError: (err, variables, context) => {
+      console.log('❌ onError called:', err);
+      console.log('🔙 Rolling back to previous state:', context?.previousComplaints);
+      
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousComplaints) {
+        queryClient.setQueryData(["complaints"], context.previousComplaints);
+      }
+      toast({
+        title: "Error",
+        description: `Failed to update complaint: ${err.message}`,
+        variant: "destructive",
+      });
+    },
+    onSettled: (data, error, variables, context) => {
+      console.log('🏁 onSettled called:', { data, error, variables });
+      // Don't invalidate immediately - let optimistic update persist
+      // Only invalidate if there was an error
+      if (error) {
+        queryClient.invalidateQueries({ queryKey: ["complaints"] });
+      }
+    },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["complaints"] });
+      console.log('✅ onSuccess called:', data);
       queryClient.invalidateQueries({ queryKey: ["complaint", data.data?.id] });
       toast({
         title: "Complaint Updated",
         description: "The complaint has been updated successfully.",
         variant: "default",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: `Failed to update complaint: ${error.message}`,
-        variant: "destructive",
       });
     }
   });

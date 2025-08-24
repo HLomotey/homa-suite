@@ -67,43 +67,7 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
     
     console.log(`Moving complaint ${draggableId} from ${source.droppableId} to ${newStatus}`);
     
-    // Optimistically update the cache immediately
-    queryClient.setQueryData(['complaints'], (oldData: any) => {
-      console.log('Current cache data:', oldData);
-      
-      // Handle different possible data structures
-      if (!oldData) return oldData;
-      
-      // If oldData is an array, update it directly
-      if (Array.isArray(oldData)) {
-        return oldData.map(complaint => 
-          complaint.id === draggableId 
-            ? { ...complaint, status: newStatus }
-            : complaint
-        );
-      }
-      
-      // If oldData has a data property that's an array
-      if (oldData.data && Array.isArray(oldData.data)) {
-        return {
-          ...oldData,
-          data: oldData.data.map(complaint => 
-            complaint.id === draggableId 
-              ? { ...complaint, status: newStatus }
-              : complaint
-          )
-        };
-      }
-      
-      // If we can't handle the structure, return unchanged
-      console.warn('Unexpected cache data structure:', oldData);
-      return oldData;
-    });
-    
-    // Update the complaint status in the backend
-    console.log('Calling updateComplaint with:', { id: draggableId, updates: { status: newStatus } });
-    console.log('isUpdating:', isUpdating);
-    
+    // Update the complaint status - optimistic update is now handled in the mutation
     updateComplaint({
       id: draggableId,
       updates: { status: newStatus }

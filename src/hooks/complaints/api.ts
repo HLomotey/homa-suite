@@ -323,6 +323,8 @@ export const updateComplaint = async (
   updates: Partial<Omit<Complaint, "id" | "created_at" | "updated_at">>
 ): Promise<{ data: FrontendComplaint | null; error: PostgrestError | null }> => {
   try {
+    console.log('🚀 updateComplaint API called with:', { id, updates });
+    
     // Get the current complaint state for history tracking
     const { data: currentComplaint } = await supabase
       .from("complaints")
@@ -348,16 +350,19 @@ export const updateComplaint = async (
     }
     
     // Update the complaint - first do the update without select to avoid complex joins
+    console.log('📝 Updating complaint in database...');
     const { error: updateError } = await supabaseAdmin
       .from("complaints")
       .update(updates)
       .eq("id", id);
 
     if (updateError) {
-      console.error(`Error updating complaint with ID ${id}:`, updateError);
+      console.error(`❌ Error updating complaint with ID ${id}:`, updateError);
       return { data: null, error: updateError };
     }
 
+    console.log('✅ Database update successful, fetching updated data...');
+    
     // Then fetch the updated complaint with all relations
     const { data, error } = await supabaseAdmin
       .from("complaints")
@@ -377,8 +382,15 @@ export const updateComplaint = async (
       .single();
 
     if (error) {
-      console.error(`Error updating complaint with ID ${id}:`, error);
+      console.error(`❌ Error fetching updated complaint with ID ${id}:`, error);
       return { data: null, error };
+    }
+
+    console.log('📡 Raw database response:', data);
+    console.log('🔍 Expected status:', updates.status, 'Actual status:', data.status);
+    
+    if (updates.status && data.status !== updates.status) {
+      console.warn('⚠️ Status mismatch! Update may have failed due to RLS or other constraints');
     }
 
     // Create history entries for changes
