@@ -67,7 +67,7 @@ const navigationItems = [
     label: "Billing",
     icon: Calculator,
     href: ROUTES.BILLING,
-    module: "finance",
+    module: "billing",
   },
   {
     label: "Staff",

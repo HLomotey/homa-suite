@@ -45,9 +45,17 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     id: 'finance',
     name: 'finance',
     displayName: 'Finance',
-    description: 'Financial management and billing',
+    description: 'Financial management and reporting',
     icon: 'DollarSign',
-    routes: ['/finance', '/finance/*', '/billing']
+    routes: ['/finance', '/finance/*']
+  },
+  {
+    id: 'billing',
+    name: 'billing',
+    displayName: 'Billing',
+    description: 'Billing and invoicing management',
+    icon: 'Calculator',
+    routes: ['/billing', '/billing/*']
   },
   {
     id: 'operations',
