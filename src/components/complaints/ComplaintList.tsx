@@ -353,7 +353,6 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
@@ -370,9 +369,6 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleViewDetail(complaint.id)}
                   >
-                    <TableCell className="font-mono text-xs">
-                      {complaint.id.substring(0, 8)}...
-                    </TableCell>
                     <TableCell className="font-medium">
                       {complaint.title}
                       {complaint.slaBreach && (
