@@ -2,6 +2,7 @@ import { ProfileTab } from "@/components/settings/ProfileTab";
 import { SecurityTab } from "@/components/settings/SecurityTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Shield } from "lucide-react";
+import { Suspense } from "react";
 
 export default function Profile() {
   return (
@@ -28,13 +29,17 @@ export default function Profile() {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="profile">
-            <ProfileTab />
-          </TabsContent>
+          <Suspense fallback={<div className="p-4 text-center">Loading profile information...</div>}>
+            <TabsContent value="profile">
+              <ProfileTab />
+            </TabsContent>
+          </Suspense>
           
-          <TabsContent value="security">
-            <SecurityTab />
-          </TabsContent>
+          <Suspense fallback={<div className="p-4 text-center">Loading security settings...</div>}>
+            <TabsContent value="security">
+              <SecurityTab />
+            </TabsContent>
+          </Suspense>
         </Tabs>
       </div>
     </div>

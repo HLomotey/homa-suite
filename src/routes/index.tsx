@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouteObject } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import React, { lazy, Suspense } from "react";
 import { AppLayout } from "@/components/layout";
 import { ModuleRouteGuard } from "@/components/permissions/ModuleRouteGuard";
 
@@ -17,7 +17,10 @@ const AttendancePage = lazy(() =>
 );
 const Transport = lazy(() => import("@/pages/Transport"));
 const Settings = lazy(() => import("@/pages/Settings"));
-const Profile = lazy(() => import("@/pages/Profile"));
+const Profile = lazy(() => import("@/pages/Profile").catch(error => {
+  console.error("Error loading Profile module:", error);
+  return { default: () => <div>Error loading profile. Please try again.</div> };
+}));
 const Users = lazy(() => import("@/pages/Users"));
 const Roles = lazy(() => import("@/pages/Roles"));
 const ExcelUploads = lazy(() => import("@/pages/ExcelUploads"));
@@ -135,9 +138,52 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Wrapper component for lazy loaded routes with suspense
+// Error boundary component to catch lazy loading errors
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Route loading failed:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-6">
+          <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
+          <p className="text-gray-500 mb-4">Failed to load the requested page</p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Wrapper component for lazy loaded routes with suspense and error handling
 const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
+  <ErrorBoundary>
+    <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
+  </ErrorBoundary>
 );
 
 // Define all application routes
