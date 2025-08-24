@@ -27,8 +27,8 @@ export type DatabaseComplaint = Complaint & {
   created_by_profile?: { full_name: string };
   assigned_to_profile?: { full_name: string };
   escalated_to_profile?: { full_name: string };
-  property?: { name: string };
-  vehicle?: { name: string };
+  property?: { title: string };
+  vehicle?: { make: string; model: string };
   complaint_comments_count?: number;
   complaint_attachments_count?: number;
   // Keep old format for backward compatibility
@@ -70,8 +70,8 @@ export const mapDatabaseComplaintToFrontend = (
     categoryName: complaint.categories?.name,
     subcategoryName: complaint.subcategories?.name,
     assetName: complaint.asset_type === 'property' 
-      ? complaint.property?.name 
-      : complaint.vehicle?.name,
+      ? complaint.property?.title 
+      : complaint.vehicle ? `${complaint.vehicle.make} ${complaint.vehicle.model}`.trim() : undefined,
     createdByName: complaint.created_by_profile?.full_name,
     assignedToName: complaint.assigned_to_profile?.full_name,
     escalatedToName: complaint.escalated_to_profile?.full_name,
@@ -101,11 +101,11 @@ export const getComplaints = async (
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
-        created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name),
-        escalated_to_profile:profiles!escalated_to(full_name),
-        property:properties(name),
-        vehicle:vehicles(name),
+        created_by_profile:profiles(full_name),
+        assigned_to_profile:profiles(full_name),
+        escalated_to_profile:profiles(full_name),
+        property:properties(title),
+        vehicle:vehicles(make,model),
         complaint_comments_count:complaint_comments(count),
         complaint_attachments_count:complaint_attachments(count)
       `);
@@ -194,11 +194,11 @@ export const getComplaintById = async (
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
-        created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name),
-        escalated_to_profile:profiles!escalated_to(full_name),
-        property:properties(name),
-        vehicle:vehicles(name),
+        created_by_profile:profiles(full_name),
+        assigned_to_profile:profiles(full_name),
+        escalated_to_profile:profiles(full_name),
+        property:properties(title),
+        vehicle:vehicles(make,model),
         complaint_comments_count:complaint_comments(count),
         complaint_attachments_count:complaint_attachments(count)
       `)
@@ -281,11 +281,11 @@ export const createComplaint = async (
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
-        created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name),
-        escalated_to_profile:profiles!escalated_to(full_name),
-        property:properties(name),
-        vehicle:vehicles(name)
+        created_by_profile:profiles(full_name),
+        assigned_to_profile:profiles(full_name),
+        escalated_to_profile:profiles(full_name),
+        property:properties(title),
+        vehicle:vehicles(make,model)
       `)
       .single();
 
@@ -356,11 +356,11 @@ export const updateComplaint = async (
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
-        created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name),
-        escalated_to_profile:profiles!escalated_to(full_name),
-        property:properties(name),
-        vehicle:vehicles(name),
+        created_by_profile:profiles(full_name),
+        assigned_to_profile:profiles(full_name),
+        escalated_to_profile:profiles(full_name),
+        property:properties(title),
+        vehicle:vehicles(make,model),
         complaint_comments_count:complaint_comments(count),
         complaint_attachments_count:complaint_attachments(count)
       `)
