@@ -10,7 +10,11 @@ const Housing = lazy(() => import("@/pages/Housing"));
 const Billing = lazy(() => import("@/pages/Billing"));
 const Staff = lazy(() => import("@/pages/Staff"));
 const PayrollPage = lazy(() => import("@/pages/PayrollPage"));
-const AttendancePage = lazy(() => import("@/pages/AttendancePage").then(module => ({ default: module.AttendancePage })));
+const AttendancePage = lazy(() =>
+  import("@/pages/AttendancePage").then((module) => ({
+    default: module.AttendancePage,
+  }))
+);
 const Transport = lazy(() => import("@/pages/Transport"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Profile = lazy(() => import("@/pages/Profile"));
@@ -27,40 +31,102 @@ const UploadFinance = lazy(() => import("@/pages/UploadFinance"));
 const ActivityLogPage = lazy(() => import("@/pages/ActivityLogPage"));
 
 // Lazy load HR components
-const HRRecruitment = lazy(() => import("@/components/hr/HRRecruitment").then(module => ({ default: module.HRRecruitment })));
-const HRDiversity = lazy(() => import("@/components/hr/HRDiversity").then(module => ({ default: module.HRDiversity })));
-const HROverview = lazy(() => import("@/components/hr/HROverview").then(module => ({ default: module.HROverview })));
-const HRDepartments = lazy(() => import("@/components/hr/HRDepartments").then(module => ({ default: module.HRDepartments })));
+const HRRecruitment = lazy(() =>
+  import("@/components/hr/HRRecruitment").then((module) => ({
+    default: module.HRRecruitment,
+  }))
+);
+const HRDiversity = lazy(() =>
+  import("@/components/hr/HRDiversity").then((module) => ({
+    default: module.HRDiversity,
+  }))
+);
+const HROverview = lazy(() =>
+  import("@/components/hr/HROverview").then((module) => ({
+    default: module.HROverview,
+  }))
+);
+const HRDepartments = lazy(() =>
+  import("@/components/hr/HRDepartments").then((module) => ({
+    default: module.HRDepartments,
+  }))
+);
 
 // Lazy load Finance detail components
-const RevenueTrendDetail = lazy(() => import("@/components/finance/detail/RevenueTrendDetail").then(module => ({ default: module.RevenueTrendDetail })));
-const ClientRevenueDetail = lazy(() => import("@/components/finance/detail/ClientRevenueDetail").then(module => ({ default: module.ClientRevenueDetail })));
-const CashFlowDetail = lazy(() => import("@/components/finance/detail/CashFlowDetail").then(module => ({ default: module.CashFlowDetail })));
-const ExpenseDetail = lazy(() => import("@/components/finance/detail/ExpenseDetail").then(module => ({ default: module.ExpenseDetail })));
+const RevenueTrendDetail = lazy(() =>
+  import("@/components/finance/detail/RevenueTrendDetail").then((module) => ({
+    default: module.RevenueTrendDetail,
+  }))
+);
+const ClientRevenueDetail = lazy(() =>
+  import("@/components/finance/detail/ClientRevenueDetail").then((module) => ({
+    default: module.ClientRevenueDetail,
+  }))
+);
+const CashFlowDetail = lazy(() =>
+  import("@/components/finance/detail/CashFlowDetail").then((module) => ({
+    default: module.CashFlowDetail,
+  }))
+);
+const ExpenseDetail = lazy(() =>
+  import("@/components/finance/detail/ExpenseDetail").then((module) => ({
+    default: module.ExpenseDetail,
+  }))
+);
 
 // Lazy load Operations detail components
-const JobOrdersTrendDetail = lazy(() => import("@/components/operations/detail/JobOrdersTrendDetail").then(module => ({ default: module.JobOrdersTrendDetail })));
-const RegionalFillRateDetail = lazy(() => import("@/components/operations/detail/RegionalFillRateDetail").then(module => ({ default: module.RegionalFillRateDetail })));
-const TimeToFillTrendDetail = lazy(() => import("@/components/operations/detail/TimeToFillTrendDetail").then(module => ({ default: module.TimeToFillTrendDetail })));
-const JobTypesDistributionDetail = lazy(() => import("@/components/operations/detail/JobTypesDistributionDetail").then(module => ({ default: module.JobTypesDistributionDetail })));
+const JobOrdersTrendDetail = lazy(() =>
+  import("@/components/operations/detail/JobOrdersTrendDetail").then(
+    (module) => ({ default: module.JobOrdersTrendDetail })
+  )
+);
+const RegionalFillRateDetail = lazy(() =>
+  import("@/components/operations/detail/RegionalFillRateDetail").then(
+    (module) => ({ default: module.RegionalFillRateDetail })
+  )
+);
+const TimeToFillTrendDetail = lazy(() =>
+  import("@/components/operations/detail/TimeToFillTrendDetail").then(
+    (module) => ({ default: module.TimeToFillTrendDetail })
+  )
+);
+const JobTypesDistributionDetail = lazy(() =>
+  import("@/components/operations/detail/JobTypesDistributionDetail").then(
+    (module) => ({ default: module.JobTypesDistributionDetail })
+  )
+);
 
 // Lazy load Maintenance Module components
 const MaintenanceLayout = lazy(() => import("@/routes/maintenance"));
-const MaintenanceDashboard = lazy(() => import("@/routes/maintenance/dashboard"));
+const MaintenanceDashboard = lazy(
+  () => import("@/routes/maintenance/dashboard")
+);
 const MaintenanceRequests = lazy(() => import("@/routes/maintenance/requests"));
-const MaintenanceRequestDetail = lazy(() => import("@/routes/maintenance/request-detail"));
-const ReportMaintenanceIssue = lazy(() => import("@/routes/maintenance/report"));
+const MaintenanceRequestDetail = lazy(
+  () => import("@/routes/maintenance/request-detail")
+);
+const ReportMaintenanceIssue = lazy(
+  () => import("@/routes/maintenance/report")
+);
 const MaintenanceAdmin = lazy(() => import("@/routes/maintenance/admin"));
-const AdminRequestDetail = lazy(() => import("@/routes/maintenance/admin/request-detail"));
-const ManageMaintenanceRequest = lazy(() => import("@/routes/maintenance/admin/request-manage"));
-const StaffMaintenanceRequests = lazy(() => import("@/routes/maintenance/staff"));
-const StaffRequestDetail = lazy(() => import("@/routes/maintenance/staff/request-detail"));
+const AdminRequestDetail = lazy(
+  () => import("@/routes/maintenance/admin/request-detail")
+);
+const ManageMaintenanceRequest = lazy(
+  () => import("@/routes/maintenance/admin/request-manage")
+);
+const StaffMaintenanceRequests = lazy(
+  () => import("@/routes/maintenance/staff")
+);
+const StaffRequestDetail = lazy(
+  () => import("@/routes/maintenance/staff/request-detail")
+);
 
 // Lazy load Complaints Module components
-const ComplaintsLayout = lazy(() => import("@/routes/complaints"));
-const ComplaintsList = lazy(() => import("@/routes/complaints/list"));
-const ComplaintsKanban = lazy(() => import("@/routes/complaints/kanban"));
-const ComplaintDetail = lazy(() => import("@/routes/complaints/detail"));
+const ComplaintsLayout = lazy(() => import("@/pages/complaints"));
+const ComplaintsList = lazy(() => import("@/pages/complaints/list"));
+const ComplaintsKanban = lazy(() => import("@/pages/complaints/kanban"));
+const ComplaintDetail = lazy(() => import("@/pages/complaints/detail"));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -71,9 +137,7 @@ const LoadingSpinner = () => (
 
 // Wrapper component for lazy loaded routes with suspense
 const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<LoadingSpinner />}>
-    {children}
-  </Suspense>
+  <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
 );
 
 // Define all application routes

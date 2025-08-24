@@ -41,8 +41,8 @@ const complaintFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100, "Title must be less than 100 characters"),
   description: z.string().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
   assetType: z.enum(["property", "transport"]),
-  assetId: z.string().min(1, "Please select an asset"),
-  categoryId: z.string().min(1, "Please select a category"),
+  assetId: z.string().min(1, "Please enter an asset ID"),
+  categoryId: z.string().min(1, "Please enter a category"),
   subcategoryId: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   contactMethod: z.enum(["email", "phone", "both"]),
@@ -319,39 +319,17 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 name="assetId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-blue-400">Asset <span className="text-blue-400">*</span></FormLabel>
+                    <FormLabel className="text-blue-400">Asset ID <span className="text-blue-400">*</span></FormLabel>
                     <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        disabled={!assetType || isLoadingAssets}
-                      >
-                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select an asset" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
-                          {isLoadingAssets ? (
-                            <SelectItem value="loading" disabled>
-                              Loading assets...
-                            </SelectItem>
-                          ) : assetType === "property" ? (
-                            properties.map((property) => (
-                              <SelectItem key={property.id} value={property.id}>
-                                {property.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            vehicles.map((vehicle) => (
-                              <SelectItem key={vehicle.id} value={vehicle.id}>
-                                {vehicle.name}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        placeholder={`Enter ${assetType} ID`}
+                        {...field}
+                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                        disabled={!assetType}
+                      />
                     </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      Select the specific {assetType} this complaint is about.
+                      Enter the ID of the {assetType} this complaint is about.
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -366,29 +344,15 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-blue-400">Category <span className="text-blue-400">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
-                        {isLoadingCategories ? (
-                          <div className="flex items-center justify-center p-4">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="ml-2">Loading categories...</span>
-                          </div>
-                        ) : (
-                          categories?.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter complaint category"
+                        {...field}
+                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      Select the category that best describes your complaint.
+                      Enter the category that best describes your complaint.
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -401,29 +365,15 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-blue-400">Subcategory</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select a subcategory (optional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
-                        {isLoadingSubcategories ? (
-                          <div className="flex items-center justify-center p-4">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="ml-2">Loading subcategories...</span>
-                          </div>
-                        ) : (
-                          subcategories?.map((subcategory) => (
-                            <SelectItem key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter subcategory (optional)"
+                        {...field}
+                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      Optionally select a subcategory for more specific classification.
+                      Optionally enter a subcategory for more specific classification.
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -438,21 +388,15 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-blue-400">Priority <span className="text-blue-400">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="urgent">Urgent</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter priority (low, medium, high, urgent)"
+                        {...field}
+                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      Select the priority level for this complaint.
+                      Enter the priority level for this complaint (low, medium, high, urgent).
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -465,20 +409,15 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-blue-400">Preferred Contact Method <span className="text-blue-400">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select contact method" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="phone">Phone</SelectItem>
-                        <SelectItem value="both">Both Email and Phone</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter contact method (email, phone, both)"
+                        {...field}
+                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      How would you prefer to be contacted about this complaint?
+                      How would you prefer to be contacted about this complaint? (email, phone, both)
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -512,30 +451,16 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
               name="supervisorId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-blue-400">Send to Supervisor</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                        <SelectValue placeholder="Select a supervisor (optional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
-                      {isLoadingSupervisors ? (
-                        <div className="flex items-center justify-center p-4">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="ml-2">Loading supervisors...</span>
-                        </div>
-                      ) : (
-                        supervisors?.map((supervisor) => (
-                          <SelectItem key={supervisor.id} value={supervisor.id}>
-                            {supervisor.name || supervisor.email}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel className="text-blue-400">Supervisor ID</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter supervisor ID (optional)"
+                      {...field}
+                      className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </FormControl>
                   <FormDescription className="text-blue-300 text-xs">
-                    Optionally select a supervisor to escalate this complaint to.
+                    Optionally enter a supervisor ID to escalate this complaint to.
                   </FormDescription>
                   <FormMessage className="text-red-400" />
                 </FormItem>
