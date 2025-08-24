@@ -225,7 +225,7 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="bg-muted/30 rounded-b-lg p-2 flex-1 min-h-[500px] overflow-y-auto"
+                    className="bg-muted/30 rounded-b-lg p-2 flex-1 min-h-[500px]"
                   >
                     {groupedComplaints[column.id]?.map((complaint, index) => 
                       renderComplaintCard(complaint, index)

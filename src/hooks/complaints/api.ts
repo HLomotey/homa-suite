@@ -347,23 +347,33 @@ export const updateComplaint = async (
       }
     }
     
-    // Update the complaint
-    const { data, error } = await supabaseAdmin
+    // Update the complaint - first do the update without select to avoid complex joins
+    const { error: updateError } = await supabaseAdmin
       .from("complaints")
       .update(updates)
-      .eq("id", id)
+      .eq("id", id);
+
+    if (updateError) {
+      console.error(`Error updating complaint with ID ${id}:`, updateError);
+      return { data: null, error: updateError };
+    }
+
+    // Then fetch the updated complaint with all relations
+    const { data, error } = await supabaseAdmin
+      .from("complaints")
       .select(`
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
-        created_by_profile:profiles(full_name),
-        assigned_to_profile:profiles(full_name),
-        escalated_to_profile:profiles(full_name),
+        created_by_profile:profiles!created_by(full_name),
+        assigned_to_profile:profiles!assigned_to(full_name),
+        escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
         complaint_comments_count:complaint_comments(count),
         complaint_attachments_count:complaint_attachments(count)
       `)
+      .eq("id", id)
       .single();
 
     if (error) {
