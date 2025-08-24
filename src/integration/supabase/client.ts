@@ -5,6 +5,7 @@ import { Database } from './types/database';
 // Make sure to add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase URL or Anonymous Key is missing. Please check your environment variables.');
@@ -12,6 +13,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Create Supabase client
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+
+// Create Supabase admin client with service role key for admin operations
+export const supabaseAdmin = supabaseServiceKey 
+  ? createClient<Database>(supabaseUrl, supabaseServiceKey)
+  : supabase; // Fallback to regular client if service key is not available
 
 // Helper function to get user session
 export const getSession = async () => {

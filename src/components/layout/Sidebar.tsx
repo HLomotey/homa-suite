@@ -24,6 +24,7 @@ import {
   Clock,
   Gauge,
   Wrench,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -94,6 +95,12 @@ const navigationItems = [
     label: "Maintenance",
     icon: Wrench,
     href: ROUTES.MAINTENANCE,
+    active: false,
+  },
+  {
+    label: "Complaints",
+    icon: MessageSquare,
+    href: ROUTES.COMPLAINTS,
     active: false,
   },
   {

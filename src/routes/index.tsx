@@ -55,6 +55,13 @@ const ManageMaintenanceRequest = lazy(() => import("@/routes/maintenance/admin/r
 const StaffMaintenanceRequests = lazy(() => import("@/routes/maintenance/staff"));
 const StaffRequestDetail = lazy(() => import("@/routes/maintenance/staff/request-detail"));
 
+// Lazy load Complaints Module components
+const ComplaintsLayout = lazy(() => import("@/routes/complaints"));
+const ComplaintsList = lazy(() => import("@/routes/complaints/list"));
+const ComplaintsKanban = lazy(() => import("@/routes/complaints/kanban"));
+const ComplaintDetail = lazy(() => import("@/routes/complaints/detail"));
+const NewComplaint = lazy(() => import("@/routes/complaints/new"));
+
 // Loading component
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[200px]">
@@ -507,6 +514,50 @@ export const routes: RouteObject[] = [
             element: (
               <LazyWrapper>
                 <ManageMaintenanceRequest />
+              </LazyWrapper>
+            ),
+          },
+        ],
+      },
+      {
+        path: "complaints",
+        element: (
+          <LazyWrapper>
+            <RouteGuard module="complaints">
+              <ComplaintsLayout />
+            </RouteGuard>
+          </LazyWrapper>
+        ),
+        children: [
+          {
+            index: true,
+            element: (
+              <LazyWrapper>
+                <ComplaintsList />
+              </LazyWrapper>
+            ),
+          },
+          {
+            path: "kanban",
+            element: (
+              <LazyWrapper>
+                <ComplaintsKanban />
+              </LazyWrapper>
+            ),
+          },
+          {
+            path: ":id",
+            element: (
+              <LazyWrapper>
+                <ComplaintDetail />
+              </LazyWrapper>
+            ),
+          },
+          {
+            path: "new",
+            element: (
+              <LazyWrapper>
+                <NewComplaint />
               </LazyWrapper>
             ),
           },

@@ -69,6 +69,16 @@ import {
   InventoryPurchaseOrder,
   InventoryPurchaseOrderItem
 } from './inventory';
+import {
+  Complaint,
+  ComplaintCategory,
+  ComplaintSubcategory,
+  ComplaintComment,
+  ComplaintAttachment,
+  ComplaintRoutingRule,
+  ComplaintSLA,
+  ComplaintHistory
+} from './complaints';
 
 // Database interface using the imported types
 export interface Database {
@@ -284,6 +294,46 @@ export interface Database {
         Insert: Omit<InventoryPurchaseOrderItem, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<InventoryPurchaseOrderItem, "id" | "created_at">>;
       };
+      complaints: {
+        Row: Complaint;
+        Insert: Omit<Complaint, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Complaint, "id" | "created_at">>;
+      };
+      complaint_categories: {
+        Row: ComplaintCategory;
+        Insert: Omit<ComplaintCategory, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintCategory, "id" | "created_at">>;
+      };
+      complaint_subcategories: {
+        Row: ComplaintSubcategory;
+        Insert: Omit<ComplaintSubcategory, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintSubcategory, "id" | "created_at">>;
+      };
+      complaint_comments: {
+        Row: ComplaintComment;
+        Insert: Omit<ComplaintComment, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintComment, "id" | "created_at">>;
+      };
+      complaint_attachments: {
+        Row: ComplaintAttachment;
+        Insert: Omit<ComplaintAttachment, "id" | "created_at">;
+        Update: Partial<Omit<ComplaintAttachment, "id" | "created_at">>;
+      };
+      complaint_routing_rules: {
+        Row: ComplaintRoutingRule;
+        Insert: Omit<ComplaintRoutingRule, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintRoutingRule, "id" | "created_at">>;
+      };
+      complaint_slas: {
+        Row: ComplaintSLA;
+        Insert: Omit<ComplaintSLA, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintSLA, "id" | "created_at">>;
+      };
+      complaint_history: {
+        Row: ComplaintHistory;
+        Insert: Omit<ComplaintHistory, "id" | "created_at">;
+        Update: Partial<Omit<ComplaintHistory, "id" | "created_at">>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -316,6 +366,9 @@ export interface Database {
       tenant_status: "Active" | "Pending" | "Former" | "Blacklisted";
       inventory_transaction_type: "received" | "issued" | "adjusted";
       purchase_order_status: "draft" | "ordered" | "partial" | "delivered" | "cancelled";
+      complaint_status: "new" | "in_progress" | "waiting_on_user" | "resolved" | "closed";
+      complaint_priority: "low" | "medium" | "high" | "urgent";
+      complaint_asset_type: "property" | "transport";
     };
   };
 };

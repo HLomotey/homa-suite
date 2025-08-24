@@ -20,5 +20,10 @@ export const ROUTES = {
   EXCEL_UPLOADS: "/excel-uploads",
   UTILITIES: "/utilities",
   MAINTENANCE: "/maintenance",
-  MAINTENANCE_STAFF: "/maintenance/staff"
+  MAINTENANCE_STAFF: "/maintenance/staff",
+  // Complaints module routes
+  COMPLAINTS: "/complaints",
+  COMPLAINTS_NEW: "/complaints/new",
+  COMPLAINTS_DETAIL: "/complaints/:id",
+  COMPLAINTS_KANBAN: "/complaints/kanban"
 };
