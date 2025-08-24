@@ -1,0 +1,106 @@
+import React, { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ShieldX, Loader2 } from 'lucide-react';
+import { getModuleByRoute, hasRouteAccess } from '@/config/navigation-modules';
+import { getUserModules } from '@/hooks/role/modules-api';
+import { useAuth } from '@/components/auth';
+
+interface ModuleRouteGuardProps {
+  children: React.ReactNode;
+  module?: string; // Override module detection
+  redirectTo?: string;
+  showError?: boolean;
+}
+
+export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
+  children,
+  module,
+  redirectTo = '/dashboard',
+  showError = true
+}) => {
+  const location = useLocation();
+  const { user } = useAuth();
+  const [userModules, setUserModules] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const modules = await getUserModules(user.id);
+        setUserModules(modules);
+
+        // Determine which module to check
+        const moduleToCheck = module || getModuleByRoute(location.pathname)?.id;
+        
+        if (!moduleToCheck) {
+          // If no module is found, allow access (for public routes)
+          setHasAccess(true);
+        } else {
+          // Check if user has access to the module
+          setHasAccess(modules.includes(moduleToCheck));
+        }
+      } catch (error) {
+        console.error('Error checking module access:', error);
+        setHasAccess(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAccess();
+  }, [user?.id, location.pathname, module]);
+
+  // Show loading state while checking access
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-2 text-white">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Checking access permissions...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If user doesn't have access
+  if (!hasAccess) {
+    if (showError) {
+      const moduleInfo = getModuleByRoute(location.pathname);
+      const moduleName = typeof moduleInfo === 'string' ? moduleInfo : moduleInfo?.displayName;
+      return (
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="max-w-md w-full">
+            <Alert className="border-red-500/20 bg-red-500/10">
+              <ShieldX className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-500">
+                <div className="space-y-2">
+                  <p className="font-medium">Access Denied</p>
+                  <p className="text-sm">
+                    You don't have permission to access the {moduleName || 'requested'} module. 
+                    Please contact your administrator if you believe this is an error.
+                  </p>
+                  <div className="text-xs text-red-400 mt-2">
+                    <p>Your current modules: {userModules.length > 0 ? userModules.join(', ') : 'None assigned'}</p>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
+      );
+    }
+    
+    // Redirect to allowed page
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};

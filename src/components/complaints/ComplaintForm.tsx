@@ -156,7 +156,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
         title: data.title,
         description: data.description,
         asset_type: data.assetType,
-        assetId: data.assetId,
+        asset_id: data.assetId,
         categoryId: data.categoryId,
         subcategoryId: data.subcategoryId || undefined,
         priority: data.priority,
@@ -176,7 +176,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
       form.reset();
       
       // Call onSuccess callback if provided
-      if (onSuccess && complaintId) {
+      if (onSuccess && typeof complaintId === 'string') {
         onSuccess(complaintId);
       }
     } catch (error) {

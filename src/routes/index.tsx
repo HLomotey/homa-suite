@@ -1,7 +1,7 @@
 import { createBrowserRouter, RouteObject } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AppLayout } from "@/components/layout";
-import { RouteGuard } from "@/components/permissions";
+import { ModuleRouteGuard } from "@/components/permissions/ModuleRouteGuard";
 
 // Lazy load all page components
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -86,9 +86,9 @@ export const routes: RouteObject[] = [
         index: true,
         element: (
           <LazyWrapper>
-            <RouteGuard module="dashboard">
+            <ModuleRouteGuard module="dashboard">
               <Dashboard />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -96,9 +96,9 @@ export const routes: RouteObject[] = [
         path: "dashboard",
         element: (
           <LazyWrapper>
-            <RouteGuard module="dashboard">
+            <ModuleRouteGuard module="dashboard">
               <Dashboard />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -106,9 +106,9 @@ export const routes: RouteObject[] = [
         path: "properties",
         element: (
           <LazyWrapper>
-            <RouteGuard module="properties">
+            <ModuleRouteGuard module="properties">
               <Properties />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -116,9 +116,9 @@ export const routes: RouteObject[] = [
         path: "housing",
         element: (
           <LazyWrapper>
-            <RouteGuard module="properties">
+            <ModuleRouteGuard module="properties">
               <Housing />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -126,9 +126,9 @@ export const routes: RouteObject[] = [
         path: "billing",
         element: (
           <LazyWrapper>
-            <RouteGuard module="billing">
+            <ModuleRouteGuard module="billing">
               <Billing />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -136,9 +136,9 @@ export const routes: RouteObject[] = [
         path: "staff",
         element: (
           <LazyWrapper>
-            <RouteGuard module="staff">
+            <ModuleRouteGuard module="staff">
               <Staff />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -146,9 +146,9 @@ export const routes: RouteObject[] = [
         path: "payroll",
         element: (
           <LazyWrapper>
-            <RouteGuard module="payroll">
+            <ModuleRouteGuard module="payroll">
               <PayrollPage />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -156,9 +156,9 @@ export const routes: RouteObject[] = [
         path: "attendance",
         element: (
           <LazyWrapper>
-            <RouteGuard module="attendance">
+            <ModuleRouteGuard module="attendance">
               <AttendancePage />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -166,9 +166,9 @@ export const routes: RouteObject[] = [
         path: "transport",
         element: (
           <LazyWrapper>
-            <RouteGuard module="transport">
+            <ModuleRouteGuard module="transport">
               <Transport />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -176,9 +176,9 @@ export const routes: RouteObject[] = [
         path: "settings",
         element: (
           <LazyWrapper>
-            <RouteGuard module="settings">
+            <ModuleRouteGuard module="settings">
               <Settings />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -186,9 +186,9 @@ export const routes: RouteObject[] = [
         path: "profile",
         element: (
           <LazyWrapper>
-            <RouteGuard module="profile">
+            <ModuleRouteGuard module="profile">
               <Profile />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -196,9 +196,9 @@ export const routes: RouteObject[] = [
         path: "users",
         element: (
           <LazyWrapper>
-            <RouteGuard module="users">
+            <ModuleRouteGuard module="users">
               <Users />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -206,9 +206,9 @@ export const routes: RouteObject[] = [
         path: "users/:userId",
         element: (
           <LazyWrapper>
-            <RouteGuard module="users">
+            <ModuleRouteGuard module="users">
               <Users />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -216,9 +216,9 @@ export const routes: RouteObject[] = [
         path: "users/:userId/permissions",
         element: (
           <LazyWrapper>
-            <RouteGuard module="users" action="edit">
+            <ModuleRouteGuard module="users">
               <Users />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -227,9 +227,9 @@ export const routes: RouteObject[] = [
         path: "roles",
         element: (
           <LazyWrapper>
-            <RouteGuard module="users" action="edit">
+            <ModuleRouteGuard module="users">
               <Roles />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -237,9 +237,9 @@ export const routes: RouteObject[] = [
         path: "roles/:roleId",
         element: (
           <LazyWrapper>
-            <RouteGuard module="users" action="edit">
+            <ModuleRouteGuard module="users">
               <Roles />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -247,9 +247,9 @@ export const routes: RouteObject[] = [
         path: "excel-uploads",
         element: (
           <LazyWrapper>
-            <RouteGuard module="uploads">
+            <ModuleRouteGuard module="uploads">
               <ExcelUploads />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -257,9 +257,9 @@ export const routes: RouteObject[] = [
         path: "analytics",
         element: (
           <LazyWrapper>
-            <RouteGuard module="admin">
+            <ModuleRouteGuard module="admin">
               <Analytics />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -267,9 +267,9 @@ export const routes: RouteObject[] = [
         path: "hr",
         element: (
           <LazyWrapper>
-            <RouteGuard module="hr">
+            <ModuleRouteGuard module="hr">
               <HR />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -421,9 +421,9 @@ export const routes: RouteObject[] = [
         path: "utilities",
         element: (
           <LazyWrapper>
-            <RouteGuard module="utilities">
+            <ModuleRouteGuard module="utilities">
               <Utilities />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },
@@ -431,9 +431,9 @@ export const routes: RouteObject[] = [
         path: "maintenance",
         element: (
           <LazyWrapper>
-            <RouteGuard module="properties">
+            <ModuleRouteGuard module="properties">
               <MaintenanceLayout />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
         children: [
@@ -523,9 +523,9 @@ export const routes: RouteObject[] = [
         path: "complaints",
         element: (
           <LazyWrapper>
-            <RouteGuard module="complaints">
+            <ModuleRouteGuard module="complaints">
               <ComplaintsLayout />
-            </RouteGuard>
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
         children: [

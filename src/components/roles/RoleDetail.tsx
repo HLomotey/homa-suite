@@ -9,9 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { FrontendRole } from '@/integration/supabase/types';
 import { useRole, useCreateRole, useUpdateRole } from '@/hooks/role/useRole';
-import { RolePermissionsTab } from '@/components/roles/RolePermissionsTab';
+import { RoleModulesTab } from '@/components/roles/RoleModulesTab';
 import { RoleUsersTab } from '@/components/roles/RoleUsersTab';
-import { PermissionsGrid } from '@/components/users/PermissionsGrid';
 import { Shield, Users } from 'lucide-react';
 
 export function RoleDetail() {
@@ -44,6 +43,8 @@ export function RoleDetail() {
     permissions: []
   });
   
+  const [roleModules, setRoleModules] = useState<string[]>([]);
+  
   const [activeTab, setActiveTab] = useState('details');
   
   // Load role data if editing existing role
@@ -75,26 +76,9 @@ export function RoleDetail() {
     setRole(prev => ({ ...prev, [field]: value }));
   };
   
-  // Handle permissions update
-  const handlePermissionsUpdate = (permissions: string[]) => {
-    setRole(prev => ({ ...prev, permissions }));
-  };
-
-  // Handle individual permission toggle for PermissionsGrid
-  const handleRolePermissionToggle = (permission: string) => {
-    const currentPermissions = role.permissions || [];
-    const isCurrentlySelected = currentPermissions.includes(permission);
-    
-    let newPermissions: string[];
-    if (isCurrentlySelected) {
-      // Remove permission
-      newPermissions = currentPermissions.filter(p => p !== permission);
-    } else {
-      // Add permission
-      newPermissions = [...currentPermissions, permission];
-    }
-    
-    setRole(prev => ({ ...prev, permissions: newPermissions }));
+  // Handle modules update
+  const handleModulesUpdate = (modules: string[]) => {
+    setRoleModules(modules);
   };
   
   // Handle form submission
@@ -232,26 +216,17 @@ export function RoleDetail() {
               </TabsContent>
               
               <TabsContent value="permissions" className="space-y-6 mt-6">
-                <PermissionsGrid
-                  user={{
-                    id: role.id || 'new',
-                    name: role.name || '',
-                    email: '',
-                    role: 'admin',
-                    roleId: '',
-                    department: '',
-                    status: 'active',
-                    lastActive: new Date().toISOString(),
-                    permissions: role.permissions || [],
-                    createdAt: new Date().toISOString(),
-                    avatar: ''
-                  }}
-                  customPermissionsEnabled={true}
-                  onCustomPermissionsToggle={() => {}}
-                  onPermissionToggle={handleRolePermissionToggle}
-                  isLoading={isLoading}
-                  isNewUser={isNewRole}
-                />
+                {!isNewRole && role.id && (
+                  <RoleModulesTab 
+                    roleId={role.id} 
+                    onModulesUpdate={handleModulesUpdate}
+                  />
+                )}
+                {isNewRole && (
+                  <div className="text-center py-8 text-white/60">
+                    <p>Save the role first to assign navigation modules</p>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="users" className="space-y-6 mt-6">
