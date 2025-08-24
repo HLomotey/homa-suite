@@ -29,6 +29,9 @@ export type DatabaseComplaint = Complaint & {
   escalated_to_profile?: { full_name: string };
   property?: { name: string };
   vehicle?: { name: string };
+  complaint_comments_count?: number;
+  complaint_attachments_count?: number;
+  // Keep old format for backward compatibility
   _count?: { complaint_comments: number; complaint_attachments: number };
 };
 
@@ -74,8 +77,8 @@ export const mapDatabaseComplaintToFrontend = (
     escalatedToName: complaint.escalated_to_profile?.full_name,
     
     // UI helpers
-    commentCount: complaint._count?.complaint_comments || 0,
-    attachmentCount: complaint._count?.complaint_attachments || 0,
+    commentCount: complaint.complaint_comments_count || 0,
+    attachmentCount: complaint.complaint_attachments_count || 0,
   };
 };
 
@@ -103,10 +106,8 @@ export const getComplaints = async (
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(name),
         vehicle:vehicles(name),
-        _count: {
-          complaint_comments: count(complaint_comments),
-          complaint_attachments: count(complaint_attachments)
-        }
+        complaint_comments_count:complaint_comments(count),
+        complaint_attachments_count:complaint_attachments(count)
       `);
 
     // Apply filters
@@ -198,10 +199,8 @@ export const getComplaintById = async (
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(name),
         vehicle:vehicles(name),
-        _count: {
-          complaint_comments: count(complaint_comments),
-          complaint_attachments: count(complaint_attachments)
-        }
+        complaint_comments_count:complaint_comments(count),
+        complaint_attachments_count:complaint_attachments(count)
       `)
       .eq("id", id)
       .single();
@@ -307,7 +306,8 @@ export const createComplaint = async (
 
     const frontendComplaint = mapDatabaseComplaintToFrontend({
       ...data,
-      _count: { complaint_comments: 0, complaint_attachments: 0 }
+      complaint_comments_count: 0,
+      complaint_attachments_count: 0
     });
     
     return { data: frontendComplaint, error: null };
@@ -361,10 +361,8 @@ export const updateComplaint = async (
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(name),
         vehicle:vehicles(name),
-        _count: {
-          complaint_comments: count(complaint_comments),
-          complaint_attachments: count(complaint_attachments)
-        }
+        complaint_comments_count:complaint_comments(count),
+        complaint_attachments_count:complaint_attachments(count)
       `)
       .single();
 
