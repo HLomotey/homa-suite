@@ -454,48 +454,46 @@ export const deleteComplaint = async (
   }
 };
 
-// Get complaint categories
+// Get complaint categories (using maintenance_categories)
 export const getComplaintCategories = async (
   assetType?: ComplaintAssetType
 ): Promise<{ data: ComplaintCategory[] | null; error: PostgrestError | null }> => {
   try {
-    let query = supabase.from("complaint_categories").select("*");
-    
-    if (assetType) {
-      query = query.eq("asset_type", assetType);
-    }
-    
-    const { data, error } = await query.order("name");
+    const { data, error } = await supabase
+      .from("maintenance_categories")
+      .select("id, name, description")
+      .order("name");
 
     if (error) {
       console.error("Error fetching complaint categories:", error);
       return { data: null, error };
     }
 
-    return { data, error: null };
+    // Map maintenance categories to complaint category format
+    const mappedData = data?.map(category => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      asset_type: assetType || 'property' as ComplaintAssetType,
+      sla_hours: 24, // Default SLA hours
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })) || [];
+
+    return { data: mappedData, error: null };
   } catch (error) {
     console.error("Unexpected error fetching complaint categories:", error);
     return { data: null, error: error as PostgrestError };
   }
 };
 
-// Get complaint subcategories by category ID
+// Get complaint subcategories by category ID (placeholder - no subcategories in maintenance system)
 export const getComplaintSubcategories = async (
   categoryId: string
 ): Promise<{ data: ComplaintSubcategory[] | null; error: PostgrestError | null }> => {
   try {
-    const { data, error } = await supabase
-      .from("complaint_subcategories")
-      .select("*")
-      .eq("category_id", categoryId)
-      .order("name");
-
-    if (error) {
-      console.error(`Error fetching subcategories for category ${categoryId}:`, error);
-      return { data: null, error };
-    }
-
-    return { data, error: null };
+    // Return empty array since we don't have subcategories in the maintenance system
+    return { data: [], error: null };
   } catch (error) {
     console.error(`Unexpected error fetching subcategories for category ${categoryId}:`, error);
     return { data: null, error: error as PostgrestError };

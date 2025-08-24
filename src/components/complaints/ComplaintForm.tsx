@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/components/auth";
 import { useComplaints, useComplaintCategories, useComplaintSubcategories } from "@/hooks/complaints";
-import { ComplaintAssetType, ComplaintPriority } from "@/integration/supabase/types/complaints";
+import { ComplaintAssetType, ComplaintPriority, ComplaintStatus } from "@/integration/supabase/types/complaints";
 import { useUsersByRole } from "@/hooks/user-profile/useEnhancedUsers";
 import { FrontendUser } from "@/integration/supabase/types";
 import { Loader2 } from "lucide-react";
@@ -109,21 +109,43 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
     form.setValue("subcategoryId", "");
   }, [watchedCategoryId, form]);
 
-  // Fetch properties and vehicles
+  // Fetch properties and vehicles from Supabase
   useEffect(() => {
     const fetchAssets = async () => {
       setIsLoadingAssets(true);
       try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          import.meta.env.VITE_SUPABASE_URL!,
+          import.meta.env.VITE_SUPABASE_ANON_KEY!
+        );
+
         // Fetch properties
-        const { data: propertiesData } = await fetch("/api/properties").then(res => res.json());
-        if (propertiesData) {
+        const { data: propertiesData, error: propertiesError } = await supabase
+          .from('properties')
+          .select('id, name')
+          .eq('status', 'active');
+        
+        if (propertiesError) {
+          console.error("Error fetching properties:", propertiesError);
+        } else if (propertiesData) {
           setProperties(propertiesData);
         }
 
-        // Fetch vehicles
-        const { data: vehiclesData } = await fetch("/api/vehicles").then(res => res.json());
-        if (vehiclesData) {
-          setVehicles(vehiclesData);
+        // Fetch vehicles with display name
+        const { data: vehiclesData, error: vehiclesError } = await supabase
+          .from('vehicles')
+          .select('id, make, model, license_plate')
+          .eq('status', 'active');
+        
+        if (vehiclesError) {
+          console.error("Error fetching vehicles:", vehiclesError);
+        } else if (vehiclesData) {
+          const formattedVehicles = vehiclesData.map(vehicle => ({
+            id: vehicle.id,
+            name: `${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`
+          }));
+          setVehicles(formattedVehicles);
         }
       } catch (error) {
         console.error("Error fetching assets:", error);
@@ -157,13 +179,18 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
         description: data.description,
         asset_type: data.assetType,
         asset_id: data.assetId,
-        categoryId: data.categoryId,
-        subcategoryId: data.subcategoryId || undefined,
+        category_id: data.categoryId,
+        subcategory_id: data.subcategoryId || undefined,
         priority: data.priority,
-        contactMethod: data.contactMethod,
+        contact_method: data.contactMethod,
         location: data.location,
-        userId: user.id,
-        supervisorId: data.supervisorId || undefined,
+        created_by: user.id,
+        assigned_to: data.supervisorId || null,
+        status: "new",
+        escalated_to: null,
+        due_date: null,
+        resolved_at: null,
+        closed_at: null,
       });
 
       toast({
