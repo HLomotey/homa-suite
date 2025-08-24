@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { FrontendRole } from '@/integration/supabase/types';
 import { useRoles, useDeleteRole } from '@/hooks/role/useRole';
+import { getRoleModules } from '@/hooks/role/modules-api';
 import { Plus, Search, Edit, Trash2, Shield } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -18,7 +19,29 @@ export function RoleList() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [roleToDelete, setRoleToDelete] = useState<FrontendRole | null>(null);
+  const [roleModuleCounts, setRoleModuleCounts] = useState<Record<string, number>>({});
   
+  // Load module counts for each role
+  useEffect(() => {
+    const loadModuleCounts = async () => {
+      if (!roles.length) return;
+      
+      const counts: Record<string, number> = {};
+      for (const role of roles) {
+        try {
+          const modules = await getRoleModules(role.id);
+          counts[role.id] = modules.length;
+        } catch (error) {
+          console.error(`Error loading modules for role ${role.id}:`, error);
+          counts[role.id] = 0;
+        }
+      }
+      setRoleModuleCounts(counts);
+    };
+
+    loadModuleCounts();
+  }, [roles]);
+
   // Debug logging
   console.log('🎯 RoleList: Component rendered');
   console.log('📊 RoleList: roles =', roles);
@@ -105,7 +128,7 @@ export function RoleList() {
                   
                   <div className="flex items-center space-x-3">
                     <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-500/30">
-                      {role.permissions?.length || 0} permissions
+                      {roleModuleCounts[role.id] || 0} modules
                     </Badge>
                     
                     <div className="flex space-x-2">
