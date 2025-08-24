@@ -23,32 +23,15 @@ export const getRoleModules = async (roleId: string | number): Promise<string[]>
 // Update modules for a role
 export const updateRoleModules = async (roleId: string | number, moduleIds: string[]): Promise<void> => {
   try {
-    // First, delete existing role modules
-    const { error: deleteError } = await supabaseAdmin
-      .from('role_modules')
-      .delete()
-      .eq('role_id', roleId);
+    // Use RPC function to bypass RLS issues
+    const { error } = await supabaseAdmin.rpc('update_role_modules', {
+      input_role_id: roleId,
+      input_module_ids: moduleIds
+    });
 
-    if (deleteError) {
-      console.error('Error deleting existing role modules:', deleteError);
-      throw deleteError;
-    }
-
-    // Then, insert new role modules
-    if (moduleIds.length > 0) {
-      const roleModules = moduleIds.map(moduleId => ({
-        role_id: roleId,
-        module_id: moduleId
-      }));
-
-      const { error: insertError } = await supabaseAdmin
-        .from('role_modules')
-        .insert(roleModules);
-
-      if (insertError) {
-        console.error('Error inserting role modules:', insertError);
-        throw insertError;
-      }
+    if (error) {
+      console.error('Error updating role modules via RPC:', error);
+      throw error;
     }
   } catch (error) {
     console.error('Error in updateRoleModules:', error);
