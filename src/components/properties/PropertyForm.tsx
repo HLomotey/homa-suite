@@ -39,19 +39,37 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   const [managerSearchOpen, setManagerSearchOpen] = React.useState(false);
   const [managerSearchValue, setManagerSearchValue] = React.useState("");
 
-  // Filter active staff and create search function
-  const activeStaff = staff.filter(member => member.employmentStatus === 'Active');
+  // Debug logging
+  console.log('PropertyForm - staff data:', staff);
+  console.log('PropertyForm - staffLoading:', staffLoading);
+  console.log('PropertyForm - staff is array:', Array.isArray(staff));
+  console.log('PropertyForm - staff length:', staff?.length);
+  
+  // Ensure staff is an array before filtering
+  const staffArray = Array.isArray(staff) ? staff : [];
+  console.log('PropertyForm - staff employment statuses:', staffArray.map(s => s.employmentStatus));
+  
+  // Filter active staff - try different employment status values
+  const activeStaff = staffArray.filter(member => 
+    member.employmentStatus === 'Active' || 
+    member.employmentStatus === 'Full-time' || 
+    member.employmentStatus === 'active' ||
+    member.employmentStatus === 'full-time'
+  );
+  
+  console.log('PropertyForm - activeStaff:', activeStaff);
+  console.log('PropertyForm - activeStaff length:', activeStaff.length);
   
   const searchStaff = (searchTerm: string) => {
-    if (!searchTerm.trim()) return activeStaff;
+    if (!searchTerm.trim()) return activeStaff || [];
     
     const lowercaseSearch = searchTerm.toLowerCase();
-    return activeStaff.filter(
+    return (activeStaff || []).filter(
       (member) =>
-        member.legalName.toLowerCase().includes(lowercaseSearch) ||
-        member.jobTitle.toLowerCase().includes(lowercaseSearch) ||
-        member.department.toLowerCase().includes(lowercaseSearch) ||
-        member.email.toLowerCase().includes(lowercaseSearch)
+        member.legalName?.toLowerCase().includes(lowercaseSearch) ||
+        member.jobTitle?.toLowerCase().includes(lowercaseSearch) ||
+        member.department?.toLowerCase().includes(lowercaseSearch) ||
+        member.email?.toLowerCase().includes(lowercaseSearch)
     );
   };
   const [formData, setFormData] = React.useState<
@@ -196,80 +214,75 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
               >
                 Property Manager
               </label>
-              <Popover open={managerSearchOpen} onOpenChange={setManagerSearchOpen}>
+              <Popover 
+                open={managerSearchOpen && !staffLoading} 
+                onOpenChange={(open) => {
+                  if (!staffLoading) {
+                    setManagerSearchOpen(open);
+                  }
+                }}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
-                    aria-expanded={managerSearchOpen}
+                    aria-expanded={managerSearchOpen && !staffLoading}
                     className="w-full mt-2 h-10 justify-between"
+                    disabled={staffLoading}
                   >
-                    {formData.managerId
-                      ? activeStaff.find((member) => member.id === formData.managerId)?.legalName ||
-                        "Manager not found"
-                      : "Select manager..."}
+                    {staffLoading ? (
+                      "Loading managers..."
+                    ) : formData.managerId ? (
+                      activeStaff.find((member) => member.id === formData.managerId)?.legalName ||
+                      "Manager not found"
+                    ) : (
+                      "Select manager..."
+                    )}
                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput
+                <PopoverContent className="w-80 p-0">
+                  <div className="p-2">
+                    <Input
                       placeholder="Search managers..."
                       value={managerSearchValue}
-                      onValueChange={setManagerSearchValue}
+                      onChange={(e) => setManagerSearchValue(e.target.value)}
+                      className="mb-2"
                     />
-                    <CommandEmpty>
-                      {staffLoading ? "Loading managers..." : "No managers found."}
-                    </CommandEmpty>
-                    <CommandGroup className="max-h-64 overflow-auto">
-                      {searchStaff(managerSearchValue).map((member) => (
-                        <CommandItem
-                          key={member.id}
-                          value={member.id}
-                          onSelect={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              managerId: member.id,
-                            }));
-                            setManagerSearchOpen(false);
-                            setManagerSearchValue("");
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.managerId === member.id
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{member.legalName}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {member.jobTitle} - {member.department}
-                            </span>
+                    <div className="max-h-64 overflow-auto">
+                      {Array.isArray(activeStaff) && activeStaff.length > 0 ? (
+                        searchStaff(managerSearchValue).length > 0 ? (
+                          searchStaff(managerSearchValue).map((member) => (
+                            <div
+                              key={member.id}
+                              className="flex flex-col p-2 hover:bg-accent cursor-pointer rounded-sm"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  managerId: member.id,
+                                }));
+                                setManagerSearchOpen(false);
+                                setManagerSearchValue("");
+                              }}
+                            >
+                              <span className="font-medium">{member.legalName}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {member.jobTitle} • {member.department}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-muted-foreground">
+                            No managers match your search
                           </div>
-                        </CommandItem>
-                      ))}
-                      {formData.managerId && (
-                        <CommandItem
-                          value="clear"
-                          onSelect={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              managerId: null,
-                            }));
-                            setManagerSearchOpen(false);
-                            setManagerSearchValue("");
-                          }}
-                          className="text-red-600"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Clear selection
-                        </CommandItem>
+                        )
+                      ) : (
+                        <div className="p-4 text-center text-muted-foreground">
+                          No active managers found
+                        </div>
                       )}
-                    </CommandGroup>
-                  </Command>
+                    </div>
+                  </div>
                 </PopoverContent>
               </Popover>
               {staffLoading && (
