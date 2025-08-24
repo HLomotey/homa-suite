@@ -14,6 +14,7 @@ import { format, formatDistance, isAfter } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 import { ComplaintForm } from "./ComplaintForm";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Status badge colors
 const statusColors: Record<string, string> = {
@@ -41,7 +42,8 @@ interface ComplaintKanbanProps {
 
 export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanProps) {
   const navigate = useNavigate();
-  const { complaints, isLoading, updateComplaint, groupedComplaints, refetch } = useComplaints();
+  const queryClient = useQueryClient();
+  const { complaints, isLoading, updateComplaint, groupedComplaints, refetch, isUpdating } = useComplaints();
   
   // Sheet state for slide-in form
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -50,17 +52,58 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
     
+    console.log('Drag end result:', result);
+    
     // If there's no destination or the item was dropped back in its original position
     if (!destination || 
         (destination.droppableId === source.droppableId && 
          destination.index === source.index)) {
+      console.log('No destination or same position, returning');
       return;
     }
     
     // Get the new status from the destination droppableId
     const newStatus = destination.droppableId as ComplaintStatus;
     
-    // Update the complaint status
+    console.log(`Moving complaint ${draggableId} from ${source.droppableId} to ${newStatus}`);
+    
+    // Optimistically update the cache immediately
+    queryClient.setQueryData(['complaints'], (oldData: any) => {
+      console.log('Current cache data:', oldData);
+      
+      // Handle different possible data structures
+      if (!oldData) return oldData;
+      
+      // If oldData is an array, update it directly
+      if (Array.isArray(oldData)) {
+        return oldData.map(complaint => 
+          complaint.id === draggableId 
+            ? { ...complaint, status: newStatus }
+            : complaint
+        );
+      }
+      
+      // If oldData has a data property that's an array
+      if (oldData.data && Array.isArray(oldData.data)) {
+        return {
+          ...oldData,
+          data: oldData.data.map(complaint => 
+            complaint.id === draggableId 
+              ? { ...complaint, status: newStatus }
+              : complaint
+          )
+        };
+      }
+      
+      // If we can't handle the structure, return unchanged
+      console.warn('Unexpected cache data structure:', oldData);
+      return oldData;
+    });
+    
+    // Update the complaint status in the backend
+    console.log('Calling updateComplaint with:', { id: draggableId, updates: { status: newStatus } });
+    console.log('isUpdating:', isUpdating);
+    
     updateComplaint({
       id: draggableId,
       updates: { status: newStatus }
@@ -124,7 +167,7 @@ export function ComplaintKanban({ onCreateNew, onViewDetail }: ComplaintKanbanPr
                   </Badge>
                 </div>
                 <CardDescription className="text-xs mt-1">
-                  ID: {complaint.id.substring(0, 8)}...
+                  {complaint.categoryName}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3 pt-2">

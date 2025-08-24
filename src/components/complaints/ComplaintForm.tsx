@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/use-toast";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 
 // Define the form schema with Zod
 const complaintFormSchema = z.object({
@@ -62,8 +63,8 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   const { createComplaint, isCreating } = useComplaints();
   const [assetType, setAssetType] = useState<ComplaintAssetType>("property");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [properties, setProperties] = useState<{ id: string; name: string }[]>([]);
-  const [vehicles, setVehicles] = useState<{ id: string; name: string }[]>([]);
+  const [properties, setProperties] = useState<{ id: string; title: string; address: string }[]>([]);
+  const [vehicles, setVehicles] = useState<{ id: string; make: string; model: string; license_plate: string }[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   
   // Fetch supervisors
@@ -123,7 +124,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
         // Fetch properties
         const { data: propertiesData, error: propertiesError } = await supabase
           .from('properties')
-          .select('id, name')
+          .select('id, title, address')
           .eq('status', 'active');
         
         if (propertiesError) {
@@ -132,7 +133,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
           setProperties(propertiesData);
         }
 
-        // Fetch vehicles with display name
+        // Fetch vehicles
         const { data: vehiclesData, error: vehiclesError } = await supabase
           .from('vehicles')
           .select('id, make, model, license_plate')
@@ -141,11 +142,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
         if (vehiclesError) {
           console.error("Error fetching vehicles:", vehiclesError);
         } else if (vehiclesData) {
-          const formattedVehicles = vehiclesData.map(vehicle => ({
-            id: vehicle.id,
-            name: `${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`
-          }));
-          setVehicles(formattedVehicles);
+          setVehicles(vehiclesData);
         }
       } catch (error) {
         console.error("Error fetching assets:", error);
@@ -319,17 +316,37 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 name="assetId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-blue-400">Asset ID <span className="text-blue-400">*</span></FormLabel>
+                    <FormLabel className="text-blue-400">{assetType === 'property' ? 'Property' : 'Vehicle'} <span className="text-blue-400">*</span></FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder={`Enter ${assetType} ID`}
-                        {...field}
-                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                        disabled={!assetType}
-                      />
+                      {isLoadingAssets ? (
+                        <div className="flex items-center space-x-2 p-3 bg-[#0a1428] border border-[#1e3a5f] rounded-md">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                          <span className="text-sm text-gray-400">Loading {assetType === 'property' ? 'properties' : 'vehicles'}...</span>
+                        </div>
+                      ) : (
+                        <SearchableSelect
+                          options={assetType === 'property' 
+                            ? properties.map((property): SearchableSelectOption => ({
+                                value: property.id,
+                                label: `${property.title} - ${property.address}`,
+                                searchText: `${property.title} ${property.address}`
+                              }))
+                            : vehicles.map((vehicle): SearchableSelectOption => ({
+                                value: vehicle.id,
+                                label: `${vehicle.make} ${vehicle.model} (${vehicle.license_plate})`,
+                                searchText: `${vehicle.make} ${vehicle.model} ${vehicle.license_plate}`
+                              }))
+                          }
+                          value={field.value}
+                          placeholder={`Search and select ${assetType}...`}
+                          emptyMessage={`No ${assetType === 'property' ? 'properties' : 'vehicles'} found.`}
+                          onValueChange={field.onChange}
+                          className="bg-[#0a1428] border-[#1e3a5f] text-white"
+                        />
+                      )}
                     </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      Enter the ID of the {assetType} this complaint is about.
+                      Select the {assetType} this complaint is about.
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
