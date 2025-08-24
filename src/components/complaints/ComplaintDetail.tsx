@@ -171,8 +171,6 @@ export function ComplaintDetail({ id, onBack }: ComplaintDetailProps) {
           <div>
             <h1 className="text-2xl font-bold">{complaint.title}</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>ID: {complaint.id.substring(0, 8)}...</span>
-              <span>•</span>
               <span>Created {format(new Date(complaint.createdAt), 'MMM d, yyyy')}</span>
               <span>•</span>
               <span>By {complaint.createdByName}</span>
