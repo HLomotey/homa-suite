@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { getRoleModules } from '@/hooks/role/modules-api';
 import { 
   Table, 
   TableBody, 
@@ -56,12 +57,34 @@ export function RoleManagementContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleToDelete, setRoleToDelete] = useState<FrontendRole | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [roleModuleCounts, setRoleModuleCounts] = useState<Record<string, number>>({});
 
   // Check if we're on a role detail page or if URL params indicate role editing
   const urlParams = new URLSearchParams(location.search);
   const roleId = urlParams.get('roleId');
   const action = urlParams.get('action');
   const isRoleDetailPage = action === 'new' || !!roleId;
+
+  // Load module counts for each role
+  useEffect(() => {
+    const loadModuleCounts = async () => {
+      if (!roles.length) return;
+      
+      const counts: Record<string, number> = {};
+      for (const role of roles) {
+        try {
+          const modules = await getRoleModules(role.id);
+          counts[role.id] = modules.length;
+        } catch (error) {
+          console.error(`Error loading modules for role ${role.id}:`, error);
+          counts[role.id] = 0;
+        }
+      }
+      setRoleModuleCounts(counts);
+    };
+
+    loadModuleCounts();
+  }, [roles]);
 
   // Effect to open/close sheet based on URL params
   useEffect(() => {
@@ -117,8 +140,8 @@ export function RoleManagementContent() {
     );
   };
 
-  const getPermissionsBadge = (permissionsCount: number) => {
-    const color = permissionsCount > 10 ? 'red' : permissionsCount > 5 ? 'yellow' : 'green';
+  const getModulesBadge = (modulesCount: number) => {
+    const color = modulesCount > 6 ? 'red' : modulesCount > 3 ? 'yellow' : 'green';
     const variants = {
       red: "bg-red-500/20 text-red-300 border-red-500/30",
       yellow: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
@@ -127,7 +150,7 @@ export function RoleManagementContent() {
     
     return (
       <Badge className={variants[color]}>
-        {permissionsCount} permissions
+        {modulesCount} modules
       </Badge>
     );
   };
@@ -239,7 +262,7 @@ export function RoleManagementContent() {
                         <span className="text-white/80">0</span>
                       </div>
                     </TableCell>
-                    <TableCell>{getPermissionsBadge(role.permissions?.length || 0)}</TableCell>
+                    <TableCell>{getModulesBadge(roleModuleCounts[role.id] || 0)}</TableCell>
                     <TableCell className="text-white/60">
                       —
                     </TableCell>

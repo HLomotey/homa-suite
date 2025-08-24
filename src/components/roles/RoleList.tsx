@@ -45,6 +45,7 @@ export function RoleList() {
   // Debug logging
   console.log('🎯 RoleList: Component rendered');
   console.log('📊 RoleList: roles =', roles);
+  console.log('📊 RoleList: roleModuleCounts =', roleModuleCounts);
   console.log('⏳ RoleList: loading =', loading);
   console.log('❌ RoleList: error =', error);
   
