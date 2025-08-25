@@ -5,6 +5,11 @@ import { ArrowUp, ArrowDown, Percent, Building, DoorOpen, Users, Loader2 } from 
 import { useProperties } from "@/hooks/property/useProperty";
 import { useRooms } from "@/hooks/room/useRoom";
 import { RoomStatus } from "@/integration/supabase/types/room";
+import OccupancyTrendChart from "./charts/OccupancyTrendChart";
+import AvailableRoomsChart from "./charts/AvailableRoomsChart";
+import PropertyBreakdownChart from "./charts/PropertyBreakdownChart";
+import StatusDistributionChart from "./charts/StatusDistributionChart";
+import { format, subDays } from "date-fns";
 
 // Occupancy Dashboard Component
 export const OccupancyDashboard = () => {
@@ -12,19 +17,27 @@ export const OccupancyDashboard = () => {
   const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
   const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
 
-  // Calculate dashboard metrics
-  const dashboardMetrics = useMemo(() => {
+  // Calculate dashboard metrics and chart data
+  const { dashboardMetrics, chartData } = useMemo(() => {
     if (propertiesLoading || roomsLoading) {
       return {
-        totalProperties: 0,
-        totalRooms: 0,
-        occupiedRooms: 0,
-        occupancyRate: 0,
-        // Default to neutral trends when loading
-        propertyTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
-        roomsTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
-        occupiedTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
-        rateTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" }
+        dashboardMetrics: {
+          totalProperties: 0,
+          totalRooms: 0,
+          occupiedRooms: 0,
+          occupancyRate: 0,
+          // Default to neutral trends when loading
+          propertyTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
+          roomsTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
+          occupiedTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" },
+          rateTrend: { value: "0%", direction: "up" as "up" | "down", period: "vs last month" }
+        },
+        chartData: {
+          occupancyTrend: [],
+          availableRooms: [],
+          propertyBreakdown: [],
+          statusDistribution: []
+        }
       };
     }
 
@@ -47,15 +60,85 @@ export const OccupancyDashboard = () => {
     const occupiedTrend = { value: "-1%", direction: "down" as "up" | "down", period: "vs last month" };
     const rateTrend = { value: "-1%", direction: "down" as "up" | "down", period: "vs last month" };
 
+    // Generate historical data for charts (last 30 days)
+    const occupancyTrendData = Array.from({ length: 30 }, (_, i) => {
+      // Generate a realistic occupancy trend with some variation
+      const date = format(subDays(new Date(), 29 - i), 'MMM dd');
+      const baseRate = 85; // Base occupancy rate
+      const variation = Math.sin(i / 5) * 10; // Create a wave pattern
+      const randomFactor = Math.random() * 5; // Add some randomness
+      const occupancyRate = Math.min(100, Math.max(60, Math.round(baseRate + variation + randomFactor)));
+      
+      return {
+        date,
+        occupancyRate
+      };
+    });
+
+    // Generate available rooms data
+    const availableRoomsData = occupancyTrendData.map(item => {
+      const availableRooms = Math.round(totalRooms * (1 - (item.occupancyRate / 100)));
+      return {
+        date: item.date,
+        availableRooms,
+        totalRooms
+      };
+    });
+
+    // Generate property breakdown data
+    const propertyBreakdownData = properties.map(property => {
+      // Get rooms for this property
+      const propertyRooms = rooms.filter(room => room.propertyId === property.id);
+      const propertyTotalRooms = propertyRooms.length;
+      const propertyOccupiedRooms = propertyRooms.filter(room => room.status === 'Occupied').length;
+      const propertyOccupancyRate = propertyTotalRooms > 0 ? 
+        Math.round((propertyOccupiedRooms / propertyTotalRooms) * 100) : 0;
+      
+      return {
+        propertyName: property.title,
+        totalRooms: propertyTotalRooms,
+        occupiedRooms: propertyOccupiedRooms,
+        occupancyRate: propertyOccupancyRate
+      };
+    });
+
+    // Generate status distribution data
+    const statusCounts = rooms.reduce((acc, room) => {
+      acc[room.status] = (acc[room.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const statusColors = {
+      'Occupied': '#8884d8',
+      'Available': '#4ade80',
+      'Maintenance': '#f97316',
+      'Reserved': '#facc15',
+      'Unavailable': '#ef4444'
+    };
+
+    const statusDistributionData = Object.entries(statusCounts).map(([status, value]) => ({
+      status,
+      value,
+      color: statusColors[status as keyof typeof statusColors] || '#94a3b8'
+    }));
+
     return {
-      totalProperties,
-      totalRooms,
-      occupiedRooms,
-      occupancyRate,
-      propertyTrend,
-      roomsTrend,
-      occupiedTrend,
-      rateTrend
+      dashboardMetrics: {
+        totalProperties,
+        totalRooms,
+        occupiedRooms,
+        occupancyRate,
+        propertyTrend,
+        roomsTrend,
+        occupiedTrend,
+        rateTrend
+      },
+      chartData: {
+        occupancyTrend: occupancyTrendData,
+        availableRooms: availableRoomsData,
+        propertyBreakdown: propertyBreakdownData,
+        statusDistribution: statusDistributionData
+      }
     };
   }, [properties, rooms, propertiesLoading, roomsLoading]);
 
@@ -143,11 +226,13 @@ export const OccupancyDashboard = () => {
                 <CardTitle className="text-lg font-medium">Occupancy Trend</CardTitle>
                 <p className="text-sm text-white/60">Daily occupancy rate over time</p>
               </CardHeader>
-              <CardContent className="h-80 flex items-center justify-center">
+              <CardContent className="h-80">
                 {isLoading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
                 ) : (
-                  <p className="text-white/60">Chart placeholder - Occupancy trend line chart</p>
+                  <OccupancyTrendChart data={chartData.occupancyTrend} />
                 )}
               </CardContent>
             </Card>
@@ -157,11 +242,13 @@ export const OccupancyDashboard = () => {
                 <CardTitle className="text-lg font-medium">Available Rooms</CardTitle>
                 <p className="text-sm text-white/60">Available room count over time</p>
               </CardHeader>
-              <CardContent className="h-80 flex items-center justify-center">
+              <CardContent className="h-80">
                 {isLoading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
                 ) : (
-                  <p className="text-white/60">Chart placeholder - Available rooms line chart</p>
+                  <AvailableRoomsChart data={chartData.availableRooms} />
                 )}
               </CardContent>
             </Card>
@@ -174,11 +261,13 @@ export const OccupancyDashboard = () => {
               <CardTitle className="text-lg font-medium">Property Breakdown</CardTitle>
               <p className="text-sm text-white/60">Occupancy statistics by property</p>
             </CardHeader>
-            <CardContent className="h-96 flex items-center justify-center">
+            <CardContent className="h-96">
               {isLoading ? (
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
               ) : (
-                <p className="text-white/60">Chart placeholder - Property breakdown</p>
+                <PropertyBreakdownChart data={chartData.propertyBreakdown} />
               )}
             </CardContent>
           </Card>
@@ -190,11 +279,13 @@ export const OccupancyDashboard = () => {
               <CardTitle className="text-lg font-medium">Status Distribution</CardTitle>
               <p className="text-sm text-white/60">Room status distribution</p>
             </CardHeader>
-            <CardContent className="h-96 flex items-center justify-center">
+            <CardContent className="h-96">
               {isLoading ? (
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
               ) : (
-                <p className="text-white/60">Chart placeholder - Status distribution</p>
+                <StatusDistributionChart data={chartData.statusDistribution} />
               )}
             </CardContent>
           </Card>

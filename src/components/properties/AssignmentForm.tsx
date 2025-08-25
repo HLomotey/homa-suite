@@ -33,7 +33,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   rooms,
 }) => {
   const { toast } = useToast();
-  const { externalStaff, loading, fetchExternalStaff, setStatus } =
+  const { externalStaff, loading, fetchAllExternalStaff, setStatus } =
     useExternalStaff();
 
   const [formData, setFormData] = React.useState<
@@ -76,10 +76,12 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     console.log("AssignmentForm - Filtered Rooms:", filteredRooms);
   }, [properties, rooms, filteredRooms]);
 
-  // Set external staff status to active on component mount
+  // Set external staff status to active and fetch all data on component mount
   React.useEffect(() => {
     // Set status to active to only show active staff
     setStatus("active");
+    // Fetch all external staff without pagination limits for unrestricted search
+    fetchAllExternalStaff();
   }, [setStatus]);
 
   // Debug logging for external staff data
@@ -94,7 +96,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     console.log("AssignmentForm - Afua Staff Found:", afuaStaff);
   }, [externalStaff]);
 
-  // Filter staff based on tenant search query
+  // Enhanced filter staff based on tenant search query with comprehensive wildcard search
   React.useEffect(() => {
     if (!tenantSearchQuery.trim()) {
       setFilteredStaff([]);
@@ -102,26 +104,73 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     }
 
     const query = tenantSearchQuery.toLowerCase().trim();
+    const queryWords = query.split(/\s+/); // Split query into individual words for better matching
+    
     const filtered = externalStaff.filter((staff) => {
       const firstName = (staff["PAYROLL FIRST NAME"] || "").toLowerCase();
       const lastName = (staff["PAYROLL LAST NAME"] || "").toLowerCase();
       const fullName = `${firstName} ${lastName}`.trim();
+      const reverseName = `${lastName} ${firstName}`.trim();
       const jobTitle = (staff["JOB TITLE"] || "").toLowerCase();
       const email = (staff["WORK E-MAIL"] || "").toLowerCase();
       const department = (staff["HOME DEPARTMENT"] || "").toLowerCase();
-
-      // Wildcard search - check if query matches any part of the staff information
-      return (
-        firstName.includes(query) ||
-        lastName.includes(query) ||
-        fullName.includes(query) ||
-        jobTitle.includes(query) ||
-        email.includes(query) ||
-        department.includes(query)
+      const employeeId = (staff["EMPLOYEE ID"] || "").toLowerCase();
+      const location = (staff["LOCATION"] || "").toLowerCase();
+      const manager = (staff["MANAGER"] || "").toLowerCase();
+      
+      // Create comprehensive searchable text
+      const searchableText = `${firstName} ${lastName} ${fullName} ${reverseName} ${jobTitle} ${email} ${department} ${employeeId} ${location} ${manager}`.toLowerCase();
+      
+      // Enhanced wildcard search - check if ALL query words match any part of the staff information
+      const matchesAllWords = queryWords.every(word => 
+        searchableText.includes(word) ||
+        firstName.includes(word) ||
+        lastName.includes(word) ||
+        fullName.includes(word) ||
+        reverseName.includes(word) ||
+        jobTitle.includes(word) ||
+        email.includes(word) ||
+        department.includes(word) ||
+        employeeId.includes(word) ||
+        location.includes(word) ||
+        manager.includes(word)
       );
+      
+      // Also check for partial matches and fuzzy matching
+      const matchesQuery = 
+        matchesAllWords ||
+        searchableText.includes(query) ||
+        firstName.startsWith(query) ||
+        lastName.startsWith(query) ||
+        fullName.startsWith(query) ||
+        reverseName.startsWith(query);
+        
+      return matchesQuery;
     });
 
-    setFilteredStaff(filtered); // Show all matching suggestions
+    // Sort results by relevance - exact matches first, then partial matches
+    const sortedFiltered = filtered.sort((a, b) => {
+      const aFirstName = (a["PAYROLL FIRST NAME"] || "").toLowerCase();
+      const aLastName = (a["PAYROLL LAST NAME"] || "").toLowerCase();
+      const aFullName = `${aFirstName} ${aLastName}`.trim();
+      
+      const bFirstName = (b["PAYROLL FIRST NAME"] || "").toLowerCase();
+      const bLastName = (b["PAYROLL LAST NAME"] || "").toLowerCase();
+      const bFullName = `${bFirstName} ${bLastName}`.trim();
+      
+      // Prioritize exact name matches
+      if (aFullName === query && bFullName !== query) return -1;
+      if (bFullName === query && aFullName !== query) return 1;
+      
+      // Then prioritize starts with matches
+      if (aFullName.startsWith(query) && !bFullName.startsWith(query)) return -1;
+      if (bFullName.startsWith(query) && !aFullName.startsWith(query)) return 1;
+      
+      // Finally sort alphabetically
+      return aFullName.localeCompare(bFullName);
+    });
+
+    setFilteredStaff(sortedFiltered); // Show all matching suggestions without limits
   }, [tenantSearchQuery, externalStaff]);
 
   // Handle tenant name input change
@@ -328,22 +377,31 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         const jobTitle = staff["JOB TITLE"] || "";
                         const email = staff["WORK E-MAIL"] || "";
                         const department = staff["HOME DEPARTMENT"] || "";
+                        const employeeId = staff["EMPLOYEE ID"] || "";
+                        const location = staff["LOCATION"] || "";
+                        const manager = staff["MANAGER"] || "";
 
-                        // Create variations of the name for better search matching
+                        // Create comprehensive variations for enhanced search matching
                         const fullName = `${firstName} ${lastName}`.trim();
                         const reverseName = `${lastName} ${firstName}`.trim();
                         const firstInitialLastName = firstName
                           ? `${firstName[0]}. ${lastName}`.trim()
                           : "";
+                        const lastInitialFirstName = lastName
+                          ? `${lastName[0]}. ${firstName}`.trim()
+                          : "";
 
-                        // Additional variations to improve search matching
+                        // Additional variations for comprehensive search
                         const firstNameOnly = firstName.trim();
                         const lastNameOnly = lastName.trim();
+                        const initials = firstName && lastName 
+                          ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+                          : "";
 
                         return {
                           value: staff.id,
-                          label: `${firstName} ${lastName} - ${jobTitle}`,
-                          searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`,
+                          label: `${firstName} ${lastName}${jobTitle ? ` - ${jobTitle}` : ""}${department ? ` (${department})` : ""}`,
+                          searchText: `${firstName} ${lastName} ${fullName} ${reverseName} ${firstInitialLastName} ${lastInitialFirstName} ${firstNameOnly} ${lastNameOnly} ${initials} ${jobTitle} ${email} ${department} ${employeeId} ${location} ${manager}`,
                         };
                       }
                     )}
@@ -379,15 +437,22 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               <div className="mt-2">
                 <SearchableSelect
                   options={properties.map(
-                    (property): SearchableSelectOption => ({
-                      value: property.id,
-                      label: `${property.title || ""} - ${
-                        property.address || ""
-                      }`,
-                      searchText: `${property.title || ""} ${
-                        property.address || ""
-                      }`,
-                    })
+                    (property): SearchableSelectOption => {
+                      const title = property.title || "";
+                      const address = property.address || "";
+                      const id = property.id || "";
+                      
+                      // Create comprehensive search text for properties
+                      const titleWords = title.toLowerCase().split(/\s+/);
+                      const addressWords = address.toLowerCase().split(/\s+/);
+                      const allWords = [...titleWords, ...addressWords].join(" ");
+                      
+                      return {
+                        value: property.id,
+                        label: `${title}${address ? ` - ${address}` : ""}`,
+                        searchText: `${title} ${address} ${allWords} ${id}`,
+                      };
+                    }
                   )}
                   value={formData.propertyId}
                   placeholder="Search and select property..."
@@ -419,11 +484,21 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               <div className="mt-2">
                 <SearchableSelect
                   options={filteredRooms.map(
-                    (room): SearchableSelectOption => ({
-                      value: room.id,
-                      label: room.name || "",
-                      searchText: room.name || "",
-                    })
+                    (room): SearchableSelectOption => {
+                      const name = room.name || "";
+                      const id = room.id || "";
+                      const propertyId = room.propertyId || "";
+                      
+                      // Create comprehensive search text for rooms
+                      const nameWords = name.toLowerCase().split(/\s+/);
+                      const allWords = nameWords.join(" ");
+                      
+                      return {
+                        value: room.id,
+                        label: name,
+                        searchText: `${name} ${allWords} ${id} ${propertyId}`,
+                      };
+                    }
                   )}
                   value={formData.roomId}
                   placeholder={
