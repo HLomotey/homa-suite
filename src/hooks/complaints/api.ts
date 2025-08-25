@@ -531,13 +531,23 @@ export const createComplaintCategory = async (
   }
 };
 
-// Get complaint subcategories by category ID (placeholder - no subcategories in maintenance system)
+// Get complaint subcategories by category ID
 export const getComplaintSubcategories = async (
   categoryId: string
 ): Promise<{ data: ComplaintSubcategory[] | null; error: PostgrestError | null }> => {
   try {
-    // Return empty array since we don't have subcategories in the maintenance system
-    return { data: [], error: null };
+    const { data, error } = await supabase
+      .from("complaint_subcategories")
+      .select("*")
+      .eq("category_id", categoryId)
+      .order("name");
+
+    if (error) {
+      console.error(`Error fetching subcategories for category ${categoryId}:`, error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
   } catch (error) {
     console.error(`Unexpected error fetching subcategories for category ${categoryId}:`, error);
     return { data: null, error: error as PostgrestError };

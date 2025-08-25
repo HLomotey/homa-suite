@@ -194,7 +194,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col w-full max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b">
         <div>
@@ -326,7 +326,6 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                                 }))
                               : assetType === 'hotel'
                                 ? staffLocations
-                                  .filter(location => location.locationDescription?.toLowerCase().includes('hotel'))
                                   .map((hotel): SearchableSelectOption => ({
                                     value: hotel.id,
                                     label: hotel.locationDescription || hotel.companyLocationName || 'Unnamed Hotel',
