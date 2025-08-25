@@ -4,6 +4,7 @@ export interface StaffLocation {
   location_code: string;
   location_description: string;
   is_active: boolean;
+  external_staff_id?: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -15,6 +16,8 @@ export interface FrontendStaffLocation {
   locationCode: string;
   locationDescription: string;
   isActive: boolean;
+  externalStaffId?: string;
+  externalStaffName?: string;
 }
 
 export interface StaffLocationFormData {
@@ -22,4 +25,6 @@ export interface StaffLocationFormData {
   locationCode: string;
   locationDescription: string;
   isActive: boolean;
+  externalStaffId?: string;
+  externalStaffName?: string;
 }

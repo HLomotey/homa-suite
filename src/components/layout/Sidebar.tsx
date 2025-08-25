@@ -62,17 +62,17 @@ const navigationItems = [
     module: "operations",
   },
   {
-    label: "Properties",
+    label: "Housing",
     icon: Building2,
     href: ROUTES.PROPERTIES,
     module: "properties",
   },
-  {
-    label: "Billing",
-    icon: Calculator,
-    href: ROUTES.BILLING,
-    module: "billing",
-  },
+  // {
+  //   label: "Billing",
+  //   icon: Calculator,
+  //   href: ROUTES.BILLING,
+  //   module: "billing",
+  // },
   // {
   //   label: "Staff",
   //   icon: Users,
@@ -110,7 +110,7 @@ const navigationItems = [
     module: "properties",
   },
   {
-    label: "Complaints",
+    label: "Incidence Report",
     icon: MessageSquare,
     href: ROUTES.COMPLAINTS,
     module: "complaints",
