@@ -11,37 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Search, X, Check, User } from "lucide-react";
-import useLocation from "@/hooks/transport/useLocation";
-import useStaffLocation from "@/hooks/transport/useStaffLocation";
-import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
-import { FrontendStaffLocation, StaffLocationFormData } from "@/integration/supabase/types/staffLocation";
-import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
-import { supabaseAdmin } from "@/integration/supabase/client";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription, SheetClose } from "@/components/ui/sheet";
+import { Pencil, Trash2, User, X, Check, ChevronsUpDown, Loader2, Plus, Search } from "lucide-react";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "../../../hooks/useDebounce";
+import { useLocation } from "@/hooks/transport/useLocation";
+import useStaffLocation from "@/hooks/transport/useStaffLocation";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
+import { FrontendStaffLocation, StaffLocationFormData } from "@/integration/supabase/types/staffLocation";
+import { supabaseAdmin } from "@/integration/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -60,15 +40,7 @@ import {
 
 export function StaffLocationsTab() {
   const { locations } = useLocation();
-  const {
-    staffLocations,
-    loading,
-    error,
-    fetchStaffLocations,
-    createStaffLocation,
-    updateStaffLocation,
-    deleteStaffLocation,
-  } = useStaffLocation();
+  const { staffLocations, createStaffLocation, updateStaffLocation, deleteStaffLocation, loading, error } = useStaffLocation();
   const { externalStaff, loading: loadingExternalStaff } = useExternalStaff();
   
   // External staff search state
@@ -79,38 +51,39 @@ export function StaffLocationsTab() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   
   // Function to search external staff by manager ID
-  const searchExternalStaffByManager = async (query: string, managerId?: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    
+  const searchExternalStaffByManager = async (searchTerm: string) => {
     setIsSearching(true);
     try {
       // Use supabaseAdmin to bypass RLS policies
       const { data, error } = await supabaseAdmin
-        .from('external_staff')
-        .select('*')
-        .or(`"PAYROLL FIRST NAME".ilike.%${query}%,"PAYROLL LAST NAME".ilike.%${query}%,"WORK E-MAIL".ilike.%${query}%`)
-        .eq('"REPORTS TO NAME"', managerId || '')
+        .from("external_staff")
+        .select("*")
+        .or(
+          `"PAYROLL FIRST NAME".ilike.%${searchTerm}%,"PAYROLL LAST NAME".ilike.%${searchTerm}%,"WORK E-MAIL".ilike.%${searchTerm}%`
+        )
+        .eq("REPORTS TO ID", "current-manager-id") // Replace with actual manager ID
         .limit(10);
-      
-      if (error) throw error;
-      
-      setSearchResults(data || []);
+
+      if (error) {
+        console.error("Error searching external staff:", error);
+        return;
+      }
+
+      setSearchResults(data as FrontendExternalStaff[]);
     } catch (error) {
-      console.error('Error searching external staff:', error);
-      setSearchResults([]);
+      console.error("Error searching external staff:", error);
     } finally {
       setIsSearching(false);
     }
   };
   
+  // We already have externalStaff from the hook above
+  
   // Effect to trigger search when debounced search term changes
   useEffect(() => {
     if (debouncedSearchTerm) {
       // You can replace 'current-manager-id' with the actual manager ID from context or props
-      searchExternalStaffByManager(debouncedSearchTerm, 'current-manager-id');
+      searchExternalStaffByManager(debouncedSearchTerm);
     } else {
       setSearchResults([]);
     }
@@ -141,11 +114,10 @@ export function StaffLocationsTab() {
     externalStaffName: "",
   });
 
-  // Fetch staff locations on component mount
+  // No need to fetch staff locations as they're already fetched by the useStaffLocation hook
   useEffect(() => {
-    fetchStaffLocations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // staffLocations are already available from the useStaffLocation hook
+  }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -358,88 +330,33 @@ export function StaffLocationsTab() {
             
             {/* External Staff Searchable Input */}
             <div className="space-y-2">
-              <Label htmlFor="externalStaffId">External Staff</Label>
-              <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openCombobox}
-                    className="w-full justify-between"
-                  >
-                    {formData.externalStaffName ? (
-                      <span className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {formData.externalStaffName}
-                      </span>
-                    ) : (
-                      "Select staff member..."
-                    )}
-                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search staff..." 
-                      value={searchTerm}
-                      onValueChange={setSearchTerm}
-                      className="h-9"
-                    />
-                    <CommandList>
-                      <CommandEmpty>
-                        {isSearching ? (
-                          <div className="flex items-center justify-center p-4">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                          </div>
-                        ) : (
-                          "No staff found."
-                        )}
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {searchResults.map((staff) => (
-                          <CommandItem
-                            key={staff.id}
-                            value={`${staff["PAYROLL FIRST NAME"]} ${staff["PAYROLL LAST NAME"]}`}
-                            onSelect={() => handleStaffSelect(staff)}
-                            className="flex items-center gap-2"
-                          >
-                            <User className="h-4 w-4" />
-                            <span>
-                              {staff["PAYROLL FIRST NAME"]} {staff["PAYROLL LAST NAME"]}
-                            </span>
-                            {staff["WORK E-MAIL"] && (
-                              <span className="text-xs text-muted-foreground ml-auto">
-                                {staff["WORK E-MAIL"]}
-                              </span>
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {formData.externalStaffId && (
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-muted-foreground">
-                    Staff ID: {formData.externalStaffId}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        externalStaffId: "",
-                        externalStaffName: "",
-                      }));
+              <Label htmlFor="externalStaff">External Staff</Label>
+              {loadingExternalStaff ? (
+                <div className="flex items-center space-x-2 mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading external staff...</span>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <SearchableSelect
+                    options={externalStaff.map((staff): SearchableSelectOption => ({
+                      value: staff.id,
+                      label: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} - ${staff["JOB TITLE"] || ''}`,
+                      searchText: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} ${staff["JOB TITLE"] || ''} ${staff["WORK E-MAIL"] || ''} ${staff["HOME DEPARTMENT"] || ''}`
+                    }))}
+                    value={formData.externalStaffId}
+                    placeholder="Search and select external staff member..."
+                    emptyMessage="No external staff found."
+                    onValueChange={(value) => {
+                      const selectedStaff = externalStaff.find((s) => s.id === value);
+                      setFormData({
+                        ...formData,
+                        externalStaffId: value,
+                        externalStaffName: selectedStaff ? 
+                          `${selectedStaff["PAYROLL FIRST NAME"] || ''} ${selectedStaff["PAYROLL LAST NAME"] || ''}`.trim() : "",
+                      });
                     }}
-                    className="h-auto p-0 text-xs text-destructive hover:text-destructive"
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Clear
-                  </Button>
+                  />
                 </div>
               )}
             </div>
@@ -475,15 +392,11 @@ export function StaffLocationsTab() {
               <Label htmlFor="isActive">Active Location</Label>
             </div>
           </div>
-          <SheetFooter className="sm:justify-end">
-            <SheetClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </SheetClose>
-            <Button onClick={handleSaveStaffLocation}>
-              {formData.mode === "add" ? "Save Location" : "Update Location"}
-            </Button>
+          <SheetFooter>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveStaffLocation}>Save</Button>
+            </div>
           </SheetFooter>
         </SheetContent>
       </Sheet>
