@@ -12,9 +12,9 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
   stats,
   loading,
 }) => {
-  // Calculate percentages
-  const activePercentage = stats.totalCount > 0 ? Math.round((stats.activeCount / stats.totalCount) * 100) : 0;
-  const terminatedPercentage = stats.totalCount > 0 ? Math.round((stats.terminatedCount / stats.totalCount) * 100) : 0;
+  // Calculate percentages based on active staff only
+  const activePercentage = 100; // Active staff is 100% of active staff
+  const terminatedPercentage = 0; // No terminated staff in active view
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -26,10 +26,10 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {loading ? "..." : stats.totalCount}
+            {loading ? "..." : stats.activeCount}
           </div>
           <p className="text-xs text-muted-foreground">
-            External staff members
+            Active external staff members
           </p>
         </CardContent>
       </Card>
@@ -99,7 +99,7 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
                     {dept.department}
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {dept.count} staff ({Math.round((dept.count / stats.totalCount) * 100)}%)
+                    {dept.count} staff ({Math.round((dept.count / stats.activeCount) * 100)}%)
                   </span>
                 </div>
               ))}

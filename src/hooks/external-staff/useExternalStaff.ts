@@ -276,11 +276,12 @@ export function useExternalStaff(): UseExternalStaffReturn {
 
       if (recentError) throw recentError;
 
-      // Get department distribution
+      // Get department distribution (active staff only)
       const { data: departmentsData, error: deptError } = await supabase
         .from('external_staff')
         .select('"HOME DEPARTMENT"')
-        .not('HOME DEPARTMENT', 'is', null);
+        .not('HOME DEPARTMENT', 'is', null)
+        .is('TERMINATION DATE', null); // Only include active staff
 
       if (deptError) throw deptError;
 
