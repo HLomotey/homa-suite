@@ -479,35 +479,54 @@ export const deleteComplaint = async (
   }
 };
 
-// Get complaint categories (using maintenance_categories)
+// Get complaint categories from the complaint_categories table
 export const getComplaintCategories = async (
   assetType?: ComplaintAssetType
 ): Promise<{ data: ComplaintCategory[] | null; error: PostgrestError | null }> => {
   try {
-    const { data, error } = await supabase
-      .from("maintenance_categories")
-      .select("id, name, description")
+    let query = supabase
+      .from("complaint_categories")
+      .select("*")
       .order("name");
+    
+    // Filter by asset type if provided
+    if (assetType) {
+      query = query.eq("asset_type", assetType);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching complaint categories:", error);
       return { data: null, error };
     }
 
-    // Map maintenance categories to complaint category format
-    const mappedData = data?.map(category => ({
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      asset_type: assetType || 'property' as ComplaintAssetType,
-      sla_hours: 24, // Default SLA hours
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })) || [];
-
-    return { data: mappedData, error: null };
+    return { data, error: null };
   } catch (error) {
     console.error("Unexpected error fetching complaint categories:", error);
+    return { data: null, error: error as PostgrestError };
+  }
+};
+
+// Create a new complaint category
+export const createComplaintCategory = async (
+  category: Omit<ComplaintCategory, "id" | "created_at" | "updated_at">
+): Promise<{ data: ComplaintCategory | null; error: PostgrestError | null }> => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("complaint_categories")
+      .insert(category)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating complaint category:", error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error("Unexpected error creating complaint category:", error);
     return { data: null, error: error as PostgrestError };
   }
 };

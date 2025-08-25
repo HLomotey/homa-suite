@@ -14,7 +14,10 @@ import { FrontendUser } from "@/integration/supabase/types";
 import { useProperties } from "@/hooks/property/useProperty";
 import { useVehicle } from "@/hooks/transport/useVehicle";
 import useStaffLocation from "@/hooks/transport/useStaffLocation";
-import { Loader2 } from "lucide-react";
+import { Loader2, PlusCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { createComplaint, createComplaintCategory, getComplaintCategories } from "@/hooks/complaints/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +29,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import {
   Form,
@@ -143,10 +148,13 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
     }
 
     try {
+      // Map vehicle to transport if needed for backend compatibility
+      const assetTypeForBackend = data.assetType === "vehicle" ? "transport" : data.assetType;
+      
       const complaintId = await createComplaint({
         title: data.title,
         description: data.description,
-        asset_type: data.assetType,
+        asset_type: assetTypeForBackend as ComplaintAssetType,
         asset_id: data.assetId,
         category_id: data.categoryId,
         subcategory_id: data.subcategoryId || undefined,
@@ -296,30 +304,43 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 name="assetId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-blue-400">{assetType === 'property' ? 'Property' : 'Vehicle'} <span className="text-blue-400">*</span></FormLabel>
+                    <FormLabel className="text-blue-400">
+                      {assetType === 'property' ? 'Property' : assetType === 'hotel' ? 'Hotel' : 'Vehicle'} <span className="text-blue-400">*</span>
+                    </FormLabel>
                     <FormControl>
-                      {(assetType === 'property' ? isLoadingProperties : isLoadingVehicles) ? (
+                      {(assetType === 'property' ? isLoadingProperties : assetType === 'hotel' ? isLoadingStaffLocations : isLoadingVehicles) ? (
                         <div className="flex items-center space-x-2 p-3 bg-[#0a1428] border border-[#1e3a5f] rounded-md">
                           <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                          <span className="text-sm text-gray-400">Loading {assetType === 'property' ? 'properties' : 'vehicles'}...</span>
+                          <span className="text-sm text-gray-400">
+                            Loading {assetType === 'property' ? 'properties' : assetType === 'hotel' ? 'hotels' : 'vehicles'}...
+                          </span>
                         </div>
                       ) : (
                         <SearchableSelect
-                          options={assetType === 'property' 
-                            ? properties.map((property): SearchableSelectOption => ({
-                                value: property.id,
-                                label: `${property.title} - ${property.address}`,
-                                searchText: `${property.title} ${property.address}`
-                              }))
-                            : vehicles.map((vehicle): SearchableSelectOption => ({
-                                value: vehicle.id,
-                                label: `${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})`,
-                                searchText: `${vehicle.make} ${vehicle.model} ${vehicle.licensePlate}`
-                              }))
+                          options={
+                            assetType === 'property' 
+                              ? properties.map((property): SearchableSelectOption => ({
+                                  value: property.id,
+                                  label: `${property.title} - ${property.address}`,
+                                  searchText: `${property.title} ${property.address}`
+                                }))
+                              : assetType === 'hotel'
+                                ? staffLocations
+                                  .filter(location => location.locationDescription?.toLowerCase().includes('hotel'))
+                                  .map((hotel): SearchableSelectOption => ({
+                                    value: hotel.id,
+                                    label: hotel.locationDescription || hotel.companyLocationName || 'Unnamed Hotel',
+                                    searchText: `${hotel.locationDescription} ${hotel.companyLocationName}`
+                                  }))
+                                : vehicles.map((vehicle): SearchableSelectOption => ({
+                                    value: vehicle.id,
+                                    label: `${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})`,
+                                    searchText: `${vehicle.make} ${vehicle.model} ${vehicle.licensePlate}`
+                                  }))
                           }
                           value={field.value}
                           placeholder={`Search and select ${assetType}...`}
-                          emptyMessage={`No ${assetType === 'property' ? 'properties' : 'vehicles'} found.`}
+                          emptyMessage={`No ${assetType === 'property' ? 'properties' : assetType === 'hotel' ? 'hotels' : 'vehicles'} found.`}
                           onValueChange={field.onChange}
                           className="bg-[#0a1428] border-[#1e3a5f] text-white"
                         />
@@ -338,22 +359,168 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
               <FormField
                 control={form.control}
                 name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-blue-400">Category <span className="text-blue-400">*</span></FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter complaint category"
-                        {...field}
-                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </FormControl>
-                    <FormDescription className="text-blue-300 text-xs">
-                      Enter the category that best describes your complaint.
-                    </FormDescription>
-                    <FormMessage className="text-red-400" />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Fetch categories based on selected asset type
+                  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+                    queryKey: ['complaint-categories', assetType],
+                    queryFn: () => getComplaintCategories(assetType),
+                    select: (result) => result.data || [],
+                    enabled: !!assetType
+                  });
+                  
+                  // State for new category dialog
+                  const [newCategoryDialogOpen, setNewCategoryDialogOpen] = useState(false);
+                  const [newCategoryName, setNewCategoryName] = useState('');
+                  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+                  
+                  // Handle creating a new category
+                  const handleCreateCategory = async () => {
+                    if (!newCategoryName.trim()) return;
+                    
+                    setIsCreatingCategory(true);
+                    try {
+                      const result = await createComplaintCategory({
+                        name: newCategoryName.trim(),
+                        asset_type: assetType,
+                        description: null,
+                        sla_hours: 24
+                      });
+                      
+                      if (result.data) {
+                        // Set the new category as selected
+                        field.onChange(result.data.id);
+                        toast({
+                          title: "Success",
+                          description: `Category '${newCategoryName}' created successfully`,
+                          variant: "default",
+                        });
+                        setNewCategoryDialogOpen(false);
+                        setNewCategoryName('');
+                      } else if (result.error) {
+                        toast({
+                          title: "Error",
+                          description: `Failed to create category: ${result.error.message}`,
+                          variant: "destructive",
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Error creating category:", error);
+                      toast({
+                        title: "Error",
+                        description: "An unexpected error occurred",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsCreatingCategory(false);
+                    }
+                  };
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel className="text-blue-400">Category <span className="text-blue-400">*</span></FormLabel>
+                      <div className="flex space-x-2">
+                        <div className="flex-1">
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
+                                <SelectValue placeholder="Select a category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white max-h-[300px]">
+                              {isLoadingCategories ? (
+                                <div className="flex items-center justify-center p-2">
+                                  <Loader2 className="h-4 w-4 animate-spin text-blue-400 mr-2" />
+                                  <span>Loading categories...</span>
+                                </div>
+                              ) : categories.length === 0 ? (
+                                <div className="p-2 text-center">No categories found</div>
+                              ) : (
+                                <>
+                                  <SelectGroup>
+                                    <SelectLabel>Categories for {assetType}</SelectLabel>
+                                    {categories
+                                      .filter(cat => cat.asset_type === assetType)
+                                      .map((category) => (
+                                        <SelectItem key={category.id} value={category.id}>
+                                          {category.name}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectGroup>
+                                </>
+                              )}
+                              <div className="border-t border-[#1e3a5f] mt-2 pt-2">
+                                <Button
+                                  variant="ghost"
+                                  className="w-full flex items-center justify-start text-blue-400 hover:text-blue-300 hover:bg-[#0f1d33]"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setNewCategoryDialogOpen(true);
+                                  }}
+                                >
+                                  <PlusCircle className="h-4 w-4 mr-2" />
+                                  Add new category
+                                </Button>
+                              </div>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <FormDescription className="text-blue-300 text-xs">
+                        Select a category that best describes your complaint or add a new one.
+                      </FormDescription>
+                      <FormMessage className="text-red-400" />
+                      
+                      {/* Dialog for adding a new category */}
+                      <Dialog open={newCategoryDialogOpen} onOpenChange={setNewCategoryDialogOpen}>
+                        <DialogContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
+                          <DialogHeader>
+                            <DialogTitle>Add New Category</DialogTitle>
+                          </DialogHeader>
+                          <div className="py-4">
+                            <FormItem>
+                              <FormLabel>Category Name</FormLabel>
+                              <Input
+                                placeholder="Enter new category name"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                              />
+                              <FormDescription className="text-blue-300 text-xs">
+                                This category will be associated with {assetType} assets.
+                              </FormDescription>
+                            </FormItem>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              variant="outline"
+                              onClick={() => setNewCategoryDialogOpen(false)}
+                              className="border-[#1e3a5f] text-white hover:bg-[#0f1d33] hover:text-blue-300"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={handleCreateCategory}
+                              disabled={!newCategoryName.trim() || isCreatingCategory}
+                              className="bg-blue-600 text-white hover:bg-blue-700"
+                            >
+                              {isCreatingCategory ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  Creating...
+                                </>
+                              ) : (
+                                'Create Category'
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
@@ -441,63 +608,33 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-blue-400">Location</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
-                        <SelectValue placeholder="Select a location" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white max-h-[300px]">
-                      {isLoadingStaffLocations ? (
-                        <div className="flex items-center justify-center p-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-400 mr-2" />
-                          <span>Loading locations...</span>
-                        </div>
-                      ) : staffLocations.length === 0 ? (
-                        <div className="p-2 text-center">No locations found</div>
-                      ) : (
-                        staffLocations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.locationDescription}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription className="text-blue-300 text-xs">
-                    Select a location from the staff locations list.
-                  </FormDescription>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
+            {/* Location field removed as it's redundant with the asset selection */}
 
             <FormField
               control={form.control}
               name="supervisorId"
               render={({ field }) => {
-                const selectedProperty = properties.find(p => p.id === form.watch("assetId"));
-                const selectedLocation = staffLocations.find(loc => loc.id === form.watch("location"));
-                
-                // Get manager based on selected asset type and selection
+                const selectedAssetId = form.watch("assetId");
+                let selectedItem;
                 let managerName = "";
                 let managerId = "";
                 
-                if (assetType === "property" && selectedProperty?.managerName) {
-                  managerName = selectedProperty.managerName;
-                  managerId = selectedProperty.managerId || "";
-                } else if (selectedLocation?.externalStaffName) {
-                  managerName = selectedLocation.externalStaffName;
-                  managerId = selectedLocation.externalStaffId || "";
+                // Get manager based on selected asset type and selection
+                if (assetType === "property") {
+                  selectedItem = properties.find(p => p.id === selectedAssetId);
+                  if (selectedItem?.managerName) {
+                    managerName = selectedItem.managerName;
+                    managerId = selectedItem.managerId || "";
+                  }
+                } else if (assetType === "hotel") {
+                  selectedItem = staffLocations.find(loc => loc.id === selectedAssetId);
+                  if (selectedItem?.externalStaffName) {
+                    managerName = selectedItem.externalStaffName;
+                    managerId = selectedItem.externalStaffId || "";
+                  }
+                } else if (assetType === "vehicle") {
+                  // For vehicles, we might not have manager information
+                  // Could add vehicle manager logic here if needed
                 }
                 
                 // Update the form value when manager changes
@@ -520,9 +657,9 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                     </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
                       {managerName ? (
-                        <>Automatically assigned based on selected {assetType === "property" ? "property" : "location"}</>
+                        <>Automatically assigned based on selected {assetType}</>
                       ) : (
-                        "Manager will be assigned when you select a property or location"
+                        `Manager will be assigned when you select a ${assetType}`
                       )}
                     </FormDescription>
                     <FormMessage className="text-red-400" />
