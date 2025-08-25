@@ -11,9 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useExternalStaff, StaffStatus, PaginationState } from "@/hooks/external-staff/useExternalStaff";
+import {
+  useExternalStaff,
+  StaffStatus,
+  PaginationState,
+  StaffStats,
+} from "@/hooks/external-staff/useExternalStaff";
 import { ExternalStaffSlideForm } from "@/components/external-staff/ExternalStaffSlideForm";
 import { ExternalStaffExcelUpload } from "@/components/external-staff/ExternalStaffExcelUpload";
+import { ExternalStaffStats } from "@/components/external-staff/ExternalStaffStats";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -27,20 +33,29 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function ExternalStaff() {
   const {
     externalStaff,
     loading,
+    statsLoading,
     totalCount,
     pagination,
     setPagination,
     status,
     setStatus,
+    stats,
     createExternalStaff,
     updateExternalStaff,
     deleteExternalStaff,
+    fetchStats,
   } = useExternalStaff();
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -53,7 +68,7 @@ export default function ExternalStaff() {
   // Client-side filtering for search only - pagination and active/inactive filtering is done server-side
   const filteredStaff = externalStaff.filter((staff) => {
     if (!searchTerm) return true;
-    
+
     const searchLower = searchTerm.toLowerCase();
     return (
       staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
@@ -64,20 +79,20 @@ export default function ExternalStaff() {
       staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower)
     );
   });
-  
+
   // Calculate pagination values
   const pageCount = Math.ceil(totalCount / pagination.pageSize);
-  
+
   // Handle pagination changes
   const handlePageChange = (newPage: number) => {
     setPagination({ ...pagination, pageIndex: newPage });
   };
-  
+
   // Handle page size changes
   const handlePageSizeChange = (newSize: string) => {
     setPagination({ pageIndex: 0, pageSize: parseInt(newSize) });
   };
-  
+
   // Handle status tab changes
   const handleStatusChange = (newStatus: StaffStatus) => {
     setStatus(newStatus);
@@ -145,7 +160,7 @@ export default function ExternalStaff() {
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">External Staff</h1>
+          <h1 className="text-2xl font-bold">External Staff</h1>
           <p className="text-muted-foreground">
             Manage external staff members and their information
           </p>
@@ -153,29 +168,33 @@ export default function ExternalStaff() {
         <div className="flex space-x-2">
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setShowExcelUpload(true)}
+            className="flex items-center gap-2"
           >
-            <Upload className="h-4 w-4 mr-2" />
+            <Upload className="h-4 w-4" />
             Import Excel
           </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
+          <Button variant="outline" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
             Add Staff
           </Button>
         </div>
       </div>
 
+      {/* Statistics Dashboard */}
+      <ExternalStaffStats stats={stats} loading={statsLoading} />
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>
-              External Staff Members ({totalCount})
-            </CardTitle>
+            <CardTitle>External Staff Members ({totalCount})</CardTitle>
             <div className="relative w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -188,14 +207,18 @@ export default function ExternalStaff() {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={status} onValueChange={(value) => handleStatusChange(value as StaffStatus)} className="mb-6">
+          <Tabs
+            value={status}
+            onValueChange={(value) => handleStatusChange(value as StaffStatus)}
+            className="mb-6"
+          >
             <TabsList>
               <TabsTrigger value="all">All Staff</TabsTrigger>
               <TabsTrigger value="active">Active</TabsTrigger>
               <TabsTrigger value="terminated">Terminated</TabsTrigger>
             </TabsList>
           </Tabs>
-          
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -233,7 +256,8 @@ export default function ExternalStaff() {
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {staff["PAYROLL FIRST NAME"]} {staff["PAYROLL LAST NAME"]}
+                              {staff["PAYROLL FIRST NAME"]}{" "}
+                              {staff["PAYROLL LAST NAME"]}
                             </div>
                             {staff["PAYROLL MIDDLE NAME"] && (
                               <div className="text-sm text-muted-foreground">
@@ -244,7 +268,9 @@ export default function ExternalStaff() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            {staff["JOB TITLE"] && <div>{staff["JOB TITLE"]}</div>}
+                            {staff["JOB TITLE"] && (
+                              <div>{staff["JOB TITLE"]}</div>
+                            )}
                             {staff["JOB CLASS"] && (
                               <div className="text-sm text-muted-foreground">
                                 Class: {staff["JOB CLASS"]}
@@ -256,12 +282,15 @@ export default function ExternalStaff() {
                         <TableCell>{staff["LOCATION"] || "-"}</TableCell>
                         <TableCell>
                           <div>
-                            {staff["HOME PHONE"] && <div>{staff["HOME PHONE"]}</div>}
-                            {staff["WORK PHONE"] && staff["WORK PHONE"] !== staff["HOME PHONE"] && (
-                              <div className="text-sm text-muted-foreground">
-                                Work: {staff["WORK PHONE"]}
-                              </div>
+                            {staff["HOME PHONE"] && (
+                              <div>{staff["HOME PHONE"]}</div>
                             )}
+                            {staff["WORK PHONE"] &&
+                              staff["WORK PHONE"] !== staff["HOME PHONE"] && (
+                                <div className="text-sm text-muted-foreground">
+                                  Work: {staff["WORK PHONE"]}
+                                </div>
+                              )}
                           </div>
                         </TableCell>
                         <TableCell>{formatDate(staff["HIRE DATE"])}</TableCell>
@@ -296,17 +325,21 @@ export default function ExternalStaff() {
                   )}
                 </TableBody>
               </Table>
-              
+
               {/* Pagination and Items Per Page Controls */}
               <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground">Items per page</span>
+                  <span className="text-sm text-muted-foreground">
+                    Items per page
+                  </span>
                   <Select
                     value={pagination.pageSize.toString()}
                     onValueChange={handlePageSizeChange}
                   >
                     <SelectTrigger className="w-[80px]">
-                      <SelectValue placeholder={pagination.pageSize.toString()} />
+                      <SelectValue
+                        placeholder={pagination.pageSize.toString()}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="10">10</SelectItem>
@@ -317,78 +350,114 @@ export default function ExternalStaff() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="flex items-center">
                   <span className="text-sm text-muted-foreground mr-2">
-                    Showing {pagination.pageIndex * pagination.pageSize + 1} to {Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalCount)} of {totalCount}
+                    Showing {pagination.pageIndex * pagination.pageSize + 1} to{" "}
+                    {Math.min(
+                      (pagination.pageIndex + 1) * pagination.pageSize,
+                      totalCount
+                    )}{" "}
+                    of {totalCount}
                   </span>
-                  
+
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => handlePageChange(Math.max(0, pagination.pageIndex - 1))}
-                          className={pagination.pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        <PaginationPrevious
+                          onClick={() =>
+                            handlePageChange(
+                              Math.max(0, pagination.pageIndex - 1)
+                            )
+                          }
+                          className={
+                            pagination.pageIndex === 0
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
                         />
                       </PaginationItem>
-                      
+
                       {/* First Page */}
                       {pagination.pageIndex > 1 && (
                         <PaginationItem>
-                          <PaginationLink onClick={() => handlePageChange(0)}>1</PaginationLink>
+                          <PaginationLink onClick={() => handlePageChange(0)}>
+                            1
+                          </PaginationLink>
                         </PaginationItem>
                       )}
-                      
+
                       {/* Ellipsis if needed */}
                       {pagination.pageIndex > 2 && (
                         <PaginationItem>
                           <PaginationEllipsis />
                         </PaginationItem>
                       )}
-                      
+
                       {/* Previous Page */}
                       {pagination.pageIndex > 0 && (
                         <PaginationItem>
-                          <PaginationLink onClick={() => handlePageChange(pagination.pageIndex - 1)}>
+                          <PaginationLink
+                            onClick={() =>
+                              handlePageChange(pagination.pageIndex - 1)
+                            }
+                          >
                             {pagination.pageIndex}
                           </PaginationLink>
                         </PaginationItem>
                       )}
-                      
+
                       {/* Current Page */}
                       <PaginationItem>
-                        <PaginationLink isActive>{pagination.pageIndex + 1}</PaginationLink>
+                        <PaginationLink isActive>
+                          {pagination.pageIndex + 1}
+                        </PaginationLink>
                       </PaginationItem>
-                      
+
                       {/* Next Page */}
                       {pagination.pageIndex < pageCount - 1 && (
                         <PaginationItem>
-                          <PaginationLink onClick={() => handlePageChange(pagination.pageIndex + 1)}>
+                          <PaginationLink
+                            onClick={() =>
+                              handlePageChange(pagination.pageIndex + 1)
+                            }
+                          >
                             {pagination.pageIndex + 2}
                           </PaginationLink>
                         </PaginationItem>
                       )}
-                      
+
                       {/* Ellipsis if needed */}
                       {pagination.pageIndex < pageCount - 3 && (
                         <PaginationItem>
                           <PaginationEllipsis />
                         </PaginationItem>
                       )}
-                      
+
                       {/* Last Page */}
-                      {pagination.pageIndex < pageCount - 2 && pageCount > 1 && (
-                        <PaginationItem>
-                          <PaginationLink onClick={() => handlePageChange(pageCount - 1)}>
-                            {pageCount}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )}
-                      
+                      {pagination.pageIndex < pageCount - 2 &&
+                        pageCount > 1 && (
+                          <PaginationItem>
+                            <PaginationLink
+                              onClick={() => handlePageChange(pageCount - 1)}
+                            >
+                              {pageCount}
+                            </PaginationLink>
+                          </PaginationItem>
+                        )}
+
                       <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => handlePageChange(Math.min(pageCount - 1, pagination.pageIndex + 1))}
-                          className={pagination.pageIndex >= pageCount - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        <PaginationNext
+                          onClick={() =>
+                            handlePageChange(
+                              Math.min(pageCount - 1, pagination.pageIndex + 1)
+                            )
+                          }
+                          className={
+                            pagination.pageIndex >= pageCount - 1
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
                         />
                       </PaginationItem>
                     </PaginationContent>

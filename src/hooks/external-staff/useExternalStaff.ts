@@ -10,16 +10,27 @@ export interface PaginationState {
   pageSize: number;
 }
 
+export interface StaffStats {
+  totalCount: number;
+  activeCount: number;
+  terminatedCount: number;
+  recentHiresCount: number;
+  topDepartments: Array<{ department: string; count: number }>;
+}
+
 export interface UseExternalStaffReturn {
   externalStaff: FrontendExternalStaff[];
   loading: boolean;
+  statsLoading: boolean;
   error: string | null;
   totalCount: number;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   status: StaffStatus;
   setStatus: (status: StaffStatus) => void;
+  stats: StaffStats;
   fetchExternalStaff: () => Promise<void>;
+  fetchStats: () => Promise<void>;
   createExternalStaff: (staff: Partial<FrontendExternalStaff>) => Promise<FrontendExternalStaff | null>;
   updateExternalStaff: (id: string, updates: Partial<FrontendExternalStaff>) => Promise<FrontendExternalStaff | null>;
   deleteExternalStaff: (id: string) => Promise<boolean>;
@@ -29,6 +40,7 @@ export interface UseExternalStaffReturn {
 export function useExternalStaff(): UseExternalStaffReturn {
   const [externalStaff, setExternalStaff] = useState<FrontendExternalStaff[]>([]);
   const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -36,6 +48,13 @@ export function useExternalStaff(): UseExternalStaffReturn {
     pageSize: 10,
   });
   const [status, setStatus] = useState<StaffStatus>('all');
+  const [stats, setStats] = useState<StaffStats>({
+    totalCount: 0,
+    activeCount: 0,
+    terminatedCount: 0,
+    recentHiresCount: 0,
+    topDepartments: [],
+  });
 
   const fetchExternalStaff = async () => {
     try {
@@ -113,6 +132,8 @@ export function useExternalStaff(): UseExternalStaffReturn {
 
       // Refresh the data to ensure we have the correct pagination and count
       await fetchExternalStaff();
+      // Also refresh stats
+      await fetchStats();
       toast.success('External staff created successfully');
       return data;
     } catch (err) {
@@ -144,6 +165,11 @@ export function useExternalStaff(): UseExternalStaffReturn {
       // No mapping needed
       setExternalStaff(prev => prev.map(staff => staff.id === id ? data : staff));
       
+      // Refresh stats if termination status might have changed
+      if (updates['TERMINATION DATE'] !== undefined) {
+        await fetchStats();
+      }
+      
       toast.success('External staff member updated successfully');
       return data;
     } catch (err) {
@@ -168,6 +194,8 @@ export function useExternalStaff(): UseExternalStaffReturn {
       }
 
       setExternalStaff(prev => prev.filter(staff => staff.id !== id));
+      // Refresh stats after deletion
+      await fetchStats();
       toast.success('External staff member deleted successfully');
       return true;
     } catch (err) {
@@ -196,6 +224,8 @@ export function useExternalStaff(): UseExternalStaffReturn {
       const newStaffList = data || [];
       setExternalStaff(prev => [...newStaffList, ...prev]);
       
+      // Refresh stats after bulk creation
+      await fetchStats();
       toast.success(`${newStaffList.length} external staff members created successfully`);
       return newStaffList;
     } catch (err) {
@@ -206,20 +236,104 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      setStatsLoading(true);
+      setError(null);
+
+      // Get total count
+      const { count: totalCount, error: totalError } = await supabase
+        .from('external_staff')
+        .select('id', { count: 'exact' });
+
+      if (totalError) throw totalError;
+
+      // Get active count
+      const { count: activeCount, error: activeError } = await supabase
+        .from('external_staff')
+        .select('id', { count: 'exact' })
+        .is('TERMINATION DATE', null);
+
+      if (activeError) throw activeError;
+
+      // Get terminated count
+      const { count: terminatedCount, error: terminatedError } = await supabase
+        .from('external_staff')
+        .select('id', { count: 'exact' })
+        .not('TERMINATION DATE', 'is', null);
+
+      if (terminatedError) throw terminatedError;
+
+      // Get recent hires (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const { count: recentHiresCount, error: recentError } = await supabase
+        .from('external_staff')
+        .select('id', { count: 'exact' })
+        .gte('HIRE DATE', thirtyDaysAgoStr);
+
+      if (recentError) throw recentError;
+
+      // Get department distribution
+      const { data: departmentsData, error: deptError } = await supabase
+        .from('external_staff')
+        .select('"HOME DEPARTMENT"')
+        .not('HOME DEPARTMENT', 'is', null);
+
+      if (deptError) throw deptError;
+
+      // Count departments
+      const departmentCounts: Record<string, number> = {};
+      departmentsData?.forEach((staff) => {
+        const department = staff['HOME DEPARTMENT'] || 'Unassigned';
+        departmentCounts[department] = (departmentCounts[department] || 0) + 1;
+      });
+
+      // Sort departments by count
+      const topDepartments = Object.entries(departmentCounts)
+        .map(([department, count]) => ({ department, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+      setStats({
+        totalCount: totalCount || 0,
+        activeCount: activeCount || 0,
+        terminatedCount: terminatedCount || 0,
+        recentHiresCount: recentHiresCount || 0,
+        topDepartments,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch statistics';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchExternalStaff();
   }, [pagination.pageIndex, pagination.pageSize, status]);
 
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
   return {
     externalStaff,
     loading,
+    statsLoading,
     error,
     totalCount,
     pagination,
     setPagination,
     status,
     setStatus,
+    stats,
     fetchExternalStaff,
+    fetchStats,
     createExternalStaff,
     updateExternalStaff,
     deleteExternalStaff,
