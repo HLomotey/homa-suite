@@ -1,5 +1,4 @@
 import { BillingStaff, FrontendBillingStaff } from "../integration/supabase/types/billing";
-import { CreateExternalStaff, FrontendExternalStaff } from '../integration/supabase/types/external-staff';
 
 export interface ExcelProcessingResult {
   success: boolean;
@@ -368,11 +367,11 @@ export function generateStaffTemplate(): string {
   // Add ID column header as position 1, then the mapped columns
   const headers = ["ID", ...STAFF_COLUMN_MAPPINGS.map((mapping) => mapping.excelColumn)];
 
-  // Sample data row matching external system format exactly
-  // Position 1: ID (External Staff ID)
+  // Sample data row matching system format exactly
+  // Position 1: ID (Staff ID)
   // Positions 2-30: Data fields
   const sampleData = [
-    "1001", // ID (Position 1 - External Staff ID)
+    "1001", // ID (Position 1 - Staff ID)
     "John", // FIRST_NAME (Position 2)
     "Doe", // LAST_NAME (Position 3)
     "Michael", // MIDDLE_NAME (Position 4)

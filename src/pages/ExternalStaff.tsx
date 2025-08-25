@@ -1,28 +1,7 @@
-import React, { useState } from 'react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Separator } from '../components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { 
-  Plus, 
-  Search, 
-  Upload, 
-  Users, 
-  Filter,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
-  Download
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -30,261 +9,408 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table';
-import { ExternalStaffExcelUpload } from '../components/external-staff/ExternalStaffExcelUpload';
-import { ExternalStaffSlideForm } from '../components/external-staff/ExternalStaffSlideForm';
-import { useExternalStaff, useDeleteExternalStaff } from '../hooks/external-staff/useExternalStaff';
-import { FrontendExternalStaff } from '../integration/supabase/types/external-staff';
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useExternalStaff, StaffStatus, PaginationState } from "@/hooks/external-staff/useExternalStaff";
+import { ExternalStaffSlideForm } from "@/components/external-staff/ExternalStaffSlideForm";
+import { ExternalStaffExcelUpload } from "@/components/external-staff/ExternalStaffExcelUpload";
+import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
+import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
+import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const ExternalStaff: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('list');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStaff, setSelectedStaff] = useState<FrontendExternalStaff | null>(null);
-  const [showSlideForm, setShowSlideForm] = useState(false);
+export default function ExternalStaff() {
+  const {
+    externalStaff,
+    loading,
+    totalCount,
+    pagination,
+    setPagination,
+    status,
+    setStatus,
+    createExternalStaff,
+    updateExternalStaff,
+    deleteExternalStaff,
+  } = useExternalStaff();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [showExcelUpload, setShowExcelUpload] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<
+    FrontendExternalStaff | undefined
+  >();
+  const [formLoading, setFormLoading] = useState(false);
 
-  const { externalStaff, loading, error, refetch } = useExternalStaff();
-  const { deleteStaff, loading: deleteLoading } = useDeleteExternalStaff();
-
-  // Filter staff based on search term
-  const filteredStaff = externalStaff.filter(staff => 
-    staff.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.eMail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.externalStaffId?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleEdit = (staff: FrontendExternalStaff) => {
-    setSelectedStaff(staff);
-    setShowSlideForm(true);
+  // Client-side filtering for search only - pagination and active/inactive filtering is done server-side
+  const filteredStaff = externalStaff.filter((staff) => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
+      staff["PAYROLL LAST NAME"]?.toLowerCase().includes(searchLower) ||
+      staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
+      staff["COMPANY CODE"]?.toLowerCase().includes(searchLower) ||
+      staff["LOCATION"]?.toLowerCase().includes(searchLower) ||
+      staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower)
+    );
+  });
+  
+  // Calculate pagination values
+  const pageCount = Math.ceil(totalCount / pagination.pageSize);
+  
+  // Handle pagination changes
+  const handlePageChange = (newPage: number) => {
+    setPagination({ ...pagination, pageIndex: newPage });
+  };
+  
+  // Handle page size changes
+  const handlePageSizeChange = (newSize: string) => {
+    setPagination({ pageIndex: 0, pageSize: parseInt(newSize) });
+  };
+  
+  // Handle status tab changes
+  const handleStatusChange = (newStatus: StaffStatus) => {
+    setStatus(newStatus);
+    setPagination({ ...pagination, pageIndex: 0 }); // Reset to first page when changing tabs
   };
 
-  const handleDelete = async (staff: FrontendExternalStaff) => {
-    if (window.confirm(`Are you sure you want to delete ${staff.firstName} ${staff.lastName}?`)) {
-      try {
-        await deleteStaff(staff.id);
-        refetch();
-      } catch (error) {
-        console.error('Delete failed:', error);
+  const handleCreateStaff = async (data: Partial<FrontendExternalStaff>) => {
+    setFormLoading(true);
+    try {
+      const result = await createExternalStaff(data);
+      if (result) {
+        setShowForm(false);
+        setEditingStaff(undefined);
       }
+    } finally {
+      setFormLoading(false);
     }
   };
 
-  const handleFormSuccess = () => {
-    setShowSlideForm(false);
-    setSelectedStaff(null);
-    refetch();
+  const handleUpdateStaff = async (data: Partial<FrontendExternalStaff>) => {
+    if (!editingStaff) return;
+
+    setFormLoading(true);
+    try {
+      const result = await updateExternalStaff(editingStaff.id, data);
+      if (result) {
+        setShowForm(false);
+        setEditingStaff(undefined);
+      }
+    } finally {
+      setFormLoading(false);
+    }
   };
 
-  const handleNewStaff = () => {
-    setSelectedStaff(null);
-    setShowSlideForm(true);
+  const handleDeleteStaff = async (id: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this external staff member?"
+      )
+    ) {
+      await deleteExternalStaff(id);
+    }
   };
 
-  const getEmploymentStatusBadge = (status: string | null) => {
-    if (!status) return null;
-    
-    const variant = status === 'Active' ? 'default' : 
-                   status === 'Inactive' ? 'secondary' : 
-                   status === 'Terminated' ? 'destructive' : 'outline';
-    
-    return <Badge variant={variant}>{status}</Badge>;
+  const handleEditStaff = (staff: FrontendExternalStaff) => {
+    setEditingStaff(staff);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingStaff(undefined);
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString;
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">External Staff</h1>
+          <h1 className="text-3xl font-bold">External Staff</h1>
           <p className="text-muted-foreground">
-            Manage external staff data with 31-column structure
+            Manage external staff members and their information
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={handleNewStaff} className="gap-2">
-            <Plus className="h-4 w-4" />
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowExcelUpload(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import Excel
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
             Add Staff
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{externalStaff.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {externalStaff.filter(s => s.employmentStatus === 'Active').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Departments</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set(externalStaff.map(s => s.department).filter(Boolean)).size}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <Users className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {externalStaff.filter(s => {
-                if (!s.createdAt) return false;
-                const created = new Date(s.createdAt);
-                const now = new Date();
-                return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
-              }).length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="list">Staff List</TabsTrigger>
-          <TabsTrigger value="upload">Excel Upload</TabsTrigger>
-        </TabsList>
-
-        {/* Staff List Tab */}
-        <TabsContent value="list" className="space-y-4">
-          {/* Search and Filters */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>
+              External Staff Members ({totalCount})
+            </CardTitle>
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search staff..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-8"
               />
             </div>
-            <Button variant="outline" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filters
-            </Button>
           </div>
-
-          {/* Staff Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>External Staff ({filteredStaff.length})</CardTitle>
-              <CardDescription>
-                Manage your external staff records
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">Loading staff...</div>
-              ) : error ? (
-                <div className="text-center py-8 text-red-600">Error: {error}</div>
-              ) : filteredStaff.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? 'No staff found matching your search.' : 'No external staff records found.'}
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={status} onValueChange={(value) => handleStatusChange(value as StaffStatus)} className="mb-6">
+            <TabsList>
+              <TabsTrigger value="all">All Staff</TabsTrigger>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="terminated">Terminated</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Job Title</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Hire Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStaff.length === 0 ? (
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>External ID</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        {searchTerm
+                          ? "No staff members found matching your search."
+                          : "No external staff members found."}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStaff.map((staff) => (
+                  ) : (
+                    filteredStaff.map((staff) => (
                       <TableRow key={staff.id}>
-                        <TableCell className="font-medium">
-                          {staff.firstName} {staff.lastName}
-                        </TableCell>
-                        <TableCell>{staff.eMail || '-'}</TableCell>
-                        <TableCell>{staff.department || '-'}</TableCell>
-                        <TableCell>{staff.position || '-'}</TableCell>
                         <TableCell>
-                          {getEmploymentStatusBadge(staff.employmentStatus)}
+                          <div>
+                            <div className="font-medium">
+                              {staff["PAYROLL FIRST NAME"]} {staff["PAYROLL LAST NAME"]}
+                            </div>
+                            {staff["PAYROLL MIDDLE NAME"] && (
+                              <div className="text-sm text-muted-foreground">
+                                Middle: {staff["PAYROLL MIDDLE NAME"]}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell>{staff.externalStaffId || '-'}</TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(staff)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDelete(staff)}
-                                className="text-red-600"
-                                disabled={deleteLoading}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div>
+                            {staff["JOB TITLE"] && <div>{staff["JOB TITLE"]}</div>}
+                            {staff["JOB CLASS"] && (
+                              <div className="text-sm text-muted-foreground">
+                                Class: {staff["JOB CLASS"]}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{staff["COMPANY CODE"] || "-"}</TableCell>
+                        <TableCell>{staff["LOCATION"] || "-"}</TableCell>
+                        <TableCell>
+                          <div>
+                            {staff["HOME PHONE"] && <div>{staff["HOME PHONE"]}</div>}
+                            {staff["WORK PHONE"] && staff["WORK PHONE"] !== staff["HOME PHONE"] && (
+                              <div className="text-sm text-muted-foreground">
+                                Work: {staff["WORK PHONE"]}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(staff["HIRE DATE"])}</TableCell>
+                        <TableCell>
+                          {staff["TERMINATION DATE"] ? (
+                            <Badge variant="destructive">Terminated</Badge>
+                          ) : (
+                            <Badge variant="default">Active</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditStaff(staff)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteStaff(staff.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination and Items Per Page Controls */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">Items per page</span>
+                  <Select
+                    value={pagination.pageSize.toString()}
+                    onValueChange={handlePageSizeChange}
+                  >
+                    <SelectTrigger className="w-[80px]">
+                      <SelectValue placeholder={pagination.pageSize.toString()} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="30">30</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="text-sm text-muted-foreground mr-2">
+                    Showing {pagination.pageIndex * pagination.pageSize + 1} to {Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalCount)} of {totalCount}
+                  </span>
+                  
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => handlePageChange(Math.max(0, pagination.pageIndex - 1))}
+                          className={pagination.pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {/* First Page */}
+                      {pagination.pageIndex > 1 && (
+                        <PaginationItem>
+                          <PaginationLink onClick={() => handlePageChange(0)}>1</PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      {/* Ellipsis if needed */}
+                      {pagination.pageIndex > 2 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      
+                      {/* Previous Page */}
+                      {pagination.pageIndex > 0 && (
+                        <PaginationItem>
+                          <PaginationLink onClick={() => handlePageChange(pagination.pageIndex - 1)}>
+                            {pagination.pageIndex}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      {/* Current Page */}
+                      <PaginationItem>
+                        <PaginationLink isActive>{pagination.pageIndex + 1}</PaginationLink>
+                      </PaginationItem>
+                      
+                      {/* Next Page */}
+                      {pagination.pageIndex < pageCount - 1 && (
+                        <PaginationItem>
+                          <PaginationLink onClick={() => handlePageChange(pagination.pageIndex + 1)}>
+                            {pagination.pageIndex + 2}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      {/* Ellipsis if needed */}
+                      {pagination.pageIndex < pageCount - 3 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      
+                      {/* Last Page */}
+                      {pagination.pageIndex < pageCount - 2 && pageCount > 1 && (
+                        <PaginationItem>
+                          <PaginationLink onClick={() => handlePageChange(pageCount - 1)}>
+                            {pageCount}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => handlePageChange(Math.min(pageCount - 1, pagination.pageIndex + 1))}
+                          className={pagination.pageIndex >= pageCount - 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Excel Upload Tab */}
-        <TabsContent value="upload">
-          <ExternalStaffExcelUpload 
-            onUploadComplete={(result) => {
-              if (result.success) {
-                refetch();
-                setActiveTab('list');
-              }
-            }}
-          />
-        </TabsContent>
-
-      </Tabs>
-
-      {/* Slide-in Form */}
       <ExternalStaffSlideForm
-        open={showSlideForm}
-        onOpenChange={setShowSlideForm}
-        staff={selectedStaff || undefined}
-        onSuccess={handleFormSuccess}
+        staff={editingStaff}
+        onSubmit={editingStaff ? handleUpdateStaff : handleCreateStaff}
+        onClose={handleCloseForm}
+        open={showForm}
+        loading={formLoading}
       />
+
+      {showExcelUpload && (
+        <ExternalStaffExcelUpload onClose={() => setShowExcelUpload(false)} />
+      )}
     </div>
   );
-};
-
-export default ExternalStaff;
+}

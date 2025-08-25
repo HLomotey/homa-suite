@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth";
 import { getUserModules } from "@/hooks/role/modules-api";
-import { NAVIGATION_MODULES, getModuleByRoute } from "@/config/navigation-modules";
+import {
+  NAVIGATION_MODULES,
+  getModuleByRoute,
+} from "@/config/navigation-modules";
 import {
   Building2,
   Users,
@@ -70,14 +73,14 @@ const navigationItems = [
     href: ROUTES.BILLING,
     module: "billing",
   },
+  // {
+  //   label: "Staff",
+  //   icon: Users,
+  //   href: ROUTES.STAFF,
+  //   module: "hr",
+  // },
   {
     label: "Staff",
-    icon: Users,
-    href: ROUTES.STAFF,
-    module: "hr",
-  },
-  {
-    label: "External Staff",
     icon: UserCheck,
     href: ROUTES.EXTERNAL_STAFF,
     module: "hr",
@@ -177,10 +180,10 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
 
       try {
         const modules = await getUserModules(user.id);
-        console.log('User modules loaded for sidebar:', modules);
+        console.log("User modules loaded for sidebar:", modules);
         setUserModules(modules);
       } catch (error) {
-        console.error('Error loading user modules for sidebar:', error);
+        console.error("Error loading user modules for sidebar:", error);
         setUserModules([]);
       } finally {
         setModulesLoading(false);
@@ -191,7 +194,7 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
   }, [user?.id]);
 
   // Filter navigation items based on user's modules
-  const filteredNavigationItems = navigationItems.filter(item => {
+  const filteredNavigationItems = navigationItems.filter((item) => {
     // Show item only if user has the required module (no exceptions)
     return userModules.includes(item.module);
   });
@@ -222,8 +225,12 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
             <Building2 className="h-8 w-8 text-primary" />
             {!collapsed && (
               <div className="ml-3">
-                <h1 className="text-lg font-semibold text-foreground">BoH ERP</h1>
-                <p className="text-xs text-muted-foreground">BOH Concepts ERP</p>
+                <h1 className="text-lg font-semibold text-foreground">
+                  BoH ERP
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  BOH Concepts ERP
+                </p>
               </div>
             )}
           </div>
@@ -251,7 +258,9 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
                     onClick={() => setIsOpen(false)}
                     title={collapsed ? item.label : undefined}
                   >
-                    <item.icon className={cn("h-4 w-4", collapsed ? "" : "mr-3")} />
+                    <item.icon
+                      className={cn("h-4 w-4", collapsed ? "" : "mr-3")}
+                    />
                     {!collapsed && item.label}
                   </Link>
                 );
@@ -260,7 +269,12 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
           </nav>
 
           {/* Footer */}
-          <div className={cn("border-t border-border p-4", collapsed ? "flex justify-center" : "space-y-3")}>
+          <div
+            className={cn(
+              "border-t border-border p-4",
+              collapsed ? "flex justify-center" : "space-y-3"
+            )}
+          >
             {collapsed ? (
               <Button
                 variant="ghost"

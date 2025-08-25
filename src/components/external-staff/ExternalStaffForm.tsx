@@ -1,656 +1,409 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Separator } from '../ui/separator';
-import { Badge } from '../ui/badge';
-import { Alert, AlertDescription } from '../ui/alert';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Briefcase, 
-  Calendar,
-  DollarSign,
-  Users,
-  Shield,
-  AlertCircle,
-  Save,
-  X
-} from 'lucide-react';
-import { 
-  CreateExternalStaff, 
-  FrontendExternalStaff,
-  EMPLOYMENT_STATUS_OPTIONS,
-  PAY_FREQUENCY_OPTIONS,
-  GENDER_OPTIONS,
-  MARITAL_STATUS_OPTIONS
-} from '../../integration/supabase/types/external-staff';
-import { useCreateExternalStaff, useUpdateExternalStaff } from '../../hooks/external-staff/useExternalStaff';
-
-// Form validation schema
-const externalStaffSchema = z.object({
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-  middle_name: z.string().optional(),
-  e_mail: z.string().email('Invalid email format').optional().or(z.literal('')),
-  date_of_birth: z.string().optional(),
-  phone_n: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zip_code: z.string().optional(),
-  country: z.string().optional(),
-  gender: z.string().optional(),
-  marital_status: z.string().optional(),
-  department: z.string().optional(),
-  position: z.string().optional(),
-  employment_status: z.string().optional(),
-  hire_date: z.string().optional(),
-  termination_date: z.string().optional(),
-  supervisor: z.string().optional(),
-  work_location: z.string().optional(),
-  salary: z.string().optional(),
-  hourly_rate: z.string().optional(),
-  pay_frequency: z.string().optional(),
-  emergency_contact_name: z.string().optional(),
-  emergency_contact_phone: z.string().optional(),
-  emergency_contact_relationship: z.string().optional(),
-  ethnicity_race: z.string().optional(),
-  veteran_status: z.string().optional(),
-  disability_status: z.string().optional(),
-  external_staff_id: z.string().optional(),
-});
-
-type FormData = z.infer<typeof externalStaffSchema>;
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FrontendExternalStaff } from '@/integration/supabase/types/external-staff';
+import { X } from 'lucide-react';
 
 interface ExternalStaffFormProps {
   staff?: FrontendExternalStaff;
-  onSuccess?: (staff: FrontendExternalStaff) => void;
-  onCancel?: () => void;
+  onSubmit: (data: Partial<FrontendExternalStaff>) => Promise<void>;
+  onCancel: () => void;
+  loading?: boolean;
 }
 
-export const ExternalStaffForm: React.FC<ExternalStaffFormProps> = ({
-  staff,
-  onSuccess,
-  onCancel
-}) => {
-  const [activeTab, setActiveTab] = useState('personal');
-  const isEditing = Boolean(staff);
-
-  const { create, loading: createLoading, error: createError } = useCreateExternalStaff();
-  const { update, loading: updateLoading, error: updateError } = useUpdateExternalStaff();
-
-  const loading = createLoading || updateLoading;
-  const error = createError || updateError;
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors }
-  } = useForm<FormData>({
-    resolver: zodResolver(externalStaffSchema),
-    defaultValues: staff ? {
-      first_name: staff.firstName || '',
-      last_name: staff.lastName || '',
-      middle_name: staff.middleName || '',
-      e_mail: staff.eMail || '',
-      date_of_birth: staff.dateOfBirth || '',
-      phone_n: staff.phoneN || '',
-      address: staff.address || '',
-      city: staff.city || '',
-      state: staff.state || '',
-      zip_code: staff.zipCode || '',
-      country: staff.country || '',
-      gender: staff.gender || '',
-      marital_status: staff.maritalStatus || '',
-      department: staff.department || '',
-      position: staff.position || '',
-      employment_status: staff.employmentStatus || '',
-      hire_date: staff.hireDate || '',
-      termination_date: staff.terminationDate || '',
-      supervisor: staff.supervisor || '',
-      work_location: staff.workLocation || '',
-      salary: staff.salary?.toString() || '',
-      hourly_rate: staff.hourlyRate?.toString() || '',
-      pay_frequency: staff.payFrequency || '',
-      emergency_contact_name: staff.emergencyContactName || '',
-      emergency_contact_phone: staff.emergencyContactPhone || '',
-      emergency_contact_relationship: staff.emergencyContactRelationship || '',
-      ethnicity_race: staff.ethnicityRace || '',
-      veteran_status: staff.veteranStatus || '',
-      disability_status: staff.disabilityStatus || '',
-      external_staff_id: staff.externalStaffId || '',
-    } : {}
+export function ExternalStaffForm({ staff, onSubmit, onCancel, loading = false }: ExternalStaffFormProps) {
+  const [formData, setFormData] = useState<Partial<FrontendExternalStaff>>({
+    "PAYROLL FIRST NAME": staff?.["PAYROLL FIRST NAME"] || '',
+    "PAYROLL LAST NAME": staff?.["PAYROLL LAST NAME"] || '',
+    "PAYROLL MIDDLE NAME": staff?.["PAYROLL MIDDLE NAME"] || '',
+    "GENDER (SELF-ID)": staff?.["GENDER (SELF-ID)"] || '',
+    "GENERATION SUFFIX": staff?.["GENERATION SUFFIX"] || '',
+    "BIRTH DATE": staff?.["BIRTH DATE"] || '',
+    "PRIMARY ADDRESS LINE 1": staff?.["PRIMARY ADDRESS LINE 1"] || '',
+    "PRIMARY ADDRESS LINE 2": staff?.["PRIMARY ADDRESS LINE 2"] || '',
+    "PRIMARY ADDRESS LINE 3": staff?.["PRIMARY ADDRESS LINE 3"] || '',
+    "LIVED-IN STATE": staff?.["LIVED-IN STATE"] || '',
+    "WORKED IN STATE": staff?.["WORKED IN STATE"] || '',
+    "PERSONAL E-MAIL": staff?.["PERSONAL E-MAIL"] || '',
+    "WORK E-MAIL": staff?.["WORK E-MAIL"] || '',
+    "HOME PHONE": staff?.["HOME PHONE"] || '',
+    "WORK PHONE": staff?.["WORK PHONE"] || '',
+    "POSITION ID": staff?.["POSITION ID"] || '',
+    "ASSOCIATE ID": staff?.["ASSOCIATE ID"] || '',
+    "FILE NUMBER": staff?.["FILE NUMBER"] || '',
+    "COMPANY CODE": staff?.["COMPANY CODE"] || '',
+    "JOB TITLE": staff?.["JOB TITLE"] || '',
+    "BUSINESS UNIT": staff?.["BUSINESS UNIT"] || '',
+    "HOME DEPARTMENT": staff?.["HOME DEPARTMENT"] || '',
+    "LOCATION": staff?.["LOCATION"] || '',
+    "WORKER CATEGORY": staff?.["WORKER CATEGORY"] || '',
+    "POSITION STATUS": staff?.["POSITION STATUS"] || '',
+    "HIRE DATE": staff?.["HIRE DATE"] || '',
+    "REHIRE DATE": staff?.["REHIRE DATE"] || '',
+    "TERMINATION DATE": staff?.["TERMINATION DATE"] || '',
+    "YEARS OF SERVICE": staff?.["YEARS OF SERVICE"] || '',
+    "REPORTS TO NAME": staff?.["REPORTS TO NAME"] || '',
+    "JOB CLASS": staff?.["JOB CLASS"] || '',
   });
 
-  const onSubmit = async (data: FormData) => {
-    try {
-      // Convert form data to CreateExternalStaff format
-      const staffData: CreateExternalStaff = {
-        first_name: data.first_name || undefined,
-        last_name: data.last_name || undefined,
-        middle_name: data.middle_name || undefined,
-        e_mail: data.e_mail || undefined,
-        date_of_birth: data.date_of_birth || undefined,
-        phone_n: data.phone_n || undefined,
-        address: data.address || undefined,
-        city: data.city || undefined,
-        state: data.state || undefined,
-        zip_code: data.zip_code || undefined,
-        country: data.country || undefined,
-        gender: data.gender || undefined,
-        marital_status: data.marital_status || undefined,
-        department: data.department || undefined,
-        position: data.position || undefined,
-        employment_status: data.employment_status || undefined,
-        hire_date: data.hire_date || undefined,
-        termination_date: data.termination_date || undefined,
-        supervisor: data.supervisor || undefined,
-        work_location: data.work_location || undefined,
-        salary: data.salary ? parseFloat(data.salary) : undefined,
-        hourly_rate: data.hourly_rate ? parseFloat(data.hourly_rate) : undefined,
-        pay_frequency: data.pay_frequency || undefined,
-        emergency_contact_name: data.emergency_contact_name || undefined,
-        emergency_contact_phone: data.emergency_contact_phone || undefined,
-        emergency_contact_relationship: data.emergency_contact_relationship || undefined,
-        ethnicity_race: data.ethnicity_race || undefined,
-        veteran_status: data.veteran_status || undefined,
-        disability_status: data.disability_status || undefined,
-        external_staff_id: data.external_staff_id || undefined,
-      };
-
-      let result;
-      if (isEditing && staff) {
-        result = await update({ id: staff.id, ...staffData });
-      } else {
-        result = await create(staffData);
-      }
-
-      if (result) {
-        onSuccess?.(result);
-      }
-    } catch (error) {
-      console.error('Form submission error:', error);
-    }
+  const handleInputChange = (field: keyof FrontendExternalStaff, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const tabs = [
-    { id: 'personal', label: 'Personal Info', icon: User },
-    { id: 'contact', label: 'Contact', icon: Mail },
-    { id: 'employment', label: 'Employment', icon: Briefcase },
-    { id: 'compensation', label: 'Compensation', icon: DollarSign },
-    { id: 'emergency', label: 'Emergency Contact', icon: Phone },
-    { id: 'demographics', label: 'Demographics', icon: Users },
-  ];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit(formData);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {isEditing ? 'Edit External Staff' : 'Add External Staff'}
-          </h2>
-          <p className="text-muted-foreground">
-            {isEditing ? 'Update external staff information' : 'Create a new external staff record'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={onCancel} variant="outline">
-            <X className="mr-2 h-4 w-4" />
-            Cancel
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle>{staff ? 'Edit External Staff' : 'Add External Staff'}</CardTitle>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <X className="h-4 w-4" />
           </Button>
-          <Button onClick={handleSubmit(onSubmit)} disabled={loading}>
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? 'Saving...' : isEditing ? 'Update' : 'Create'}
-          </Button>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="overflow-y-auto">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Tabs defaultValue="personal" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="personal">Personal Info</TabsTrigger>
+                <TabsTrigger value="contact">Contact Info</TabsTrigger>
+                <TabsTrigger value="work">Work Info</TabsTrigger>
+                <TabsTrigger value="additional">Additional</TabsTrigger>
+              </TabsList>
 
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+              <TabsContent value="personal" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="payroll-first-name">First Name *</Label>
+                    <Input
+                      id="payroll-first-name"
+                      value={formData["PAYROLL FIRST NAME"] || ''}
+                      onChange={(e) => handleInputChange("PAYROLL FIRST NAME", e.target.value)}
+                      placeholder="Enter first name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="payroll-last-name">Last Name *</Label>
+                    <Input
+                      id="payroll-last-name"
+                      value={formData["PAYROLL LAST NAME"] || ''}
+                      onChange={(e) => handleInputChange("PAYROLL LAST NAME", e.target.value)}
+                      placeholder="Enter last name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="payroll-middle-name">Middle Name</Label>
+                    <Input
+                      id="payroll-middle-name"
+                      value={formData["PAYROLL MIDDLE NAME"] || ''}
+                      onChange={(e) => handleInputChange("PAYROLL MIDDLE NAME", e.target.value)}
+                      placeholder="Enter middle name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="generation-suffix">Generation Suffix</Label>
+                    <Input
+                      id="generation-suffix"
+                      value={formData["GENERATION SUFFIX"] || ''}
+                      onChange={(e) => handleInputChange("GENERATION SUFFIX", e.target.value)}
+                      placeholder="Enter generation suffix (Jr., Sr., etc.)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select 
+                      value={formData["GENDER (SELF-ID)"] || ''} 
+                      onValueChange={(value) => handleInputChange("GENDER (SELF-ID)", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="birth-date">Birth Date</Label>
+                    <Input
+                      id="birth-date"
+                      type="date"
+                      value={formData["BIRTH DATE"] || ''}
+                      onChange={(e) => handleInputChange("BIRTH DATE", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+              <TabsContent value="contact" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="personal-email">Personal Email</Label>
+                    <Input
+                      id="personal-email"
+                      value={formData["PERSONAL E-MAIL"] || ''}
+                      onChange={(e) => handleInputChange("PERSONAL E-MAIL", e.target.value)}
+                      placeholder="Enter personal email"
+                      type="email"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="work-email">Work Email</Label>
+                    <Input
+                      id="work-email"
+                      value={formData["WORK E-MAIL"] || ''}
+                      onChange={(e) => handleInputChange("WORK E-MAIL", e.target.value)}
+                      placeholder="Enter work email"
+                      type="email"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="home-phone">Home Phone</Label>
+                    <Input
+                      id="home-phone"
+                      value={formData["HOME PHONE"] || ''}
+                      onChange={(e) => handleInputChange("HOME PHONE", e.target.value)}
+                      placeholder="Enter home phone"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="work-phone">Work Phone</Label>
+                    <Input
+                      id="work-phone"
+                      value={formData["WORK PHONE"] || ''}
+                      onChange={(e) => handleInputChange("WORK PHONE", e.target.value)}
+                      placeholder="Enter work phone"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="primary-address-1">Address Line 1</Label>
+                    <Input
+                      id="primary-address-1"
+                      value={formData["PRIMARY ADDRESS LINE 1"] || ''}
+                      onChange={(e) => handleInputChange("PRIMARY ADDRESS LINE 1", e.target.value)}
+                      placeholder="Enter address line 1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="primary-address-2">Address Line 2</Label>
+                    <Input
+                      id="primary-address-2"
+                      value={formData["PRIMARY ADDRESS LINE 2"] || ''}
+                      onChange={(e) => handleInputChange("PRIMARY ADDRESS LINE 2", e.target.value)}
+                      placeholder="Enter address line 2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="primary-address-3">Address Line 3</Label>
+                    <Input
+                      id="primary-address-3"
+                      value={formData["PRIMARY ADDRESS LINE 3"] || ''}
+                      onChange={(e) => handleInputChange("PRIMARY ADDRESS LINE 3", e.target.value)}
+                      placeholder="Enter address line 3"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lived-in-state">Lived-In State</Label>
+                    <Input
+                      id="lived-in-state"
+                      value={formData["LIVED-IN STATE"] || ''}
+                      onChange={(e) => handleInputChange("LIVED-IN STATE", e.target.value)}
+                      placeholder="Enter state of residence"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
 
-      {/* Form Content */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Personal Information */}
-        {activeTab === 'personal' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Personal Information
-              </CardTitle>
-              <CardDescription>Basic personal details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="first_name">First Name *</Label>
-                  <Input
-                    id="first_name"
-                    {...register('first_name')}
-                    placeholder="Enter first name"
-                  />
-                  {errors.first_name && (
-                    <p className="text-sm text-red-600 mt-1">{errors.first_name.message}</p>
-                  )}
+              <TabsContent value="work" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="job-title">Job Title</Label>
+                    <Input
+                      id="job-title"
+                      value={formData["JOB TITLE"] || ''}
+                      onChange={(e) => handleInputChange("JOB TITLE", e.target.value)}
+                      placeholder="Enter job title"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="position-id">Position ID</Label>
+                    <Input
+                      id="position-id"
+                      value={formData["POSITION ID"] || ''}
+                      onChange={(e) => handleInputChange("POSITION ID", e.target.value)}
+                      placeholder="Enter position ID"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company-code">Company Code</Label>
+                    <Input
+                      id="company-code"
+                      value={formData["COMPANY CODE"] || ''}
+                      onChange={(e) => handleInputChange("COMPANY CODE", e.target.value)}
+                      placeholder="Enter company code"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={formData["LOCATION"] || ''}
+                      onChange={(e) => handleInputChange("LOCATION", e.target.value)}
+                      placeholder="Enter work location"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="position-status">Position Status</Label>
+                    <Input
+                      id="position-status"
+                      value={formData["POSITION STATUS"] || ''}
+                      onChange={(e) => handleInputChange("POSITION STATUS", e.target.value)}
+                      placeholder="Enter position status"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="worker-category">Worker Category</Label>
+                    <Input
+                      id="worker-category"
+                      value={formData["WORKER CATEGORY"] || ''}
+                      onChange={(e) => handleInputChange("WORKER CATEGORY", e.target.value)}
+                      placeholder="Enter worker category"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="hire-date">Hire Date</Label>
+                    <Input
+                      id="hire-date"
+                      type="date"
+                      value={formData["HIRE DATE"] || ''}
+                      onChange={(e) => handleInputChange("HIRE DATE", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="termination-date">Termination Date</Label>
+                    <Input
+                      id="termination-date"
+                      type="date"
+                      value={formData["TERMINATION DATE"] || ''}
+                      onChange={(e) => handleInputChange("TERMINATION DATE", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="rehire-date">Rehire Date</Label>
+                    <Input
+                      id="rehire-date"
+                      type="date"
+                      value={formData["REHIRE DATE"] || ''}
+                      onChange={(e) => handleInputChange("REHIRE DATE", e.target.value)}
+                      placeholder="Enter rehire date"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="job-class">Job Class</Label>
+                    <Input
+                      id="job-class"
+                      value={formData["JOB CLASS"] || ''}
+                      onChange={(e) => handleInputChange("JOB CLASS", e.target.value)}
+                      placeholder="Enter job class"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="middle_name">Middle Name</Label>
-                  <Input
-                    id="middle_name"
-                    {...register('middle_name')}
-                    placeholder="Enter middle name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="last_name">Last Name *</Label>
-                  <Input
-                    id="last_name"
-                    {...register('last_name')}
-                    placeholder="Enter last name"
-                  />
-                  {errors.last_name && (
-                    <p className="text-sm text-red-600 mt-1">{errors.last_name.message}</p>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="date_of_birth">Date of Birth</Label>
-                  <Input
-                    id="date_of_birth"
-                    type="date"
-                    {...register('date_of_birth')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="gender">Gender</Label>
-                  <Select onValueChange={(value) => setValue('gender', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GENDER_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="marital_status">Marital Status</Label>
-                  <Select onValueChange={(value) => setValue('marital_status', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select marital status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MARITAL_STATUS_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="external_staff_id">External Staff ID</Label>
-                <Input
-                  id="external_staff_id"
-                  {...register('external_staff_id')}
-                  placeholder="Enter external system staff ID"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </TabsContent>
 
-        {/* Contact Information */}
-        {activeTab === 'contact' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Contact Information
-              </CardTitle>
-              <CardDescription>Email, phone, and address details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="e_mail">Email</Label>
-                  <Input
-                    id="e_mail"
-                    type="email"
-                    {...register('e_mail')}
-                    placeholder="Enter email address"
-                  />
-                  {errors.e_mail && (
-                    <p className="text-sm text-red-600 mt-1">{errors.e_mail.message}</p>
-                  )}
+              <TabsContent value="additional" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="associate-id">Associate ID</Label>
+                    <Input
+                      id="associate-id"
+                      value={formData["ASSOCIATE ID"] || ''}
+                      onChange={(e) => handleInputChange("ASSOCIATE ID", e.target.value)}
+                      placeholder="Enter associate ID"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="file-number">File Number</Label>
+                    <Input
+                      id="file-number"
+                      value={formData["FILE NUMBER"] || ''}
+                      onChange={(e) => handleInputChange("FILE NUMBER", e.target.value)}
+                      placeholder="Enter file number"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="business-unit">Business Unit</Label>
+                    <Input
+                      id="business-unit"
+                      value={formData["BUSINESS UNIT"] || ''}
+                      onChange={(e) => handleInputChange("BUSINESS UNIT", e.target.value)}
+                      placeholder="Enter business unit"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="home-department">Home Department</Label>
+                    <Input
+                      id="home-department"
+                      value={formData["HOME DEPARTMENT"] || ''}
+                      onChange={(e) => handleInputChange("HOME DEPARTMENT", e.target.value)}
+                      placeholder="Enter home department"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="worked-in-state">Worked In State</Label>
+                    <Input
+                      id="worked-in-state"
+                      value={formData["WORKED IN STATE"] || ''}
+                      onChange={(e) => handleInputChange("WORKED IN STATE", e.target.value)}
+                      placeholder="Enter worked in state"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="years-of-service">Years of Service</Label>
+                    <Input
+                      id="years-of-service"
+                      value={formData["YEARS OF SERVICE"] || ''}
+                      onChange={(e) => handleInputChange("YEARS OF SERVICE", e.target.value)}
+                      placeholder="Enter years of service"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="reports-to-name">Reports To Name</Label>
+                    <Textarea
+                      id="reports-to-name"
+                      value={formData["REPORTS TO NAME"] || ''}
+                      onChange={(e) => handleInputChange("REPORTS TO NAME", e.target.value)}
+                      placeholder="Enter reports to name"
+                      rows={3}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="phone_n">Phone Number</Label>
-                  <Input
-                    id="phone_n"
-                    {...register('phone_n')}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  {...register('address')}
-                  placeholder="Enter full address"
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    {...register('city')}
-                    placeholder="Enter city"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    {...register('state')}
-                    placeholder="Enter state"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="zip_code">ZIP Code</Label>
-                  <Input
-                    id="zip_code"
-                    {...register('zip_code')}
-                    placeholder="Enter ZIP code"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    {...register('country')}
-                    placeholder="Enter country"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </TabsContent>
+            </Tabs>
 
-        {/* Employment Information */}
-        {activeTab === 'employment' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
-                Employment Information
-              </CardTitle>
-              <CardDescription>Job details and employment status</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    {...register('department')}
-                    placeholder="Enter department"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
-                    {...register('position')}
-                    placeholder="Enter job position"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="employment_status">Employment Status</Label>
-                  <Select onValueChange={(value) => setValue('employment_status', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select employment status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EMPLOYMENT_STATUS_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="supervisor">Supervisor</Label>
-                  <Input
-                    id="supervisor"
-                    {...register('supervisor')}
-                    placeholder="Enter supervisor name"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="hire_date">Hire Date</Label>
-                  <Input
-                    id="hire_date"
-                    type="date"
-                    {...register('hire_date')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="termination_date">Termination Date</Label>
-                  <Input
-                    id="termination_date"
-                    type="date"
-                    {...register('termination_date')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="work_location">Work Location</Label>
-                  <Input
-                    id="work_location"
-                    {...register('work_location')}
-                    placeholder="Enter work location"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Compensation */}
-        {activeTab === 'compensation' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Compensation
-              </CardTitle>
-              <CardDescription>Salary and payment information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="salary">Annual Salary</Label>
-                  <Input
-                    id="salary"
-                    type="number"
-                    step="0.01"
-                    {...register('salary')}
-                    placeholder="Enter annual salary"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="hourly_rate">Hourly Rate</Label>
-                  <Input
-                    id="hourly_rate"
-                    type="number"
-                    step="0.01"
-                    {...register('hourly_rate')}
-                    placeholder="Enter hourly rate"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="pay_frequency">Pay Frequency</Label>
-                  <Select onValueChange={(value) => setValue('pay_frequency', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select pay frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PAY_FREQUENCY_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Emergency Contact */}
-        {activeTab === 'emergency' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5" />
-                Emergency Contact
-              </CardTitle>
-              <CardDescription>Emergency contact information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="emergency_contact_name">Contact Name</Label>
-                  <Input
-                    id="emergency_contact_name"
-                    {...register('emergency_contact_name')}
-                    placeholder="Enter emergency contact name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="emergency_contact_phone">Contact Phone</Label>
-                  <Input
-                    id="emergency_contact_phone"
-                    {...register('emergency_contact_phone')}
-                    placeholder="Enter emergency contact phone"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="emergency_contact_relationship">Relationship</Label>
-                  <Input
-                    id="emergency_contact_relationship"
-                    {...register('emergency_contact_relationship')}
-                    placeholder="Enter relationship (e.g., Spouse, Parent)"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Demographics */}
-        {activeTab === 'demographics' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Demographics
-              </CardTitle>
-              <CardDescription>Optional demographic information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="ethnicity_race">Ethnicity/Race</Label>
-                  <Input
-                    id="ethnicity_race"
-                    {...register('ethnicity_race')}
-                    placeholder="Enter ethnicity/race"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="veteran_status">Veteran Status</Label>
-                  <Select onValueChange={(value) => setValue('veteran_status', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select veteran status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
-                      <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="disability_status">Disability Status</Label>
-                  <Select onValueChange={(value) => setValue('disability_status', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select disability status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
-                      <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </form>
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Saving...' : staff ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
-};
+}

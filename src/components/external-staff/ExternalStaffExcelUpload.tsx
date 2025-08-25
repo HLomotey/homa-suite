@@ -1,421 +1,331 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useExternalStaff } from '@/hooks/external-staff/useExternalStaff';
+import { FrontendExternalStaff } from '@/integration/supabase/types/external-staff';
+import { Upload, Download, FileText, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Alert, AlertDescription } from '../ui/alert';
-import { Progress } from '../ui/progress';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  CheckCircle, 
-  AlertCircle, 
-  Download,
-  Users,
-  FileText
-} from 'lucide-react';
-import { 
-  processExternalStaffExcelData,
-  generateExternalStaffExcelTemplate,
-  validateExternalStaffExcelStructure,
-  ExternalStaffExcelProcessingResult
-} from '../../utils/externalStaffExcelProcessor';
-import { useBulkCreateExternalStaff } from '../../hooks/external-staff/useExternalStaff';
-import { CreateExternalStaff } from '../../integration/supabase/types/external-staff';
+import { normalizeGender } from '@/utils/gender-normalizer';
+import { normalizeDate, formatDate } from '@/utils/date-normalizer';
 
 interface ExternalStaffExcelUploadProps {
-  onUploadComplete?: (result: ExternalStaffExcelProcessingResult) => void;
+  onClose: () => void;
 }
 
-export const ExternalStaffExcelUpload: React.FC<ExternalStaffExcelUploadProps> = ({
-  onUploadComplete
-}) => {
+interface ProcessedData {
+  success: boolean;
+  data?: Partial<FrontendExternalStaff>[];
+  errors?: string[];
+  warnings?: string[];
+  totalRows: number;
+  processedRows: number;
+}
+
+export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadProps) {
+  const { bulkCreateExternalStaff } = useExternalStaff();
   const [file, setFile] = useState<File | null>(null);
-  const [processingResult, setProcessingResult] = useState<ExternalStaffExcelProcessingResult | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processing, setProcessing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
+  const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { bulkCreate, loading: isUploading } = useBulkCreateExternalStaff();
-
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setProcessingResult(null);
-      processExcelFile(selectedFile);
+      setProcessedData(null);
     }
-  }, []);
-
-  const openFileDialog = () => {
-    fileInputRef.current?.click();
   };
 
-  const processExcelFile = async (file: File) => {
-    setIsProcessing(true);
-    
+  const processExcelFile = async () => {
+    if (!file) return;
+
+    setProcessing(true);
+    setProgress(0);
+
     try {
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const fileBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(fileBuffer, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      
-      // Convert to JSON
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
-      if (jsonData.length === 0) {
-        setProcessingResult({
-          success: false,
-          errors: ['Excel file is empty'],
-          totalRows: 0,
-          processedRows: 0
-        });
-        return;
+      const rawData = XLSX.utils.sheet_to_json(worksheet);
+
+      setProgress(25);
+
+      if (!rawData || rawData.length === 0) {
+        throw new Error('No data found in the Excel file');
       }
 
-      // Get headers and validate structure
-      const headers = jsonData[0] as string[];
-      const structureValidation = validateExternalStaffExcelStructure(headers);
-      
-      if (!structureValidation.isValid) {
-        setProcessingResult({
-          success: false,
-          errors: [
-            `Missing required columns: ${structureValidation.missingColumns.join(', ')}`,
-            ...(structureValidation.extraColumns.length > 0 
-              ? [`Extra columns found: ${structureValidation.extraColumns.join(', ')}`]
-              : []
-            )
-          ],
-          totalRows: jsonData.length - 1,
-          processedRows: 0
-        });
-        return;
-      }
+      setProgress(50);
 
-      // Convert array data to object format
-      const objectData = jsonData.slice(1).map((row: any[]) => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-          obj[header] = row[index];
-        });
-        return obj;
+      // Process the data according to the exact column structure
+      const processedStaff: Partial<FrontendExternalStaff>[] = [];
+      const errors: string[] = [];
+
+      rawData.forEach((row: any, index) => {
+        const rowNumber = index + 1;
+        try {
+          const staff: Partial<FrontendExternalStaff> = {
+            "PAYROLL FIRST NAME": row["PAYROLL FIRST NAME"] || null,
+            "PAYROLL LAST NAME": row["PAYROLL LAST NAME"] || null,
+            "PAYROLL MIDDLE NAME": row["PAYROLL MIDDLE NAME"] || null,
+            "GENERATION SUFFIX": row["GENERATION SUFFIX"] || null,
+            "GENDER (SELF-ID)": normalizeGender(row["GENDER (SELF-ID)"]),
+            "BIRTH DATE": normalizeDate(row["BIRTH DATE"]),
+            "PRIMARY ADDRESS LINE 1": row["PRIMARY ADDRESS LINE 1"] || null,
+            "PRIMARY ADDRESS LINE 2": row["PRIMARY ADDRESS LINE 2"] || null,
+            "PRIMARY ADDRESS LINE 3": row["PRIMARY ADDRESS LINE 3"] || null,
+            "LIVED-IN STATE": row["LIVED-IN STATE"] || null,
+            "WORKED IN STATE": row["WORKED IN STATE"] || null,
+            "PERSONAL E-MAIL": row["PERSONAL E-MAIL"] || null,
+            "WORK E-MAIL": row["WORK E-MAIL"] || null,
+            "HOME PHONE": row["HOME PHONE"] || null,
+            "WORK PHONE": row["WORK PHONE"] || null,
+            "POSITION ID": row["POSITION ID"] || null,
+            "ASSOCIATE ID": row["ASSOCIATE ID"] || null,
+            "FILE NUMBER": row["FILE NUMBER"] || null,
+            "COMPANY CODE": row["COMPANY CODE"] || null,
+            "JOB TITLE": row["JOB TITLE"] || null,
+            "BUSINESS UNIT": row["BUSINESS UNIT"] || null,
+            "HOME DEPARTMENT": row["HOME DEPARTMENT"] || null,
+            "LOCATION": row["LOCATION"] || null,
+            "WORKER CATEGORY": row["WORKER CATEGORY"] || null,
+            "POSITION STATUS": row["POSITION STATUS"] || null,
+            "HIRE DATE": row["HIRE DATE"] || null,
+            "REHIRE DATE": row["REHIRE DATE"] || null,
+            "TERMINATION DATE": row["TERMINATION DATE"] || null,
+            "YEARS OF SERVICE": row["YEARS OF SERVICE"] || null,
+            "REPORTS TO NAME": row["REPORTS TO NAME"] || null,
+            "JOB CLASS": row["JOB CLASS"] || null,
+          };
+
+          // Basic validation - require both first name and last name
+          if (!staff["PAYROLL FIRST NAME"] || !staff["PAYROLL LAST NAME"]) {
+            errors.push(`Row ${rowNumber}: Both payroll first name and last name are required`);
+            return;
+          }
+
+          processedStaff.push(staff);
+        } catch (error) {
+          errors.push(`Row ${rowNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       });
 
-      // Process the data
-      const result = processExternalStaffExcelData(objectData);
-      setProcessingResult(result);
-      
+      setProgress(75);
+
+      const result: ProcessedData = {
+        success: errors.length === 0,
+        data: processedStaff,
+        errors: errors.length > 0 ? errors : undefined,
+        totalRows: rawData.length,
+        processedRows: processedStaff.length,
+      };
+
+      setProcessedData(result);
+      setProgress(100);
+
+      if (result.success) {
+        toast.success(`Successfully processed ${result.processedRows} records`);
+      } else {
+        toast.warning(`Processed ${result.processedRows} of ${result.totalRows} records with ${errors.length} errors`);
+      }
     } catch (error) {
-      setProcessingResult({
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process Excel file';
+      setProcessedData({
         success: false,
-        errors: [`Error processing file: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        errors: [errorMessage],
         totalRows: 0,
-        processedRows: 0
+        processedRows: 0,
       });
+      toast.error(errorMessage);
     } finally {
-      setIsProcessing(false);
+      setProcessing(false);
     }
   };
 
-  const handleUploadToDatabase = async () => {
-    if (!processingResult?.data || processingResult.data.length === 0) {
-      return;
-    }
+  const handleUpload = async () => {
+    if (!processedData?.data || processedData.data.length === 0) return;
 
+    setUploading(true);
     try {
-      setUploadProgress(0);
-      
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
-
-      await bulkCreate(processingResult.data);
-      
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-      
-      // Call completion callback
-      onUploadComplete?.(processingResult);
-      
-      // Reset form
-      setTimeout(() => {
-        setFile(null);
-        setProcessingResult(null);
-        setUploadProgress(0);
-      }, 2000);
-      
+      await bulkCreateExternalStaff(processedData.data);
+      toast.success('External staff data uploaded successfully');
+      onClose();
     } catch (error) {
-      setUploadProgress(0);
-      console.error('Upload failed:', error);
+      toast.error('Failed to upload external staff data');
+    } finally {
+      setUploading(false);
     }
   };
 
   const downloadTemplate = () => {
-    const template = generateExternalStaffExcelTemplate();
-    
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([
-      template.headers,
-      template.sampleData
-    ]);
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'External Staff Template');
-    
-    // Download
-    XLSX.writeFile(wb, 'external_staff_template.xlsx');
-  };
+    const templateData = [{
+      'PAYROLL LAST NAME': 'Smith',
+      'PAYROLL FIRST NAME': 'John',
+      'PAYROLL MIDDLE NAME': 'Michael',
+      'GENERATION SUFFIX': 'Jr.',
+      'GENDER (SELF-ID)': 'Man',
+      'BIRTH DATE': '06/15/XXXX',
+      'PRIMARY ADDRESS LINE 1': '123 Oak Street',
+      'PRIMARY ADDRESS LINE 2': 'Apt 4B',
+      'PRIMARY ADDRESS LINE 3': '',
+      'LIVED-IN STATE': 'PA',
+      'WORKED IN STATE': 'PA',
+      'PERSONAL E-MAIL': 'john.smith@personal.com',
+      'WORK E-MAIL': 'john.smith@company.com',
+      'HOME PHONE': '215-555-1234',
+      'WORK PHONE': '215-555-5678',
+      'POSITION ID': 'P12345',
+      'ASSOCIATE ID': 'A98765',
+      'FILE NUMBER': 'F001234',
+      'COMPANY CODE': 'COMP123',
+      'JOB TITLE': 'Senior Teacher',
+      'BUSINESS UNIT': 'Education',
+      'HOME DEPARTMENT': 'Mathematics',
+      'LOCATION': 'Philadelphia',
+      'WORKER CATEGORY': 'Full-time',
+      'POSITION STATUS': 'Active',
+      'HIRE DATE': '2022-08-15',
+      'REHIRE DATE': '',
+      'TERMINATION DATE': '',
+      'YEARS OF SERVICE': '3.2',
+      'REPORTS TO NAME': 'Sarah Johnson, Department Head',
+      'JOB CLASS': 'Faculty',
+    }];
 
-  const resetUpload = () => {
-    setFile(null);
-    setProcessingResult(null);
-    setUploadProgress(0);
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'External Staff Template');
+    XLSX.writeFile(workbook, 'external_staff_template.xlsx');
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">External Staff Import</h2>
-          <p className="text-muted-foreground">
-            Import external staff data with exact 31-column structure
-          </p>
-        </div>
-        <Button onClick={downloadTemplate} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Download Template
-        </Button>
-      </div>
-
-      {/* Upload Area */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Upload Excel File
-          </CardTitle>
-          <CardDescription>
-            Upload an Excel file with external staff data. The file must match the exact 31-column structure.
-          </CardDescription>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle>Import External Staff from Excel</CardTitle>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
         </CardHeader>
-        <CardContent>
-          {!file ? (
-            <div
-              onClick={openFileDialog}
-              className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors border-muted-foreground/25 hover:border-primary/50"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <CardContent className="space-y-6">
+          {/* Template Download */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="flex items-center space-x-3">
+              <FileText className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-lg mb-2">Click to select an Excel file</p>
+                <p className="font-medium">Download Template</p>
                 <p className="text-sm text-muted-foreground">
-                  Supports .xlsx, .xls, and .csv files
+                  Get the Excel template with the correct column structure. Only first name and last name are required.
                 </p>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                <FileText className="h-8 w-8 text-primary" />
-                <div className="flex-1">
-                  <p className="font-medium">{file.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
+            <Button variant="outline" onClick={downloadTemplate}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </div>
+
+          {/* File Upload */}
+          <div className="space-y-4">
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-20 border-dashed"
+              >
+                <div className="text-center">
+                  <Upload className="h-6 w-6 mx-auto mb-2" />
+                  <p>Click to select Excel file</p>
+                  <p className="text-sm text-muted-foreground">Supports .xlsx and .xls files</p>
                 </div>
-                <Button onClick={resetUpload} variant="ghost" size="sm">
-                  Remove
+              </Button>
+            </div>
+
+            {file && (
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="text-sm font-medium">{file.name}</span>
+                  <span className="text-sm text-muted-foreground">
+                    ({(file.size / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={processExcelFile}
+                  disabled={processing}
+                >
+                  {processing ? 'Processing...' : 'Process File'}
                 </Button>
               </div>
+            )}
+          </div>
+
+          {/* Progress */}
+          {processing && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Processing file...</span>
+                <span>{progress}%</span>
+              </div>
+              <Progress value={progress} />
+            </div>
+          )}
+
+          {/* Results */}
+          {processedData && (
+            <div className="space-y-4">
+              <Alert className={processedData.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                <div className="flex items-center space-x-2">
+                  {processedData.success ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  <AlertDescription>
+                    {processedData.success
+                      ? `Successfully processed ${processedData.processedRows} of ${processedData.totalRows} records`
+                      : `Processed ${processedData.processedRows} of ${processedData.totalRows} records with errors`}
+                  </AlertDescription>
+                </div>
+              </Alert>
+
+              {processedData.errors && processedData.errors.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {processedData.errors.map((error, index) => (
+                    <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                      {error}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {processedData.data && processedData.data.length > 0 && (
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpload} disabled={uploading}>
+                    {uploading ? 'Uploading...' : `Upload ${processedData.data.length} Records`}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Processing Status */}
-      {isProcessing && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <span>Processing Excel file...</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Processing Results */}
-      {processingResult && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {processingResult.success ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              ) : (
-                <AlertCircle className="h-5 w-5 text-red-600" />
-              )}
-              Processing Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold">{processingResult.totalRows}</div>
-                <div className="text-sm text-muted-foreground">Total Rows</div>
-              </div>
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{processingResult.processedRows}</div>
-                <div className="text-sm text-muted-foreground">Processed</div>
-              </div>
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
-                  {processingResult.errors?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Errors</div>
-              </div>
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {processingResult.warnings?.length || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Warnings</div>
-              </div>
-            </div>
-
-            {/* Errors */}
-            {processingResult.errors && processingResult.errors.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    <p className="font-medium">Errors found:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      {processingResult.errors.map((error, index) => (
-                        <li key={index} className="text-sm">{error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Warnings */}
-            {processingResult.warnings && processingResult.warnings.length > 0 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    <p className="font-medium">Warnings:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      {processingResult.warnings.map((warning, index) => (
-                        <li key={index} className="text-sm">{warning}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Upload Button */}
-            {processingResult.success && processingResult.data && processingResult.data.length > 0 && (
-              <div className="space-y-4">
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    <span className="font-medium">
-                      Ready to upload {processingResult.data.length} staff records
-                    </span>
-                  </div>
-                  <Button 
-                    onClick={handleUploadToDatabase}
-                    disabled={isUploading}
-                    className="min-w-[120px]"
-                  >
-                    {isUploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload to Database
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Upload Progress */}
-                {uploadProgress > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Upload Progress</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <Progress value={uploadProgress} className="h-2" />
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5">1</Badge>
-            <div>
-              <p className="font-medium">Download Template</p>
-              <p className="text-sm text-muted-foreground">
-                Click "Download Template" to get the Excel file with exact column structure
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5">2</Badge>
-            <div>
-              <p className="font-medium">Fill Data</p>
-              <p className="text-sm text-muted-foreground">
-                Fill in your external staff data using the exact column names and order
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5">3</Badge>
-            <div>
-              <p className="font-medium">Upload File</p>
-              <p className="text-sm text-muted-foreground">
-                Upload your completed Excel file for validation and import
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5">4</Badge>
-            <div>
-              <p className="font-medium">Review & Import</p>
-              <p className="text-sm text-muted-foreground">
-                Review the processing results and click "Upload to Database" to complete the import
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
-};
+}
