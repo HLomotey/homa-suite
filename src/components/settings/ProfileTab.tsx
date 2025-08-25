@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Upload, Camera, User, Mail, Phone, MapPin, Building, Briefcase } from "lucide-react";
+import { useAuth } from "@/components/auth";
+import { useUserWithProfile, useUpdateUser, useUpsertProfile } from "@/hooks/user-profile/useUserProfile";
 
 interface UserProfile {
   id: string;
@@ -27,36 +29,86 @@ interface UserProfile {
 
 export function ProfileTab() {
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  // Mock user profile data
+  // Get user data with profile from hooks
+  const { userWithProfile, loading: userLoading, refetch } = useUserWithProfile(user?.id || "");
+  const { update: updateUser, loading: updateLoading } = useUpdateUser();
+  const { upsert: upsertProfile, loading: profileLoading } = useUpsertProfile();
+  
+  // Local state for form data
   const [profile, setProfile] = useState<UserProfile>({
-    id: "1",
-    firstName: "Alex",
-    lastName: "Morgan",
-    email: "alex.morgan@example.com",
-    phone: "+1 (555) 123-4567",
-    jobTitle: "Operations Manager",
-    department: "Operations",
-    location: "New York, NY",
-    bio: "Experienced operations manager with a focus on process optimization and team leadership.",
+    id: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    jobTitle: "",
+    department: "",
+    location: "",
+    bio: "",
     avatar: "",
   });
   
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
   
-  const handleUpdateProfile = () => {
-    setIsLoading(true);
+  // Update local state when user data loads
+  useEffect(() => {
+    if (userWithProfile) {
+      // Parse name into first and last name
+      const nameParts = userWithProfile.name?.split(' ') || [];
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(' ') || "";
+      
+      setProfile({
+        id: userWithProfile.id,
+        firstName: firstName,
+        lastName: lastName,
+        email: userWithProfile.email || "",
+        phone: "", // Phone not available in current UserWithProfile type
+        jobTitle: "", // Job title not available in current UserWithProfile type
+        department: userWithProfile.department || "",
+        location: "", // Location not available in current UserWithProfile type
+        bio: userWithProfile.profile?.bio || "",
+        avatar: userWithProfile.profile?.avatarUrl || "",
+      });
+    }
+  }, [userWithProfile]);
+  
+  const isLoading = userLoading || updateLoading || profileLoading;
+  
+  const handleUpdateProfile = async () => {
+    if (!user?.id) return;
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Update user basic information
+      await updateUser(user.id, {
+        name: `${profile.firstName} ${profile.lastName}`.trim(),
+        email: profile.email,
+        department: profile.department,
+      });
+
+      // Update profile information (bio, avatar)
+      await upsertProfile(user.id, {
+        bio: profile.bio,
+        avatarUrl: profile.avatar,
+      });
+
+      // Refetch user data to get latest updates
+      await refetch();
       
       toast({
         title: "Profile Updated",
         description: "Your profile information has been updated successfully.",
       });
-    }, 1500);
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update your profile. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleAvatarUpload = () => {

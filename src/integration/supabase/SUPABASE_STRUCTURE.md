@@ -10,7 +10,7 @@ src/integration/supabase/
 ├── types.ts                  # Main types aggregation/export file
 ├── types/
 │   ├── database.ts           # Database schema definition
-│   ├── user-profile.ts       # User and Profile entity types
+│   ├── profile.ts            # Profile entity types
 │   ├── department.ts         # Department entity types
 │   └── role.ts               # Role entity types
 ```
@@ -22,8 +22,8 @@ src/integration/supabase/
 Initializes and exports the Supabase client with proper typing. Also provides helper functions for authentication.
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
-import { Database } from './types/database';
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "./types/database";
 
 // Initialize Supabase client with environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -33,9 +33,15 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // Helper functions for auth, etc.
-export const getSession = async () => { /* ... */ };
-export const getCurrentUser = async () => { /* ... */ };
-export const signOut = async () => { /* ... */ };
+export const getSession = async () => {
+  /* ... */
+};
+export const getCurrentUser = async () => {
+  /* ... */
+};
+export const signOut = async () => {
+  /* ... */
+};
 ```
 
 ### `types/database.ts`
@@ -46,7 +52,7 @@ Defines the overall database schema using entity types imported from other files
 export type Json = /* ... */;
 
 // Import entity types from their respective files
-import { User, Profile } from './user-profile';
+import { User, Profile } from './profile';
 import { Department } from './department';
 import { Role } from './role';
 
@@ -73,26 +79,23 @@ export interface Database {
 }
 ```
 
-### `types/user-profile.ts`
+### `types/profile.ts`
 
-Defines User and Profile entity types and related interfaces. Consolidates these related entities into a single file.
+Defines Profile entity types and related interfaces. Consolidates these related entities into a single file.
 
 ```typescript
-import { Json } from './database';
+import { Json } from "./database";
 
 // Database entity interfaces
-export interface User {
+export interface Profile {
   id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
+  user_id: string;
+  avatar_url: string | null;
   status: string;
   last_active: string | null;
   permissions: string[] | null;
   created_at: string;
   updated_at: string | null;
-  avatar_url: string | null;
 }
 
 export interface Profile {
@@ -106,8 +109,8 @@ export interface Profile {
 }
 
 // Frontend types
-export type UserStatus = 'active' | 'inactive' | 'pending';
-export type UserRole = 'admin' | 'manager' | 'staff' | 'guest';
+export type UserStatus = "active" | "inactive" | "pending";
+export type UserRole = "admin" | "manager" | "staff" | "guest";
 
 export interface FrontendUser {
   id: string;
@@ -131,8 +134,14 @@ export interface UserWithProfile extends FrontendUser {
 }
 
 // Mapping functions
-export const mapDatabaseUserToFrontend = (dbUser: User): FrontendUser => { /* ... */ };
-export const mapDatabaseProfileToProfile = (dbProfile: Profile): UserWithProfile['profile'] => { /* ... */ };
+export const mapDatabaseUserToFrontend = (dbUser: User): FrontendUser => {
+  /* ... */
+};
+export const mapDatabaseProfileToProfile = (
+  dbProfile: Profile
+): UserWithProfile["profile"] => {
+  /* ... */
+};
 ```
 
 ### `types/department.ts`
@@ -156,7 +165,11 @@ export interface FrontendDepartment {
 }
 
 // Mapping function
-export const mapDatabaseDepartmentToFrontend = (dbDepartment: Department): FrontendDepartment => { /* ... */ };
+export const mapDatabaseDepartmentToFrontend = (
+  dbDepartment: Department
+): FrontendDepartment => {
+  /* ... */
+};
 ```
 
 ### `types/role.ts`
@@ -182,7 +195,9 @@ export interface FrontendRole {
 }
 
 // Mapping function
-export const mapDatabaseRoleToFrontend = (dbRole: Role): FrontendRole => { /* ... */ };
+export const mapDatabaseRoleToFrontend = (dbRole: Role): FrontendRole => {
+  /* ... */
+};
 ```
 
 ### `types.ts`
@@ -191,7 +206,7 @@ Aggregates and re-exports all types from the various type files for easy access.
 
 ```typescript
 // Re-export database types
-export type { Database, Json } from './types/database';
+export type { Database, Json } from "./types/database";
 
 // Re-export user and profile types
 export type {
@@ -202,23 +217,23 @@ export type {
   FrontendUser,
   UserWithProfile,
   UserPreferences,
-  UserActivity
-} from './types/user-profile';
+  UserActivity,
+} from "./types/user-profile";
 
 // Re-export department types
-export type { Department, FrontendDepartment } from './types/department';
+export type { Department, FrontendDepartment } from "./types/department";
 
 // Re-export role types
-export type { Role, FrontendRole } from './types/role';
+export type { Role, FrontendRole } from "./types/role";
 
 // Re-export helper functions
-export { 
+export {
   mapDatabaseUserToFrontend,
-  mapDatabaseProfileToProfile 
-} from './types/user-profile';
+  mapDatabaseProfileToProfile,
+} from "./types/user-profile";
 
-export { mapDatabaseDepartmentToFrontend } from './types/department';
-export { mapDatabaseRoleToFrontend } from './types/role';
+export { mapDatabaseDepartmentToFrontend } from "./types/department";
+export { mapDatabaseRoleToFrontend } from "./types/role";
 ```
 
 ## Design Principles
@@ -232,21 +247,24 @@ export { mapDatabaseRoleToFrontend } from './types/role';
 ## Usage Example
 
 ```typescript
-import { supabase } from '@/integration/supabase/client';
-import { FrontendUser, mapDatabaseUserToFrontend } from '@/integration/supabase/types';
+import { supabase } from "@/integration/supabase/client";
+import {
+  FrontendUser,
+  mapDatabaseUserToFrontend,
+} from "@/integration/supabase/types";
 
 async function getUserById(id: string): Promise<FrontendUser | null> {
   const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', id)
+    .from("users")
+    .select("*")
+    .eq("id", id)
     .single();
-    
+
   if (error || !data) {
-    console.error('Error fetching user:', error);
+    console.error("Error fetching user:", error);
     return null;
   }
-  
+
   return mapDatabaseUserToFrontend(data);
 }
 ```

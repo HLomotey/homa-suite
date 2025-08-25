@@ -179,45 +179,100 @@ export const PermissionsGrid: React.FC<PermissionsGridProps> = ({
       <Separator className="bg-white/10" />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{/* Removed opacity styling that was causing visual confusion */}
-        {modules.map((module) => (
-          <Card key={module.id} className="bg-black/20 border-white/5">
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm text-white">{module.display_name}</CardTitle>
-            </CardHeader>
-            <CardContent className="py-2 space-y-2">
-              {actions.map((action) => {
-                const permissionKey = `${module.name}:${action.name}`;
-                const isChecked = userEffectivePermissions.includes(permissionKey) || 
-                                userEffectivePermissions.includes('*:*') || 
-                                userEffectivePermissions.includes(`${module.name}:*`) ||
-                                userEffectivePermissions.includes(`*:${action.name}`);
-                
-                return (
-                  <div key={action.id} className="flex items-center justify-between">
-                    <Label 
-                      htmlFor={`perm-${module.name}-${action.name}`} 
-                      className="text-white/80 text-sm"
-                    >
-                      {action.display_name} {module.display_name}
-                    </Label>
-                    <Switch 
-                      id={`perm-${module.name}-${action.name}`}
-                      checked={isChecked}
-                      onCheckedChange={() => {
-                        console.log('Permission switch clicked:', permissionKey);
-                        console.log('customPermissionsEnabled:', customPermissionsEnabled);
-                        console.log('isLoading:', isLoading);
-                        console.log('Switch should be enabled:', customPermissionsEnabled && !isLoading);
-                        onPermissionToggle(permissionKey);
-                      }}
-                      disabled={!customPermissionsEnabled} // Only disable if custom permissions are not enabled
+        {modules.map((module) => {
+          // Calculate how many permissions are checked for this module
+          const modulePermissions = actions.map(action => `${module.name}:${action.name}`);
+          const checkedPermissions = modulePermissions.filter(permissionKey => {
+            return (!user.id || user.id === 'new') 
+              ? (user.permissions || []).includes(permissionKey)
+              : (userEffectivePermissions.includes(permissionKey) || 
+                 userEffectivePermissions.includes('*:*') || 
+                 userEffectivePermissions.includes(`${module.name}:*`) ||
+                 userEffectivePermissions.includes(`*:${permissionKey.split(':')[1]}`));
+          });
+          
+          const allChecked = checkedPermissions.length === modulePermissions.length;
+          const someChecked = checkedPermissions.length > 0;
+          
+          const handleToggleAll = () => {
+            if (allChecked) {
+              // Uncheck all permissions for this module
+              modulePermissions.forEach(permissionKey => {
+                if ((!user.id || user.id === 'new') 
+                    ? (user.permissions || []).includes(permissionKey)
+                    : userEffectivePermissions.includes(permissionKey)) {
+                  onPermissionToggle(permissionKey);
+                }
+              });
+            } else {
+              // Check all permissions for this module
+              modulePermissions.forEach(permissionKey => {
+                if (!((!user.id || user.id === 'new') 
+                      ? (user.permissions || []).includes(permissionKey)
+                      : userEffectivePermissions.includes(permissionKey))) {
+                  onPermissionToggle(permissionKey);
+                }
+              });
+            }
+          };
+          
+          return (
+            <Card key={module.id} className="bg-black/20 border-white/5">
+              <CardHeader className="py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-white">{module.display_name}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/60">
+                      {checkedPermissions.length}/{modulePermissions.length}
+                    </span>
+                    <Switch
+                      checked={allChecked}
+                      onCheckedChange={handleToggleAll}
+                      disabled={!customPermissionsEnabled || isLoading}
+                      className={`scale-75 ${!customPermissionsEnabled ? "opacity-50" : ""} ${someChecked && !allChecked ? "opacity-75" : ""}`}
                     />
                   </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        ))}
+                </div>
+              </CardHeader>
+              <CardContent className="py-2 space-y-2">
+                {actions.map((action) => {
+                  const permissionKey = `${module.name}:${action.name}`;
+                  // For new users, check against user.permissions array instead of userEffectivePermissions
+                  const isChecked = (!user.id || user.id === 'new') 
+                    ? (user.permissions || []).includes(permissionKey)
+                    : (userEffectivePermissions.includes(permissionKey) || 
+                       userEffectivePermissions.includes('*:*') || 
+                       userEffectivePermissions.includes(`${module.name}:*`) ||
+                       userEffectivePermissions.includes(`*:${action.name}`));
+                  
+                  return (
+                    <div key={action.id} className="flex items-center justify-between">
+                      <Label 
+                        htmlFor={`perm-${module.name}-${action.name}`} 
+                        className="text-white/80 text-sm"
+                      >
+                        {action.display_name} {module.display_name}
+                      </Label>
+                      <Switch 
+                        id={`perm-${module.name}-${action.name}`}
+                        checked={isChecked}
+                        onCheckedChange={() => {
+                          console.log('Permission switch clicked:', permissionKey);
+                          console.log('customPermissionsEnabled:', customPermissionsEnabled);
+                          console.log('isLoading:', isLoading);
+                          console.log('Switch should be enabled:', customPermissionsEnabled && !isLoading);
+                          onPermissionToggle(permissionKey);
+                        }}
+                        disabled={!customPermissionsEnabled || isLoading} // Disable if custom permissions not enabled or loading
+                        className={!customPermissionsEnabled ? "opacity-50" : ""}
+                      />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
       
       {modules.length === 0 && !loadingData && (

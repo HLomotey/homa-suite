@@ -1,2 +1,2 @@
 // Export supabase client and auth helpers
-export { supabase, getSession, getCurrentUser, signOut } from './client';
+export { supabase, supabaseAdmin, getSession, getCurrentUser, signOut } from './client';

@@ -4,6 +4,8 @@
  */
 
 import { Json } from './database';
+import { Location } from './location';
+
 
 /**
  * Property interface representing the properties table in Supabase
@@ -23,6 +25,8 @@ export interface Property {
   date_added: string;
   created_at: string;
   updated_at: string | null;
+  location_id: string | null;
+  manager_id: string | null;
 }
 
 /**
@@ -51,12 +55,40 @@ export interface FrontendProperty {
   image: string;
   description: string;
   dateAdded: string;
+  locationId: string | null;
+  managerId: string | null;
+  location?: Location | null;
+  managerName?: string;
 }
 
 /**
  * Maps a database property to the frontend property format
  */
-export const mapDatabasePropertyToFrontend = (dbProperty: Property): FrontendProperty => {
+export const mapDatabasePropertyToFrontend = (dbProperty: any): FrontendProperty => {
+  // Handle the joined location data from company_locations
+  let location = null;
+  if (dbProperty.company_locations) {
+    const locationData = dbProperty.company_locations;
+    location = {
+      id: locationData.id,
+      name: locationData.name,
+      address: locationData.address,
+      city: locationData.city,
+      state: locationData.state,
+      zipCode: locationData.zip_code,
+      country: locationData.country,
+      phone: locationData.phone,
+      email: locationData.email,
+      isActive: locationData.is_active
+    };
+  }
+
+  // Handle the joined manager data from billing_staff
+  let managerName = null;
+  if (dbProperty.billing_staff) {
+    managerName = dbProperty.billing_staff.legal_name;
+  }
+
   return {
     id: dbProperty.id,
     title: dbProperty.title,
@@ -69,6 +101,32 @@ export const mapDatabasePropertyToFrontend = (dbProperty: Property): FrontendPro
     status: dbProperty.status as PropertyStatus,
     image: dbProperty.image,
     description: dbProperty.description,
-    dateAdded: dbProperty.date_added
+    dateAdded: dbProperty.date_added,
+    locationId: dbProperty.location_id,
+    managerId: dbProperty.manager_id,
+    location: location,
+    managerName: managerName
+  };
+};
+
+/**
+ * Maps a frontend property to the database property format
+ */
+export const mapFrontendPropertyToDatabase = (frontendProperty: FrontendProperty): Omit<Property, 'created_at' | 'updated_at'> => {
+  return {
+    id: frontendProperty.id,
+    title: frontendProperty.title,
+    address: frontendProperty.address,
+    price: frontendProperty.price,
+    bedrooms: frontendProperty.bedrooms,
+    bathrooms: frontendProperty.bathrooms,
+    area: frontendProperty.area,
+    type: frontendProperty.type,
+    status: frontendProperty.status,
+    image: frontendProperty.image,
+    description: frontendProperty.description,
+    date_added: frontendProperty.dateAdded,
+    location_id: frontendProperty.locationId,
+    manager_id: frontendProperty.managerId
   };
 };

@@ -6,6 +6,38 @@
 import { Json } from './database';
 
 /**
+ * Invoice interface representing the finance_invoices table in Supabase
+ * Based on the Excel sample data
+ */
+export interface Invoice {
+  id: string;
+  client_name: string;
+  invoice_number: string;
+  date_issued: string;
+  invoice_status: InvoiceStatus;
+  date_paid: string | null;
+  item_name: string;
+  item_description: string;
+  rate: number;
+  quantity: number;
+  discount_percentage: number;
+  line_subtotal: number;
+  tax_1_type: string | null;
+  tax_1_amount: number;
+  tax_2_type: string | null;
+  tax_2_amount: number;
+  line_total: number;
+  currency: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * InvoiceStatus enum
+ */
+export type InvoiceStatus = 'paid' | 'pending' | 'overdue' | 'cancelled';
+
+/**
  * Transaction interface representing the finance_transactions table in Supabase
  */
 export interface Transaction {
@@ -130,6 +162,30 @@ export interface RevenueProfitData {
 }
 
 /**
+ * Frontend invoice type that matches the structure in FinanceInvoices.tsx
+ */
+export interface FrontendInvoice {
+  id: string;
+  clientName: string;
+  invoiceNumber: string;
+  dateIssued: string;
+  invoiceStatus: InvoiceStatus;
+  datePaid: string | null;
+  itemName: string;
+  itemDescription: string;
+  rate: number;
+  quantity: number;
+  discountPercentage: number;
+  lineSubtotal: number;
+  tax1Type: string | null;
+  tax1Amount: number;
+  tax2Type: string | null;
+  tax2Amount: number;
+  lineTotal: number;
+  currency: string;
+}
+
+/**
  * Frontend transaction type that matches the structure in FinanceTransactions.tsx
  */
 export interface FrontendTransaction {
@@ -142,6 +198,54 @@ export interface FrontendTransaction {
   category?: string;
   clientId?: string;
   departmentId?: number;
+}
+
+/**
+ * Finance transaction interface for the invoice line item Excel upload format
+ */
+export interface FinanceTransaction {
+  id: string;
+  client: string;
+  invoice_id: string;
+  date: string;
+  status: string;
+  date_paid?: string;
+  description: string;
+  rate: number;
+  quantity: number;
+  discount_percentage?: number;
+  line_subtotal?: number;
+  tax_1_type?: string;
+  tax_1_amount?: number;
+  tax_2_type?: string;
+  tax_2_amount?: number;
+  amount: number; // Line Total
+  currency?: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Frontend finance transaction type that matches the invoice line item Excel upload format
+ */
+export interface FrontendFinanceTransaction {
+  id: string;
+  client: string;
+  invoiceId: string;
+  date: string;
+  status: string;
+  datePaid?: string;
+  description: string;
+  rate: number;
+  quantity: number;
+  discountPercentage?: number;
+  lineSubtotal?: number;
+  tax1Type?: string;
+  tax1Amount?: number;
+  tax2Type?: string;
+  tax2Amount?: number;
+  amount: number; // Line Total
+  currency?: string;
 }
 
 /**
@@ -220,6 +324,32 @@ export interface FrontendRevenueProfitData {
   revenue: number;
   profit: number;
 }
+
+/**
+ * Maps a database invoice to the frontend invoice format
+ */
+export const mapDatabaseInvoiceToFrontend = (dbInvoice: Invoice): FrontendInvoice => {
+  return {
+    id: dbInvoice.id,
+    clientName: dbInvoice.client_name,
+    invoiceNumber: dbInvoice.invoice_number,
+    dateIssued: dbInvoice.date_issued,
+    invoiceStatus: dbInvoice.invoice_status,
+    datePaid: dbInvoice.date_paid,
+    itemName: dbInvoice.item_name,
+    itemDescription: dbInvoice.item_description,
+    rate: dbInvoice.rate,
+    quantity: dbInvoice.quantity,
+    discountPercentage: dbInvoice.discount_percentage,
+    lineSubtotal: dbInvoice.line_subtotal,
+    tax1Type: dbInvoice.tax_1_type,
+    tax1Amount: dbInvoice.tax_1_amount,
+    tax2Type: dbInvoice.tax_2_type,
+    tax2Amount: dbInvoice.tax_2_amount,
+    lineTotal: dbInvoice.line_total,
+    currency: dbInvoice.currency
+  };
+};
 
 /**
  * Maps a database transaction to the frontend transaction format
@@ -338,5 +468,33 @@ export const mapDatabaseRevenueProfitDataToFrontend = (
     month: dbRevenueProfitData.month,
     revenue: dbRevenueProfitData.revenue,
     profit: dbRevenueProfitData.profit
+  };
+};
+
+/**
+ * Maps a database finance transaction to the frontend format
+ * Updated to match the invoice line item format
+ */
+export const mapDatabaseFinanceTransactionToFrontend = (
+  dbFinanceTransaction: FinanceTransaction
+): FrontendFinanceTransaction => {
+  return {
+    id: dbFinanceTransaction.id,
+    client: dbFinanceTransaction.client,
+    invoiceId: dbFinanceTransaction.invoice_id,
+    date: dbFinanceTransaction.date,
+    status: dbFinanceTransaction.status,
+    datePaid: dbFinanceTransaction.date_paid,
+    description: dbFinanceTransaction.description,
+    rate: dbFinanceTransaction.rate,
+    quantity: dbFinanceTransaction.quantity,
+    amount: dbFinanceTransaction.amount,
+    discountPercentage: dbFinanceTransaction.discount_percentage,
+    lineSubtotal: dbFinanceTransaction.line_subtotal,
+    tax1Type: dbFinanceTransaction.tax_1_type,
+    tax1Amount: dbFinanceTransaction.tax_1_amount,
+    tax2Type: dbFinanceTransaction.tax_2_type,
+    tax2Amount: dbFinanceTransaction.tax_2_amount,
+    currency: dbFinanceTransaction.currency || "USD"
   };
 };

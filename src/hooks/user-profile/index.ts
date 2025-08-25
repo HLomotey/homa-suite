@@ -40,3 +40,8 @@ export {
   useLogUserActivity,
   useUserActivities
 } from './useUserProfile';
+
+// Re-export enhanced user hooks
+export {
+  useEnhancedUsers
+} from './useEnhancedUsers';

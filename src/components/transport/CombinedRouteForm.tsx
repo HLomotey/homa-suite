@@ -9,12 +9,14 @@ import {
   FrontendCombinedRoute, 
   FrontendRoute 
 } from "@/integration/supabase/types/transport-route";
-import { Trash2, Plus, ArrowUpDown, Route } from "lucide-react";
+import { Plus, Route as RouteIcon, ArrowUpDown, Trash2, X } from "lucide-react";
+import { RouteItem } from "./RouteItem";
+import { RouteSelectionHeader } from "./RouteSelectionHeader";
 import { toast } from "@/components/ui/use-toast";
 import { useRoute } from "@/hooks/transport/useRoute";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/components/auth";
 import { supabase } from "@/integration/supabase/client"; // Import Supabase client
 
@@ -37,12 +39,15 @@ export function CombinedRouteForm({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedRoutes, setSelectedRoutes] = useState<Array<{
     id: string;
     routeId: string;
     routeName: string;
     order: number;
   }>>([]);
+  const [selectedForDeletion, setSelectedForDeletion] = useState<string[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routeFormOpen, setRouteFormOpen] = useState(false);
@@ -142,16 +147,44 @@ export function CombinedRouteForm({
   };
 
   const handleRemoveRoute = (index: number) => {
-    const newRoutes = [...selectedRoutes];
-    newRoutes.splice(index, 1);
+    setSelectedRoutes(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleSelectMode = () => {
+    setSelectMode(prev => !prev);
+    setSelectedForDeletion([]);
+  };
+
+  const toggleRouteSelection = (id: string) => {
+    setSelectedForDeletion(prev => 
+      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+    );
+  };
+  
+  const toggleSelectAll = () => {
+    if (selectedForDeletion.length === selectedRoutes.length) {
+      // If all are selected, deselect all
+      setSelectedForDeletion([]);
+    } else {
+      // Otherwise, select all
+      setSelectedForDeletion(selectedRoutes.map(route => route.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedForDeletion.length === 0) return;
     
-    // Reorder remaining routes
-    const reorderedRoutes = newRoutes.map((route, idx) => ({
-      ...route,
-      order: idx + 1
-    }));
+    setSelectedRoutes(prev => 
+      prev.filter((route) => !selectedForDeletion.includes(route.id))
+    );
     
-    setSelectedRoutes(reorderedRoutes);
+    toast({
+      title: "Routes Removed",
+      description: `${selectedForDeletion.length} route${selectedForDeletion.length > 1 ? 's' : ''} removed from combined route`,
+    });
+    
+    setSelectedForDeletion([]);
+    setSelectMode(false);
   };
 
   const handleRouteChange = (index: number, routeId: string) => {
@@ -390,22 +423,21 @@ export function CombinedRouteForm({
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Routes</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleAddRoute}
-                  disabled={isSubmitting}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Route
-                </Button>
-              </div>
+              <RouteSelectionHeader
+                selectMode={selectMode}
+                selectedCount={selectedForDeletion.length}
+                totalRoutes={selectedRoutes.length}
+                isSubmitting={isSubmitting}
+                onToggleSelectMode={toggleSelectMode}
+                onToggleSelectAll={toggleSelectAll}
+                onDeleteSelected={handleDeleteSelected}
+                onAddRoute={handleAddRoute}
+                allSelected={selectedForDeletion.length === selectedRoutes.length}
+              />
               
               {selectedRoutes.length === 0 && (
                 <div className="text-center p-4 border border-dashed rounded-md">
-                  <Route className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <RouteIcon className="h-8 w-8 mx-auto text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">
                     No routes added yet. Click "Add Route" to start building your combined route.
                   </p>
@@ -413,58 +445,22 @@ export function CombinedRouteForm({
               )}
               
               {selectedRoutes.map((route, index) => (
-                <div key={route.id} className="space-y-2 p-4 border rounded-md">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Route {index + 1}</h4>
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveUp(index)}
-                        disabled={isSubmitting || index === 0}
-                      >
-                        <ArrowUpDown className="h-4 w-4 rotate-90" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveDown(index)}
-                        disabled={isSubmitting || index === selectedRoutes.length - 1}
-                      >
-                        <ArrowUpDown className="h-4 w-4 -rotate-90" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveRoute(index)}
-                        disabled={isSubmitting}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Selected Route</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditRoute(index)}
-                        disabled={isSubmitting}
-                      >
-                        Change Route
-                      </Button>
-                    </div>
-                    <div className="p-3 border rounded-md bg-muted/20">
-                      <p className="font-medium">{route.routeName}</p>
-                    </div>
-                  </div>
-                </div>
+                <RouteItem
+                  key={route.id}
+                  route={route}
+                  index={index}
+                  selectMode={selectMode}
+                  isSelected={selectedForDeletion.includes(route.id)}
+                  isSubmitting={isSubmitting}
+                  onSelect={toggleRouteSelection}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  onDelete={handleRemoveRoute}
+                  onRouteChange={handleEditRoute}
+                  routes={routes}
+                  isFirst={index === 0}
+                  isLast={index === selectedRoutes.length - 1}
+                />
               ))}
             </div>
             
@@ -494,17 +490,35 @@ export function CombinedRouteForm({
       <Dialog open={routeFormOpen} onOpenChange={setRouteFormOpen}>
         <DialogContent 
           className="sm:max-w-md md:max-w-lg lg:max-w-2xl"
-          aria-describedby="route-dialog-description"
         >
-          <span id="route-dialog-description" className="sr-only">
-            Select a route to add to the combined route.
-          </span>
           <DialogHeader>
-            <DialogTitle>
-              {currentRouteIndex !== null ? "Change Route" : "Select Route"}
-            </DialogTitle>
+            <DialogTitle>{currentRouteIndex !== null ? "Change Route" : "Select Route"}</DialogTitle>
+            <DialogDescription id="route-dialog-description">
+              Choose routes to include in this combined route.
+            </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto">
+          <div className="space-y-4 p-2">
+            {/* Search input */}
+            <div className="relative">
+              <Input
+                placeholder="Search routes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto">
             {/* Route selection UI */}
             <div className="space-y-4 p-2">
               {loading ? (
@@ -527,7 +541,9 @@ export function CombinedRouteForm({
                 <div className="p-4 border rounded-md">
                   <p className="text-muted-foreground">No routes available. Please create routes first.</p>
                 </div>
-              ) : routes.map((route) => {
+              ) : routes.filter(route => 
+                searchTerm ? route.name.toLowerCase().includes(searchTerm.toLowerCase()) : true
+              ).map((route) => {
                 const isSelected = selectedRoutes.some(r => r.routeId === route.id);
                 const isDisabled = isSelected && (currentRouteIndex === null || 
                   selectedRoutes[currentRouteIndex]?.routeId !== route.id);

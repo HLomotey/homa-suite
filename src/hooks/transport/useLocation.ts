@@ -19,9 +19,7 @@ export const useLocation = () => {
       setError(null);
       console.log('Fetching locations...');
 
-      // Force a small delay to ensure the component is mounted
-      await new Promise(resolve => setTimeout(resolve, 100));
-
+      // Make sure we have a clean state before fetching
       const { data, error } = await supabase
         .from('company_locations')
         .select('*')
@@ -33,20 +31,22 @@ export const useLocation = () => {
         throw error;
       }
 
-      if (data && Array.isArray(data)) {
-        const frontendLocations = data.map((location: Location) => 
-          mapDatabaseLocationToFrontend(location)
-        );
-        console.log('Mapped locations:', frontendLocations);
-        setLocations(frontendLocations);
-      } else {
-        // Handle empty data case explicitly
-        console.log('No locations found, setting empty array');
-        setLocations([]);
-      }
+      // Always set locations, even if empty
+      const frontendLocations = Array.isArray(data) 
+        ? data.map((location: Location) => mapDatabaseLocationToFrontend(location))
+        : [];
+        
+      console.log('Mapped locations:', frontendLocations);
+      setLocations(frontendLocations);
+      
+      // Return the data for immediate use if needed
+      return frontendLocations;
     } catch (err: unknown) {
       console.error('Error fetching locations:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch locations');
+      // Set empty array on error to avoid undefined issues
+      setLocations([]);
+      return [];
     } finally {
       setLoading(false);
     }

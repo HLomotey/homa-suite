@@ -41,11 +41,13 @@ export const PropertiesList = ({
   onEdit,
   onDelete,
   onAddProperty,
+  onSelect,
 }: {
   properties: FrontendProperty[];
   onEdit: (property: FrontendProperty) => void;
   onDelete: (id: string) => void;
   onAddProperty: () => void;
+  onSelect?: (propertyId: string) => void;
 }) => {
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,10 +56,14 @@ export const PropertiesList = ({
 
   // Filter properties based on search query and status filter
   const filteredProperties = properties.filter((property) => {
+    const locationText = property.location ? 
+      `${property.location.city} ${property.location.state}`.toLowerCase() : '';
+      
     const matchesSearch =
       property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.type.toLowerCase().includes(searchQuery.toLowerCase());
+      property.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      locationText.includes(searchQuery.toLowerCase());
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -75,6 +81,7 @@ export const PropertiesList = ({
       const exportData = filteredProperties.map(property => ({
         'Property': property.title,
         'Address': property.address,
+        'Location': property.location ? `${property.location.city}, ${property.location.state}` : 'Not assigned',
         'Type': property.type,
         'Price': `$${property.price.toLocaleString()}`,
         'Status': property.status,
@@ -204,6 +211,7 @@ export const PropertiesList = ({
               property={property}
               onEdit={() => onEdit(property)}
               onDelete={() => onDelete(property.id)}
+              onSelect={onSelect}
             />
           ))}
         </div>
@@ -214,6 +222,7 @@ export const PropertiesList = ({
               <TableRow>
                 <TableHead>Property</TableHead>
                 <TableHead>Address</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
@@ -223,11 +232,20 @@ export const PropertiesList = ({
             </TableHeader>
             <TableBody>
               {filteredProperties.map((property) => (
-                <TableRow key={property.id}>
+                <TableRow 
+                  key={property.id} 
+                  className="cursor-pointer hover:bg-black/20" 
+                  onClick={() => onSelect && onSelect(property.id)}
+                >
                   <TableCell className="font-medium">
                     {property.title}
                   </TableCell>
                   <TableCell>{property.address}</TableCell>
+                  <TableCell>
+                    {property.location ? 
+                      `${property.location.city}, ${property.location.state}` : 
+                      <span className="text-muted-foreground italic">Not assigned</span>}
+                  </TableCell>
                   <TableCell>{property.type}</TableCell>
                   <TableCell>${property.price.toLocaleString()}</TableCell>
                   <TableCell>
@@ -239,14 +257,20 @@ export const PropertiesList = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onEdit(property)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(property);
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onDelete(property.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(property.id);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -267,13 +291,18 @@ const PropertyCard = ({
   property,
   onEdit,
   onDelete,
+  onSelect,
 }: {
   property: FrontendProperty;
   onEdit: () => void;
   onDelete: () => void;
+  onSelect?: (propertyId: string) => void;
 }) => {
   return (
-    <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
+    <div 
+    className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors" 
+    onClick={() => onSelect && onSelect(property.id)}
+  >
       <div className="relative h-48">
         <img
           src={property.image}
@@ -288,9 +317,15 @@ const PropertyCard = ({
         <h3 className="text-lg font-semibold text-white mb-1">
           {property.title}
         </h3>
-        <p className="text-white/60 flex items-center text-sm mb-3">
+        <p className="text-white/60 flex items-center text-sm mb-1">
           <MapPin className="h-3 w-3 mr-1" />
           {property.address}
+        </p>
+        <p className="text-white/60 flex items-center text-sm mb-3">
+          <Home className="h-3 w-3 mr-1" />
+          {property.location ? 
+            `${property.location.city}, ${property.location.state}` : 
+            <span className="italic">No location assigned</span>}
         </p>
         <div className="flex justify-between mb-4">
           <div className="text-white font-bold">
@@ -317,10 +352,24 @@ const PropertyCard = ({
             Added {property.dateAdded}
           </div>
           <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={onEdit}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onDelete}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>

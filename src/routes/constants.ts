@@ -6,15 +6,29 @@ export const ROUTES = {
   TRANSPORT: "/transport",
   HR: "/hr",
   FINANCE: "/finance",
+  FINANCE_UPLOAD: "/finance/upload",
   OPERATIONS: "/operations",
   REPORTS: "/reports",
   SETTINGS: "/settings",
   BILLING: "/billing",
   STAFF: "/staff",
+  EXTERNAL_STAFF: "/external-staff",
+  EXTERNAL_STAFF_UPLOAD: "/external-staff/upload",
+  EXTERNAL_STAFF_NEW: "/external-staff/new",
   PROFILE: "/profile",
   NOTIFICATIONS: "/notifications",
   HELP: "/help",
   NOT_FOUND: "/404",
   USERS: "/users",
-  EXCEL_UPLOADS: "/excel-uploads"
+  EXCEL_UPLOADS: "/excel-uploads",
+  UTILITIES: "/utilities",
+  MAINTENANCE: "/maintenance",
+  MAINTENANCE_STAFF: "/maintenance/staff",
+  // Complaints module routes
+  COMPLAINTS: "/complaints",
+  COMPLAINTS_NEW: "/complaints/new",
+  COMPLAINTS_DETAIL: "/complaints/:id",
+  COMPLAINTS_KANBAN: "/complaints/kanban",
+  // Activity log route
+  ACTIVITY_LOG: "/activity-log"
 };

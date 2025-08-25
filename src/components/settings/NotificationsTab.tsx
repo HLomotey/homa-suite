@@ -279,6 +279,7 @@ export function NotificationsTab() {
                         <input
                           id="quietStart"
                           type="time"
+                          title="Quiet hours start time"
                           value={schedule.quietHoursStart}
                           onChange={(e) => setSchedule({...schedule, quietHoursStart: e.target.value})}
                           className="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-white"
@@ -289,6 +290,7 @@ export function NotificationsTab() {
                         <input
                           id="quietEnd"
                           type="time"
+                          title="Quiet hours end time"
                           value={schedule.quietHoursEnd}
                           onChange={(e) => setSchedule({...schedule, quietHoursEnd: e.target.value})}
                           className="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-white"

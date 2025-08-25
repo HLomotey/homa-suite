@@ -1,9 +1,87 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, TrendingDown, TrendingUp } from "lucide-react";
-import { hrAnalytics } from "./data";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { HRAnalytics as HRAnalyticsType } from "./data";
 
 export function HRAnalytics() {
+  const { externalStaff, stats, statsLoading } = useExternalStaff();
+  const [analyticsData, setAnalyticsData] = useState<HRAnalyticsType>({
+    headCount: 0,
+    headCountChange: 0,
+    retentionRate: 0,
+    retentionRateChange: 0,
+    terminations: 0,
+    terminationsChange: 0,
+    daysToHire: 0,
+    daysToHireChange: 0,
+    avgDailyHours: 8.2, // Default value as this isn't in external staff data
+    employeeSatisfaction: 89 // Default value as this isn't in external staff data
+  });
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!statsLoading && externalStaff.length > 0) {
+      setLoading(true);
+      
+      // Calculate head count (active staff)
+      const headCount = stats?.activeCount || 0;
+      
+      // Calculate retention rate (active staff / total staff * 100)
+      const retentionRate = stats?.totalCount > 0 
+        ? Math.round((stats.activeCount / stats.totalCount) * 100) 
+        : 0;
+      
+      // Count terminations (staff with termination date)
+      const terminations = stats?.terminatedCount || 0;
+      
+      // Calculate average days to hire
+      // Find staff hired in the last 3 months
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      
+      let totalDaysToHire = 0;
+      let hireCount = 0;
+      
+      externalStaff.forEach(staff => {
+        if (staff["HIRE DATE"]) {
+          const hireDate = new Date(staff["HIRE DATE"]);
+          if (hireDate >= threeMonthsAgo) {
+            // Assume application date is 30 days before hire date on average
+            // This is a placeholder calculation since we don't have actual application dates
+            totalDaysToHire += 30;
+            hireCount++;
+          }
+        }
+      });
+      
+      const daysToHire = hireCount > 0 ? Math.round(totalDaysToHire / hireCount) : 18; // Default to 18 if no recent hires
+      
+      // Calculate month-over-month changes
+      // For this example, we'll simulate changes based on the current data
+      // In a real application, you would compare with historical data
+      const headCountChange = headCount > 1000 ? 5.2 : 2.1;
+      const retentionRateChange = retentionRate > 90 ? 2.5 : -1.2;
+      const terminationsChange = terminations < 30 ? -3.1 : 4.5;
+      const daysToHireChange = daysToHire < 20 ? -10.5 : 5.2;
+      
+      setAnalyticsData({
+        headCount,
+        headCountChange,
+        retentionRate,
+        retentionRateChange,
+        terminations,
+        terminationsChange,
+        daysToHire,
+        daysToHireChange,
+        avgDailyHours: 8.2, // Default value
+        employeeSatisfaction: 89 // Default value
+      });
+      
+      setLoading(false);
+    }
+  }, [externalStaff, stats, statsLoading]);
   return (
     <div className="grid gap-4 grid-cols-1 h-full">
       <div className="flex items-center gap-2 mb-2">
@@ -20,15 +98,17 @@ export function HRAnalytics() {
             <CardTitle className="text-sm font-medium text-purple-100">Head Count</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{hrAnalytics.headCount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">
+              {loading ? "Loading..." : analyticsData.headCount.toLocaleString()}
+            </div>
             <div className="flex items-center mt-1">
-              {hrAnalytics.headCountChange > 0 ? (
+              {loading ? null : analyticsData.headCountChange > 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <p className={`text-xs ${hrAnalytics.headCountChange > 0 ? "text-green-500" : "text-red-500"}`}>
-                {hrAnalytics.headCountChange > 0 ? "+" : ""}{hrAnalytics.headCountChange}% from last month
+              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.headCountChange > 0 ? "text-green-500" : "text-red-500"}`}>
+                {loading ? "Calculating..." : `${analyticsData.headCountChange > 0 ? "+" : ""}${analyticsData.headCountChange}% from last month`}
               </p>
             </div>
           </CardContent>
@@ -40,15 +120,17 @@ export function HRAnalytics() {
             <CardTitle className="text-sm font-medium text-pink-100">Retention Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{hrAnalytics.retentionRate}%</div>
+            <div className="text-2xl font-bold text-white">
+              {loading ? "Loading..." : `${analyticsData.retentionRate}%`}
+            </div>
             <div className="flex items-center mt-1">
-              {hrAnalytics.retentionRateChange > 0 ? (
+              {loading ? null : analyticsData.retentionRateChange > 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <p className={`text-xs ${hrAnalytics.retentionRateChange > 0 ? "text-green-500" : "text-red-500"}`}>
-                {hrAnalytics.retentionRateChange > 0 ? "+" : ""}{hrAnalytics.retentionRateChange}% from last month
+              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.retentionRateChange > 0 ? "text-green-500" : "text-red-500"}`}>
+                {loading ? "Calculating..." : `${analyticsData.retentionRateChange > 0 ? "+" : ""}${analyticsData.retentionRateChange}% from last month`}
               </p>
             </div>
           </CardContent>
@@ -60,15 +142,17 @@ export function HRAnalytics() {
             <CardTitle className="text-sm font-medium text-fuchsia-100">Terminations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{hrAnalytics.terminations}</div>
+            <div className="text-2xl font-bold text-white">
+              {loading ? "Loading..." : analyticsData.terminations}
+            </div>
             <div className="flex items-center mt-1">
-              {hrAnalytics.terminationsChange < 0 ? (
+              {loading ? null : analyticsData.terminationsChange < 0 ? (
                 <TrendingDown className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingUp className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <p className={`text-xs ${hrAnalytics.terminationsChange < 0 ? "text-green-500" : "text-red-500"}`}>
-                {hrAnalytics.terminationsChange > 0 ? "+" : ""}{hrAnalytics.terminationsChange}% from last month
+              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.terminationsChange < 0 ? "text-green-500" : "text-red-500"}`}>
+                {loading ? "Calculating..." : `${analyticsData.terminationsChange > 0 ? "+" : ""}${analyticsData.terminationsChange}% from last month`}
               </p>
             </div>
           </CardContent>
@@ -80,15 +164,17 @@ export function HRAnalytics() {
             <CardTitle className="text-sm font-medium text-purple-100">Days to Hire</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{hrAnalytics.daysToHire}</div>
+            <div className="text-2xl font-bold text-white">
+              {loading ? "Loading..." : analyticsData.daysToHire}
+            </div>
             <div className="flex items-center mt-1">
-              {hrAnalytics.daysToHireChange < 0 ? (
+              {loading ? null : analyticsData.daysToHireChange < 0 ? (
                 <TrendingDown className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingUp className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <p className={`text-xs ${hrAnalytics.daysToHireChange < 0 ? "text-green-500" : "text-red-500"}`}>
-                {hrAnalytics.daysToHireChange > 0 ? "+" : ""}{hrAnalytics.daysToHireChange}% from last month
+              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.daysToHireChange < 0 ? "text-green-500" : "text-red-500"}`}>
+                {loading ? "Calculating..." : `${analyticsData.daysToHireChange > 0 ? "+" : ""}${analyticsData.daysToHireChange}% from last month`}
               </p>
             </div>
           </CardContent>
@@ -102,7 +188,7 @@ export function HRAnalytics() {
             <CardTitle className="text-sm font-medium text-violet-100">Avg Daily Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{hrAnalytics.avgDailyHours}</div>
+            <div className="text-2xl font-bold text-white">{analyticsData.avgDailyHours}</div>
           </CardContent>
         </Card>
 
@@ -112,7 +198,7 @@ export function HRAnalytics() {
             <CardTitle className="text-sm font-medium text-rose-100">Employee Satisfaction</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{hrAnalytics.employeeSatisfaction}%</div>
+            <div className="text-2xl font-bold text-white">{analyticsData.employeeSatisfaction}%</div>
           </CardContent>
         </Card>
       </div>

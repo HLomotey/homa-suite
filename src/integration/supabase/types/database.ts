@@ -34,6 +34,9 @@ import {
   Payroll
 } from './billing';
 import {
+  ExternalStaff
+} from './external-staff';
+import {
   Attendance
 } from './attendance';
 import {
@@ -55,11 +58,30 @@ import {
   ClientRevenue,
   FinancialMetric,
   CashFlow,
-  RevenueProfitData
+  RevenueProfitData,
+  Invoice
 } from './finance';
 import {
   Tenant
 } from './tenant';
+import {
+  InventoryItem,
+  InventoryStock,
+  InventoryTransaction,
+  InventorySupplier,
+  InventoryPurchaseOrder,
+  InventoryPurchaseOrderItem
+} from './inventory';
+import {
+  Complaint,
+  ComplaintCategory,
+  ComplaintSubcategory,
+  ComplaintComment,
+  ComplaintAttachment,
+  ComplaintRoutingRule,
+  ComplaintSLA,
+  ComplaintHistory
+} from './complaints';
 
 // Database interface using the imported types
 export interface Database {
@@ -144,6 +166,11 @@ export interface Database {
         Row: BillingStaff;
         Insert: Omit<BillingStaff, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<BillingStaff, "id" | "created_at">>;
+      };
+      external_staff: {
+        Row: ExternalStaff;
+        Insert: Omit<ExternalStaff, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ExternalStaff, "id" | "created_at">>;
       };
       billing_stats: {
         Row: BillingStats;
@@ -235,10 +262,85 @@ export interface Database {
         Insert: Omit<RevenueProfitData, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<RevenueProfitData, "id" | "created_at">>;
       };
+      finance_invoices: {
+        Row: Invoice;
+        Insert: Omit<Invoice, "created_at" | "updated_at">;
+        Update: Partial<Omit<Invoice, "created_at">>;
+      };
       tenants: {
         Row: Tenant;
         Insert: Omit<Tenant, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<Tenant, "id" | "created_at">>;
+      };
+      inventory_items: {
+        Row: InventoryItem;
+        Insert: Omit<InventoryItem, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryItem, "id" | "created_at">>;
+      };
+      inventory_stock: {
+        Row: InventoryStock;
+        Insert: Omit<InventoryStock, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryStock, "id" | "created_at">>;
+      };
+      inventory_transactions: {
+        Row: InventoryTransaction;
+        Insert: Omit<InventoryTransaction, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryTransaction, "id" | "created_at">>;
+      };
+      inventory_suppliers: {
+        Row: InventorySupplier;
+        Insert: Omit<InventorySupplier, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventorySupplier, "id" | "created_at">>;
+      };
+      inventory_purchase_orders: {
+        Row: InventoryPurchaseOrder;
+        Insert: Omit<InventoryPurchaseOrder, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryPurchaseOrder, "id" | "created_at">>;
+      };
+      inventory_purchase_order_items: {
+        Row: InventoryPurchaseOrderItem;
+        Insert: Omit<InventoryPurchaseOrderItem, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<InventoryPurchaseOrderItem, "id" | "created_at">>;
+      };
+      complaints: {
+        Row: Complaint;
+        Insert: Omit<Complaint, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Complaint, "id" | "created_at">>;
+      };
+      complaint_categories: {
+        Row: ComplaintCategory;
+        Insert: Omit<ComplaintCategory, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintCategory, "id" | "created_at">>;
+      };
+      complaint_subcategories: {
+        Row: ComplaintSubcategory;
+        Insert: Omit<ComplaintSubcategory, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintSubcategory, "id" | "created_at">>;
+      };
+      complaint_comments: {
+        Row: ComplaintComment;
+        Insert: Omit<ComplaintComment, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintComment, "id" | "created_at">>;
+      };
+      complaint_attachments: {
+        Row: ComplaintAttachment;
+        Insert: Omit<ComplaintAttachment, "id" | "created_at">;
+        Update: Partial<Omit<ComplaintAttachment, "id" | "created_at">>;
+      };
+      complaint_routing_rules: {
+        Row: ComplaintRoutingRule;
+        Insert: Omit<ComplaintRoutingRule, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintRoutingRule, "id" | "created_at">>;
+      };
+      complaint_slas: {
+        Row: ComplaintSLA;
+        Insert: Omit<ComplaintSLA, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ComplaintSLA, "id" | "created_at">>;
+      };
+      complaint_history: {
+        Row: ComplaintHistory;
+        Insert: Omit<ComplaintHistory, "id" | "created_at">;
+        Update: Partial<Omit<ComplaintHistory, "id" | "created_at">>;
       };
     };
     Views: {
@@ -268,7 +370,13 @@ export interface Database {
       transaction_type: "income" | "expense";
       transaction_status: "completed" | "pending" | "cancelled";
       budget_status: "on-track" | "warning" | "critical";
+      invoice_status: "paid" | "pending" | "overdue" | "cancelled";
       tenant_status: "Active" | "Pending" | "Former" | "Blacklisted";
+      inventory_transaction_type: "received" | "issued" | "adjusted";
+      purchase_order_status: "draft" | "ordered" | "partial" | "delivered" | "cancelled";
+      complaint_status: "new" | "in_progress" | "waiting_on_user" | "resolved" | "closed";
+      complaint_priority: "low" | "medium" | "high" | "urgent";
+      complaint_asset_type: "property" | "transport";
     };
   };
 };

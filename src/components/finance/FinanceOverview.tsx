@@ -4,34 +4,49 @@ import { EBITDA } from "./overview/EBITDA";
 import { OperatingExpenses } from "./overview/OperatingExpenses";
 import { RevenueProfitTrend } from "./overview/RevenueProfitTrend";
 import { RevenueByClient } from "./overview/RevenueByClient";
-import { WeeklyCashFlow } from "./overview/WeeklyCashFlow";
-import { ExpenseBreakdown } from "./overview/ExpenseBreakdown";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 
-export function FinanceOverview() {
+interface FinanceOverviewProps {
+  year?: number;
+  month?: number;
+}
+
+export function FinanceOverview({ year, month }: FinanceOverviewProps) {
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold tracking-tight">Finance & Accounting Dashboard</h2>
-      <p className="text-sm text-muted-foreground">Detailed financial performance and revenue metrics</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <DollarSign className="h-5 w-5 text-blue-500" />
+        <h2 className="text-xl font-semibold tracking-tight">Financial Overview</h2>
+      </div>
       
-      {/* Key Metrics Row */}
+      {/* Key Metrics Row - Simplified */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MonthlyRevenue />
-        <GrossMargin />
-        <EBITDA />
-        <OperatingExpenses />
+        <MonthlyRevenue year={year} month={month} />
+        <GrossMargin year={year} month={month} />
+        <EBITDA year={year} month={month} />
+        <OperatingExpenses year={year} month={month} />
       </div>
       
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RevenueProfitTrend />
-        <RevenueByClient />
-      </div>
+      {/* Main Chart - Revenue Profit Trend */}
+      <Card className="p-4">
+        <CardHeader className="px-0 pt-0">
+          <CardTitle className="text-lg font-medium">Revenue & Profit Trend</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <RevenueProfitTrend />
+        </CardContent>
+      </Card>
       
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <WeeklyCashFlow />
-        <ExpenseBreakdown />
-      </div>
+      {/* Secondary Chart - Revenue By Client */}
+      <Card className="p-4">
+        <CardHeader className="px-0 pt-0">
+          <CardTitle className="text-lg font-medium">Revenue By Client</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <RevenueByClient />
+        </CardContent>
+      </Card>
     </div>
   );
 }

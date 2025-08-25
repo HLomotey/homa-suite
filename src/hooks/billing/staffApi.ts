@@ -55,6 +55,7 @@ export const createStaff = async (
       job_title: staff.jobTitle,
       department: staff.department,
       location: staff.location,
+      staff_location_id: staff.staffLocationId,
       employment_status: staff.employmentStatus,
       hire_date: staff.hireDate,
       termination_date: staff.terminationDate,
@@ -126,6 +127,7 @@ export const updateStaff = async (
   if (staff.jobTitle !== undefined) updateData.job_title = staff.jobTitle;
   if (staff.department !== undefined) updateData.department = staff.department;
   if (staff.location !== undefined) updateData.location = staff.location;
+  if (staff.staffLocationId !== undefined) updateData.staff_location_id = staff.staffLocationId;
   if (staff.employmentStatus !== undefined) updateData.employment_status = staff.employmentStatus;
   if (staff.hireDate !== undefined) updateData.hire_date = staff.hireDate;
   if (staff.terminationDate !== undefined) updateData.termination_date = staff.terminationDate;
@@ -195,7 +197,10 @@ export const getAllStaff = async (): Promise<FrontendBillingStaff[]> => {
   
   const { data, error } = await supabase
     .from("billing_staff")
-    .select("*")
+    .select(`
+      *,
+      staff_locations (id, location_code, location_description)
+    `)
     .order("legal_name", { ascending: true });
 
   if (error) {
@@ -203,7 +208,16 @@ export const getAllStaff = async (): Promise<FrontendBillingStaff[]> => {
     throw new Error(error.message);
   }
 
-  return data.map(mapDatabaseBillingStaffToFrontend);
+  return data.map(staff => {
+    const mappedStaff = mapDatabaseBillingStaffToFrontend(staff);
+    
+    // Add staff location name if available
+    if (staff.staff_locations) {
+      mappedStaff.staffLocationName = `${staff.staff_locations.location_code} - ${staff.staff_locations.location_description}`;
+    }
+    
+    return mappedStaff;
+  });
 };
 
 /**
@@ -215,7 +229,10 @@ export const getDrivers = async (): Promise<FrontendBillingStaff[]> => {
   
   const { data, error } = await supabase
     .from("billing_staff")
-    .select("*")
+    .select(`
+      *,
+      staff_locations (id, location_code, location_description)
+    `)
     .ilike("department", "%driver%") // Case-insensitive search for "driver" in department
     .order("legal_name", { ascending: true });
 
@@ -224,5 +241,53 @@ export const getDrivers = async (): Promise<FrontendBillingStaff[]> => {
     throw new Error(error.message);
   }
 
-  return data.map(mapDatabaseBillingStaffToFrontend);
+  return data.map(staff => {
+    const mappedStaff = mapDatabaseBillingStaffToFrontend(staff);
+    
+    // Add staff location name if available
+    if (staff.staff_locations) {
+      mappedStaff.staffLocationName = `${staff.staff_locations.location_code} - ${staff.staff_locations.location_description}`;
+    }
+    
+    return mappedStaff;
+  });
+};
+
+/**
+ * Get staff members active during a specific billing period
+ * @param startDate Start date of the billing period
+ * @param endDate End date of the billing period
+ * @returns Promise with array of staff members active during the period
+ */
+export const getStaffByBillingPeriod = async (
+  startDate: string,
+  endDate: string
+): Promise<FrontendBillingStaff[]> => {
+  console.log(`Fetching staff members active during period ${startDate} to ${endDate}`);
+  
+  const { data, error } = await supabase
+    .from("billing_staff")
+    .select(`
+      *,
+      staff_locations (id, location_code, location_description)
+    `)
+    .or(`hire_date.lte.${endDate},and(termination_date.gte.${startDate})`)
+    .or(`employment_status.eq.active,and(hire_date.lte.${endDate})`)
+    .order("legal_name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching staff for billing period:", error);
+    throw new Error(error.message);
+  }
+
+  return data.map(staff => {
+    const mappedStaff = mapDatabaseBillingStaffToFrontend(staff);
+    
+    // Add staff location name if available
+    if (staff.staff_locations) {
+      mappedStaff.staffLocationName = `${staff.staff_locations.location_code} - ${staff.staff_locations.location_description}`;
+    }
+    
+    return mappedStaff;
+  });
 };
