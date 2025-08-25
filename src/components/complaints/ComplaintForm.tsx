@@ -13,6 +13,7 @@ import { useUsersByRole } from "@/hooks/user-profile/useEnhancedUsers";
 import { FrontendUser } from "@/integration/supabase/types";
 import { useProperties } from "@/hooks/property/useProperty";
 import { useVehicle } from "@/hooks/transport/useVehicle";
+import useStaffLocation from "@/hooks/transport/useStaffLocation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +44,7 @@ import { SearchableSelect, SearchableSelectOption } from "@/components/ui/search
 const complaintFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100, "Title must be less than 100 characters"),
   description: z.string().min(10, "Description must be at least 10 characters").max(1000, "Description must be less than 1000 characters"),
-  assetType: z.enum(["property", "transport"]),
+  assetType: z.enum(["property", "hotel", "vehicle"]),
   assetId: z.string().min(1, "Please enter an asset ID"),
   categoryId: z.string().min(1, "Please enter a category"),
   subcategoryId: z.string().optional(),
@@ -71,6 +72,9 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
   
   // Fetch vehicles using the same hook as transport page
   const { vehicles, loading: isLoadingVehicles } = useVehicle();
+  
+  // Fetch staff locations for the location dropdown
+  const { staffLocations, loading: isLoadingStaffLocations } = useStaffLocation();
   
   // Fetch supervisors
   const { users: supervisors, loading: isLoadingSupervisors } = useUsersByRole("supervisor");
@@ -263,6 +267,14 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                         </FormItem>
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl>
+                            <RadioGroupItem value="hotel" className="border-blue-500 text-blue-500" />
+                          </FormControl>
+                          <FormLabel className="font-normal text-white">
+                            Hotel
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
                             <RadioGroupItem value="vehicle" className="border-blue-500 text-blue-500" />
                           </FormControl>
                           <FormLabel className="font-normal text-white">
@@ -272,7 +284,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                       </RadioGroup>
                     </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
-                      Select whether this complaint is about a property or a vehicle.
+                      Select whether this complaint is about a property, hotel, or a vehicle.
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -373,15 +385,25 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-blue-400">Priority <span className="text-blue-400">*</span></FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter priority (low, medium, high, urgent)"
-                        {...field}
-                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue placeholder="Select priority level" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormDescription className="text-blue-300 text-xs">
-                      Enter the priority level for this complaint (low, medium, high, urgent).
+                      Select the priority level for this complaint.
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -394,15 +416,24 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-blue-400">Preferred Contact Method <span className="text-blue-400">*</span></FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter contact method (email, phone, both)"
-                        {...field}
-                        className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue placeholder="Select contact method" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white">
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
+                        <SelectItem value="both">Both</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormDescription className="text-blue-300 text-xs">
-                      How would you prefer to be contacted about this complaint? (email, phone, both)
+                      How would you prefer to be contacted about this complaint?
                     </FormDescription>
                     <FormMessage className="text-red-400" />
                   </FormItem>
@@ -416,15 +447,34 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-blue-400">Location</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Specific location (optional)" 
-                      {...field} 
-                      className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </FormControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="bg-[#0a1428] border-[#1e3a5f] text-white focus:border-blue-500 focus:ring-blue-500">
+                        <SelectValue placeholder="Select a location" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-[#0a1428] border-[#1e3a5f] text-white max-h-[300px]">
+                      {isLoadingStaffLocations ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-400 mr-2" />
+                          <span>Loading locations...</span>
+                        </div>
+                      ) : staffLocations.length === 0 ? (
+                        <div className="p-2 text-center">No locations found</div>
+                      ) : (
+                        staffLocations.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.locationDescription}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                   <FormDescription className="text-blue-300 text-xs">
-                    Optionally provide a specific location related to this complaint (e.g., "Room 302" or "Parking Lot B").
+                    Select a location from the staff locations list.
                   </FormDescription>
                   <FormMessage className="text-red-400" />
                 </FormItem>
@@ -436,25 +486,43 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
               name="supervisorId"
               render={({ field }) => {
                 const selectedProperty = properties.find(p => p.id === form.watch("assetId"));
-                const managerName = selectedProperty?.managerName;
+                const selectedLocation = staffLocations.find(loc => loc.id === form.watch("location"));
+                
+                // Get manager based on selected asset type and selection
+                let managerName = "";
+                let managerId = "";
+                
+                if (assetType === "property" && selectedProperty?.managerName) {
+                  managerName = selectedProperty.managerName;
+                  managerId = selectedProperty.managerId || "";
+                } else if (selectedLocation?.externalStaffName) {
+                  managerName = selectedLocation.externalStaffName;
+                  managerId = selectedLocation.externalStaffId || "";
+                }
+                
+                // Update the form value when manager changes
+                useEffect(() => {
+                  if (managerId) {
+                    field.onChange(managerId);
+                  }
+                }, [managerId]);
                 
                 return (
                   <FormItem>
-                    <FormLabel className="text-blue-400">Property Manager</FormLabel>
+                    <FormLabel className="text-blue-400">Manager</FormLabel>
                     <FormControl>
                       <Input
                         placeholder={managerName || "No manager assigned"}
-                        {...field}
-                        value={managerName || field.value || ""}
+                        value={managerName || ""}
                         readOnly
                         className="bg-[#0a1428] border-[#1e3a5f] text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 cursor-not-allowed opacity-75"
                       />
                     </FormControl>
                     <FormDescription className="text-blue-300 text-xs">
                       {managerName ? (
-                        <>Automatically assigned based on selected property</>
+                        <>Automatically assigned based on selected {assetType === "property" ? "property" : "location"}</>
                       ) : (
-                        "Property manager will be assigned when you select a property"
+                        "Manager will be assigned when you select a property or location"
                       )}
                     </FormDescription>
                     <FormMessage className="text-red-400" />

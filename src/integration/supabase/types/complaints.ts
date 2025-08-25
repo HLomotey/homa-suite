@@ -22,7 +22,8 @@ export type ComplaintPriority =
 // Asset type enum
 export type ComplaintAssetType = 
   | "property" 
-  | "transport";
+  | "hotel"
+  | "vehicle";
 
 // Base complaint type
 export interface Complaint {

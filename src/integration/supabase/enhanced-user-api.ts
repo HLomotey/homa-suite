@@ -62,7 +62,6 @@ export interface Role {
   name: string;
   display_name: string;
   description: string | null;
-  permissions: string[] | null;
   is_system_role: boolean;
   is_active: boolean;
   sort_order: number;
@@ -202,7 +201,7 @@ export const mapProfileWithRoleToFrontendUser = (
     roleId: userRoleObj?.id || undefined,
     department: profile.department || '',
     status: profile.status === 'active' ? 'active' : 'inactive',
-    permissions: userRoleObj?.permissions || [],
+    permissions: [],
     createdAt: profile.created_at,
     // avatar / bio left undefined since Profile doesn't define those fields
   };
@@ -300,8 +299,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
           roles!inner (
             id,
             name,
-            display_name,
-            permissions
+            display_name
           )
         `)
         .eq('roles.name', roleName)
@@ -343,7 +341,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
           department: profile.department || '',
           status: 'active',
           lastActive: new Date().toISOString(),
-          permissions: userRole?.permissions || [],
+          permissions: [],
           createdAt: profile.created_at || new Date().toISOString(),
         };
       });
@@ -419,8 +417,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
           roles (
             id,
             name,
-            display_name,
-            permissions
+            display_name
           )
         `)
         .in('user_id', userIds)
@@ -449,7 +446,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
           department: profile.department || '',
           status: 'active',
           lastActive: new Date().toISOString(),
-          permissions: userRole?.permissions || [],
+          permissions: [],
           createdAt: profile.created_at || new Date().toISOString(),
         };
       });
@@ -525,8 +522,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
           roles (
             id,
             name,
-            display_name,
-            permissions
+            display_name
           )
         `)
         .in('user_id', userIds)
@@ -555,7 +551,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
           department: profile.department || '',
           status: 'active',
           lastActive: new Date().toISOString(),
-          permissions: userRole?.permissions || [],
+          permissions: [],
           createdAt: profile.created_at || new Date().toISOString(),
         };
       });
