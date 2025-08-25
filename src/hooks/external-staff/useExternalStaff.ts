@@ -30,6 +30,7 @@ export interface UseExternalStaffReturn {
   setStatus: (status: StaffStatus) => void;
   stats: StaffStats;
   fetchExternalStaff: () => Promise<void>;
+  fetchAllExternalStaff: () => Promise<void>;
   fetchStats: () => Promise<void>;
   createExternalStaff: (staff: Partial<FrontendExternalStaff>) => Promise<FrontendExternalStaff | null>;
   updateExternalStaff: (id: string, updates: Partial<FrontendExternalStaff>) => Promise<FrontendExternalStaff | null>;
@@ -108,6 +109,41 @@ export function useExternalStaff(): UseExternalStaffReturn {
       setExternalStaff(data || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch external staff';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllExternalStaff = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      let query = supabase
+        .from('external_staff')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Apply status filter if not 'all'
+      if (status === 'active') {
+        query = query.is('TERMINATION DATE', null);
+      } else if (status === 'terminated') {
+        query = query.not('TERMINATION DATE', 'is', null);
+      }
+
+      const { data, error: fetchError } = await query;
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      // No mapping needed as we're using the same interface
+      setExternalStaff(data || []);
+      setTotalCount(data?.length || 0);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch all external staff';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -334,6 +370,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
     setStatus,
     stats,
     fetchExternalStaff,
+    fetchAllExternalStaff,
     fetchStats,
     createExternalStaff,
     updateExternalStaff,
