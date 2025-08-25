@@ -41,7 +41,7 @@ import {
 export function StaffLocationsTab() {
   const { locations } = useLocation();
   const { staffLocations, createStaffLocation, updateStaffLocation, deleteStaffLocation, loading, error } = useStaffLocation();
-  const { externalStaff, loading: loadingExternalStaff } = useExternalStaff();
+  const { externalStaff, loading: loadingExternalStaff, fetchExternalStaff, setStatus } = useExternalStaff();
   
   // External staff search state
   const [searchTerm, setSearchTerm] = useState("");
@@ -114,9 +114,12 @@ export function StaffLocationsTab() {
     externalStaffName: "",
   });
 
-  // No need to fetch staff locations as they're already fetched by the useStaffLocation hook
+  // Set external staff status to active and fetch on component mount
   useEffect(() => {
-    // staffLocations are already available from the useStaffLocation hook
+    // Set status to active to only show active staff
+    setStatus('active');
+    // Fetch external staff
+    fetchExternalStaff();
   }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,11 +342,24 @@ export function StaffLocationsTab() {
               ) : (
                 <div className="mt-2">
                   <SearchableSelect
-                    options={externalStaff.map((staff): SearchableSelectOption => ({
-                      value: staff.id,
-                      label: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} - ${staff["JOB TITLE"] || ''}`,
-                      searchText: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} ${staff["JOB TITLE"] || ''} ${staff["WORK E-MAIL"] || ''} ${staff["HOME DEPARTMENT"] || ''}`
-                    }))}
+                    options={externalStaff.map((staff): SearchableSelectOption => {
+                      const firstName = staff["PAYROLL FIRST NAME"] || '';
+                      const lastName = staff["PAYROLL LAST NAME"] || '';
+                      const jobTitle = staff["JOB TITLE"] || '';
+                      const email = staff["WORK E-MAIL"] || '';
+                      const department = staff["HOME DEPARTMENT"] || '';
+                      
+                      // Create variations of the name for better search matching
+                      const fullName = `${firstName} ${lastName}`.trim();
+                      const reverseName = `${lastName} ${firstName}`.trim();
+                      const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : '';
+                      
+                      return {
+                        value: staff.id,
+                        label: `${firstName} ${lastName} - ${jobTitle}`,
+                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${jobTitle} ${email} ${department}`
+                      };
+                    })}
                     value={formData.externalStaffId}
                     placeholder="Search and select external staff member..."
                     emptyMessage="No external staff found."
