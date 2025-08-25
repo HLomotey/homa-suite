@@ -42,11 +42,29 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (!searchQuery) return options;
     
     const query = searchQuery.toLowerCase();
-    return options.filter((option) => {
+    console.log("SearchableSelect - Search Query:", query);
+    console.log("SearchableSelect - Options:", options);
+    
+    const filtered = options.filter((option) => {
       const labelMatch = option.label.toLowerCase().includes(query);
       const searchTextMatch = option.searchText?.toLowerCase().includes(query);
-      return labelMatch || searchTextMatch;
+      const match = labelMatch || searchTextMatch;
+      
+      // Debug log for Afua search
+      if (query === 'afua' || (option.label.toLowerCase().includes('afua') || option.searchText?.toLowerCase().includes('afua'))) {
+        console.log("SearchableSelect - Afua Option:", {
+          option,
+          labelMatch,
+          searchTextMatch,
+          match
+        });
+      }
+      
+      return match;
     });
+    
+    console.log("SearchableSelect - Filtered Options:", filtered);
+    return filtered;
   }, [options, searchQuery]);
 
   // Get selected option

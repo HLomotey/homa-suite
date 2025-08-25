@@ -354,10 +354,14 @@ export function StaffLocationsTab() {
                       const reverseName = `${lastName} ${firstName}`.trim();
                       const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : '';
                       
+                      // Additional variations to improve search matching
+                      const firstNameOnly = firstName.trim();
+                      const lastNameOnly = lastName.trim();
+                      
                       return {
                         value: staff.id,
                         label: `${firstName} ${lastName} - ${jobTitle}`,
-                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${jobTitle} ${email} ${department}`
+                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`
                       };
                     })}
                     value={formData.externalStaffId}

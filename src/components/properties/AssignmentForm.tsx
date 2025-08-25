@@ -30,7 +30,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   rooms,
 }) => {
   const { toast } = useToast();
-  const { externalStaff, loading } = useExternalStaff();
+  const { externalStaff, loading, fetchExternalStaff, setStatus } = useExternalStaff();
 
   const [formData, setFormData] = React.useState<
     Omit<FrontendAssignment, "id">
@@ -61,6 +61,24 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     console.log("AssignmentForm - Rooms:", rooms);
     console.log("AssignmentForm - Filtered Rooms:", filteredRooms);
   }, [properties, rooms, filteredRooms]);
+
+  // Set external staff status to active and fetch on component mount
+  React.useEffect(() => {
+    // Set status to active to only show active staff
+    setStatus('active');
+    // Fetch external staff
+    fetchExternalStaff();
+  }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  // Debug logging for external staff data
+  React.useEffect(() => {
+    console.log("AssignmentForm - External Staff Data:", externalStaff);
+    // Check if Afua is in the data
+    const afuaStaff = externalStaff.filter(staff => 
+      (staff["PAYROLL FIRST NAME"] || '').toLowerCase().includes('afua') || 
+      (staff["PAYROLL LAST NAME"] || '').toLowerCase().includes('afua'));
+    console.log("AssignmentForm - Afua Staff Found:", afuaStaff);
+  }, [externalStaff]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -158,11 +176,28 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               ) : (
                 <div className="mt-2">
                   <SearchableSelect
-                    options={externalStaff.map((staff): SearchableSelectOption => ({
-                      value: staff.id,
-                      label: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} - ${staff["JOB TITLE"] || ''}`,
-                      searchText: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} ${staff["JOB TITLE"] || ''} ${staff["HOME DEPARTMENT"] || ''}`
-                    }))}
+                    options={externalStaff.map((staff): SearchableSelectOption => {
+                      const firstName = staff["PAYROLL FIRST NAME"] || '';
+                      const lastName = staff["PAYROLL LAST NAME"] || '';
+                      const jobTitle = staff["JOB TITLE"] || '';
+                      const email = staff["WORK E-MAIL"] || '';
+                      const department = staff["HOME DEPARTMENT"] || '';
+                      
+                      // Create variations of the name for better search matching
+                      const fullName = `${firstName} ${lastName}`.trim();
+                      const reverseName = `${lastName} ${firstName}`.trim();
+                      const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : '';
+                      
+                      // Additional variations to improve search matching
+                      const firstNameOnly = firstName.trim();
+                      const lastNameOnly = lastName.trim();
+                      
+                      return {
+                        value: staff.id,
+                        label: `${firstName} ${lastName} - ${jobTitle}`,
+                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`
+                      };
+                    })}
                     value={formData.staffId}
                     placeholder="Search and select external staff member..."
                     emptyMessage="No external staff members found."
