@@ -2,7 +2,7 @@ import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinan
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Send, RefreshCw } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Send, RefreshCw, BarChart3, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -13,6 +13,10 @@ export function FinanceAnalytics() {
 
   const { data: financeData, isLoading, error, isError, refetch } = useFinanceAnalytics(selectedYear, selectedMonth);
   const { data: revenueData, isLoading: isRevenueLoading, refetch: refetchRevenue } = useRevenueMetrics(selectedYear, selectedMonth);
+  
+  // Calculate derived metrics
+  const revenueGrowth = revenueData?.growthRate || 0;
+  const paidPercentage = financeData?.totalInvoices > 0 ? (financeData.paidInvoices / financeData.totalInvoices) * 100 : 0;
   
   const handleRefresh = () => {
     refetch();
@@ -34,29 +38,43 @@ export function FinanceAnalytics() {
   if (isLoading || isRevenueLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Finance Analytics</h2>
-          <Button variant="outline" size="sm" disabled>
-            <RefreshCw className="h-4 w-4 mr-2" />
+        <div className="flex justify-between items-center bg-gradient-to-r from-blue-900 to-indigo-900 p-4 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <DollarSign className="h-6 w-6 mr-2 text-blue-300" />
+            Finance Analytics
+          </h2>
+          <Button variant="secondary" size="sm" disabled className="bg-blue-800 hover:bg-blue-700 text-white border-none">
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             Refreshing...
           </Button>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array(8)
+          {Array(4)
             .fill(0)
             .map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-8 w-36 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 w-24 bg-gray-200 rounded"></div>
-                </CardContent>
-              </Card>
+              <div key={i} className="bg-[#0a101f] border border-blue-900/30 rounded-lg shadow-md overflow-hidden animate-pulse">
+                <div className="p-4">
+                  <div className="h-5 w-5 bg-blue-800/50 rounded-full mb-3"></div>
+                  <div className="h-4 w-24 bg-blue-800/50 rounded mb-3"></div>
+                  <div className="h-8 w-36 bg-blue-800/50 rounded mb-2"></div>
+                  <div className="h-4 w-24 bg-blue-800/50 rounded"></div>
+                </div>
+              </div>
             ))}
+        </div>
+        <div className="bg-[#0a101f] border border-blue-900/30 rounded-lg shadow-md overflow-hidden animate-pulse">
+          <div className="p-4 border-b border-blue-900/30">
+            <div className="flex items-center">
+              <div className="h-5 w-5 bg-blue-800/50 rounded-full mr-2"></div>
+              <div>
+                <div className="h-5 w-32 bg-blue-800/50 rounded mb-1"></div>
+                <div className="h-4 w-24 bg-blue-800/50 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 flex justify-center items-center">
+            <div className="h-40 w-full bg-blue-800/20 rounded"></div>
+          </div>
         </div>
       </div>
     );
@@ -66,33 +84,43 @@ export function FinanceAnalytics() {
   if (isError) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Finance Analytics</h2>
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
+        <div className="flex justify-between items-center bg-gradient-to-r from-blue-900 to-indigo-900 p-4 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <DollarSign className="h-6 w-6 mr-2 text-blue-300" />
+            Finance Analytics
+          </h2>
+          <Button variant="secondary" size="sm" onClick={handleRefresh} className="bg-blue-800 hover:bg-blue-700 text-white border-none">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Data
           </Button>
         </div>
-        <Card className="border-red-300">
-          <CardHeader>
-            <CardTitle className="text-red-500">Error Loading Finance Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
-            <Button className="mt-4" variant="outline" onClick={handleRefresh}>
+        <div className="bg-[#0a101f] border border-red-900/30 rounded-lg shadow-md overflow-hidden">
+          <div className="p-4 border-b border-red-900/30">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2 text-red-400" />
+              <h3 className="text-lg font-medium text-red-300">Error Loading Finance Data</h3>
+            </div>
+          </div>
+          <div className="p-6">
+            <p className="text-white mb-4">{error instanceof Error ? error.message : 'An unknown error occurred'}</p>
+            <Button className="bg-red-600 hover:bg-red-700 text-white border-none" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Finance Analytics</h2>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>
+      <div className="flex justify-between items-center bg-gradient-to-r from-blue-900 to-indigo-900 p-4 rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-white flex items-center">
+          <DollarSign className="h-6 w-6 mr-2 text-blue-300" />
+          Finance Analytics
+        </h2>
+        <Button variant="secondary" size="sm" onClick={handleRefresh} className="bg-blue-800 hover:bg-blue-700 text-white border-none">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh Data
         </Button>
@@ -100,219 +128,182 @@ export function FinanceAnalytics() {
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Revenue Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(financeData?.totalRevenue)}</div>
-            {revenueData && (
-              <p className="text-xs text-muted-foreground">
-                {revenueData.growthRate > 0 ? (
-                  <span className="text-green-500 flex items-center">
-                    <ArrowUpRight className="h-4 w-4 mr-1" />
-                    {revenueData.growthRate.toFixed(1)}% from last month
-                  </span>
-                ) : (
-                  <span className="text-red-500 flex items-center">
-                    <ArrowDownRight className="h-4 w-4 mr-1" />
-                    {Math.abs(revenueData.growthRate).toFixed(1)}% from last month
-                  </span>
-                )}
+        <div className="bg-[#0a101f] border border-green-900/30 rounded-lg shadow-md overflow-hidden">
+          <div className="bg-gradient-to-br from-green-900/50 to-emerald-900/50 p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500 opacity-10 rounded-full -mt-8 -mr-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-green-500 opacity-10 rounded-full -mb-4 -ml-4" />
+            <DollarSign className="h-8 w-8 text-green-400 mb-2" />
+            <h3 className="text-lg font-medium text-white">Total Revenue</h3>
+            <div className="mt-1">
+              <div className="text-3xl font-bold text-white">
+                {formatCurrency(financeData?.totalRevenue || 0)}
+              </div>
+              <p className="text-green-300 flex items-center">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                {revenueGrowth > 0 ? "+" : ""}
+                {revenueGrowth.toFixed(1)}% from last month
               </p>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
 
         {/* Total Invoices Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{financeData?.totalInvoices || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(financeData?.averageInvoiceValue)} average value
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-[#0a101f] border border-blue-900/30 rounded-lg shadow-md overflow-hidden">
+          <div className="bg-gradient-to-br from-blue-900/50 to-blue-900/50 p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500 opacity-10 rounded-full -mt-8 -mr-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-blue-500 opacity-10 rounded-full -mb-4 -ml-4" />
+            <FileText className="h-8 w-8 text-blue-400 mb-2" />
+            <h3 className="text-lg font-medium text-white">Total Invoices</h3>
+            <div className="mt-1">
+              <div className="text-3xl font-bold text-white">
+                {financeData?.totalInvoices || 0}
+              </div>
+              <p className="text-blue-300">
+                ${financeData?.averageInvoiceValue.toFixed(2)} average value
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Paid Invoices Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Paid Invoices</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{financeData?.paidInvoices || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {financeData && financeData.totalInvoices > 0
-                ? ((financeData.paidInvoices / financeData.totalInvoices) * 100).toFixed(0)
-                : 0}% of total
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-[#0a101f] border border-indigo-900/30 rounded-lg shadow-md overflow-hidden">
+          <div className="bg-gradient-to-br from-indigo-900/50 to-indigo-900/50 p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500 opacity-10 rounded-full -mt-8 -mr-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-indigo-500 opacity-10 rounded-full -mb-4 -ml-4" />
+            <CheckCircle className="h-8 w-8 text-indigo-400 mb-2" />
+            <h3 className="text-lg font-medium text-white">Paid Invoices</h3>
+            <div className="mt-1">
+              <div className="text-3xl font-bold text-white">
+                {financeData?.paidInvoices || 0}
+              </div>
+              <p className="text-indigo-300">
+                {paidPercentage.toFixed(0)}% of total
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Outstanding Invoices Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outstanding Invoices</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0)}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(
-                financeData?.averageInvoiceValue && financeData?.averageInvoiceValue > 0
-                  ? financeData.averageInvoiceValue * ((financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0))
-                  : 0
-              )}{" "}
-              outstanding
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-[#0a101f] border border-purple-900/30 rounded-lg shadow-md overflow-hidden">
+          <div className="bg-gradient-to-br from-purple-900/50 to-purple-900/50 p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500 opacity-10 rounded-full -mt-8 -mr-8" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-purple-500 opacity-10 rounded-full -mb-4 -ml-4" />
+            <AlertCircle className="h-8 w-8 text-purple-400 mb-2" />
+            <h3 className="text-lg font-medium text-white">Outstanding Invoices</h3>
+            <div className="mt-1">
+              <div className="text-3xl font-bold text-white">
+                {(financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0)}
+              </div>
+              <p className="text-purple-300">
+                {formatCurrency(
+                  financeData?.averageInvoiceValue
+                    ? financeData.averageInvoiceValue * ((financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0))
+                    : 0
+                )}{" "}
+                outstanding
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Monthly Revenue Chart */}
-      <Card className="col-span-4">
-        <CardHeader>
-          <CardTitle>Monthly Revenue</CardTitle>
-          <CardDescription>
-            Revenue trends over the past {financeData?.monthlyRevenue?.length || 0} months
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {financeData?.monthlyRevenue && financeData.monthlyRevenue.length > 0 ? (
-            <div className="h-[200px]">
-              <div className="flex h-full items-end gap-2">
-                {financeData.monthlyRevenue.map((month, index) => {
-                  const maxRevenue = Math.max(...financeData.monthlyRevenue.map((m) => m.revenue));
-                  const height = maxRevenue > 0 ? (month.revenue / maxRevenue) * 100 : 0;
-                  
-                  return (
-                    <div key={index} className="relative flex h-full w-full flex-col justify-end">
-                      <div
-                        className="bg-primary rounded-md w-full animate-in"
-                        style={{ height: `${height}%` }}
-                      />
-                      <span className="mt-1 text-center text-xs text-muted-foreground">
-                        {month.month}
-                      </span>
-                      <span className="text-center text-xs font-medium">
-                        {formatCurrency(month.revenue)}
-                      </span>
-                    </div>
-                  );
-                })}
+
+      <div className="grid gap-4 md:grid-cols-1">
+        {/* Invoice Status Distribution */}
+        <div className="bg-[#0a101f] border border-blue-900/30 rounded-lg shadow-md overflow-hidden">
+          <div className="p-4 border-b border-blue-900/30">
+            <div className="flex items-center">
+              <TrendingUp className="h-5 w-5 mr-2 text-blue-400" />
+              <div>
+                <h3 className="text-lg font-medium text-white">Current status</h3>
+                <p className="text-sm text-blue-300">of all invoices</p>
               </div>
             </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">No monthly revenue data available</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Invoice Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Invoice Status Distribution</CardTitle>
-            <CardDescription>Current status of all invoices</CardDescription>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="p-6">
             {financeData?.statusDistribution && financeData.statusDistribution.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {financeData.statusDistribution.map((status, index) => {
                   let badgeColor = "";
+                  let progressColor = "";
                   let icon = null;
 
                   switch (status.status.toLowerCase()) {
                     case "paid":
-                      badgeColor = "bg-green-100 text-green-800";
+                      badgeColor = "bg-green-900/40 text-green-300 border-green-800/50";
+                      progressColor = "bg-green-500";
                       icon = <CheckCircle className="h-4 w-4 mr-1" />;
                       break;
                     case "pending":
-                      badgeColor = "bg-yellow-100 text-yellow-800";
+                      badgeColor = "bg-yellow-900/40 text-yellow-300 border-yellow-800/50";
+                      progressColor = "bg-yellow-500";
                       icon = <Clock className="h-4 w-4 mr-1" />;
                       break;
                     case "overdue":
-                      badgeColor = "bg-red-100 text-red-800";
+                      badgeColor = "bg-red-900/40 text-red-300 border-red-800/50";
+                      progressColor = "bg-red-500";
                       icon = <AlertCircle className="h-4 w-4 mr-1" />;
                       break;
                     case "sent":
-                      badgeColor = "bg-blue-100 text-blue-800";
+                      badgeColor = "bg-blue-900/40 text-blue-300 border-blue-800/50";
+                      progressColor = "bg-blue-500";
                       icon = <Send className="h-4 w-4 mr-1" />;
                       break;
                     default:
-                      badgeColor = "bg-gray-100 text-gray-800";
+                      badgeColor = "bg-gray-900/40 text-gray-300 border-gray-800/50";
+                      progressColor = "bg-gray-500";
                   }
 
                   return (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Badge className={`mr-2 ${badgeColor} flex items-center`}>
-                          {icon}
-                          {status.status}
-                        </Badge>
-                        <span>{status.count} invoices</span>
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Badge className={`mr-2 ${badgeColor} flex items-center shadow-sm`}>
+                            {icon}
+                            {status.status}
+                          </Badge>
+                          <span className="text-white">{status.count} invoices</span>
+                        </div>
+                        <span className="text-sm font-medium text-white">{status.percentage.toFixed(0)}%</span>
                       </div>
-                      <span className="text-sm font-medium">{status.percentage.toFixed(0)}%</span>
+                      <div className="w-full bg-blue-900/30 rounded-full h-2.5">
+                        <div 
+                          className={`${progressColor} h-2.5 rounded-full`} 
+                          style={{ width: `${status.percentage}%` }}
+                        ></div>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">No status distribution data available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Clients */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Clients</CardTitle>
-            <CardDescription>Clients by revenue</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {financeData?.topClients && financeData.topClients.length > 0 ? (
-              <div className="space-y-4">
-                {financeData.topClients.map((client, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{client.client_name || 'Unknown Client'}</p>
-                      <p className="text-xs text-muted-foreground">{client.invoice_count} invoices</p>
-                    </div>
-                    <p className="text-sm font-medium">{formatCurrency(client.total_revenue)}</p>
-                  </div>
-                ))}
+              <div className="flex flex-col items-center justify-center py-12">
+                <TrendingUp className="h-12 w-12 text-blue-800 mb-3" />
+                <p className="text-center text-blue-400">No status distribution data available</p>
               </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">No client data available</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
       
       {/* Data Completeness Indicator */}
       {financeData && !financeData.isDataComplete && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="pt-6">
+        <div className="bg-amber-900/30 border border-amber-800/50 rounded-lg shadow-md">
+          <div className="p-4">
             <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-amber-500 mr-2" />
-              <p className="text-amber-800">
+              <AlertCircle className="h-5 w-5 text-amber-400 mr-2" />
+              <p className="text-amber-300">
                 Note: Some finance data may be incomplete due to large dataset size. The displayed metrics represent the available data.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
       
       {/* Month/Year Selector */}
       <div className="flex justify-end space-x-2">
         <Button
-          variant="outline"
+          className="bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md"
           size="sm"
           onClick={() => {
             const date = new Date();
@@ -325,7 +316,7 @@ export function FinanceAnalytics() {
       </div>
       
       {/* Data Source Information */}
-      <div className="text-xs text-muted-foreground text-right">
+      <div className="text-xs text-blue-400 text-right p-2 inline-block ml-auto mt-2">
         Data source: finance_invoices table | Last updated: {new Date().toLocaleString()}
       </div>
     </div>
