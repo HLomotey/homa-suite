@@ -33,6 +33,7 @@ const Operations = lazy(() => import("@/pages/Operations"));
 const Utilities = lazy(() => import("@/pages/Utilities"));
 const UploadFinance = lazy(() => import("@/pages/UploadFinance"));
 const ActivityLogPage = lazy(() => import("@/pages/ActivityLogPage"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 // Lazy load HR components
 const HRRecruitment = lazy(() =>
@@ -189,6 +190,14 @@ const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
 
 // Define all application routes
 export const routes: RouteObject[] = [
+  {
+    path: "/reset-password",
+    element: (
+      <LazyWrapper>
+        <ResetPassword />
+      </LazyWrapper>
+    ),
+  },
   {
     path: "/",
     element: <AppLayout />,
