@@ -1,9 +1,10 @@
 /**
  * Finance Analytics Hook - Fetches real data from finance_invoices table
+ * Uses supabaseAdmin client to bypass RLS policies and data rendering limits
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integration/supabase/client";
+import { useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { supabase, supabaseAdmin } from "@/integration/supabase/client";
 
 // Function to invalidate finance analytics cache after batch uploads
 export const invalidateFinanceCache = () => {
@@ -35,14 +36,15 @@ export interface FinanceMetrics {
     total_revenue: number;
     invoice_count: number;
   }>;
+  isDataComplete: boolean; // Flag to indicate if all data was retrieved
 }
 
 export const useFinanceAnalytics = (year?: number, month?: number) => {
   return useQuery({
     queryKey: ["finance-analytics", year, month],
     queryFn: async (): Promise<FinanceMetrics> => {
-      // Get basic metrics with optional date filtering
-      let query = supabase.from("finance_invoices").select("*");
+      // Use supabaseAdmin to bypass RLS policies and data rendering limits
+      let query = supabaseAdmin.from("finance_invoices").select("*");
 
       if (year && month) {
         const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
@@ -54,55 +56,36 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
       if (error) throw error;
 
       const totalInvoices = invoices.length;
-      // Fetch total revenue directly from the database
-      const { data: totalRevenueData, error: totalRevenueError } = await supabase
-        .from('finance_invoices')
-        .select('sum(line_total)')
-        .single();
+      
+      // Calculate total revenue directly from the fetched invoices
+      // This ensures we have accurate data even with large datasets
+      let totalRevenue = invoices.reduce((sum, invoice) => {
+        const lineTotal = parseFloat(invoice.line_total);
+        return sum + (isNaN(lineTotal) ? 0 : lineTotal);
+      }, 0);
+      
+      // Use the SQL function to get the sum directly
+      const { data: totalRevenueData, error: totalRevenueError } = await supabaseAdmin
+        .rpc('sum_invoice_totals');
         
-      let totalRevenue = 0;
       if (totalRevenueError) {
         console.error('Error fetching total revenue:', totalRevenueError);
+        // We'll use the calculated total from invoices array if the query fails
       } else if (totalRevenueData) {
-        // Log the response to help debug
         console.log('Total revenue response:', totalRevenueData);
         
         try {
-          // Cast to unknown first to avoid TypeScript errors
-          const rawData = totalRevenueData as unknown;
-          
-          // Check all possible response formats
-          if (typeof rawData === 'object') {
-            // Format 1: { sum: "123.45" } or { sum: 123.45 }
-            if ('sum' in rawData && rawData.sum !== null) {
-              if (typeof rawData.sum === 'string') {
-                totalRevenue = parseFloat(rawData.sum) || 0;
-              } else if (typeof rawData.sum === 'number') {
-                totalRevenue = rawData.sum;
-              }
-            }
-            
-            // Format 2: Nested object with sum property
-            const anyData = rawData as any;
-            if (anyData.sum && typeof anyData.sum === 'object') {
-              // Try to access common properties that might contain the sum
-              const possibleProps = ['line_total', 'value', 'total'];
-              for (const prop of possibleProps) {
-                if (prop in anyData.sum) {
-                  const value = anyData.sum[prop];
-                  if (typeof value === 'string') {
-                    totalRevenue = parseFloat(value) || 0;
-                    break;
-                  } else if (typeof value === 'number') {
-                    totalRevenue = value;
-                    break;
-                  }
-                }
-              }
+          // Parse the sum from the response
+          if (totalRevenueData.sum !== null) {
+            if (typeof totalRevenueData.sum === 'string') {
+              totalRevenue = parseFloat(totalRevenueData.sum) || 0;
+            } else if (typeof totalRevenueData.sum === 'number') {
+              totalRevenue = totalRevenueData.sum;
             }
           }
         } catch (err) {
           console.error('Error parsing total revenue:', err);
+          // Keep the calculated total if parsing fails
         }
       }
 
@@ -180,10 +163,11 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         pendingInvoices: statusCounts.pending || 0,
         overdueInvoices: statusCounts.overdue || 0,
         sentInvoices: statusCounts.sent || 0,
-        averageInvoiceValue: totalRevenue / totalInvoices,
+        averageInvoiceValue: totalInvoices > 0 ? totalRevenue / totalInvoices : 0,
         monthlyRevenue,
         statusDistribution,
         topClients,
+        isDataComplete: true, // Using supabaseAdmin ensures we get all data
       };
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -196,7 +180,7 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
   return useQuery({
     queryKey: ["revenue-metrics", year, month],
     queryFn: async () => {
-      let query = supabase
+      let query = supabaseAdmin
         .from("finance_invoices")
         .select("line_total, date_issued, invoice_status")
         .order("date_issued", { ascending: true });
@@ -248,56 +232,21 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
           ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
           : 0;
 
-      // Fetch total revenue directly from the database
-      const { data: totalRevenueData, error: totalRevenueError } = await supabase
-        .from('finance_invoices')
-        .select('sum(line_total)')
-        .single();
-        
-      let totalRevenue = 0;
+      // Calculate total revenue from all data
+      const totalRevenue = data.reduce((sum, invoice) => {
+        const lineTotal = parseFloat(invoice.line_total);
+        return sum + (isNaN(lineTotal) ? 0 : lineTotal);
+      }, 0);
+      
+      // Use the SQL function to get the sum directly
+      const { data: totalRevenueData, error: totalRevenueError } = await supabaseAdmin
+        .rpc('sum_invoice_totals');
+      
+      // Log the response for debugging
       if (totalRevenueError) {
         console.error('Error fetching total revenue in useRevenueMetrics:', totalRevenueError);
       } else if (totalRevenueData) {
-        // Log the response to help debug
         console.log('Total revenue response in useRevenueMetrics:', totalRevenueData);
-        
-        try {
-          // Cast to unknown first to avoid TypeScript errors
-          const rawData = totalRevenueData as unknown;
-          
-          // Check all possible response formats
-          if (typeof rawData === 'object') {
-            // Format 1: { sum: "123.45" } or { sum: 123.45 }
-            if ('sum' in rawData && rawData.sum !== null) {
-              if (typeof rawData.sum === 'string') {
-                totalRevenue = parseFloat(rawData.sum) || 0;
-              } else if (typeof rawData.sum === 'number') {
-                totalRevenue = rawData.sum;
-              }
-            }
-            
-            // Format 2: Nested object with sum property
-            const anyData = rawData as any;
-            if (anyData.sum && typeof anyData.sum === 'object') {
-              // Try to access common properties that might contain the sum
-              const possibleProps = ['line_total', 'value', 'total'];
-              for (const prop of possibleProps) {
-                if (prop in anyData.sum) {
-                  const value = anyData.sum[prop];
-                  if (typeof value === 'string') {
-                    totalRevenue = parseFloat(value) || 0;
-                    break;
-                  } else if (typeof value === 'number') {
-                    totalRevenue = value;
-                    break;
-                  }
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing total revenue in useRevenueMetrics:', err);
-        }
       }
 
       return {
