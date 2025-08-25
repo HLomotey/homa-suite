@@ -82,7 +82,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     setStatus("active");
     // Fetch external staff
     fetchExternalStaff();
-  }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchExternalStaff, setStatus]);
 
   // Debug logging for external staff data
   React.useEffect(() => {
