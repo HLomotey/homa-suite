@@ -8,10 +8,10 @@ import {
   PaymentStatus,
 } from "@/integration/supabase/types";
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
-import { useTenants } from "@/hooks/tenant";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
-import { useStaff } from "@/hooks/billing/useStaff";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 
 // Assignment Form Component
 export interface AssignmentFormProps {
@@ -30,8 +30,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   rooms,
 }) => {
   const { toast } = useToast();
-  const { tenants, loading: loadingTenants } = useTenants();
-  const { staff, loading: loadingStaff } = useStaff();
+  const { externalStaff, loading } = useExternalStaff();
 
   const [formData, setFormData] = React.useState<
     Omit<FrontendAssignment, "id">
@@ -151,28 +150,29 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               >
                 Tenant
               </label>
-              {loadingStaff ? (
+              {loading ? (
                 <div className="flex items-center space-x-2 mt-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Loading staff...</span>
+                  <span className="text-sm">Loading external staff...</span>
                 </div>
               ) : (
                 <div className="mt-2">
                   <SearchableSelect
-                    options={staff.map((staffMember): SearchableSelectOption => ({
-                      value: staffMember.id,
-                      label: `${staffMember.legalName || ''} - ${staffMember.department || ''}`,
-                      searchText: `${staffMember.legalName || ''} ${staffMember.department || ''}`
+                    options={externalStaff.map((staff): SearchableSelectOption => ({
+                      value: staff.id,
+                      label: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} - ${staff["JOB TITLE"] || ''}`,
+                      searchText: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''} ${staff["JOB TITLE"] || ''} ${staff["HOME DEPARTMENT"] || ''}`
                     }))}
                     value={formData.staffId}
-                    placeholder="Search and select staff member..."
-                    emptyMessage="No staff members found."
+                    placeholder="Search and select external staff member..."
+                    emptyMessage="No external staff members found."
                     onValueChange={(value) => {
-                      const selectedStaff = staff.find((s) => s.id === value);
+                      const selectedStaff = externalStaff.find((s) => s.id === value);
                       setFormData((prev) => ({
                         ...prev,
                         staffId: value,
-                        staffName: selectedStaff?.legalName || "",
+                        staffName: selectedStaff ? 
+                          `${selectedStaff["PAYROLL FIRST NAME"] || ''} ${selectedStaff["PAYROLL LAST NAME"] || ''}`.trim() : "",
                       }));
                     }}
                   />
