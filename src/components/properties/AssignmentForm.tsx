@@ -76,13 +76,11 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     console.log("AssignmentForm - Filtered Rooms:", filteredRooms);
   }, [properties, rooms, filteredRooms]);
 
-  // Set external staff status to active and fetch on component mount
+  // Set external staff status to active on component mount
   React.useEffect(() => {
     // Set status to active to only show active staff
     setStatus("active");
-    // Fetch external staff
-    fetchExternalStaff();
-  }, [fetchExternalStaff, setStatus]);
+  }, [setStatus]);
 
   // Debug logging for external staff data
   React.useEffect(() => {
