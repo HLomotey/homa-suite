@@ -121,17 +121,11 @@ export function useExternalStaff(): UseExternalStaffReturn {
       setLoading(true);
       setError(null);
 
-      let query = supabase
+      // Fetch ALL staff without any status filtering for complete search capability
+      const query = supabase
         .from('external_staff')
         .select('*')
         .order('created_at', { ascending: false });
-
-      // Apply status filter if not 'all'
-      if (status === 'active') {
-        query = query.is('TERMINATION DATE', null);
-      } else if (status === 'terminated') {
-        query = query.not('TERMINATION DATE', 'is', null);
-      }
 
       const { data, error: fetchError } = await query;
 
