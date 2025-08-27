@@ -206,10 +206,20 @@ export function useExternalStaff(): UseExternalStaffReturn {
         return hireDate.getMonth() === currentMonth && hireDate.getFullYear() === currentYear;
       }).length;
       
-      // Calculate top departments/business units
-      const departmentCounts = allStaff.reduce((acc: Record<string, number>, item) => {
-        const dept = item["BUSINESS UNIT"] || "Unknown";
-        acc[dept] = (acc[dept] || 0) + 1;
+      // Calculate top departments/business units for active staff only
+      const activeStaff = allStaff.filter(item => !item["TERMINATION DATE"]);
+      const departmentCounts = activeStaff.reduce((acc: Record<string, number>, item) => {
+        // Try multiple department fields in order of preference
+        const dept = item["BUSINESS UNIT"] || 
+                    item["HOME DEPARTMENT"] || 
+                    item["LOCATION"] || 
+                    item["COMPANY CODE"] ||
+                    item["JOB CLASS"];
+        
+        // Only count records that have actual department values
+        if (dept && dept.trim() !== "") {
+          acc[dept] = (acc[dept] || 0) + 1;
+        }
         return acc;
       }, {});
       
