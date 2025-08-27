@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integration/supabase/client";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
+import { toast } from "sonner";
 
 /**
  * Robust, paginated fetch for ALL external_staff rows.
@@ -14,7 +15,7 @@ const TABLE_NAME = "external_staff"; // <-- adjust if your table name differs
 const PAGE_SIZE = 1000;              // safe chunk size; tune if needed
 const MAX_RETRIES = 3;
 
-export type StaffStatus = 'active' | 'inactive' | 'all';
+export type StaffStatus = "all" | "active" | "terminated";
 
 export interface PaginationState {
   pageIndex: number;
@@ -24,7 +25,15 @@ export interface PaginationState {
 export interface StaffStats {
   total: number;
   active: number;
-  inactive: number;
+  terminated: number;
+  newThisMonth: number;
+  activeCount: number;
+  terminatedCount: number;
+  recentHiresCount: number;
+  topDepartments: Array<{
+    department: string;
+    count: number;
+  }>;
 }
 
 type UseExternalStaffReturn = {
@@ -41,9 +50,9 @@ type UseExternalStaffReturn = {
   refreshAll: () => Promise<void>;
   /** Kept for API compatibility with your current code */
   fetchAllExternalStaff: () => Promise<void>;
-  createExternalStaff: (staff: any) => Promise<void>;
-  updateExternalStaff: (id: string, staff: any) => Promise<void>;
-  deleteExternalStaff: (id: string) => Promise<void>;
+  createExternalStaff: (data: Partial<FrontendExternalStaff>) => Promise<boolean>;
+  updateExternalStaff: (id: string, data: Partial<FrontendExternalStaff>) => Promise<boolean>;
+  deleteExternalStaff: (id: string) => Promise<boolean>;
   fetchStats: () => Promise<void>;
 };
 
@@ -113,7 +122,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
   const [loading, setLoading] = useState<boolean>(false);
   const [statsLoading, setStatsLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
-  const [status, setStatus] = useState<StaffStatus>('all');
+  const [status, setStatus] = useState<StaffStatus>("all");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10
@@ -122,7 +131,12 @@ export function useExternalStaff(): UseExternalStaffReturn {
   const [stats, setStats] = useState<StaffStats>({
     total: 0,
     active: 0,
-    inactive: 0
+    terminated: 0,
+    newThisMonth: 0,
+    activeCount: 0,
+    terminatedCount: 0,
+    recentHiresCount: 0,
+    topDepartments: []
   });
   const abortRef = useRef<AbortController | null>(null);
 
@@ -154,15 +168,47 @@ export function useExternalStaff(): UseExternalStaffReturn {
     try {
       const { data, error } = await supabase
         .from(TABLE_NAME)
-        .select('status', { count: 'exact' });
+        .select('"TERMINATION DATE", "HIRE DATE", "BUSINESS UNIT"', { count: 'exact' });
       
       if (error) throw error;
       
       const total = data?.length || 0;
-      const active = data?.filter(item => item.status === 'active').length || 0;
-      const inactive = total - active;
+      const terminated = data?.filter(item => item["TERMINATION DATE"]).length || 0;
+      const active = total - terminated;
       
-      setStats({ total, active, inactive });
+      // Calculate new hires this month
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      const newThisMonth = data?.filter(item => {
+        if (!item["HIRE DATE"]) return false;
+        const hireDate = new Date(item["HIRE DATE"]);
+        return hireDate.getMonth() === currentMonth && hireDate.getFullYear() === currentYear;
+      }).length || 0;
+      
+      // Calculate top departments/business units
+      const departmentCounts = data?.reduce((acc: Record<string, number>, item) => {
+        const dept = item["BUSINESS UNIT"] || "Unknown";
+        acc[dept] = (acc[dept] || 0) + 1;
+        return acc;
+      }, {}) || {};
+      
+      const topDepartments = Object.entries(departmentCounts)
+        .map(([department, count]) => ({ department, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5); // Top 5 departments
+      
+      setStats({ 
+        total, 
+        active, 
+        terminated, 
+        newThisMonth,
+        activeCount: active,
+        terminatedCount: terminated,
+        recentHiresCount: newThisMonth,
+        topDepartments
+      });
     } catch (e: any) {
       console.error("fetchStats error:", e);
     } finally {
@@ -170,34 +216,76 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   }, []);
 
-  const createExternalStaff = useCallback(async (staff: any) => {
-    const { error } = await supabase
-      .from(TABLE_NAME)
-      .insert([staff]);
-    
-    if (error) throw error;
-    await load();
-  }, [load]);
+  const createExternalStaff = useCallback(async (data: Partial<FrontendExternalStaff>): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .insert([data]);
+      
+      if (error) {
+        console.error("Create external staff error:", error);
+        toast.error("Failed to create external staff member");
+        return false;
+      }
+      
+      toast.success("External staff member created successfully");
+      await load();
+      await fetchStats();
+      return true;
+    } catch (e: any) {
+      console.error("Create external staff error:", e);
+      toast.error("Failed to create external staff member");
+      return false;
+    }
+  }, [load, fetchStats]);
 
-  const updateExternalStaff = useCallback(async (id: string, staff: any) => {
-    const { error } = await supabase
-      .from(TABLE_NAME)
-      .update(staff)
-      .eq('id', id);
-    
-    if (error) throw error;
-    await load();
-  }, [load]);
+  const updateExternalStaff = useCallback(async (id: string, data: Partial<FrontendExternalStaff>): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .update(data)
+        .eq('id', id);
+      
+      if (error) {
+        console.error("Update external staff error:", error);
+        toast.error("Failed to update external staff member");
+        return false;
+      }
+      
+      toast.success("External staff member updated successfully");
+      await load();
+      await fetchStats();
+      return true;
+    } catch (e: any) {
+      console.error("Update external staff error:", e);
+      toast.error("Failed to update external staff member");
+      return false;
+    }
+  }, [load, fetchStats]);
 
-  const deleteExternalStaff = useCallback(async (id: string) => {
-    const { error } = await supabase
-      .from(TABLE_NAME)
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
-    await load();
-  }, [load]);
+  const deleteExternalStaff = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error("Delete external staff error:", error);
+        toast.error("Failed to delete external staff member");
+        return false;
+      }
+      
+      toast.success("External staff member deleted successfully");
+      await load();
+      await fetchStats();
+      return true;
+    } catch (e: any) {
+      console.error("Delete external staff error:", e);
+      toast.error("Failed to delete external staff member");
+      return false;
+    }
+  }, [load, fetchStats]);
 
   // Expose same API name your component expects
   const fetchAllExternalStaff = useMemo(() => load, [load]);
@@ -205,13 +293,18 @@ export function useExternalStaff(): UseExternalStaffReturn {
   // convenience alias
   const refreshAll = useMemo(() => load, [load]);
 
-  // You can auto-load on mount, or let the caller call .fetchAllExternalStaff()
+  // Auto-load on mount and when status changes
   useEffect(() => {
-    // do nothing here by default; caller chooses when to load
+    load();
     return () => {
       abortRef.current?.abort();
     };
-  }, []);
+  }, [load]);
+
+  // Load stats on mount
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   return {
     externalStaff,
