@@ -30,6 +30,7 @@ export interface StaffStats {
   activeCount: number;
   terminatedCount: number;
   recentHiresCount: number;
+  totalCount: number;
   topDepartments: Array<{
     department: string;
     count: number;
@@ -50,7 +51,9 @@ type UseExternalStaffReturn = {
   refreshAll: () => Promise<void>;
   /** Kept for API compatibility with your current code */
   fetchAllExternalStaff: () => Promise<void>;
+  fetchExternalStaff: () => Promise<void>;
   createExternalStaff: (data: Partial<FrontendExternalStaff>) => Promise<boolean>;
+  bulkCreateExternalStaff: (data: FrontendExternalStaff[]) => Promise<boolean>;
   updateExternalStaff: (id: string, data: Partial<FrontendExternalStaff>) => Promise<boolean>;
   deleteExternalStaff: (id: string) => Promise<boolean>;
   fetchStats: () => Promise<void>;
@@ -158,6 +161,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
     activeCount: 0,
     terminatedCount: 0,
     recentHiresCount: 0,
+    totalCount: 0,
     topDepartments: []
   });
   const abortRef = useRef<AbortController | null>(null);
@@ -236,6 +240,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
         activeCount: active,
         terminatedCount: terminated,
         recentHiresCount: newThisMonth,
+        totalCount: total,
         topDepartments
       });
     } catch (e: any) {
@@ -316,8 +321,32 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   }, [load, fetchStats]);
 
+  const bulkCreateExternalStaff = useCallback(async (data: FrontendExternalStaff[]): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .insert(data);
+      
+      if (error) {
+        console.error("Bulk create external staff error:", error);
+        toast.error("Failed to bulk create external staff members");
+        return false;
+      }
+      
+      toast.success(`Successfully created ${data.length} external staff members`);
+      await load();
+      await fetchStats();
+      return true;
+    } catch (e: any) {
+      console.error("Bulk create external staff error:", e);
+      toast.error("Failed to bulk create external staff members");
+      return false;
+    }
+  }, [load, fetchStats]);
+
   // Expose same API name your component expects
   const fetchAllExternalStaff = useMemo(() => load, [load]);
+  const fetchExternalStaff = useMemo(() => load, [load]);
 
   // convenience alias
   const refreshAll = useMemo(() => load, [load]);
@@ -348,7 +377,9 @@ export function useExternalStaff(): UseExternalStaffReturn {
     stats,
     refreshAll,
     fetchAllExternalStaff,
+    fetchExternalStaff,
     createExternalStaff,
+    bulkCreateExternalStaff,
     updateExternalStaff,
     deleteExternalStaff,
     fetchStats,

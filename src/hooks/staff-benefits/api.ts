@@ -173,9 +173,18 @@ export async function fetchStaffBenefitById(id: string): Promise<FrontendStaffBe
 export async function createStaffBenefit(benefit: CreateStaffBenefit): Promise<FrontendStaffBenefit> {
   console.log('Creating staff benefit with data:', benefit);
   
+  // Clean up date and UUID fields - convert empty strings to null
+  const cleanBenefit = {
+    ...benefit,
+    effective_date: benefit.effective_date || null,
+    expiry_date: benefit.expiry_date || null,
+    staff_location_id: benefit.staff_location_id || null,
+    approved_by: benefit.approved_by || null,
+  };
+  
   const { data, error } = await supabase
     .from('staff_benefits')
-    .insert([benefit])
+    .insert([cleanBenefit])
     .select('*')
     .single();
 
@@ -222,9 +231,19 @@ export async function createStaffBenefit(benefit: CreateStaffBenefit): Promise<F
  * Update an existing staff benefit
  */
 export async function updateStaffBenefit(id: string, updates: UpdateStaffBenefit): Promise<FrontendStaffBenefit> {
+  // Clean up date and UUID fields - convert empty strings to null
+  const cleanUpdates = {
+    ...updates,
+    effective_date: updates.effective_date === "" ? null : updates.effective_date,
+    expiry_date: updates.expiry_date === "" ? null : updates.expiry_date,
+    staff_location_id: updates.staff_location_id === "" ? null : updates.staff_location_id,
+    updated_by: updates.updated_by === "" ? null : updates.updated_by,
+    approved_by: updates.approved_by === "" ? null : updates.approved_by,
+  };
+  
   const { data, error } = await supabase
     .from('staff_benefits')
-    .update(updates)
+    .update(cleanUpdates)
     .eq('id', id)
     .select('*')
     .single();
