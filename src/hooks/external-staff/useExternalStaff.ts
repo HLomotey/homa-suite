@@ -1,374 +1,140 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integration/supabase/client';
-import { ExternalStaff, FrontendExternalStaff, CreateExternalStaff, UpdateExternalStaff } from '@/integration/supabase/types/external-staff';
-import { toast } from 'sonner';
+// hooks/external-staff/useExternalStaff.ts
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integration/supabase/client";
+import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 
-export type StaffStatus = 'active' | 'terminated' | 'all';
+/**
+ * Robust, paginated fetch for ALL external_staff rows.
+ * - Works around PostgREST page-size limits by looping .range()
+ * - Retries transient failures
+ * - Optional AbortController support
+ */
 
-export interface PaginationState {
-  pageIndex: number;
-  pageSize: number;
-}
+const TABLE_NAME = "external_staff"; // <-- adjust if your table name differs
+const PAGE_SIZE = 1000;              // safe chunk size; tune if needed
+const MAX_RETRIES = 3;
 
-export interface StaffStats {
-  totalCount: number;
-  activeCount: number;
-  terminatedCount: number;
-  recentHiresCount: number;
-  topDepartments: Array<{ department: string; count: number }>;
-}
-
-export interface UseExternalStaffReturn {
+type UseExternalStaffReturn = {
   externalStaff: FrontendExternalStaff[];
   loading: boolean;
-  statsLoading: boolean;
   error: string | null;
-  totalCount: number;
-  pagination: PaginationState;
-  setPagination: (pagination: PaginationState) => void;
-  status: StaffStatus;
-  setStatus: (status: StaffStatus) => void;
-  stats: StaffStats;
-  fetchExternalStaff: () => Promise<void>;
+  refreshAll: () => Promise<void>;
+  /** Kept for API compatibility with your current code */
   fetchAllExternalStaff: () => Promise<void>;
-  fetchStats: () => Promise<void>;
-  createExternalStaff: (staff: Partial<FrontendExternalStaff>) => Promise<FrontendExternalStaff | null>;
-  updateExternalStaff: (id: string, updates: Partial<FrontendExternalStaff>) => Promise<FrontendExternalStaff | null>;
-  deleteExternalStaff: (id: string) => Promise<boolean>;
-  bulkCreateExternalStaff: (staffList: Partial<FrontendExternalStaff>[]) => Promise<FrontendExternalStaff[]>;
+  setStatus: (status: string | null) => void;
+  status: string | null;
+};
+
+async function fetchAllRowsPaginated(
+  status: string | null,
+  signal?: AbortSignal
+): Promise<FrontendExternalStaff[]> {
+  // First call just to get total count
+  let { data: head, count, error } = await supabase
+    .from(TABLE_NAME)
+    .select("*", { count: "exact", head: false }) // not a HEAD: we want first page as well
+    .order("id", { ascending: true })
+    .range(0, PAGE_SIZE - 1);
+
+  if (error) throw error;
+
+  let rows: FrontendExternalStaff[] = head ?? [];
+  const total = typeof count === "number" ? count : rows.length;
+
+  // Early return if we already got everything in the first page
+  if (rows.length >= total) {
+    // Optional status filtering (client-side) to ensure we truly show "all" by default.
+    return rows;
+  }
+
+  // Loop additional pages
+  const pages = Math.ceil(total / PAGE_SIZE);
+  for (let page = 1; page < pages; page++) {
+    const from = page * PAGE_SIZE;
+    const to = Math.min((page + 1) * PAGE_SIZE - 1, total - 1);
+
+    let attempt = 0;
+    // basic retry for transient network hiccups
+    while (true) {
+      try {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+        const { data, error: pageErr } = await supabase
+          .from(TABLE_NAME)
+          .select("*")
+          .order("id", { ascending: true })
+          .range(from, to);
+
+        if (pageErr) throw pageErr;
+        if (data && data.length) rows = rows.concat(data as FrontendExternalStaff[]);
+        break;
+      } catch (e) {
+        attempt++;
+        if (attempt >= MAX_RETRIES) throw e;
+        await new Promise((r) => setTimeout(r, 300 * attempt));
+      }
+    }
+  }
+
+  // If you truly want **all staff regardless of status**, do not filter here.
+  // If you want to optionally filter by status, do it client-side:
+  if (status) {
+    const s = status.toLowerCase();
+    rows = rows.filter((r: any) => (r.status || "").toLowerCase() === s);
+  }
+
+  return rows;
 }
 
 export function useExternalStaff(): UseExternalStaffReturn {
   const [externalStaff, setExternalStaff] = useState<FrontendExternalStaff[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
-  const [status, setStatus] = useState<StaffStatus>('all');
-  const [stats, setStats] = useState<StaffStats>({
-    totalCount: 0,
-    activeCount: 0,
-    terminatedCount: 0,
-    recentHiresCount: 0,
-    topDepartments: [],
-  });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchExternalStaff = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+
+    // cancel previous in-flight
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
     try {
-      setLoading(true);
-      setError(null);
-
-      // First get the total count
-      const countQuery = supabase
-        .from('external_staff')
-        .select('id', { count: 'exact' });
-      
-      // Apply status filter if not 'all'
-      if (status === 'active') {
-        countQuery.is('TERMINATION DATE', null);
-      } else if (status === 'terminated') {
-        countQuery.not('TERMINATION DATE', 'is', null);
+      const all = await fetchAllRowsPaginated(status, abortRef.current.signal);
+      setExternalStaff(all);
+    } catch (e: any) {
+      if (e?.name !== "AbortError") {
+        console.error("fetchAllExternalStaff error:", e);
+        setErr(e?.message ?? "Failed to load external staff");
       }
-
-      const { count, error: countError } = await countQuery;
-
-      if (countError) {
-        throw countError;
-      }
-
-      setTotalCount(count || 0);
-
-      // Then fetch the paginated data
-      const from = pagination.pageIndex * pagination.pageSize;
-      const to = from + pagination.pageSize - 1;
-
-      let query = supabase
-        .from('external_staff')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      // Apply status filter if not 'all'
-      if (status === 'active') {
-        query = query.is('TERMINATION DATE', null);
-      } else if (status === 'terminated') {
-        query = query.not('TERMINATION DATE', 'is', null);
-      }
-
-      const { data, error: fetchError } = await query;
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // No mapping needed as we're using the same interface
-      setExternalStaff(data || []);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch external staff';
-      setError(errorMessage);
-      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [status]);
 
-  const fetchAllExternalStaff = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Expose same API name your component expects
+  const fetchAllExternalStaff = useMemo(() => load, [load]);
 
-      // Fetch ALL staff without any status filtering for complete search capability
-      const query = supabase
-        .from('external_staff')
-        .select('*')
-        .order('created_at', { ascending: false });
+  // convenience alias
+  const refreshAll = useMemo(() => load, [load]);
 
-      const { data, error: fetchError } = await query;
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // No mapping needed as we're using the same interface
-      setExternalStaff(data || []);
-      setTotalCount(data?.length || 0);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch all external staff';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createExternalStaff = async (staff: Partial<FrontendExternalStaff>): Promise<FrontendExternalStaff | null> => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: createError } = await supabase
-        .from('external_staff')
-        .insert([staff])
-        .select()
-        .single();
-
-      if (createError) {
-        throw createError;
-      }
-
-      // Refresh the data to ensure we have the correct pagination and count
-      await fetchExternalStaff();
-      // Also refresh stats
-      await fetchStats();
-      toast.success('External staff created successfully');
-      return data;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create external staff';
-      setError(errorMessage);
-      toast.error(errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateExternalStaff = async (id: string, updates: Partial<FrontendExternalStaff>): Promise<FrontendExternalStaff | null> => {
-    try {
-      setError(null);
-      
-      // No mapping needed as we're using the same interface
-      const { data, error: updateError } = await supabase
-        .from('external_staff')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // No mapping needed
-      setExternalStaff(prev => prev.map(staff => staff.id === id ? data : staff));
-      
-      // Refresh stats if termination status might have changed
-      if (updates['TERMINATION DATE'] !== undefined) {
-        await fetchStats();
-      }
-      
-      toast.success('External staff member updated successfully');
-      return data;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update external staff';
-      setError(errorMessage);
-      toast.error(errorMessage);
-      return null;
-    }
-  };
-
-  const deleteExternalStaff = async (id: string): Promise<boolean> => {
-    try {
-      setError(null);
-      
-      const { error: deleteError } = await supabase
-        .from('external_staff')
-        .delete()
-        .eq('id', id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
-      setExternalStaff(prev => prev.filter(staff => staff.id !== id));
-      // Refresh stats after deletion
-      await fetchStats();
-      toast.success('External staff member deleted successfully');
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete external staff';
-      setError(errorMessage);
-      toast.error(errorMessage);
-      return false;
-    }
-  };
-
-  const bulkCreateExternalStaff = async (staffList: Partial<FrontendExternalStaff>[]): Promise<FrontendExternalStaff[]> => {
-    try {
-      setError(null);
-      
-      // No mapping needed as we're using the same interface
-      const { data, error: createError } = await supabase
-        .from('external_staff')
-        .insert(staffList)
-        .select();
-
-      if (createError) {
-        throw createError;
-      }
-
-      // No mapping needed
-      const newStaffList = data || [];
-      setExternalStaff(prev => [...newStaffList, ...prev]);
-      
-      // Refresh stats after bulk creation
-      await fetchStats();
-      toast.success(`${newStaffList.length} external staff members created successfully`);
-      return newStaffList;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create external staff members';
-      setError(errorMessage);
-      toast.error(errorMessage);
-      return [];
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      setStatsLoading(true);
-      setError(null);
-
-      // Get total count
-      const { count: totalCount, error: totalError } = await supabase
-        .from('external_staff')
-        .select('id', { count: 'exact' });
-
-      if (totalError) throw totalError;
-
-      // Get active count
-      const { count: activeCount, error: activeError } = await supabase
-        .from('external_staff')
-        .select('id', { count: 'exact' })
-        .is('TERMINATION DATE', null);
-
-      if (activeError) throw activeError;
-
-      // Get terminated count
-      const { count: terminatedCount, error: terminatedError } = await supabase
-        .from('external_staff')
-        .select('id', { count: 'exact' })
-        .not('TERMINATION DATE', 'is', null);
-
-      if (terminatedError) throw terminatedError;
-
-      // Get recent hires (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-      const { count: recentHiresCount, error: recentError } = await supabase
-        .from('external_staff')
-        .select('id', { count: 'exact' })
-        .gte('HIRE DATE', thirtyDaysAgoStr);
-
-      if (recentError) throw recentError;
-
-      // Get department distribution (active staff only)
-      const { data: departmentsData, error: deptError } = await supabase
-        .from('external_staff')
-        .select('"HOME DEPARTMENT"')
-        .not('HOME DEPARTMENT', 'is', null)
-        .is('TERMINATION DATE', null); // Only include active staff
-
-      if (deptError) throw deptError;
-
-      // Count departments
-      const departmentCounts: Record<string, number> = {};
-      departmentsData?.forEach((staff) => {
-        const department = staff['HOME DEPARTMENT'] || 'Unassigned';
-        departmentCounts[department] = (departmentCounts[department] || 0) + 1;
-      });
-
-      // Sort departments by count
-      const topDepartments = Object.entries(departmentCounts)
-        .map(([department, count]) => ({ department, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-
-      setStats({
-        totalCount: totalCount || 0,
-        activeCount: activeCount || 0,
-        terminatedCount: terminatedCount || 0,
-        recentHiresCount: recentHiresCount || 0,
-        topDepartments,
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch statistics';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
+  // You can auto-load on mount, or let the caller call .fetchAllExternalStaff()
   useEffect(() => {
-    fetchExternalStaff();
-  }, [pagination.pageIndex, pagination.pageSize, status]);
-
-  useEffect(() => {
-    fetchStats();
+    // do nothing here by default; caller chooses when to load
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   return {
     externalStaff,
     loading,
-    statsLoading,
-    error,
-    totalCount,
-    pagination,
-    setPagination,
-    status,
-    setStatus,
-    stats,
-    fetchExternalStaff,
+    error: err,
+    refreshAll,
     fetchAllExternalStaff,
-    fetchStats,
-    createExternalStaff,
-    updateExternalStaff,
-    deleteExternalStaff,
-    bulkCreateExternalStaff,
+    setStatus,
+    status,
   };
 }
