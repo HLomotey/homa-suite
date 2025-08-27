@@ -99,7 +99,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   // Enhanced filter staff based on tenant search query with comprehensive wildcard search
   React.useEffect(() => {
     if (!tenantSearchQuery.trim()) {
-      setFilteredStaff([]);
+      // Show ALL staff when no search query (complete list for selection)
+      setFilteredStaff(externalStaff);
       return;
     }
 
@@ -297,11 +298,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     type="text"
                     value={tenantSearchQuery}
                     onChange={handleTenantSearchChange}
-                    onFocus={() =>
-                      setShowTenantSuggestions(
-                        tenantSearchQuery.trim().length > 0
-                      )
-                    }
+                    onFocus={() => setShowTenantSuggestions(true)}
                     onBlur={() => {
                       // Delay hiding suggestions to allow for selection
                       setTimeout(() => setShowTenantSuggestions(false), 200);
@@ -312,32 +309,38 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
                   {/* Suggestions dropdown */}
-                  {showTenantSuggestions && filteredStaff.length > 0 && (
+                  {showTenantSuggestions && (
                     <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
-                      {filteredStaff.map((staff) => {
-                        const firstName = staff["PAYROLL FIRST NAME"] || "";
-                        const lastName = staff["PAYROLL LAST NAME"] || "";
-                        const jobTitle = staff["JOB TITLE"] || "";
-                        const department = staff["HOME DEPARTMENT"] || "";
-                        const fullName = `${firstName} ${lastName}`.trim();
+                      {filteredStaff.length > 0 ? (
+                        filteredStaff.map((staff) => {
+                          const firstName = staff["PAYROLL FIRST NAME"] || "";
+                          const lastName = staff["PAYROLL LAST NAME"] || "";
+                          const jobTitle = staff["JOB TITLE"] || "";
+                          const department = staff["HOME DEPARTMENT"] || "";
+                          const fullName = `${firstName} ${lastName}`.trim();
 
-                        return (
-                          <div
-                            key={staff.id}
-                            className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground border-b border-border last:border-b-0"
-                            onMouseDown={(e) => {
-                              e.preventDefault(); // Prevent input blur
-                              handleTenantSuggestionSelect(staff);
-                            }}
-                          >
-                            <div className="font-medium">{fullName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {jobTitle}
-                              {department && ` • ${department}`}
+                          return (
+                            <div
+                              key={staff.id}
+                              className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground border-b border-border last:border-b-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // Prevent input blur
+                                handleTenantSuggestionSelect(staff);
+                              }}
+                            >
+                              <div className="font-medium">{fullName}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {jobTitle}
+                                {department && ` • ${department}`}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">
+                          {loading ? "Loading staff..." : "No staff found"}
+                        </div>
+                      )}
                     </div>
                   )}
 
