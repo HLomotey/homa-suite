@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Activity,
   UserCheck,
+  UserPlus,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -157,6 +158,18 @@ const navigationItems = [
     href: ROUTES.ACTIVITY_LOG,
     module: "activity_log",
   },
+  {
+    label: "Onboarding",
+    icon: UserPlus,
+    href: "/onboarding",
+    module: "onboarding",
+  },
+  // {
+  //   label: "Staff Benefits",
+  //   icon: UserPlus,
+  //   href: "/staff-benefits",
+  //   module: "onboarding",
+  // },
 ];
 
 interface SidebarProps {

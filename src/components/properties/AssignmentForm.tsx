@@ -76,10 +76,10 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     console.log("AssignmentForm - Filtered Rooms:", filteredRooms);
   }, [properties, rooms, filteredRooms]);
 
-  // Set external staff status to active and fetch all data on component mount
+  // Fetch all external staff without status filtering on component mount
   React.useEffect(() => {
-    // Set status to active to only show active staff
-    setStatus("active");
+    // Remove status filtering to show all staff regardless of status
+    setStatus(null);
     // Fetch all external staff without pagination limits for unrestricted search
     fetchAllExternalStaff();
   }, [setStatus]);
