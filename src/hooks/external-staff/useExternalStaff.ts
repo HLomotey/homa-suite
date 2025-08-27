@@ -57,47 +57,76 @@ type UseExternalStaffReturn = {
 };
 
 async function fetchAllRowsPaginated(
-  status: string | null,
+  status: StaffStatus,
   signal?: AbortSignal
-): Promise<FrontendExternalStaff[]> {
-  // First call just to get total count
-  let { data: head, count, error } = await supabase
+): Promise<{ data: FrontendExternalStaff[]; totalCount: number }> {
+  let query = supabase
     .from(TABLE_NAME)
-    .select("*", { count: "exact", head: false }) // not a HEAD: we want first page as well
-    .order("id", { ascending: true })
-    .range(0, PAGE_SIZE - 1);
+    .select("*", { count: "exact" })
+    .order("id", { ascending: true });
 
-  if (error) throw error;
+  // Apply status filtering at database level for better performance
+  if (status === "active") {
+    query = query.is('"TERMINATION DATE"', null);
+  } else if (status === "terminated") {
+    query = query.not('"TERMINATION DATE"', 'is', null);
+  }
+  // For "all", no additional filtering needed
 
-  let rows: FrontendExternalStaff[] = head ?? [];
-  const total = typeof count === "number" ? count : rows.length;
+  // Get total count first with proper filtering
+  let countQuery = supabase
+    .from(TABLE_NAME)
+    .select("id", { count: "exact", head: true });
 
-  // Early return if we already got everything in the first page
-  if (rows.length >= total) {
-    // Optional status filtering (client-side) to ensure we truly show "all" by default.
-    return rows;
+  // Apply same status filtering for accurate count
+  if (status === "active") {
+    countQuery = countQuery.is('"TERMINATION DATE"', null);
+  } else if (status === "terminated") {
+    countQuery = countQuery.not('"TERMINATION DATE"', 'is', null);
   }
 
-  // Loop additional pages
+  const { count: totalCount, error: countError } = await countQuery;
+
+  if (countError) throw countError;
+
+  const total = totalCount || 0;
+  let allRows: FrontendExternalStaff[] = [];
+
+  // If no records, return early
+  if (total === 0) {
+    return { data: [], totalCount: 0 };
+  }
+
+  // Fetch all pages
   const pages = Math.ceil(total / PAGE_SIZE);
-  for (let page = 1; page < pages; page++) {
+  for (let page = 0; page < pages; page++) {
     const from = page * PAGE_SIZE;
     const to = Math.min((page + 1) * PAGE_SIZE - 1, total - 1);
 
     let attempt = 0;
-    // basic retry for transient network hiccups
-    while (true) {
+    while (attempt < MAX_RETRIES) {
       try {
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
-        const { data, error: pageErr } = await supabase
+        let pageQuery = supabase
           .from(TABLE_NAME)
           .select("*")
           .order("id", { ascending: true })
           .range(from, to);
 
+        // Apply same status filtering to each page
+        if (status === "active") {
+          pageQuery = pageQuery.is('"TERMINATION DATE"', null);
+        } else if (status === "terminated") {
+          pageQuery = pageQuery.not('"TERMINATION DATE"', 'is', null);
+        }
+
+        const { data, error: pageErr } = await pageQuery;
+
         if (pageErr) throw pageErr;
-        if (data && data.length) rows = rows.concat(data as FrontendExternalStaff[]);
+        if (data && data.length) {
+          allRows = allRows.concat(data as FrontendExternalStaff[]);
+        }
         break;
       } catch (e) {
         attempt++;
@@ -107,14 +136,7 @@ async function fetchAllRowsPaginated(
     }
   }
 
-  // If you truly want **all staff regardless of status**, do not filter here.
-  // If you want to optionally filter by status, do it client-side:
-  if (status) {
-    const s = status.toLowerCase();
-    rows = rows.filter((r: any) => (r.status || "").toLowerCase() === s);
-  }
-
-  return rows;
+  return { data: allRows, totalCount: total };
 }
 
 export function useExternalStaff(): UseExternalStaffReturn {
@@ -149,10 +171,9 @@ export function useExternalStaff(): UseExternalStaffReturn {
     abortRef.current = new AbortController();
 
     try {
-      const statusFilter = status === 'all' ? null : status;
-      const all = await fetchAllRowsPaginated(statusFilter, abortRef.current.signal);
-      setExternalStaff(all);
-      setTotalCount(all.length);
+      const result = await fetchAllRowsPaginated(status, abortRef.current.signal);
+      setExternalStaff(result.data);
+      setTotalCount(result.totalCount);
     } catch (e: any) {
       if (e?.name !== "AbortError") {
         console.error("fetchAllExternalStaff error:", e);
@@ -166,14 +187,12 @@ export function useExternalStaff(): UseExternalStaffReturn {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .select('"TERMINATION DATE", "HIRE DATE", "BUSINESS UNIT"', { count: 'exact' });
+      // Get all records for accurate stats calculation using our pagination function
+      const allStaffResult = await fetchAllRowsPaginated("all");
+      const allStaff = allStaffResult.data;
       
-      if (error) throw error;
-      
-      const total = data?.length || 0;
-      const terminated = data?.filter(item => item["TERMINATION DATE"]).length || 0;
+      const total = allStaff.length;
+      const terminated = allStaff.filter(item => item["TERMINATION DATE"]).length;
       const active = total - terminated;
       
       // Calculate new hires this month
@@ -181,18 +200,18 @@ export function useExternalStaff(): UseExternalStaffReturn {
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       
-      const newThisMonth = data?.filter(item => {
+      const newThisMonth = allStaff.filter(item => {
         if (!item["HIRE DATE"]) return false;
         const hireDate = new Date(item["HIRE DATE"]);
         return hireDate.getMonth() === currentMonth && hireDate.getFullYear() === currentYear;
-      }).length || 0;
+      }).length;
       
       // Calculate top departments/business units
-      const departmentCounts = data?.reduce((acc: Record<string, number>, item) => {
+      const departmentCounts = allStaff.reduce((acc: Record<string, number>, item) => {
         const dept = item["BUSINESS UNIT"] || "Unknown";
         acc[dept] = (acc[dept] || 0) + 1;
         return acc;
-      }, {}) || {};
+      }, {});
       
       const topDepartments = Object.entries(departmentCounts)
         .map(([department, count]) => ({ department, count }))
