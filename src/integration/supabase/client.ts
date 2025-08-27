@@ -11,8 +11,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase URL or Anonymous Key is missing. Please check your environment variables.');
 }
 
-// Create Supabase client
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Create Supabase client with debugging
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: (url, options) => {
+      // Log requests to help debug malformed queries
+      if (url.includes('staff_benefits') && url.includes('columns=')) {
+        console.warn('Detected malformed query with columns parameter:', url);
+        console.warn('Request options:', options);
+      }
+      return fetch(url, options);
+    }
+  }
+});
 
 // Create Supabase admin client with service role key for admin operations
 export const supabaseAdmin = supabaseServiceKey 

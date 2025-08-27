@@ -268,8 +268,13 @@ export function FinanceAnalytics() {
                       </div>
                       <div className="w-full bg-blue-900/30 rounded-full h-2.5">
                         <div 
-                          className={`${progressColor} h-2.5 rounded-full`} 
-                          style={{ width: `${status.percentage}%` }}
+                          className={`${progressColor} h-2.5 rounded-full transition-all duration-300`}
+                          data-width={status.percentage}
+                          ref={(el) => {
+                            if (el) {
+                              el.style.width = `${status.percentage}%`;
+                            }
+                          }}
                         ></div>
                       </div>
                     </div>

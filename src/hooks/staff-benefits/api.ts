@@ -18,54 +18,95 @@ export async function fetchStaffBenefits(filters?: {
   staff_id?: string;
   staff_location_id?: string;
 }): Promise<FrontendStaffBenefit[]> {
-  let query = supabase
-    .from('staff_benefits')
-    .select(`
-      *,
-      external_staff (
-        "PAYROLL FIRST NAME",
-        "PAYROLL LAST NAME", 
-        "WORK E-MAIL",
-        "HOME DEPARTMENT",
-        "JOB TITLE"
-      ),
-      staff_locations (
-        location_description
-      )
-    `)
-    .order('created_at', { ascending: false });
+  console.log('fetchStaffBenefits called with filters:', filters);
+  
+  try {
+    let query = supabase
+      .from('staff_benefits')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  // Apply filters
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
-  }
-  if (filters?.benefit_type) {
-    query = query.eq('benefit_type', filters.benefit_type);
-  }
-  if (filters?.staff_id) {
-    query = query.eq('staff_id', filters.staff_id);
-  }
-  if (filters?.staff_location_id) {
-    query = query.eq('staff_location_id', filters.staff_location_id);
+    // Apply filters
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.benefit_type) {
+      query = query.eq('benefit_type', filters.benefit_type);
+    }
+    if (filters?.staff_id) {
+      query = query.eq('staff_id', filters.staff_id);
+    }
+    if (filters?.staff_location_id) {
+      query = query.eq('staff_location_id', filters.staff_location_id);
+    }
+
+    console.log('Executing staff_benefits query...');
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Supabase error in fetchStaffBenefits:', error);
+      throw new Error(`Failed to fetch staff benefits: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No staff benefits data found');
+      return [];
+    }
+
+  // Get unique staff IDs and location IDs for batch fetching
+  const staffIds = [...new Set(data.map(b => b.staff_id).filter(Boolean))];
+  const locationIds = [...new Set(data.map(b => b.staff_location_id).filter(Boolean))];
+
+  // Fetch external staff data
+  let staffData: any[] = [];
+  if (staffIds.length > 0) {
+    const { data: staffResult, error: staffError } = await supabase
+      .from('external_staff')
+      .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME", "WORK E-MAIL", "HOME DEPARTMENT", "JOB TITLE", id')
+      .in('id', staffIds);
+    
+    if (!staffError) {
+      staffData = staffResult || [];
+    }
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Failed to fetch staff benefits: ${error.message}`);
+  // Fetch location data
+  let locationData: any[] = [];
+  if (locationIds.length > 0) {
+    const { data: locationResult, error: locationError } = await supabase
+      .from('staff_locations')
+      .select('id, location_description')
+      .in('id', locationIds);
+    
+    if (!locationError) {
+      locationData = locationResult || [];
+    }
   }
 
-  // Enhance with computed fields from external staff
-  return (data || []).map(benefit => ({
-    ...benefit,
-    staff_name: benefit.external_staff ? 
-      `${benefit.external_staff["PAYROLL FIRST NAME"] || ""} ${benefit.external_staff["PAYROLL LAST NAME"] || ""}`.trim() : 
-      null,
-    staff_email: benefit.external_staff?.["WORK E-MAIL"] || null,
-    staff_department: benefit.external_staff?.["HOME DEPARTMENT"] || null,
-    staff_job_title: benefit.external_staff?.["JOB TITLE"] || null,
-    staff_location_name: benefit.staff_locations?.location_description || null,
-  }));
+  // Create lookup maps
+  const staffMap = new Map(staffData.map(s => [s.id, s]));
+  const locationMap = new Map(locationData.map(l => [l.id, l]));
+
+  // Enhance benefits with related data
+  return data.map(benefit => {
+    const staff = staffMap.get(benefit.staff_id);
+    const location = locationMap.get(benefit.staff_location_id);
+
+    return {
+      ...benefit,
+      staff_name: staff ? 
+        `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.trim() : 
+        null,
+      staff_email: staff?.["WORK E-MAIL"] || null,
+      staff_department: staff?.["HOME DEPARTMENT"] || null,
+      staff_job_title: staff?.["JOB TITLE"] || null,
+      staff_location_name: location?.location_description || null,
+    };
+  });
+  } catch (error) {
+    console.error('Error in fetchStaffBenefits:', error);
+    throw error;
+  }
 }
 
 /**
@@ -81,19 +122,7 @@ export async function fetchStaffBenefitsByStaffId(staffId: string): Promise<Fron
 export async function fetchStaffBenefitById(id: string): Promise<FrontendStaffBenefit | null> {
   const { data, error } = await supabase
     .from('staff_benefits')
-    .select(`
-      *,
-      external_staff (
-        "PAYROLL FIRST NAME",
-        "PAYROLL LAST NAME", 
-        "WORK E-MAIL",
-        "HOME DEPARTMENT",
-        "JOB TITLE"
-      ),
-      staff_locations (
-        location_description
-      )
-    `)
+    .select('*')
     .eq('id', id)
     .single();
 
@@ -104,15 +133,37 @@ export async function fetchStaffBenefitById(id: string): Promise<FrontendStaffBe
     throw new Error(`Failed to fetch staff benefit: ${error.message}`);
   }
 
+  // Fetch related data separately
+  let staff = null;
+  let location = null;
+
+  if (data.staff_id) {
+    const { data: staffResult } = await supabase
+      .from('external_staff')
+      .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME", "WORK E-MAIL", "HOME DEPARTMENT", "JOB TITLE"')
+      .eq('id', data.staff_id)
+      .single();
+    staff = staffResult;
+  }
+
+  if (data.staff_location_id) {
+    const { data: locationResult } = await supabase
+      .from('staff_locations')
+      .select('location_description')
+      .eq('id', data.staff_location_id)
+      .single();
+    location = locationResult;
+  }
+
   return {
     ...data,
-    staff_name: data.external_staff ? 
-      `${data.external_staff["PAYROLL FIRST NAME"] || ""} ${data.external_staff["PAYROLL LAST NAME"] || ""}`.trim() : 
+    staff_name: staff ? 
+      `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.trim() : 
       null,
-    staff_email: data.external_staff?.["WORK E-MAIL"] || null,
-    staff_department: data.external_staff?.["HOME DEPARTMENT"] || null,
-    staff_job_title: data.external_staff?.["JOB TITLE"] || null,
-    staff_location_name: data.staff_locations?.location_description || null,
+    staff_email: staff?.["WORK E-MAIL"] || null,
+    staff_department: staff?.["HOME DEPARTMENT"] || null,
+    staff_job_title: staff?.["JOB TITLE"] || null,
+    staff_location_name: location?.location_description || null,
   };
 }
 
@@ -120,37 +171,50 @@ export async function fetchStaffBenefitById(id: string): Promise<FrontendStaffBe
  * Create a new staff benefit
  */
 export async function createStaffBenefit(benefit: CreateStaffBenefit): Promise<FrontendStaffBenefit> {
+  console.log('Creating staff benefit with data:', benefit);
+  
   const { data, error } = await supabase
     .from('staff_benefits')
     .insert([benefit])
-    .select(`
-      *,
-      external_staff (
-        "PAYROLL FIRST NAME",
-        "PAYROLL LAST NAME", 
-        "WORK E-MAIL",
-        "HOME DEPARTMENT",
-        "JOB TITLE"
-      ),
-      staff_locations (
-        location_description
-      )
-    `)
+    .select('*')
     .single();
 
   if (error) {
-    throw new Error(`Failed to create staff benefit: ${error.message}`);
+    console.error('Supabase error details:', error);
+    throw new Error(`Failed to create staff benefit: ${error.message} (Code: ${error.code})`);
+  }
+
+  // Fetch related data separately
+  let staff = null;
+  let location = null;
+
+  if (data.staff_id) {
+    const { data: staffResult } = await supabase
+      .from('external_staff')
+      .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME", "WORK E-MAIL", "HOME DEPARTMENT", "JOB TITLE"')
+      .eq('id', data.staff_id)
+      .single();
+    staff = staffResult;
+  }
+
+  if (data.staff_location_id) {
+    const { data: locationResult } = await supabase
+      .from('staff_locations')
+      .select('location_description')
+      .eq('id', data.staff_location_id)
+      .single();
+    location = locationResult;
   }
 
   return {
     ...data,
-    staff_name: data.external_staff ? 
-      `${data.external_staff["PAYROLL FIRST NAME"] || ""} ${data.external_staff["PAYROLL LAST NAME"] || ""}`.trim() : 
+    staff_name: staff ? 
+      `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.trim() : 
       null,
-    staff_email: data.external_staff?.["WORK E-MAIL"] || null,
-    staff_department: data.external_staff?.["HOME DEPARTMENT"] || null,
-    staff_job_title: data.external_staff?.["JOB TITLE"] || null,
-    staff_location_name: data.staff_locations?.location_description || null,
+    staff_email: staff?.["WORK E-MAIL"] || null,
+    staff_department: staff?.["HOME DEPARTMENT"] || null,
+    staff_job_title: staff?.["JOB TITLE"] || null,
+    staff_location_name: location?.location_description || null,
   };
 }
 
@@ -162,34 +226,44 @@ export async function updateStaffBenefit(id: string, updates: UpdateStaffBenefit
     .from('staff_benefits')
     .update(updates)
     .eq('id', id)
-    .select(`
-      *,
-      external_staff (
-        "PAYROLL FIRST NAME",
-        "PAYROLL LAST NAME", 
-        "WORK E-MAIL",
-        "HOME DEPARTMENT",
-        "JOB TITLE"
-      ),
-      staff_locations (
-        location_description
-      )
-    `)
+    .select('*')
     .single();
 
   if (error) {
     throw new Error(`Failed to update staff benefit: ${error.message}`);
   }
 
+  // Fetch related data separately
+  let staff = null;
+  let location = null;
+
+  if (data.staff_id) {
+    const { data: staffResult } = await supabase
+      .from('external_staff')
+      .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME", "WORK E-MAIL", "HOME DEPARTMENT", "JOB TITLE"')
+      .eq('id', data.staff_id)
+      .single();
+    staff = staffResult;
+  }
+
+  if (data.staff_location_id) {
+    const { data: locationResult } = await supabase
+      .from('staff_locations')
+      .select('location_description')
+      .eq('id', data.staff_location_id)
+      .single();
+    location = locationResult;
+  }
+
   return {
     ...data,
-    staff_name: data.external_staff ? 
-      `${data.external_staff["PAYROLL FIRST NAME"] || ""} ${data.external_staff["PAYROLL LAST NAME"] || ""}`.trim() : 
+    staff_name: staff ? 
+      `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.trim() : 
       null,
-    staff_email: data.external_staff?.["WORK E-MAIL"] || null,
-    staff_department: data.external_staff?.["HOME DEPARTMENT"] || null,
-    staff_job_title: data.external_staff?.["JOB TITLE"] || null,
-    staff_location_name: data.staff_locations?.location_description || null,
+    staff_email: staff?.["WORK E-MAIL"] || null,
+    staff_department: staff?.["HOME DEPARTMENT"] || null,
+    staff_job_title: staff?.["JOB TITLE"] || null,
+    staff_location_name: location?.location_description || null,
   };
 }
 
