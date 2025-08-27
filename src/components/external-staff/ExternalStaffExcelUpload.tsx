@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useExternalStaff } from '@/hooks/external-staff/useExternalStaff';
-import { FrontendExternalStaff } from '@/integration/supabase/types/external-staff';
+import { FrontendExternalStaff, CreateExternalStaff } from '@/integration/supabase/types/external-staff';
 import { Upload, Download, FileText, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -17,7 +17,7 @@ interface ExternalStaffExcelUploadProps {
 
 interface ProcessedData {
   success: boolean;
-  data?: Partial<FrontendExternalStaff>[];
+  data?: CreateExternalStaff[];
   errors?: string[];
   warnings?: string[];
   totalRows: number;
@@ -25,7 +25,7 @@ interface ProcessedData {
 }
 
 export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadProps) {
-  const { bulkCreateExternalStaff } = useExternalStaff();
+  const { bulkUpsertExternalStaff } = useExternalStaff();
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -63,13 +63,13 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
       setProgress(50);
 
       // Process the data according to the exact column structure
-      const processedStaff: Partial<FrontendExternalStaff>[] = [];
+      const processedStaff: CreateExternalStaff[] = [];
       const errors: string[] = [];
 
       rawData.forEach((row: any, index) => {
         const rowNumber = index + 1;
         try {
-          const staff: Partial<FrontendExternalStaff> = {
+          const staff: CreateExternalStaff = {
             "PAYROLL FIRST NAME": row["PAYROLL FIRST NAME"] || null,
             "PAYROLL LAST NAME": row["PAYROLL LAST NAME"] || null,
             "PAYROLL MIDDLE NAME": row["PAYROLL MIDDLE NAME"] || null,
@@ -152,7 +152,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
 
     setUploading(true);
     try {
-      await bulkCreateExternalStaff(processedData.data);
+      await bulkUpsertExternalStaff(processedData.data);
       toast.success('External staff data uploaded successfully');
       onClose();
     } catch (error) {
@@ -221,6 +221,8 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
                 <p className="font-medium">Download Template</p>
                 <p className="text-sm text-muted-foreground">
                   Get the Excel template with the correct column structure. Only first name and last name are required.
+                  <br />
+                  <strong>Note:</strong> Changes to JOB TITLE, HOME DEPARTMENT, LOCATION, or POSITION STATUS will archive existing records to history.
                 </p>
               </div>
             </div>

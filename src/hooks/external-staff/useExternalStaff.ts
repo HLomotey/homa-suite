@@ -1,7 +1,7 @@
 // hooks/external-staff/useExternalStaff.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integration/supabase/client";
-import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
+import { FrontendExternalStaff, CreateExternalStaff, CreateHistoryExternalStaff } from '@/integration/supabase/types/external-staff';
 import { toast } from "sonner";
 
 /**
@@ -12,6 +12,15 @@ import { toast } from "sonner";
  */
 
 const TABLE_NAME = "external_staff"; // <-- adjust if your table name differs
+const HISTORY_TABLE_NAME = "history_external_staff";
+
+// Key fields that trigger historical archiving when changed
+const CHANGE_DETECTION_FIELDS = [
+  "JOB TITLE",
+  "HOME DEPARTMENT", 
+  "LOCATION",
+  "POSITION STATUS"
+] as const;
 const PAGE_SIZE = 1000;              // safe chunk size; tune if needed
 const MAX_RETRIES = 3;
 
@@ -53,7 +62,8 @@ type UseExternalStaffReturn = {
   fetchAllExternalStaff: () => Promise<void>;
   fetchExternalStaff: () => Promise<void>;
   createExternalStaff: (data: Partial<FrontendExternalStaff>) => Promise<boolean>;
-  bulkCreateExternalStaff: (data: FrontendExternalStaff[]) => Promise<boolean>;
+  bulkCreateExternalStaff: (data: CreateExternalStaff[]) => Promise<boolean>;
+  bulkUpsertExternalStaff: (data: CreateExternalStaff[]) => Promise<boolean>;
   updateExternalStaff: (id: string, data: Partial<FrontendExternalStaff>) => Promise<boolean>;
   deleteExternalStaff: (id: string) => Promise<boolean>;
   fetchStats: () => Promise<void>;
@@ -321,7 +331,194 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   }, [load, fetchStats]);
 
-  const bulkCreateExternalStaff = useCallback(async (data: FrontendExternalStaff[]): Promise<boolean> => {
+  // Helper function to check if key fields have changed
+  const hasKeyFieldsChanged = (existing: FrontendExternalStaff, incoming: CreateExternalStaff): boolean => {
+    return CHANGE_DETECTION_FIELDS.some(field => {
+      const existingValue = existing[field];
+      const incomingValue = incoming[field];
+      return existingValue !== incomingValue;
+    });
+  };
+
+  // Helper function to find existing staff by unique identifier
+  const findExistingStaff = async (staffData: CreateExternalStaff[]): Promise<Map<string, FrontendExternalStaff>> => {
+    const existingStaffMap = new Map<string, FrontendExternalStaff>();
+    
+    // Create unique identifiers for matching (using combination of first name, last name, and associate ID)
+    const identifiers = staffData.map(staff => {
+      const firstName = staff["PAYROLL FIRST NAME"] || "";
+      const lastName = staff["PAYROLL LAST NAME"] || "";
+      const associateId = staff["ASSOCIATE ID"] || "";
+      return `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}`;
+    }).filter(id => id !== "__");
+
+    if (identifiers.length === 0) return existingStaffMap;
+
+    // Fetch existing staff records
+    const { data: existingStaff, error } = await supabase
+      .from(TABLE_NAME)
+      .select('*');
+
+    if (error) {
+      console.error("Error fetching existing staff:", error);
+      return existingStaffMap;
+    }
+
+    // Map existing staff by their identifiers
+    existingStaff?.forEach(staff => {
+      const firstName = staff["PAYROLL FIRST NAME"] || "";
+      const lastName = staff["PAYROLL LAST NAME"] || "";
+      const associateId = staff["ASSOCIATE ID"] || "";
+      const identifier = `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}`;
+      existingStaffMap.set(identifier, staff);
+    });
+
+    return existingStaffMap;
+  };
+
+  // Helper function to move staff to history table
+  const moveToHistory = async (staffRecord: FrontendExternalStaff): Promise<boolean> => {
+    try {
+      // Create history record (exclude id, created_at, updated_at as they'll be auto-generated)
+      const historyRecord: CreateHistoryExternalStaff = {
+        "PAYROLL FIRST NAME": staffRecord["PAYROLL FIRST NAME"],
+        "PAYROLL LAST NAME": staffRecord["PAYROLL LAST NAME"],
+        "PAYROLL MIDDLE NAME": staffRecord["PAYROLL MIDDLE NAME"],
+        "GENERATION SUFFIX": staffRecord["GENERATION SUFFIX"],
+        "GENDER (SELF-ID)": staffRecord["GENDER (SELF-ID)"],
+        "BIRTH DATE": staffRecord["BIRTH DATE"],
+        "PRIMARY ADDRESS LINE 1": staffRecord["PRIMARY ADDRESS LINE 1"],
+        "PRIMARY ADDRESS LINE 2": staffRecord["PRIMARY ADDRESS LINE 2"],
+        "PRIMARY ADDRESS LINE 3": staffRecord["PRIMARY ADDRESS LINE 3"],
+        "LIVED-IN STATE": staffRecord["LIVED-IN STATE"],
+        "WORKED IN STATE": staffRecord["WORKED IN STATE"],
+        "PERSONAL E-MAIL": staffRecord["PERSONAL E-MAIL"],
+        "WORK E-MAIL": staffRecord["WORK E-MAIL"],
+        "HOME PHONE": staffRecord["HOME PHONE"],
+        "WORK PHONE": staffRecord["WORK PHONE"],
+        "POSITION ID": staffRecord["POSITION ID"],
+        "ASSOCIATE ID": staffRecord["ASSOCIATE ID"],
+        "FILE NUMBER": staffRecord["FILE NUMBER"],
+        "COMPANY CODE": staffRecord["COMPANY CODE"],
+        "JOB TITLE": staffRecord["JOB TITLE"],
+        "BUSINESS UNIT": staffRecord["BUSINESS UNIT"],
+        "HOME DEPARTMENT": staffRecord["HOME DEPARTMENT"],
+        "LOCATION": staffRecord["LOCATION"],
+        "WORKER CATEGORY": staffRecord["WORKER CATEGORY"],
+        "POSITION STATUS": staffRecord["POSITION STATUS"],
+        "HIRE DATE": staffRecord["HIRE DATE"],
+        "REHIRE DATE": staffRecord["REHIRE DATE"],
+        "TERMINATION DATE": staffRecord["TERMINATION DATE"],
+        "YEARS OF SERVICE": staffRecord["YEARS OF SERVICE"],
+        "REPORTS TO NAME": staffRecord["REPORTS TO NAME"],
+        "JOB CLASS": staffRecord["JOB CLASS"],
+      };
+
+      const { error } = await supabase
+        .from(HISTORY_TABLE_NAME)
+        .insert(historyRecord);
+
+      if (error) {
+        console.error("Error moving staff to history:", error);
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      console.error("Error in moveToHistory:", e);
+      return false;
+    }
+  };
+
+  const bulkUpsertExternalStaff = useCallback(async (data: CreateExternalStaff[]): Promise<boolean> => {
+    try {
+      // Find existing staff records
+      const existingStaffMap = await findExistingStaff(data);
+      
+      const recordsToInsert: CreateExternalStaff[] = [];
+      const recordsToUpdate: { id: string; data: CreateExternalStaff }[] = [];
+      const recordsToArchive: FrontendExternalStaff[] = [];
+
+      // Process each incoming record
+      for (const incomingStaff of data) {
+        const firstName = incomingStaff["PAYROLL FIRST NAME"] || "";
+        const lastName = incomingStaff["PAYROLL LAST NAME"] || "";
+        const associateId = incomingStaff["ASSOCIATE ID"] || "";
+        const identifier = `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}`;
+
+        const existingStaff = existingStaffMap.get(identifier);
+
+        if (existingStaff) {
+          // Check if key fields have changed
+          if (hasKeyFieldsChanged(existingStaff, incomingStaff)) {
+            // Archive existing record and prepare for update
+            recordsToArchive.push(existingStaff);
+            recordsToUpdate.push({ id: existingStaff.id, data: incomingStaff });
+          } else {
+            // Update existing record without archiving
+            recordsToUpdate.push({ id: existingStaff.id, data: incomingStaff });
+          }
+        } else {
+          // New record - insert
+          recordsToInsert.push(incomingStaff);
+        }
+      }
+
+      // Move records to history if needed
+      for (const recordToArchive of recordsToArchive) {
+        const success = await moveToHistory(recordToArchive);
+        if (!success) {
+          console.error(`Failed to archive record for ${recordToArchive["PAYROLL FIRST NAME"]} ${recordToArchive["PAYROLL LAST NAME"]}`);
+        }
+      }
+
+      // Insert new records
+      if (recordsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from(TABLE_NAME)
+          .insert(recordsToInsert);
+
+        if (insertError) {
+          console.error("Bulk insert error:", insertError);
+          toast.error("Failed to insert new external staff members");
+          return false;
+        }
+      }
+
+      // Update existing records
+      for (const { id, data: updateData } of recordsToUpdate) {
+        const { error: updateError } = await supabase
+          .from(TABLE_NAME)
+          .update(updateData)
+          .eq('id', id);
+
+        if (updateError) {
+          console.error("Update error:", updateError);
+          toast.error(`Failed to update staff member with ID: ${id}`);
+          return false;
+        }
+      }
+
+      const totalProcessed = recordsToInsert.length + recordsToUpdate.length;
+      const archivedCount = recordsToArchive.length;
+      
+      toast.success(
+        `Successfully processed ${totalProcessed} records. ` +
+        `${recordsToInsert.length} new, ${recordsToUpdate.length} updated` +
+        (archivedCount > 0 ? `, ${archivedCount} archived to history` : '')
+      );
+      
+      await load();
+      await fetchStats();
+      return true;
+    } catch (e: any) {
+      console.error("Bulk upsert external staff error:", e);
+      toast.error("Failed to process external staff data");
+      return false;
+    }
+  }, [load, fetchStats]);
+
+  const bulkCreateExternalStaff = useCallback(async (data: CreateExternalStaff[]): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from(TABLE_NAME)
@@ -380,6 +577,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
     fetchExternalStaff,
     createExternalStaff,
     bulkCreateExternalStaff,
+    bulkUpsertExternalStaff,
     updateExternalStaff,
     deleteExternalStaff,
     fetchStats,
