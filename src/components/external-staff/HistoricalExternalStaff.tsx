@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,20 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  useExternalStaff,
-  StaffStatus,
-  PaginationState,
-  StaffStats,
-} from "@/hooks/external-staff/useExternalStaff";
-import { ExternalStaffSlideForm } from "@/components/external-staff/ExternalStaffSlideForm";
-import { ExternalStaffExcelUpload } from "@/components/external-staff/ExternalStaffExcelUpload";
-import { ExternalStaffStats } from "@/components/external-staff/ExternalStaffStats";
-import { HistoricalExternalStaff } from "@/components/external-staff/HistoricalExternalStaff";
-import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
-import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
-import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useHistoricalExternalStaff } from "@/hooks/external-staff/useHistoricalExternalStaff";
+import { FrontendHistoryExternalStaff } from "@/integration/supabase/types/external-staff";
+import { Search, History, Calendar } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -42,33 +30,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function ExternalStaff() {
+export function HistoricalExternalStaff() {
   const {
-    externalStaff,
+    historicalStaff,
     loading,
-    statsLoading,
     totalCount,
     pagination,
     setPagination,
-    status,
-    setStatus,
-    stats,
-    createExternalStaff,
-    updateExternalStaff,
-    deleteExternalStaff,
-    fetchStats,
-  } = useExternalStaff();
+  } = useHistoricalExternalStaff();
+  
   const [searchTerm, setSearchTerm] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [showExcelUpload, setShowExcelUpload] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<
-    FrontendExternalStaff | undefined
-  >();
-  const [formLoading, setFormLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("current");
 
-  // Client-side filtering for search only - pagination and active/inactive filtering is done server-side
-  const filteredStaff = externalStaff.filter((staff) => {
+  // Client-side filtering for search
+  const filteredStaff = historicalStaff.filter((staff) => {
     if (!searchTerm) return true;
 
     const searchLower = searchTerm.toLowerCase();
@@ -78,7 +52,8 @@ export default function ExternalStaff() {
       staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
       staff["COMPANY CODE"]?.toLowerCase().includes(searchLower) ||
       staff["LOCATION"]?.toLowerCase().includes(searchLower) ||
-      staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower)
+      staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower) ||
+      staff["ASSOCIATE ID"]?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -95,60 +70,6 @@ export default function ExternalStaff() {
     setPagination({ pageIndex: 0, pageSize: parseInt(newSize) });
   };
 
-  // Handle status tab changes
-  const handleStatusChange = (newStatus: StaffStatus) => {
-    setStatus(newStatus);
-    setPagination({ ...pagination, pageIndex: 0 }); // Reset to first page when changing tabs
-  };
-
-  const handleCreateStaff = async (data: Partial<FrontendExternalStaff>) => {
-    setFormLoading(true);
-    try {
-      const result = await createExternalStaff(data);
-      if (result) {
-        setShowForm(false);
-        setEditingStaff(undefined);
-      }
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleUpdateStaff = async (data: Partial<FrontendExternalStaff>) => {
-    if (!editingStaff) return;
-
-    setFormLoading(true);
-    try {
-      const result = await updateExternalStaff(editingStaff.id, data);
-      if (result) {
-        setShowForm(false);
-        setEditingStaff(undefined);
-      }
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleDeleteStaff = async (id: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this external staff member?"
-      )
-    ) {
-      await deleteExternalStaff(id);
-    }
-  };
-
-  const handleEditStaff = (staff: FrontendExternalStaff) => {
-    setEditingStaff(staff);
-    setShowForm(true);
-  };
-
-  const handleCloseForm = () => {
-    setShowForm(false);
-    setEditingStaff(undefined);
-  };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
     try {
@@ -158,77 +79,43 @@ export default function ExternalStaff() {
     }
   };
 
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">External Staff</h1>
-          <p className="text-muted-foreground">
-            Manage external staff members and their information
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowExcelUpload(true)}
-            className="flex items-center gap-2"
-          >
-            <Upload className="h-4 w-4" />
-            Import Excel
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          <Button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Staff
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <History className="h-4 w-4" />
+        <span className="text-sm">
+          Historical records are created when key fields (Job Title, Department, Location, Position Status) change
+        </span>
       </div>
 
-      {/* Statistics Dashboard */}
-      <ExternalStaffStats stats={stats} loading={statsLoading} />
-
-      {/* Main Tabs for Current vs Historical */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="current">Current Staff</TabsTrigger>
-          <TabsTrigger value="historical">Historical Records</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="current">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>External Staff Members ({totalCount})</CardTitle>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search staff..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Tabs
-                value={status}
-                onValueChange={(value) => handleStatusChange(value as StaffStatus)}
-                className="mb-6"
-              >
-                <TabsList>
-                  <TabsTrigger value="all">All Staff</TabsTrigger>
-                  <TabsTrigger value="active">Active</TabsTrigger>
-                  <TabsTrigger value="terminated">Terminated</TabsTrigger>
-                </TabsList>
-              </Tabs>
-
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Historical External Staff Records ({totalCount})
+            </CardTitle>
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search historical records..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -239,25 +126,26 @@ export default function ExternalStaff() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Associate ID</TableHead>
                     <TableHead>Job Title</TableHead>
-                    <TableHead>Company</TableHead>
+                    <TableHead>Department</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Phone</TableHead>
+                    <TableHead>Position Status</TableHead>
+                    <TableHead>Company</TableHead>
                     <TableHead>Hire Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Archived Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStaff.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {searchTerm
-                          ? "No staff members found matching your search."
-                          : "No external staff members found."}
+                          ? "No historical records found matching your search."
+                          : "No historical external staff records found."}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -277,9 +165,14 @@ export default function ExternalStaff() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="font-mono text-sm">
+                            {staff["ASSOCIATE ID"] || "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div>
                             {staff["JOB TITLE"] && (
-                              <div>{staff["JOB TITLE"]}</div>
+                              <div className="font-medium">{staff["JOB TITLE"]}</div>
                             )}
                             {staff["JOB CLASS"] && (
                               <div className="text-sm text-muted-foreground">
@@ -288,46 +181,44 @@ export default function ExternalStaff() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{staff["COMPANY CODE"] || "-"}</TableCell>
-                        <TableCell>{staff["LOCATION"] || "-"}</TableCell>
                         <TableCell>
                           <div>
-                            {staff["HOME PHONE"] && (
-                              <div>{staff["HOME PHONE"]}</div>
+                            {staff["HOME DEPARTMENT"] && (
+                              <div>{staff["HOME DEPARTMENT"]}</div>
                             )}
-                            {staff["WORK PHONE"] &&
-                              staff["WORK PHONE"] !== staff["HOME PHONE"] && (
-                                <div className="text-sm text-muted-foreground">
-                                  Work: {staff["WORK PHONE"]}
-                                </div>
-                              )}
+                            {staff["BUSINESS UNIT"] && (
+                              <div className="text-sm text-muted-foreground">
+                                Unit: {staff["BUSINESS UNIT"]}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
-                        <TableCell>{formatDate(staff["HIRE DATE"])}</TableCell>
+                        <TableCell>{staff["LOCATION"] || "-"}</TableCell>
                         <TableCell>
-                          {staff["TERMINATION DATE"] ? (
-                            <Badge variant="destructive">Terminated</Badge>
+                          {staff["POSITION STATUS"] ? (
+                            <Badge 
+                              variant={
+                                staff["POSITION STATUS"]?.toLowerCase().includes("active") 
+                                  ? "default" 
+                                  : staff["POSITION STATUS"]?.toLowerCase().includes("terminated")
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                            >
+                              {staff["POSITION STATUS"]}
+                            </Badge>
                           ) : (
-                            <Badge variant="default">Active</Badge>
+                            "-"
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditStaff(staff)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteStaff(staff.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                        <TableCell>{staff["COMPANY CODE"] || "-"}</TableCell>
+                        <TableCell>{formatDate(staff["HIRE DATE"])}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{formatDateTime(staff.created_at)}</div>
+                            <div className="text-muted-foreground">
+                              (Archived)
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -476,26 +367,8 @@ export default function ExternalStaff() {
               </div>
             </div>
           )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="historical">
-          <HistoricalExternalStaff />
-        </TabsContent>
-      </Tabs>
-
-      <ExternalStaffSlideForm
-        staff={editingStaff}
-        onSubmit={editingStaff ? handleUpdateStaff : handleCreateStaff}
-        onClose={handleCloseForm}
-        open={showForm}
-        loading={formLoading}
-      />
-
-      {showExcelUpload && (
-        <ExternalStaffExcelUpload onClose={() => setShowExcelUpload(false)} />
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
