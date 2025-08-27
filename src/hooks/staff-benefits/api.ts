@@ -18,34 +18,40 @@ export async function fetchStaffBenefits(filters?: {
   staff_id?: string;
   staff_location_id?: string;
 }): Promise<FrontendStaffBenefit[]> {
-  let query = supabase
-    .from('staff_benefits')
-    .select('*')
-    .order('created_at', { ascending: false });
+  console.log('fetchStaffBenefits called with filters:', filters);
+  
+  try {
+    let query = supabase
+      .from('staff_benefits')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  // Apply filters
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
-  }
-  if (filters?.benefit_type) {
-    query = query.eq('benefit_type', filters.benefit_type);
-  }
-  if (filters?.staff_id) {
-    query = query.eq('staff_id', filters.staff_id);
-  }
-  if (filters?.staff_location_id) {
-    query = query.eq('staff_location_id', filters.staff_location_id);
-  }
+    // Apply filters
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.benefit_type) {
+      query = query.eq('benefit_type', filters.benefit_type);
+    }
+    if (filters?.staff_id) {
+      query = query.eq('staff_id', filters.staff_id);
+    }
+    if (filters?.staff_location_id) {
+      query = query.eq('staff_location_id', filters.staff_location_id);
+    }
 
-  const { data, error } = await query;
+    console.log('Executing staff_benefits query...');
+    const { data, error } = await query;
 
-  if (error) {
-    throw new Error(`Failed to fetch staff benefits: ${error.message}`);
-  }
+    if (error) {
+      console.error('Supabase error in fetchStaffBenefits:', error);
+      throw new Error(`Failed to fetch staff benefits: ${error.message}`);
+    }
 
-  if (!data || data.length === 0) {
-    return [];
-  }
+    if (!data || data.length === 0) {
+      console.log('No staff benefits data found');
+      return [];
+    }
 
   // Get unique staff IDs and location IDs for batch fetching
   const staffIds = [...new Set(data.map(b => b.staff_id).filter(Boolean))];
@@ -97,6 +103,10 @@ export async function fetchStaffBenefits(filters?: {
       staff_location_name: location?.location_description || null,
     };
   });
+  } catch (error) {
+    console.error('Error in fetchStaffBenefits:', error);
+    throw error;
+  }
 }
 
 /**

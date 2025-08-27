@@ -14,15 +14,37 @@ const TABLE_NAME = "external_staff"; // <-- adjust if your table name differs
 const PAGE_SIZE = 1000;              // safe chunk size; tune if needed
 const MAX_RETRIES = 3;
 
+export type StaffStatus = 'active' | 'inactive' | 'all';
+
+export interface PaginationState {
+  pageIndex: number;
+  pageSize: number;
+}
+
+export interface StaffStats {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
 type UseExternalStaffReturn = {
   externalStaff: FrontendExternalStaff[];
   loading: boolean;
+  statsLoading: boolean;
   error: string | null;
+  totalCount: number;
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
+  status: StaffStatus;
+  setStatus: (status: StaffStatus) => void;
+  stats: StaffStats;
   refreshAll: () => Promise<void>;
   /** Kept for API compatibility with your current code */
   fetchAllExternalStaff: () => Promise<void>;
-  setStatus: (status: string | null) => void;
-  status: string | null;
+  createExternalStaff: (staff: any) => Promise<void>;
+  updateExternalStaff: (id: string, staff: any) => Promise<void>;
+  deleteExternalStaff: (id: string) => Promise<void>;
+  fetchStats: () => Promise<void>;
 };
 
 async function fetchAllRowsPaginated(
@@ -89,8 +111,19 @@ async function fetchAllRowsPaginated(
 export function useExternalStaff(): UseExternalStaffReturn {
   const [externalStaff, setExternalStaff] = useState<FrontendExternalStaff[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [statsLoading, setStatsLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<StaffStatus>('all');
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10
+  });
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [stats, setStats] = useState<StaffStats>({
+    total: 0,
+    active: 0,
+    inactive: 0
+  });
   const abortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
@@ -102,8 +135,10 @@ export function useExternalStaff(): UseExternalStaffReturn {
     abortRef.current = new AbortController();
 
     try {
-      const all = await fetchAllRowsPaginated(status, abortRef.current.signal);
+      const statusFilter = status === 'all' ? null : status;
+      const all = await fetchAllRowsPaginated(statusFilter, abortRef.current.signal);
       setExternalStaff(all);
+      setTotalCount(all.length);
     } catch (e: any) {
       if (e?.name !== "AbortError") {
         console.error("fetchAllExternalStaff error:", e);
@@ -113,6 +148,56 @@ export function useExternalStaff(): UseExternalStaffReturn {
       setLoading(false);
     }
   }, [status]);
+
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select('status', { count: 'exact' });
+      
+      if (error) throw error;
+      
+      const total = data?.length || 0;
+      const active = data?.filter(item => item.status === 'active').length || 0;
+      const inactive = total - active;
+      
+      setStats({ total, active, inactive });
+    } catch (e: any) {
+      console.error("fetchStats error:", e);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  const createExternalStaff = useCallback(async (staff: any) => {
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .insert([staff]);
+    
+    if (error) throw error;
+    await load();
+  }, [load]);
+
+  const updateExternalStaff = useCallback(async (id: string, staff: any) => {
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .update(staff)
+      .eq('id', id);
+    
+    if (error) throw error;
+    await load();
+  }, [load]);
+
+  const deleteExternalStaff = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    await load();
+  }, [load]);
 
   // Expose same API name your component expects
   const fetchAllExternalStaff = useMemo(() => load, [load]);
@@ -131,10 +216,19 @@ export function useExternalStaff(): UseExternalStaffReturn {
   return {
     externalStaff,
     loading,
+    statsLoading,
     error: err,
+    totalCount,
+    pagination,
+    setPagination,
+    status,
+    setStatus,
+    stats,
     refreshAll,
     fetchAllExternalStaff,
-    setStatus,
-    status,
+    createExternalStaff,
+    updateExternalStaff,
+    deleteExternalStaff,
+    fetchStats,
   };
 }
