@@ -158,12 +158,12 @@ const navigationItems = [
     href: ROUTES.ACTIVITY_LOG,
     module: "activity_log",
   },
-  {
-    label: "Onboarding",
-    icon: UserPlus,
-    href: "/onboarding",
-    module: "onboarding",
-  },
+  // {
+  //   label: "Onboarding",
+  //   icon: UserPlus,
+  //   href: "/onboarding",
+  //   module: "onboarding",
+  // },
   {
     label: "Housing & Transport Allocation",
     icon: UserPlus,
