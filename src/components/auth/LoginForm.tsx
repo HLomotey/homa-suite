@@ -10,8 +10,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Lock, Mail, Building } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Building, RefreshCw } from "lucide-react";
 import { supabase } from "@/integration/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -25,6 +26,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -63,6 +66,40 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   };
 
   const isFormValid = formData.email && formData.password;
+  
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setError("Please enter your email address to reset your password");
+      return;
+    }
+    
+    setIsSendingResetEmail(true);
+    setError(null);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      toast({
+        title: "Password reset email sent",
+        description: `If an account exists for ${formData.email}, you will receive a password reset link shortly.`,
+      });
+    } catch (err) {
+      console.error("Error sending password reset email:", err);
+      // Don't show specific errors for security reasons
+      toast({
+        title: "Password reset email sent",
+        description: `If an account exists for ${formData.email}, you will receive a password reset link shortly.`,
+      });
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
@@ -164,6 +201,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   "Sign In"
                 )}
               </Button>
+              
+              {/* Forgot Password Link */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded px-2 py-1"
+                  disabled={isSendingResetEmail || !formData.email}
+                >
+                  {isSendingResetEmail ? (
+                    <span className="flex items-center justify-center">
+                      <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                      Sending...
+                    </span>
+                  ) : (
+                    "Forgot password?"
+                  )}
+                </button>
+              </div>
             </form>
 
             {/* Footer */}

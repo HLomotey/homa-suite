@@ -33,9 +33,6 @@ const Operations = lazy(() => import("@/pages/Operations"));
 const Utilities = lazy(() => import("@/pages/Utilities"));
 const UploadFinance = lazy(() => import("@/pages/UploadFinance"));
 const ActivityLogPage = lazy(() => import("@/pages/ActivityLogPage"));
-const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const Onboarding = lazy(() => import("@/pages/Onboarding"));
-const StaffBenefits = lazy(() => import("@/pages/StaffBenefits"));
 
 // Lazy load HR components
 const HRRecruitment = lazy(() =>
@@ -192,14 +189,6 @@ const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
 
 // Define all application routes
 export const routes: RouteObject[] = [
-  {
-    path: "/reset-password",
-    element: (
-      <LazyWrapper>
-        <ResetPassword />
-      </LazyWrapper>
-    ),
-  },
   {
     path: "/",
     element: <AppLayout />,
@@ -693,26 +682,6 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <ModuleRouteGuard module="activity_log">
               <ActivityLogPage />
-            </ModuleRouteGuard>
-          </LazyWrapper>
-        ),
-      },
-      {
-        path: "onboarding",
-        element: (
-          <LazyWrapper>
-            <ModuleRouteGuard module="onboarding">
-              <Onboarding />
-            </ModuleRouteGuard>
-          </LazyWrapper>
-        ),
-      },
-      {
-        path: "staff-benefits",
-        element: (
-          <LazyWrapper>
-            <ModuleRouteGuard module="onboarding">
-              <StaffBenefits />
             </ModuleRouteGuard>
           </LazyWrapper>
         ),

@@ -96,6 +96,14 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     description: 'System activity monitoring and audit trails',
     icon: 'Activity',
     routes: ['/activity-log']
+  },
+  {
+    id: 'onboarding',
+    name: 'onboarding',
+    displayName: 'Onboarding',
+    description: 'Staff onboarding and benefits management',
+    icon: 'UserPlus',
+    routes: ['/onboarding', '/onboarding/*', '/staff-benefits']
   }
 ];
 
