@@ -6,6 +6,7 @@ import { DataSourcesTab } from "./DataSourcesTab";
 import { ADPTab } from "./ADPTab";
 import { NotificationsTab } from "./NotificationsTab";
 import { LocationsTab } from "./LocationsTab";
+import { BillingPeriodsList } from "./BillingPeriodsList";
 import {
   Cog,
   Database,
@@ -15,6 +16,7 @@ import {
   Shield,
   MapPin,
   BarChart3,
+  Calendar,
 } from "lucide-react";
 
 export function Settings() {
@@ -29,7 +31,7 @@ export function Settings() {
         </p>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-black/40 border border-white/10 mb-6 grid grid-cols-4 h-auto">
+          <TabsList className="bg-black/40 border border-white/10 mb-6 grid grid-cols-5 h-auto">
             <TabsTrigger
               value="data-sources"
               className="flex items-center gap-2 py-3"
@@ -58,6 +60,13 @@ export function Settings() {
               <MapPin className="h-4 w-4" />
               <span>Locations</span>
             </TabsTrigger>
+            <TabsTrigger
+              value="billing-periods"
+              className="flex items-center gap-2 py-3"
+            >
+              <Calendar className="h-4 w-4" />
+              <span>Billing Periods</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="data-sources">
@@ -74,6 +83,10 @@ export function Settings() {
 
           <TabsContent value="locations">
             <LocationsTab />
+          </TabsContent>
+
+          <TabsContent value="billing-periods">
+            <BillingPeriodsList />
           </TabsContent>
         </Tabs>
       </div>

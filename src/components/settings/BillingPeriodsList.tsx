@@ -166,9 +166,12 @@ export function BillingPeriodsList() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Billing Periods</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Billing Periods
+        </CardTitle>
         <CardDescription>
-          Manage billing periods for utility readings
+          Manage billing periods for housing and transportation billing across all modules
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -242,7 +245,7 @@ export function BillingPeriodsList() {
           <DialogHeader>
             <DialogTitle>Add Billing Period</DialogTitle>
             <DialogDescription>
-              Create a new billing period for utility readings
+              Create a new billing period for housing and transportation billing
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit}>
