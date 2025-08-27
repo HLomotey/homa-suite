@@ -6,18 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Loader2, Home, Car } from "lucide-react";
-import { 
-  FrontendStaffBenefit, 
-  StaffBenefitFormData, 
-  BenefitType, 
+import {
+  FrontendStaffBenefit,
+  StaffBenefitFormData,
+  BenefitType,
   BenefitStatus
 } from "@/integration/supabase/types/staff-benefits";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  SearchableSelect,
-  SearchableSelectOption,
-} from "@/components/ui/searchable-select";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 import { useStaffBenefits } from "@/hooks/staff-benefits/useStaffBenefits";
 
@@ -33,78 +29,108 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
   onCancel,
 }) => {
   const { toast } = useToast();
+
+  // FULL staff list (no status filter)
   const { externalStaff, loading: staffLoading, fetchAllExternalStaff, setStatus } = useExternalStaff();
+
+  // Locations/useStaffBenefits stays unchanged
   const { staffLocations, loading: locationsLoading } = useStaffBenefits();
 
   const [formData, setFormData] = useState<StaffBenefitFormData>(() => ({
     staff_id: benefit?.staff_id || "",
     staff_location_id: benefit?.staff_location_id || "",
-    benefit_type: benefit?.benefit_type || "housing",
-    status: benefit?.status || "pending",
-    
-    // General fields
-    effective_date: benefit?.effective_date || new Date().toISOString().split('T')[0],
+    benefit_type: (benefit?.benefit_type as BenefitType) || "housing",
+    status: (benefit?.status as BenefitStatus) || "pending",
+    effective_date: benefit?.effective_date || new Date().toISOString().split("T")[0],
     expiry_date: benefit?.expiry_date || "",
     notes: benefit?.notes || "",
   }));
 
-  const [housingRequired, setHousingRequired] = useState(false);
-  const [transportationRequired, setTransportationRequired] = useState(false);
+  const [housingRequired, setHousingRequired] = useState<boolean>(false);
+  const [transportationRequired, setTransportationRequired] = useState<boolean>(false);
 
-  // State for staff search functionality
-  const [staffSearchQuery, setStaffSearchQuery] = useState("");
-  const [showStaffSuggestions, setShowStaffSuggestions] = useState(false);
+  // Search UI state
+  const [staffSearchQuery, setStaffSearchQuery] = useState<string>("");
+  const [showStaffSuggestions, setShowStaffSuggestions] = useState<boolean>(false);
   const [filteredStaff, setFilteredStaff] = useState<FrontendExternalStaff[]>([]);
 
-  // Set external staff status to active and fetch all data on component mount
+  // === Load ALL staff on mount (no status restriction)
   useEffect(() => {
-    setStatus("active");
+    setStatus(null);
     fetchAllExternalStaff();
   }, [setStatus, fetchAllExternalStaff]);
 
-  // Filter staff based on search query
+  // === Client-side filter across the full dataset — NO 10-item cap ===
   useEffect(() => {
-    if (staffSearchQuery.trim() === "") {
-      setFilteredStaff(externalStaff.slice(0, 10)); // Show first 10 staff members
-    } else {
-      const filtered = externalStaff.filter((staff) =>
-        `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
-        staff["WORK E-MAIL"]?.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
-        staff["HOME DEPARTMENT"]?.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
-        staff["JOB TITLE"]?.toLowerCase().includes(staffSearchQuery.toLowerCase())
-      );
-      setFilteredStaff(filtered.slice(0, 10)); // Limit to 10 results
+    const q = staffSearchQuery.trim().toLowerCase();
+
+    if (!q) {
+      setFilteredStaff(externalStaff);
+      return;
     }
+
+    const parts = q.split(/\s+/);
+
+    const filtered = externalStaff.filter((staff) => {
+      const firstName = (staff["PAYROLL FIRST NAME"] || "").toLowerCase();
+      const lastName = (staff["PAYROLL LAST NAME"] || "").toLowerCase();
+      const fullName = `${firstName} ${lastName}`.trim();
+      const reverseName = `${lastName} ${firstName}`.trim();
+      const jobTitle = (staff["JOB TITLE"] || "").toLowerCase();
+      const email = (staff["WORK E-MAIL"] || "").toLowerCase();
+      const department = (staff["HOME DEPARTMENT"] || "").toLowerCase();
+      const employeeId = (staff["EMPLOYEE ID"] || "").toLowerCase();
+      const location = (staff["LOCATION"] || "").toLowerCase();
+      const manager = (staff["MANAGER"] || "").toLowerCase();
+
+      const blob = `${firstName} ${lastName} ${fullName} ${reverseName} ${jobTitle} ${email} ${department} ${employeeId} ${location} ${manager}`;
+
+      const matchesAll = parts.every((p) =>
+        blob.includes(p) ||
+        firstName.startsWith(p) ||
+        lastName.startsWith(p) ||
+        fullName.startsWith(p) ||
+        reverseName.startsWith(p)
+      );
+
+      return matchesAll;
+    });
+
+    // Relevance sort
+    filtered.sort((a, b) => {
+      const aFull = `${(a["PAYROLL FIRST NAME"] || "").toLowerCase()} ${(a["PAYROLL LAST NAME"] || "").toLowerCase()}`.trim();
+      const bFull = `${(b["PAYROLL FIRST NAME"] || "").toLowerCase()} ${(b["PAYROLL LAST NAME"] || "").toLowerCase()}`.trim();
+
+      if (aFull === q && bFull !== q) return -1;
+      if (bFull === q && aFull !== q) return 1;
+      if (aFull.startsWith(q) && !bFull.startsWith(q)) return -1;
+      if (bFull.startsWith(q) && !aFull.startsWith(q)) return 1;
+      return aFull.localeCompare(bFull);
+    });
+
+    setFilteredStaff(filtered);
   }, [staffSearchQuery, externalStaff]);
 
-  // Handle benefit type changes based on checkboxes (both can be selected)
   const handleBenefitTypeChange = (type: BenefitType, checked: boolean) => {
-    if (type === "housing") {
-      setHousingRequired(checked);
-    } else if (type === "transportation") {
-      setTransportationRequired(checked);
-    }
+    if (type === "housing") setHousingRequired(checked);
+    if (type === "transportation") setTransportationRequired(checked);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleStaffSelect = (staff: FrontendExternalStaff) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       staff_id: staff.id,
-      staff_location_id: ""
+      staff_location_id: "",
     }));
     setStaffSearchQuery(`${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`);
     setShowStaffSuggestions(false);
   };
 
-  // Validation function
   const validateForm = (): boolean => {
     if (!formData.staff_id) {
       toast({
@@ -114,70 +140,51 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
       });
       return false;
     }
-
     if (!housingRequired && !transportationRequired) {
       toast({
         title: "Validation Error",
-        description: "Please select at least one benefit type (housing or transportation)",
+        description: "Please select at least one allocation type (housing or transportation).",
         variant: "destructive",
       });
       return false;
     }
-
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
-      // Create separate benefit records for each selected type
-      const benefitsToCreate = [];
-      
-      if (housingRequired) {
-        benefitsToCreate.push({
-          ...formData,
-          benefit_type: "housing" as BenefitType
-        });
-      }
-      
-      if (transportationRequired) {
-        benefitsToCreate.push({
-          ...formData,
-          benefit_type: "transportation" as BenefitType
-        });
-      }
+      const benefitsToCreate: StaffBenefitFormData[] = [];
+      if (housingRequired) benefitsToCreate.push({ ...formData, benefit_type: "housing" } as StaffBenefitFormData);
+      if (transportationRequired) benefitsToCreate.push({ ...formData, benefit_type: "transportation" } as StaffBenefitFormData);
 
-      // Save each benefit separately
-      for (const benefitData of benefitsToCreate) {
-        await onSave(benefitData);
+      for (const b of benefitsToCreate) {
+        await onSave(b);
       }
 
       toast({
         title: "Success",
-        description: `Staff benefit${benefitsToCreate.length > 1 ? 's' : ''} ${benefit ? 'updated' : 'created'} successfully`,
+        description: `Housing and transport allocation${benefitsToCreate.length > 1 ? "s" : ""} ${benefit ? "updated" : "created"} successfully`,
       });
     } catch (error) {
-      console.error('Error saving staff benefit:', error);
+      console.error("Error saving staff benefit:", error);
       toast({
         title: "Error",
-        description: "Failed to save staff benefit. Please try again.",
+        description: "Failed to save housing and transport allocation. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const selectedStaff = externalStaff.find(staff => staff.id === formData.staff_id);
+  const selectedStaff = externalStaff.find((s) => s.id === formData.staff_id);
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-6 border-b border-border">
         <h2 className="text-lg font-semibold">
-          {benefit ? "Edit Staff Benefit" : "Add New Staff Benefit"}
+          {benefit ? "Edit Housing and Transport Allocation" : "Add New Housing and Transport Allocation"}
         </h2>
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="h-4 w-4" />
@@ -190,9 +197,7 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Staff Information</CardTitle>
-              <CardDescription>
-                Select the staff member who requires benefits
-              </CardDescription>
+              <CardDescription>Select the staff member who requires housing and transport allocation</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -201,39 +206,57 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                   <Input
                     id="staff_search"
                     type="text"
-                    placeholder="Search staff by name, email, or department..."
+                    placeholder="Search staff by name, email, department, job title, or ID..."
                     value={staffSearchQuery}
                     onChange={(e) => {
                       setStaffSearchQuery(e.target.value);
                       setShowStaffSuggestions(true);
                     }}
                     onFocus={() => setShowStaffSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowStaffSuggestions(false), 200)}
                     className="w-full"
+                    autoComplete="off"
                   />
                   {staffLoading && (
-                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin" />
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
+                  )}
+
+                  {/* Scrollable, full results (no arbitrary cap) */}
+                  {showStaffSuggestions && (
+                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-72 overflow-auto">
+                      {(filteredStaff.length ? filteredStaff : externalStaff).length > 0 ? (
+                        (filteredStaff.length ? filteredStaff : externalStaff).map((staff) => {
+                          const firstName = staff["PAYROLL FIRST NAME"] || "";
+                          const lastName = staff["PAYROLL LAST NAME"] || "";
+                          const email = staff["WORK E-MAIL"] || "";
+                          const dept = staff["HOME DEPARTMENT"] || "";
+                          const job = staff["JOB TITLE"] || "";
+                          return (
+                            <div
+                              key={staff.id}
+                              className="px-4 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer border-b border-border last:border-b-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleStaffSelect(staff);
+                              }}
+                            >
+                              <div className="font-medium">{`${firstName} ${lastName}`.trim()}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {email}{dept ? ` • ${dept}` : ""}{job ? ` • ${job}` : ""}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-muted-foreground">
+                          {staffLoading ? "Loading staff..." : "No staff found"}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                {/* Staff Suggestions Dropdown */}
-                {showStaffSuggestions && filteredStaff.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {filteredStaff.map((staff) => (
-                      <div
-                        key={staff.id}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                        onClick={() => handleStaffSelect(staff)}
-                      >
-                        <div className="font-medium">{`${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`}</div>
-                        <div className="text-sm text-gray-600">
-                          {staff["WORK E-MAIL"]} • {staff["HOME DEPARTMENT"]} • {staff["JOB TITLE"]}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Selected Staff Display */}
+                {/* Selected Staff */}
                 {selectedStaff && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <div className="font-medium text-blue-900">{`${selectedStaff["PAYROLL FIRST NAME"] || ""} ${selectedStaff["PAYROLL LAST NAME"] || ""}`}</div>
@@ -246,13 +269,11 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
             </CardContent>
           </Card>
 
-          {/* Benefit Type Selection */}
+          {/* Allocation Type Selection */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Benefit Requirements</CardTitle>
-              <CardDescription>
-                Select the benefit types required (you can select housing, transportation, or both)
-              </CardDescription>
+              <CardTitle className="text-base">Allocation Requirements</CardTitle>
+              <CardDescription>Select the allocation types required</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -266,11 +287,9 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                     <Home className="h-5 w-5 text-blue-600" />
                     <div>
                       <Label htmlFor="housing_required" className="text-base font-medium cursor-pointer">
-                        Housing Required
+                        Housing Allocation
                       </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Staff requires housing accommodation
-                      </p>
+                      <p className="text-sm text-muted-foreground">Staff requires housing accommodation</p>
                     </div>
                   </div>
                 </div>
@@ -285,11 +304,9 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                     <Car className="h-5 w-5 text-green-600" />
                     <div>
                       <Label htmlFor="transportation_required" className="text-base font-medium cursor-pointer">
-                        Transportation Required
+                        Transport Allocation
                       </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Staff requires transportation support
-                      </p>
+                      <p className="text-sm text-muted-foreground">Staff requires transportation support</p>
                     </div>
                   </div>
                 </div>
@@ -315,7 +332,6 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                     required
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="expiry_date">Expiry Date</Label>
                   <Input
@@ -348,9 +364,7 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit">
-              {benefit ? "Update Benefit" : "Create Benefit"}
-            </Button>
+            <Button type="submit">{benefit ? "Update Allocation" : "Create Allocation"}</Button>
           </div>
         </form>
       </div>

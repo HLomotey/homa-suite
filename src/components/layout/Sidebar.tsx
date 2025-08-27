@@ -164,12 +164,12 @@ const navigationItems = [
     href: "/onboarding",
     module: "onboarding",
   },
-  // {
-  //   label: "Staff Benefits",
-  //   icon: UserPlus,
-  //   href: "/staff-benefits",
-  //   module: "onboarding",
-  // },
+  {
+    label: "Housing & Transport Allocation",
+    icon: UserPlus,
+    href: "/staff-benefits",
+    module: "onboarding",
+  },
 ];
 
 interface SidebarProps {
