@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { UtilityTypesList } from "./UtilityTypesList";
-import { BillingPeriodsList } from "./BillingPeriodsList";
+import { BillingPeriodsList } from "@/components/settings/BillingPeriodsList";
 // UtilitySetupsList import removed
 // Removed utility readings import
 import { UtilityPaymentsList } from "./UtilityPaymentsList";
