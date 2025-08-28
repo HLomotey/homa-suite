@@ -464,17 +464,24 @@ export function useExternalStaff(): UseExternalStaffReturn {
 
         // Check if this record exists and has key field changes
         const existingRecord = existingStaffMap.get(businessKey);
-        if (existingRecord && hasKeyFieldsChanged(existingRecord, record)) {
-          try {
-            // Move existing record to history
-            await moveToHistory(existingRecord);
-            movedToHistoryCount++;
-            changedRecordsCount++;
-            console.log(`Moved staff ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]} to history due to key field changes`);
-          } catch (error) {
-            console.error(`Failed to move staff to history:`, error);
-            // Continue processing other records even if one fails
+        if (existingRecord) {
+          console.log(`Found existing record for ${businessKey}: ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]}`);
+          if (hasKeyFieldsChanged(existingRecord, record)) {
+            try {
+              // Move existing record to history
+              await moveToHistory(existingRecord);
+              movedToHistoryCount++;
+              changedRecordsCount++;
+              console.log(`Moved staff ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]} to history due to key field changes`);
+            } catch (error) {
+              console.error(`Failed to move staff to history:`, error);
+              // Continue processing other records even if one fails
+            }
+          } else {
+            console.log(`No key field changes detected for ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]}`);
           }
+        } else {
+          console.log(`No existing record found for business key: ${businessKey}`);
         }
 
         recordsToUpsert.push({
