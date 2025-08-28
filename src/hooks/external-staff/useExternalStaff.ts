@@ -497,27 +497,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
     try {
       console.log(`Starting bulk upsert for ${data.length} records using RPC function`);
 
-      // Step 1: Call RPC function for change detection and archival
-      const { data: result, error: rpcError } = await (supabase as any)
-        .rpc('bulk_upsert_external_staff_with_change_detection', {
-          staff_data: data
-        });
-
-      if (rpcError) {
-        console.error("RPC function error:", rpcError);
-        toast.error("Failed to process external staff data");
-        return false;
-      }
-
-      if (!result) {
-        console.error("No result returned from RPC function");
-        toast.error("Failed to process external staff data");
-        return false;
-      }
-
-      console.log("Change detection result:", result);
-
-      // Step 2: Add business keys to data and perform upsert
+      // Step 1: Add business keys to data for both archival and upsert
       const dataWithKeys = data.map(record => {
         const positionId = record["POSITION ID"];
         const hireDate = record["HIRE DATE"];
@@ -535,6 +515,32 @@ export function useExternalStaff(): UseExternalStaffReturn {
         return { ...record, business_key: businessKey };
       });
 
+      // Step 2: Process each record for change detection and archival
+      let recordsArchived = 0;
+      for (const record of dataWithKeys) {
+        // Call the archive_changed_external_staff RPC function for each record
+        const { data: archiveResult, error: archiveError } = await (supabase as any)
+          .rpc('archive_changed_external_staff', {
+            business_key_val: record.business_key,
+            job_title_val: record["JOB TITLE"] || '',
+            home_dept_val: record["HOME DEPARTMENT"] || '',
+            location_val: record["LOCATION"] || '',
+            position_status_val: record["POSITION STATUS"] || ''
+          });
+
+        if (archiveError) {
+          console.error("Archive RPC error for record:", record.business_key, archiveError);
+          // Continue with other records even if one fails
+        } else if (archiveResult) {
+          recordsArchived++;
+          console.log(`Record archived: ${record.business_key}`);
+        }
+      }
+
+      console.log(`Change detection complete. ${recordsArchived} records archived.`);
+
+      // Step 3: Perform the actual upsert with the data that already has business keys
+
       // Step 3: Perform the actual upsert
       const { error: upsertError } = await (supabase as any)
         .from(TABLE_NAME)
@@ -550,12 +556,12 @@ export function useExternalStaff(): UseExternalStaffReturn {
       }
 
       // Show success message with details
-      if (result.records_archived > 0) {
+      if (recordsArchived > 0) {
         toast.success(
-          `Successfully processed ${result.records_processed} records. ${result.records_archived} records with changes were archived to history.`
+          `Successfully processed ${dataWithKeys.length} records. ${recordsArchived} records with changes were archived to history.`
         );
       } else {
-        toast.success(`Successfully processed ${result.records_processed} records. No key field changes detected.`);
+        toast.success(`Successfully processed ${dataWithKeys.length} records. No key field changes detected.`);
       }
 
       // Refresh data
