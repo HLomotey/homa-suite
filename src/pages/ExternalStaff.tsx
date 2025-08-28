@@ -57,6 +57,7 @@ export default function ExternalStaff() {
     createExternalStaff,
     updateExternalStaff,
     deleteExternalStaff,
+    bulkDeleteExternalStaff,
     fetchStats,
     exportToExcel,
   } = useExternalStaff();
@@ -187,17 +188,16 @@ export default function ExternalStaff() {
       description: `Are you sure you want to delete ${selectedStaffIds.length} selected staff member${selectedStaffIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
       onConfirm: async () => {
         try {
-          // Delete each selected staff member
-          for (const staffId of selectedStaffIds) {
-            await deleteExternalStaff(staffId);
+          // Use the optimized bulk delete function
+          const result = await bulkDeleteExternalStaff(selectedStaffIds);
+          
+          if (result) {
+            // Clear selections after successful deletion
+            setSelectedStaffIds([]);
+            setIsSelectAllChecked(false);
           }
-          
-          // Clear selections after successful deletion
-          setSelectedStaffIds([]);
-          setIsSelectAllChecked(false);
-          
-          toast.success(`Successfully deleted ${selectedStaffIds.length} staff member${selectedStaffIds.length > 1 ? 's' : ''}`);
         } catch (error) {
+          console.error("Bulk delete error:", error);
           toast.error("Failed to delete some staff members");
         }
       },

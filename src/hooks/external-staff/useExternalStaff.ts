@@ -68,6 +68,7 @@ type UseExternalStaffReturn = {
   bulkUpsertExternalStaff: (data: CreateExternalStaff[]) => Promise<boolean>;
   updateExternalStaff: (id: string, data: Partial<FrontendExternalStaff>) => Promise<boolean>;
   deleteExternalStaff: (id: string) => Promise<boolean>;
+  bulkDeleteExternalStaff: (ids: string[]) => Promise<boolean>;
   fetchStats: () => Promise<void>;
   exportToExcel: (filteredData?: FrontendExternalStaff[]) => void;
 };
@@ -424,6 +425,40 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   }, [load, fetchStats]);
 
+  // Bulk delete multiple external staff records in a single operation
+  const bulkDeleteExternalStaff = useCallback(async (ids: string[]): Promise<boolean> => {
+    try {
+      if (!ids.length) {
+        console.warn("No IDs provided for bulk deletion");
+        return false;
+      }
+
+      console.log(`Attempting to delete ${ids.length} external staff records`);
+      
+      // Use the .in() filter for efficient bulk deletion
+      const { error, count } = await supabase
+        .from(TABLE_NAME)
+        .delete()
+        .in('id', ids)
+        .select('count');
+      
+      if (error) {
+        console.error("Bulk delete external staff error:", error);
+        toast.error("Failed to delete selected external staff records");
+        return false;
+      }
+      
+      toast.success(`Successfully deleted ${count || ids.length} external staff records`);
+      await load();
+      await fetchStats();
+      return true;
+    } catch (e: any) {
+      console.error("Bulk delete external staff error:", e);
+      toast.error("Failed to delete selected external staff records");
+      return false;
+    }
+  }, [load, fetchStats]);
+
   // Define the key fields that trigger change detection
   const CHANGE_DETECTION_FIELDS = ["JOB TITLE", "HOME DEPARTMENT", "LOCATION", "POSITION STATUS"] as const;
 
@@ -561,6 +596,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
     bulkCreateExternalStaff: async () => false,
     updateExternalStaff,
     deleteExternalStaff,
+    bulkDeleteExternalStaff,
     bulkUpsertExternalStaff,
     fetchStats,
     exportToExcel: () => {},
