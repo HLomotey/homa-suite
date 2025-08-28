@@ -70,58 +70,108 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   // === Load ALL staff on mount, without status filter ===
   React.useEffect(() => {
+    console.log('AssignmentForm: Loading all external staff...');
     setStatus(null); // ensure we don't filter staff out
-    fetchAllExternalStaff(); // paginated loop -> returns ALL rows in table
+    fetchAllExternalStaff() // paginated loop -> returns ALL rows in table
+      .then(() => {
+        console.log('AssignmentForm: Successfully loaded all staff data');
+      })
+      .catch(error => {
+        console.error('AssignmentForm: Error loading staff data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load staff data. Please try again.",
+          variant: "destructive",
+        });
+      });
   }, [setStatus, fetchAllExternalStaff]);
 
-  // Keep a fast, client-side filter for the suggestions box
+  // Optimized client-side filtering for large datasets
   React.useEffect(() => {
+    console.log(`Filtering ${externalStaff.length} staff records...`);
+    const startTime = performance.now();
+    
     if (!tenantSearchQuery.trim()) {
-      setFilteredStaff(externalStaff);
+      // Limit to first 1000 records for performance when showing all
+      const limitedStaff = externalStaff.slice(0, 1000);
+      setFilteredStaff(limitedStaff);
+      console.log(`Showing first ${limitedStaff.length} records (no filter)`); 
       return;
     }
 
     const q = tenantSearchQuery.toLowerCase().trim();
-    const parts = q.split(/\s+/);
+    const parts = q.split(/\s+/).filter(p => p.length > 0);
+    
+    if (parts.length === 0) {
+      const limitedStaff = externalStaff.slice(0, 1000);
+      setFilteredStaff(limitedStaff);
+      return;
+    }
+    
+    // Use more efficient filtering approach
+    let filtered = externalStaff;
+    
+    // Apply each search term to progressively filter the results
+    for (const part of parts) {
+      filtered = filtered.filter((staff) => {
+        const firstName = (staff["PAYROLL FIRST NAME"] || "").toLowerCase();
+        const lastName = (staff["PAYROLL LAST NAME"] || "").toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
+        
+        // Check most common fields first for performance
+        if (firstName.includes(part) || lastName.includes(part) || fullName.includes(part)) {
+          return true;
+        }
+        
+        // Only check these fields if the above didn't match
+        const jobTitle = (staff["JOB TITLE"] || "").toLowerCase();
+        const department = (staff["HOME DEPARTMENT"] || "").toLowerCase();
+        const location = (staff["LOCATION"] || "").toLowerCase();
+        
+        return jobTitle.includes(part) || department.includes(part) || location.includes(part);
+      });
+      
+      // Early exit if we've filtered down to a reasonable number
+      if (filtered.length < 100) break;
+    }
 
-    const filtered = externalStaff.filter((staff) => {
-      const firstName = (staff["PAYROLL FIRST NAME"] || "").toLowerCase();
-      const lastName = (staff["PAYROLL LAST NAME"] || "").toLowerCase();
-      const fullName = `${firstName} ${lastName}`.trim();
-      const reverseName = `${lastName} ${firstName}`.trim();
-      const jobTitle = (staff["JOB TITLE"] || "").toLowerCase();
-      const email = (staff["WORK E-MAIL"] || "").toLowerCase();
-      const department = (staff["HOME DEPARTMENT"] || "").toLowerCase();
-      const employeeId = (staff["EMPLOYEE ID"] || "").toLowerCase();
-      const location = (staff["LOCATION"] || "").toLowerCase();
-      const manager = (staff["MANAGER"] || "").toLowerCase();
-
-      const blob =
-        `${firstName} ${lastName} ${fullName} ${reverseName} ${jobTitle} ${email} ${department} ${employeeId} ${location} ${manager}`;
-
-      const matchesAll = parts.every((p) =>
-        blob.includes(p)
-        || firstName.startsWith(p)
-        || lastName.startsWith(p)
-        || fullName.startsWith(p)
-        || reverseName.startsWith(p)
-      );
-
-      return matchesAll;
-    });
-
-    filtered.sort((a, b) => {
-      const aFull = `${(a["PAYROLL FIRST NAME"] || "").toLowerCase()} ${(a["PAYROLL LAST NAME"] || "").toLowerCase()}`.trim();
-      const bFull = `${(b["PAYROLL FIRST NAME"] || "").toLowerCase()} ${(b["PAYROLL LAST NAME"] || "").toLowerCase()}`.trim();
-
-      if (aFull === q && bFull !== q) return -1;
-      if (bFull === q && aFull !== q) return 1;
-      if (aFull.startsWith(q) && !bFull.startsWith(q)) return -1;
-      if (bFull.startsWith(q) && !aFull.startsWith(q)) return 1;
-      return aFull.localeCompare(bFull);
-    });
-
-    setFilteredStaff(filtered);
+    // Sort results by relevance
+    if (filtered.length > 0) {
+      filtered.sort((a, b) => {
+        const aFirst = (a["PAYROLL FIRST NAME"] || "").toLowerCase();
+        const aLast = (a["PAYROLL LAST NAME"] || "").toLowerCase();
+        const bFirst = (b["PAYROLL FIRST NAME"] || "").toLowerCase();
+        const bLast = (b["PAYROLL LAST NAME"] || "").toLowerCase();
+        const aFull = `${aFirst} ${aLast}`.trim();
+        const bFull = `${bFirst} ${bLast}`.trim();
+        
+        // Exact matches first
+        if (aFull === q && bFull !== q) return -1;
+        if (bFull === q && aFull !== q) return 1;
+        
+        // Then starts with matches
+        if (aFull.startsWith(q) && !bFull.startsWith(q)) return -1;
+        if (bFull.startsWith(q) && !aFull.startsWith(q)) return 1;
+        
+        // Then last name matches
+        if (aLast.startsWith(parts[0]) && !bLast.startsWith(parts[0])) return -1;
+        if (bLast.startsWith(parts[0]) && !aLast.startsWith(parts[0])) return 1;
+        
+        // Then first name matches
+        if (aFirst.startsWith(parts[0]) && !bFirst.startsWith(parts[0])) return -1;
+        if (bFirst.startsWith(parts[0]) && !aFirst.startsWith(parts[0])) return 1;
+        
+        // Default to alphabetical
+        return aFull.localeCompare(bFull);
+      });
+    }
+    
+    // Limit results if there are too many
+    const finalResults = filtered.length > 1000 ? filtered.slice(0, 1000) : filtered;
+    setFilteredStaff(finalResults);
+    
+    const endTime = performance.now();
+    console.log(`Filtered to ${finalResults.length} records in ${(endTime - startTime).toFixed(2)}ms`);
   }, [tenantSearchQuery, externalStaff]);
 
   // Handlers

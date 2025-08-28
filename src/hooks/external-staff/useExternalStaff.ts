@@ -79,7 +79,7 @@ async function fetchAllRowsPaginated(
 ): Promise<{ data: FrontendExternalStaff[]; totalCount: number }> {
   console.log(`fetchAllRowsPaginated called with status: ${status}`);
   
-  // Test direct query first
+  // Test direct query first to ensure connection works
   const { data: testData, error: testError } = await supabase
     .from(TABLE_NAME)
     .select("*")
@@ -87,25 +87,17 @@ async function fetchAllRowsPaginated(
     
   console.log("Test query result:", { testData: testData?.length, testError });
   
-  let query = supabase
-    .from(TABLE_NAME)
-    .select("*", { count: "exact" })
-    .order("id", { ascending: true });
-
-  // Apply status filtering at database level for better performance
-  if (status === "active") {
-    query = query.is('"TERMINATION DATE"', null);
-  } else if (status === "terminated") {
-    query = query.not('"TERMINATION DATE"', 'is', null);
+  if (testError) {
+    console.error("Test query failed:", testError);
+    throw new Error(`Database connection error: ${testError.message}`);
   }
-  // For "all", no additional filtering needed
-
+  
   // Get total count first with proper filtering
   let countQuery = supabase
     .from(TABLE_NAME)
     .select("id", { count: "exact", head: true });
 
-  // Apply same status filtering for accurate count
+  // Apply status filtering for accurate count
   if (status === "active") {
     countQuery = countQuery.is('"TERMINATION DATE"', null);
   } else if (status === "terminated") {
@@ -116,7 +108,7 @@ async function fetchAllRowsPaginated(
 
   if (countError) {
     console.error("Count query error:", countError);
-    throw countError;
+    throw new Error(`Failed to get total count: ${countError.message}`);
   }
 
   const total = totalCount || 0;
@@ -130,14 +122,22 @@ async function fetchAllRowsPaginated(
     return { data: [], totalCount: 0 };
   }
 
-  // Fetch all pages
+  // Fetch all pages with progress logging
   const pages = Math.ceil(total / PAGE_SIZE);
+  console.log(`Will fetch ${pages} pages with ${PAGE_SIZE} records per page`);
+  
   for (let page = 0; page < pages; page++) {
+    if (page > 0 && page % 5 === 0) {
+      console.log(`Fetched ${allRows.length} records so far (${Math.round(allRows.length / total * 100)}%)`);
+    }
+    
     const from = page * PAGE_SIZE;
     const to = Math.min((page + 1) * PAGE_SIZE - 1, total - 1);
 
     let attempt = 0;
-    while (attempt < MAX_RETRIES) {
+    let success = false;
+    
+    while (attempt < MAX_RETRIES && !success) {
       try {
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
@@ -156,19 +156,28 @@ async function fetchAllRowsPaginated(
 
         const { data, error: pageErr } = await pageQuery;
 
-        if (pageErr) throw pageErr;
+        if (pageErr) {
+          console.error(`Error fetching page ${page}:`, pageErr);
+          throw pageErr;
+        }
+        
         if (data && data.length) {
           allRows = allRows.concat(data as FrontendExternalStaff[]);
+          success = true;
+        } else {
+          console.warn(`Page ${page} returned no data`);
+          success = true; // Consider empty result as success to avoid retries
         }
-        break;
       } catch (e) {
         attempt++;
+        console.warn(`Attempt ${attempt} failed for page ${page}:`, e);
         if (attempt >= MAX_RETRIES) throw e;
         await new Promise((r) => setTimeout(r, 300 * attempt));
       }
     }
   }
-
+  
+  console.log(`Successfully fetched all ${allRows.length} records`);
   return { data: allRows, totalCount: total };
 }
 
@@ -223,33 +232,18 @@ export function useExternalStaff(): UseExternalStaffReturn {
       const { data: { user } } = await supabase.auth.getUser();
       console.log("Current user:", user?.id || "Not authenticated");
       
-      // Try simple direct query first
-      console.log("Attempting direct query...");
-      const { data: directData, error: directError, count } = await supabase
-        .from(TABLE_NAME)
-        .select("*", { count: "exact" })
-        .limit(100);
-        
-      console.log("Direct query result:", { 
-        dataLength: directData?.length, 
-        count, 
-        error: directError 
-      });
+      // Use the paginated function to fetch ALL records
+      console.log("Fetching all records with pagination...");
+      const { data: allData, totalCount: total } = await fetchAllRowsPaginated(status, abortRef.current.signal);
       
-      if (directError) {
-        console.error("Direct query error:", directError);
-        setError(directError.message);
-        return;
-      }
+      console.log(`Paginated query result: ${allData.length} records out of ${total} total`);
       
-      if (directData) {
-        setExternalStaff(directData as FrontendExternalStaff[]);
-        setTotalCount(count || directData.length);
-        console.log(`Successfully loaded ${directData.length} records`);
-        
-        // Calculate and update stats after loading data
-        await fetchStats();
-      }
+      setExternalStaff(allData as FrontendExternalStaff[]);
+      setTotalCount(total);
+      console.log(`Successfully loaded ${allData.length} records`);
+      
+      // Calculate and update stats after loading data
+      await fetchStats();
       
     } catch (e: any) {
       if (e.name !== "AbortError") {
