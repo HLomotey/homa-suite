@@ -16,6 +16,7 @@ import { FrontendHistoryExternalStaff } from "@/integration/supabase/types/exter
 import { Search, History, Calendar, Download, CheckSquare, Square, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -46,6 +47,17 @@ export function HistoricalExternalStaff() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedHistoricalIds, setSelectedHistoricalIds] = useState<string[]>([]);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   // Export function for historical data
   const exportHistoricalToExcel = (filteredData?: FrontendHistoryExternalStaff[]) => {
@@ -159,23 +171,27 @@ export function HistoricalExternalStaff() {
       return;
     }
 
-    const confirmMessage = `Are you sure you want to delete ${selectedHistoricalIds.length} selected historical record${selectedHistoricalIds.length > 1 ? 's' : ''}?`;
-    if (window.confirm(confirmMessage)) {
-      try {
-        // Delete each selected historical record
-        for (const staffId of selectedHistoricalIds) {
-          await deleteHistoricalStaff(staffId);
+    setConfirmDialog({
+      open: true,
+      title: "Delete Historical Records",
+      description: `Are you sure you want to delete ${selectedHistoricalIds.length} selected historical record${selectedHistoricalIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          // Delete each selected historical record
+          for (const staffId of selectedHistoricalIds) {
+            await deleteHistoricalStaff(staffId);
+          }
+          
+          // Clear selections after successful deletion
+          setSelectedHistoricalIds([]);
+          setIsSelectAllChecked(false);
+          
+          toast.success(`Successfully deleted ${selectedHistoricalIds.length} historical record${selectedHistoricalIds.length > 1 ? 's' : ''}`);
+        } catch (error) {
+          toast.error("Failed to delete some historical records");
         }
-        
-        // Clear selections after successful deletion
-        setSelectedHistoricalIds([]);
-        setIsSelectAllChecked(false);
-        
-        toast.success(`Successfully deleted ${selectedHistoricalIds.length} historical record${selectedHistoricalIds.length > 1 ? 's' : ''}`);
-      } catch (error) {
-        toast.error("Failed to delete some historical records");
-      }
-    }
+      },
+    });
   };
 
   // Calculate pagination values
@@ -540,6 +556,16 @@ export function HistoricalExternalStaff() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmationDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { FrontendExternalStaff } from "@/integration/supabase/types/external-sta
 import { Plus, Search, Edit, Trash2, Upload, Download, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -69,6 +70,17 @@ export default function ExternalStaff() {
   const [activeTab, setActiveTab] = useState("current");
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   // Client-side filtering for search only - pagination and active/inactive filtering is done server-side
   const filteredStaff = externalStaff.filter((staff) => {
@@ -133,13 +145,14 @@ export default function ExternalStaff() {
   };
 
   const handleDeleteStaff = async (id: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this external staff member?"
-      )
-    ) {
-      await deleteExternalStaff(id);
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Delete Staff Member",
+      description: "Are you sure you want to delete this external staff member? This action cannot be undone.",
+      onConfirm: async () => {
+        await deleteExternalStaff(id);
+      },
+    });
   };
 
   // Handle individual checkbox selection
@@ -168,23 +181,27 @@ export default function ExternalStaff() {
       return;
     }
 
-    const confirmMessage = `Are you sure you want to delete ${selectedStaffIds.length} selected staff member${selectedStaffIds.length > 1 ? 's' : ''}?`;
-    if (window.confirm(confirmMessage)) {
-      try {
-        // Delete each selected staff member
-        for (const staffId of selectedStaffIds) {
-          await deleteExternalStaff(staffId);
+    setConfirmDialog({
+      open: true,
+      title: "Delete Multiple Staff Members",
+      description: `Are you sure you want to delete ${selectedStaffIds.length} selected staff member${selectedStaffIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          // Delete each selected staff member
+          for (const staffId of selectedStaffIds) {
+            await deleteExternalStaff(staffId);
+          }
+          
+          // Clear selections after successful deletion
+          setSelectedStaffIds([]);
+          setIsSelectAllChecked(false);
+          
+          toast.success(`Successfully deleted ${selectedStaffIds.length} staff member${selectedStaffIds.length > 1 ? 's' : ''}`);
+        } catch (error) {
+          toast.error("Failed to delete some staff members");
         }
-        
-        // Clear selections after successful deletion
-        setSelectedStaffIds([]);
-        setIsSelectAllChecked(false);
-        
-        toast.success(`Successfully deleted ${selectedStaffIds.length} staff member${selectedStaffIds.length > 1 ? 's' : ''}`);
-      } catch (error) {
-        toast.error("Failed to delete some staff members");
-      }
-    }
+      },
+    });
   };
 
   const handleEditStaff = (staff: FrontendExternalStaff) => {
@@ -589,8 +606,20 @@ export default function ExternalStaff() {
       />
 
       {showExcelUpload && (
-        <ExternalStaffExcelUpload onClose={() => setShowExcelUpload(false)} />
+        <ExternalStaffExcelUpload
+          onClose={() => setShowExcelUpload(false)}
+        />
       )}
+
+      <ConfirmationDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 }
