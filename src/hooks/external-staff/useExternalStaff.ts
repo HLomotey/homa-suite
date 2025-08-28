@@ -492,12 +492,12 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   };
 
-  // Enhanced bulk upsert with change detection using RPC function
+  // Bulk upsert with automatic change detection via database trigger
   const bulkUpsertExternalStaff = useCallback(async (data: CreateExternalStaff[]): Promise<boolean> => {
     try {
-      console.log(`Starting bulk upsert for ${data.length} records using RPC function`);
+      console.log(`Starting bulk upsert for ${data.length} records`);
 
-      // Step 1: Add business keys to data for both archival and upsert
+      // Step 1: Add business keys to data for upsert
       const dataWithKeys = data.map(record => {
         const positionId = record["POSITION ID"];
         const hireDate = record["HIRE DATE"];
@@ -515,33 +515,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
         return { ...record, business_key: businessKey };
       });
 
-      // Step 2: Process each record for change detection and archival
-      let recordsArchived = 0;
-      for (const record of dataWithKeys) {
-        // Call the archive_changed_external_staff RPC function for each record
-        const { data: archiveResult, error: archiveError } = await (supabase as any)
-          .rpc('archive_changed_external_staff', {
-            business_key_val: record.business_key,
-            job_title_val: record["JOB TITLE"] || '',
-            home_dept_val: record["HOME DEPARTMENT"] || '',
-            location_val: record["LOCATION"] || '',
-            position_status_val: record["POSITION STATUS"] || ''
-          });
-
-        if (archiveError) {
-          console.error("Archive RPC error for record:", record.business_key, archiveError);
-          // Continue with other records even if one fails
-        } else if (archiveResult) {
-          recordsArchived++;
-          console.log(`Record archived: ${record.business_key}`);
-        }
-      }
-
-      console.log(`Change detection complete. ${recordsArchived} records archived.`);
-
-      // Step 3: Perform the actual upsert with the data that already has business keys
-
-      // Step 3: Perform the actual upsert
+      // Step 2: Perform the upsert (change detection happens automatically via database trigger)
       const { error: upsertError } = await (supabase as any)
         .from(TABLE_NAME)
         .upsert(dataWithKeys, {
@@ -555,15 +529,9 @@ export function useExternalStaff(): UseExternalStaffReturn {
         return false;
       }
 
-      // Show success message with details
-      if (recordsArchived > 0) {
-        toast.success(
-          `Successfully processed ${dataWithKeys.length} records. ${recordsArchived} records with changes were archived to history.`
-        );
-      } else {
-        toast.success(`Successfully processed ${dataWithKeys.length} records. No key field changes detected.`);
-      }
-
+      // Show success message
+      toast.success(`Successfully processed ${dataWithKeys.length} records. Records with key field changes were automatically archived.`);
+      
       // Refresh data
       await load();
       await fetchStats();
