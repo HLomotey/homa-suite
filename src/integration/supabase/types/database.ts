@@ -376,6 +376,63 @@ export interface Database {
         Insert: Omit<ComplaintHistory, "id" | "created_at">;
         Update: Partial<Omit<ComplaintHistory, "id" | "created_at">>;
       };
+      user_roles: {
+        Row: {
+          id: string;
+          user_id: string;
+          role_id: string;
+          is_primary: boolean;
+          assigned_by: string;
+          assigned_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          role_id: string;
+          is_primary: boolean;
+          assigned_by: string;
+          assigned_at?: string;
+        };
+        Update: {
+          role_id?: string;
+          is_primary?: boolean;
+          assigned_by?: string;
+          assigned_at?: string;
+        };
+      };
+      staff_locations: {
+        Row: {
+          id: string;
+          name: string;
+          address: string | null;
+          city: string | null;
+          state: string | null;
+          zip_code: string | null;
+          country: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          name: string;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          country?: string | null;
+          is_active?: boolean;
+        };
+        Update: {
+          name?: string;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip_code?: string | null;
+          country?: string | null;
+          is_active?: boolean;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

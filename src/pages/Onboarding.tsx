@@ -1,12 +1,18 @@
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Users, ClipboardCheck, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Onboarding = () => {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center space-x-3">
         <UserPlus className="h-8 w-8 text-primary" />
         <div>
@@ -30,9 +36,7 @@ const Onboarding = () => {
           </CardHeader>
           <CardContent>
             <Link to="/staff-benefits">
-              <Button className="w-full">
-                Manage Benefits
-              </Button>
+              <Button className="w-full">Manage Benefits</Button>
             </Link>
           </CardContent>
         </Card>
