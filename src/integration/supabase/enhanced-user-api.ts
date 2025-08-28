@@ -237,7 +237,7 @@ export const getUsersWithRoles = async (): Promise<EnhancedUserQuery> => {
           description
         )
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) as { data: any[] | null, error: any };
 
     if (profilesError) {
       console.error('❌ Error fetching profiles:', profilesError);
@@ -285,7 +285,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
       .from('user_management_view')
       .select('*')
       .eq('role_name', roleName)
-      .order('auth_created_at', { ascending: false });
+      .order('auth_created_at', { ascending: false }) as { data: any[] | null, error: any };
 
     if (viewError) {
       console.error('Error fetching users by role from view:', viewError);
@@ -303,7 +303,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
           )
         `)
         .eq('roles.name', roleName)
-        .eq('is_primary', true);
+        .eq('is_primary', true) as { data: Array<{user_id: string; is_primary: boolean; roles: {id: string; name: string; display_name: string}}> | null, error: any };
 
       if (rolesError) {
         console.error('Error fetching user roles:', rolesError);
@@ -315,7 +315,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .in('id', userIds);
+        .in('id', userIds) as { data: any[] | null, error: any };
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
@@ -324,7 +324,7 @@ export const getUsersByRole = async (roleName: string): Promise<EnhancedUserQuer
 
       // Create role map
       const roleMap = new Map();
-      (userRoles || []).forEach(ur => {
+      (userRoles || []).forEach((ur: {user_id: string; roles: any}) => {
         roleMap.set(ur.user_id, ur.roles);
       });
 
@@ -390,7 +390,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
       .from('user_management_view')
       .select('*')
       .eq('department', department)
-      .order('auth_created_at', { ascending: false });
+      .order('auth_created_at', { ascending: false }) as { data: any[] | null, error: any };
 
     if (viewError) {
       console.error('Error fetching users by department from view:', viewError);
@@ -400,7 +400,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
         .from('profiles')
         .select('*')
         .eq('department', department)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as { data: any[] | null, error: any };
 
       if (profilesError) {
         console.error('Error fetching profiles by department:', profilesError);
@@ -421,7 +421,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
           )
         `)
         .in('user_id', userIds)
-        .eq('is_primary', true);
+        .eq('is_primary', true) as { data: Array<{user_id: string; is_primary: boolean; roles: {id: string; name: string; display_name: string}}> | null, error: any };
 
       if (rolesError) {
         console.error('Error fetching user roles:', rolesError);
@@ -429,7 +429,7 @@ export const getUsersByDepartment = async (department: string): Promise<Enhanced
 
       // Create role map
       const roleMap = new Map();
-      (userRoles || []).forEach(ur => {
+      (userRoles || []).forEach((ur: {user_id: string; roles: any}) => {
         roleMap.set(ur.user_id, ur.roles);
       });
 
@@ -495,7 +495,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
       .from('user_management_view')
       .select('*')
       .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
-      .order('auth_created_at', { ascending: false });
+      .order('auth_created_at', { ascending: false }) as { data: any[] | null, error: any };
 
     if (viewError) {
       console.error('Error searching users from view:', viewError);
@@ -505,7 +505,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
         .from('profiles')
         .select('*')
         .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as { data: any[] | null, error: any };
 
       if (profilesError) {
         console.error('Error searching profiles:', profilesError);
@@ -526,7 +526,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
           )
         `)
         .in('user_id', userIds)
-        .eq('is_primary', true);
+        .eq('is_primary', true) as { data: Array<{user_id: string; is_primary: boolean; roles: {id: string; name: string; display_name: string}}> | null, error: any };
 
       if (rolesError) {
         console.error('Error fetching user roles:', rolesError);
@@ -534,7 +534,7 @@ export const searchUsers = async (searchTerm: string): Promise<EnhancedUserQuery
 
       // Create role map
       const roleMap = new Map();
-      (userRoles || []).forEach(ur => {
+      (userRoles || []).forEach((ur: {user_id: string; roles: any}) => {
         roleMap.set(ur.user_id, ur.roles);
       });
 
@@ -600,7 +600,7 @@ export const updateUserRole = async (userId: string, roleId: string): Promise<{ 
       .from('user_roles')
       .delete()
       .eq('user_id', userId)
-      .eq('is_primary', true);
+      .eq('is_primary', true) as { error: any };
 
     if (deleteError) {
       console.error('Error removing existing role:', deleteError);
@@ -610,12 +610,14 @@ export const updateUserRole = async (userId: string, roleId: string): Promise<{ 
     // Then add the new primary role
     const { error: insertError } = await supabase
       .from('user_roles')
-      .insert({
-        user_id: userId,
-        role_id: roleId,
-        is_primary: true,
-        assigned_by: userId // For now, user assigns their own role
-      });
+      .insert([
+        {
+          user_id: userId,
+          role_id: roleId,
+          is_primary: true,
+          assigned_by: userId // For now, user assigns their own role
+        }
+      ] as any) as { error: any };
 
     if (insertError) {
       console.error('Error assigning new role:', insertError);

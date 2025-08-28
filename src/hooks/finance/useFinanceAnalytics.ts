@@ -53,13 +53,15 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
       }
 
       const { data: invoices, error } = await query;
+      // Explicitly type the invoices data
+      const typedInvoices = invoices as any[] || [];
       if (error) throw error;
 
-      const totalInvoices = invoices.length;
+      const totalInvoices = typedInvoices.length;
       
       // Calculate total revenue directly from the fetched invoices
       // This ensures we have accurate data even with large datasets
-      let totalRevenue = invoices.reduce((sum, invoice) => {
+      let totalRevenue = typedInvoices.reduce((sum, invoice) => {
         const lineTotal = parseFloat(invoice.line_total);
         return sum + (isNaN(lineTotal) ? 0 : lineTotal);
       }, 0);
@@ -89,13 +91,13 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         }
       }
 
-      const statusCounts = invoices.reduce((acc, inv) => {
+      const statusCounts = typedInvoices.reduce((acc, inv) => {
         acc[inv.invoice_status] = (acc[inv.invoice_status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       // Monthly revenue aggregation
-      const monthlyData = invoices.reduce((acc, inv) => {
+      const monthlyData = typedInvoices.reduce((acc, inv) => {
         const month = new Date(inv.date_issued).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
@@ -132,7 +134,7 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
       );
 
       // Tax analysis by Tax 1 Type
-      const taxData = invoices.reduce((acc, inv) => {
+      const taxData = typedInvoices.reduce((acc, inv) => {
         const taxType = inv.tax_1_type || "No Tax";
         if (!acc[taxType]) {
           acc[taxType] = { total_revenue: 0, invoice_count: 0 };
@@ -192,13 +194,15 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
       }
 
       const { data, error } = await query;
+      // Explicitly type the data
+      const typedData = data as any[] || [];
       if (error) throw error;
 
       // Use filtered period or current month if no filter
       const targetMonth = month ? month - 1 : new Date().getMonth(); // month - 1 because JS months are 0-indexed
       const targetYear = year || new Date().getFullYear();
 
-      const thisMonthRevenue = data
+      const thisMonthRevenue = typedData
         .filter((inv) => {
           const invDate = new Date(inv.date_issued);
           return (
@@ -214,7 +218,7 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
       const lastMonth = targetMonth === 0 ? 11 : targetMonth - 1;
       const lastMonthYear = targetMonth === 0 ? targetYear - 1 : targetYear;
 
-      const lastMonthRevenue = data
+      const lastMonthRevenue = typedData
         .filter((inv) => {
           const invDate = new Date(inv.date_issued);
           return (
@@ -233,7 +237,7 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
           : 0;
 
       // Calculate total revenue from all data
-      const totalRevenue = data.reduce((sum, invoice) => {
+      const totalRevenue = typedData.reduce((sum, invoice) => {
         const lineTotal = parseFloat(invoice.line_total);
         return sum + (isNaN(lineTotal) ? 0 : lineTotal);
       }, 0);

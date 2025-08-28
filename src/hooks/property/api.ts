@@ -27,7 +27,7 @@ export const fetchProperties = async (): Promise<FrontendProperty[]> => {
         company_locations(*),
         billing_staff(id, legal_name)
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as { data: Property[] | null, error: any };
 
     console.log("Supabase properties query result:", { data, error });
 
@@ -70,7 +70,7 @@ export const fetchPropertyById = async (
       billing_staff(id, legal_name)
     `)
     .eq("id", id)
-    .single();
+    .single() as { data: Property | null, error: any };
 
   if (error) {
     console.error(`Error fetching property with ID ${id}:`, error);
@@ -109,7 +109,7 @@ export const createProperty = async (
     .from("properties")
     .insert(dbProperty)
     .select()
-    .single();
+    .single() as { data: Property | null, error: any };
 
   if (error) {
     console.error("Error creating property:", error);
@@ -154,7 +154,7 @@ export const updateProperty = async (
     .update(dbProperty)
     .eq("id", id)
     .select()
-    .single();
+    .single() as { data: Property | null, error: any };
 
   if (error) {
     console.error(`Error updating property with ID ${id}:`, error);
@@ -194,7 +194,7 @@ export const fetchPropertiesByStatus = async (
       billing_staff(id, legal_name)
     `)
     .eq("status", status)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }) as { data: Property[] | null, error: any };
 
   if (error) {
     console.error(`Error fetching properties with status ${status}:`, error);
@@ -220,7 +220,7 @@ export const fetchPropertiesByType = async (
       billing_staff(id, legal_name)
     `)
     .eq("type", type)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }) as { data: Property[] | null, error: any };
 
   if (error) {
     console.error(`Error fetching properties with type ${type}:`, error);

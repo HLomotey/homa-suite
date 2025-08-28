@@ -28,7 +28,7 @@ export const useStaffForSelection = () => {
       console.log('Fetching staff for selection using RPC...');
       
       // Use the same RPC function as useBillingStaff
-      const { data, error: rpcError } = await supabase.rpc('get_billing_staff');
+      const { data, error: rpcError } = await supabase.rpc('get_billing_staff') as { data: BillingStaff[] | null, error: any };
       
       console.log('Staff selection raw data from RPC:', data);
       
@@ -38,7 +38,7 @@ export const useStaffForSelection = () => {
       }
       
       // If we got data from RPC, use it
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data) && data.length > 0) {
         const activeStaff = (data as BillingStaff[])
           .filter(staff => staff.employment_status === 'Active')
           .map((staff) => ({
@@ -61,14 +61,14 @@ export const useStaffForSelection = () => {
         .from('billing_staff')
         .select('id, legal_name, job_title, department, email, employment_status')
         .eq('employment_status', 'Active')
-        .order('legal_name', { ascending: true });
+        .order('legal_name', { ascending: true }) as { data: Array<{id: string; legal_name: string; job_title: string; department: string; email: string; employment_status: string}> | null, error: any };
 
       if (fetchError) {
         console.error('Error fetching staff for selection:', fetchError);
         throw new Error(fetchError.message);
       }
 
-      const staffOptions: StaffSelectionOption[] = (tableData || []).map((staff) => ({
+      const staffOptions: StaffSelectionOption[] = (tableData || []).map((staff: any) => ({
         id: staff.id,
         name: staff.legal_name,
         jobTitle: staff.job_title,
