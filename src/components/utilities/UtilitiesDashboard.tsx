@@ -40,7 +40,8 @@ export function UtilitiesDashboard() {
         <CardHeader>
           <CardTitle>Utilities Management</CardTitle>
           <CardDescription>
-            Manage utility payments, readings, setups, types, and billing periods
+            Manage utility payments, readings, setups, types, and billing
+            periods
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,14 +54,17 @@ export function UtilitiesDashboard() {
               <TabsList>
                 <TabsTrigger value="payments">Payments</TabsTrigger>
                 <TabsTrigger value="types">Utility Types</TabsTrigger>
-                <TabsTrigger value="billing">Billing Periods</TabsTrigger>
+                {/* <TabsTrigger value="billing">Billing Periods</TabsTrigger> */}
               </TabsList>
 
               {/* Property filter removed */}
             </div>
 
             <TabsContent value="payments" className="space-y-4">
-              <UtilityPaymentsList isDialogOpen={isAddBillDialogOpen} setIsDialogOpen={setIsAddBillDialogOpen} />
+              <UtilityPaymentsList
+                isDialogOpen={isAddBillDialogOpen}
+                setIsDialogOpen={setIsAddBillDialogOpen}
+              />
             </TabsContent>
 
             {/* Readings tab removed */}
