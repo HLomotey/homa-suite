@@ -76,6 +76,16 @@ async function fetchAllRowsPaginated(
   status: StaffStatus,
   signal?: AbortSignal
 ): Promise<{ data: FrontendExternalStaff[]; totalCount: number }> {
+  console.log(`fetchAllRowsPaginated called with status: ${status}`);
+  
+  // Test direct query first
+  const { data: testData, error: testError } = await supabase
+    .from(TABLE_NAME)
+    .select("*")
+    .limit(5);
+    
+  console.log("Test query result:", { testData: testData?.length, testError });
+  
   let query = supabase
     .from(TABLE_NAME)
     .select("*", { count: "exact" })
@@ -103,13 +113,19 @@ async function fetchAllRowsPaginated(
 
   const { count: totalCount, error: countError } = await countQuery;
 
-  if (countError) throw countError;
+  if (countError) {
+    console.error("Count query error:", countError);
+    throw countError;
+  }
 
   const total = totalCount || 0;
+  console.log(`Total count for status '${status}': ${total}`);
+  
   let allRows: FrontendExternalStaff[] = [];
 
   // If no records, return early
   if (total === 0) {
+    console.log("No records found, returning empty array");
     return { data: [], totalCount: 0 };
   }
 
@@ -156,6 +172,8 @@ async function fetchAllRowsPaginated(
 }
 
 export function useExternalStaff(): UseExternalStaffReturn {
+  console.log("useExternalStaff hook initialized");
+  
   const [externalStaff, setExternalStaff] = useState<FrontendExternalStaff[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [statsLoading, setStatsLoading] = useState<boolean>(false);
@@ -181,6 +199,13 @@ export function useExternalStaff(): UseExternalStaffReturn {
     topDepartments: []
   });
   const abortRef = useRef<AbortController | null>(null);
+  
+  console.log("Current state:", { 
+    externalStaffCount: externalStaff.length, 
+    loading, 
+    error, 
+    totalCount 
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -191,9 +216,37 @@ export function useExternalStaff(): UseExternalStaffReturn {
     abortRef.current = new AbortController();
 
     try {
-      const result = await fetchAllRowsPaginated(status, abortRef.current.signal);
-      setExternalStaff(result.data);
-      setTotalCount(result.totalCount);
+      console.log(`Loading external staff with status: ${status}`);
+      
+      // Check authentication first
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("Current user:", user?.id || "Not authenticated");
+      
+      // Try simple direct query first
+      console.log("Attempting direct query...");
+      const { data: directData, error: directError, count } = await supabase
+        .from(TABLE_NAME)
+        .select("*", { count: "exact" })
+        .limit(100);
+        
+      console.log("Direct query result:", { 
+        dataLength: directData?.length, 
+        count, 
+        error: directError 
+      });
+      
+      if (directError) {
+        console.error("Direct query error:", directError);
+        setError(directError.message);
+        return;
+      }
+      
+      if (directData) {
+        setExternalStaff(directData as FrontendExternalStaff[]);
+        setTotalCount(count || directData.length);
+        console.log(`Successfully loaded ${directData.length} records`);
+      }
+      
     } catch (e: any) {
       if (e.name !== "AbortError") {
         console.error("Load external staff error:", e);
@@ -203,6 +256,12 @@ export function useExternalStaff(): UseExternalStaffReturn {
       setLoading(false);
     }
   }, [status]);
+
+  // Load data on mount and when status changes
+  useEffect(() => {
+    console.log("useEffect triggered - loading data");
+    load();
+  }, [load]);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
