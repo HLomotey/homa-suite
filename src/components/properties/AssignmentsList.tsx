@@ -256,14 +256,13 @@ export const AssignmentsList = () => {
               <TableHead>Start Date</TableHead>
               <TableHead>End Date</TableHead>
               <TableHead>Rent</TableHead>
-              <TableHead>Payment</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredAssignments.map((assignment) => (
               <TableRow key={assignment.id}>
-                <TableCell className="font-medium">{assignment.staffName || 'Unassigned'}</TableCell>
+                <TableCell className="font-medium">{assignment.tenantName || 'Unassigned'}</TableCell>
                 <TableCell>{assignment.propertyName}</TableCell>
                 <TableCell>{assignment.roomName}</TableCell>
                 <TableCell>
@@ -272,9 +271,6 @@ export const AssignmentsList = () => {
                 <TableCell>{assignment.startDate}</TableCell>
                 <TableCell>{assignment.endDate}</TableCell>
                 <TableCell>${assignment.rentAmount}/mo</TableCell>
-                <TableCell>
-                  <PaymentBadge status={assignment.paymentStatus} />
-                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button 
