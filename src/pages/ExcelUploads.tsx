@@ -118,7 +118,7 @@ export default function ExcelUploads() {
       </div>
 
       <Tabs defaultValue="hr" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="hr" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             HR
@@ -135,10 +135,10 @@ export default function ExcelUploads() {
             <Building2 className="h-4 w-4" />
             Rooms
           </TabsTrigger>
-          <TabsTrigger value="staff" className="flex items-center gap-2">
+          {/* <TabsTrigger value="staff" className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />
             Staff
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="payroll" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
             Payroll
