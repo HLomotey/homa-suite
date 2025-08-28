@@ -33,10 +33,7 @@ import {
   BillingStats,
   Payroll
 } from './billing';
-import {
-  ExternalStaff,
-  HistoryExternalStaff
-} from './external-staff';
+import { ExternalStaff, UpdateExternalStaff, HistoryExternalStaff } from './external-staff';
 import {
   Attendance
 } from './attendance';
@@ -169,14 +166,45 @@ export interface Database {
         Update: Partial<Omit<BillingStaff, "id" | "created_at">>;
       };
       external_staff: {
-        Row: ExternalStaff;
-        Insert: Omit<ExternalStaff, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<ExternalStaff, "id" | "created_at">>;
-      };
-      history_external_staff: {
-        Row: HistoryExternalStaff;
-        Insert: Omit<HistoryExternalStaff, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<HistoryExternalStaff, "id" | "created_at">>;
+        Row: {
+          id: string;
+          business_key: string;
+          "PAYROLL LAST NAME": string | null;
+          "PAYROLL FIRST NAME": string | null;
+          "PAYROLL MIDDLE NAME": string | null;
+          "GENERATION SUFFIX": string | null;
+          "GENDER (SELF-ID)": string | null;
+          "BIRTH DATE": string | null;
+          "PRIMARY ADDRESS LINE 1": string | null;
+          "PRIMARY ADDRESS LINE 2": string | null;
+          "PRIMARY ADDRESS LINE 3": string | null;
+          "LIVED-IN STATE": string | null;
+          "WORKED IN STATE": string | null;
+          "PERSONAL E-MAIL": string | null;
+          "WORK E-MAIL": string | null;
+          "HOME PHONE": string | null;
+          "WORK PHONE": string | null;
+          "POSITION ID": string | null;
+          "ASSOCIATE ID": string | null;
+          "FILE NUMBER": string | null;
+          "COMPANY CODE": string | null;
+          "JOB TITLE": string | null;
+          "BUSINESS UNIT": string | null;
+          "HOME DEPARTMENT": string | null;
+          "LOCATION": string | null;
+          "WORKER CATEGORY": string | null;
+          "POSITION STATUS": string | null;
+          "HIRE DATE": string | null;
+          "REHIRE DATE": string | null;
+          "TERMINATION DATE": string | null;
+          "YEARS OF SERVICE": string | null;
+          "REPORTS TO NAME": string | null;
+          "JOB CLASS": string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: ExternalStaff;
+        Update: UpdateExternalStaff;
       };
       billing_stats: {
         Row: BillingStats;

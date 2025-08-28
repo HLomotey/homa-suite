@@ -5,6 +5,7 @@
 
 export interface ExternalStaff {
   id: string;
+  business_key: string;
   "PAYROLL LAST NAME": string | null;
   "PAYROLL FIRST NAME": string | null;
   "PAYROLL MIDDLE NAME": string | null;
@@ -40,7 +41,7 @@ export interface ExternalStaff {
   updated_at: string;
 }
 
-export interface CreateExternalStaff extends Omit<ExternalStaff, "id" | "created_at" | "updated_at"> {}
+export interface CreateExternalStaff extends Omit<ExternalStaff, "id" | "business_key" | "created_at" | "updated_at"> {}
 
 export interface UpdateExternalStaff extends Partial<Omit<ExternalStaff, "id" | "created_at">> {}
 

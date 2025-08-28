@@ -118,7 +118,7 @@ export function ExternalStaffSlideForm({ staff, onSubmit, onClose, open, loading
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl">
         <SheetHeader>
-          <SheetTitle>{staff ? 'Edit External Staff' : 'Add External Staff'}</SheetTitle>
+          <SheetTitle>{staff ? 'Edit Staff Information' : 'Add Staff Information'}</SheetTitle>
         </SheetHeader>
         
         <ScrollArea className="h-[calc(100vh-120px)] pr-4">
