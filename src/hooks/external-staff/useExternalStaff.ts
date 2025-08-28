@@ -492,119 +492,38 @@ export function useExternalStaff(): UseExternalStaffReturn {
     }
   };
 
-  // Enhanced bulk upsert with change detection
+  // Enhanced bulk upsert with change detection using RPC function
   const bulkUpsertExternalStaff = useCallback(async (data: CreateExternalStaff[]): Promise<boolean> => {
     try {
-      console.log(`Starting bulk upsert with change detection for ${data.length} records`);
+      console.log(`Starting bulk upsert for ${data.length} records using RPC function`);
 
-      // Fetch existing staff records for comparison
-      const { data: existingStaff, error: fetchError } = await supabase
-        .from(TABLE_NAME)
-        .select('*');
-
-      if (fetchError) {
-        console.error("Error fetching existing staff:", fetchError);
-        toast.error("Failed to fetch existing staff data");
-        return false;
-      }
-
-      // Create a map of existing staff by business key
-      const existingStaffMap = new Map<string, FrontendExternalStaff>();
-      existingStaff?.forEach(staff => {
-        const positionId = (staff as any)["POSITION ID"] as string | null;
-        const hireDate = (staff as any)["HIRE DATE"] as string | null;
-        
-        if (positionId && positionId.trim() !== "") {
-          // Primary key: position ID + hire date
-          const compositeKey = `${positionId.trim()}_${hireDate || ""}`;
-          existingStaffMap.set(compositeKey, staff);
-        } else {
-          // Fallback mapping by name + associate ID + hire date
-          const firstName = ((staff as any)["PAYROLL FIRST NAME"] as string) || "";
-          const lastName = ((staff as any)["PAYROLL LAST NAME"] as string) || "";
-          const associateId = ((staff as any)["ASSOCIATE ID"] as string) || "";
-          const compositeKey = `name_${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}_${hireDate || ""}`;
-          existingStaffMap.set(compositeKey, staff);
-        }
-      });
-
-      // Process records with change detection
-      const recordsToUpsert = [];
-      let changedRecordsCount = 0;
-      let movedToHistoryCount = 0;
-
-      for (const record of data) {
-        const positionId = record["POSITION ID"];
-        const hireDate = record["HIRE DATE"];
-        const firstName = record["PAYROLL FIRST NAME"] || "";
-        const lastName = record["PAYROLL LAST NAME"] || "";
-        const associateId = record["ASSOCIATE ID"] || "";
-
-        // Create stable business key - prioritize POSITION ID + HIRE DATE
-        let businessKey: string;
-        if (positionId && positionId.trim() !== "") {
-          businessKey = `${positionId.trim()}_${hireDate || ""}`;
-        } else {
-          // Fallback to name + associate ID + hire date
-          businessKey = `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}_${hireDate || ""}`;
-        }
-
-        // Check if this record exists and has key field changes
-        const existingRecord = existingStaffMap.get(businessKey);
-        if (existingRecord) {
-          console.log(`Found existing record for ${businessKey}: ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]}`);
-          if (hasKeyFieldsChanged(existingRecord, record)) {
-            try {
-              // Move existing record to history
-              await moveToHistory(existingRecord);
-              movedToHistoryCount++;
-              changedRecordsCount++;
-              console.log(`Moved staff ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]} to history due to key field changes`);
-            } catch (error) {
-              console.error(`Failed to move staff to history:`, error);
-              // Continue processing other records even if one fails
-            }
-          } else {
-            console.log(`No key field changes detected for ${existingRecord["PAYROLL FIRST NAME"]} ${existingRecord["PAYROLL LAST NAME"]}`);
-          }
-        } else {
-          console.log(`No existing record found for business key: ${businessKey}`);
-        }
-
-        recordsToUpsert.push({
-          ...record,
-          business_key: businessKey
+      // Call the RPC function for change detection and archival
+      const { data: result, error: rpcError } = await (supabase as any)
+        .rpc('bulk_upsert_external_staff_with_change_detection', {
+          staff_data: data
         });
-      }
 
-      // Use PostgreSQL UPSERT with ON CONFLICT to maintain stable UUIDs
-      const { data: upsertResult, error: upsertError } = await (supabase as any)
-        .from(TABLE_NAME)
-        .upsert(recordsToUpsert, {
-          onConflict: 'business_key',
-          ignoreDuplicates: false
-        })
-        .select('id, business_key, "PAYROLL FIRST NAME", "PAYROLL LAST NAME"');
-
-      if (upsertError) {
-        console.error("Bulk upsert error:", upsertError);
+      if (rpcError) {
+        console.error("RPC function error:", rpcError);
         toast.error("Failed to process external staff data");
         return false;
       }
 
-      console.log(`Bulk upsert completed successfully:`);
-      console.log(`- Total records processed: ${data.length}`);
-      console.log(`- Records with key field changes: ${changedRecordsCount}`);
-      console.log(`- Records moved to history: ${movedToHistoryCount}`);
-      console.log(`- Records upserted: ${upsertResult?.length || 0}`);
+      if (!result) {
+        console.error("No result returned from RPC function");
+        toast.error("Failed to process external staff data");
+        return false;
+      }
+
+      console.log("RPC function result:", result);
 
       // Show success message with details
-      if (changedRecordsCount > 0) {
+      if (result.records_archived > 0) {
         toast.success(
-          `Successfully processed ${data.length} records. ${changedRecordsCount} records with key field changes were archived to history.`
+          `Successfully processed ${result.records_processed} records. ${result.records_archived} records with changes were archived to history.`
         );
       } else {
-        toast.success(`Successfully processed ${data.length} external staff records.`);
+        toast.success(`Successfully processed ${result.records_processed} records. No key field changes detected.`);
       }
 
       // Refresh data
