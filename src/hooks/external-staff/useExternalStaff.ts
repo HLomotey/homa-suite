@@ -497,7 +497,7 @@ export function useExternalStaff(): UseExternalStaffReturn {
     try {
       console.log(`Starting bulk upsert for ${data.length} records using RPC function`);
 
-      // Call the RPC function for change detection and archival
+      // Step 1: Call RPC function for change detection and archival
       const { data: result, error: rpcError } = await (supabase as any)
         .rpc('bulk_upsert_external_staff_with_change_detection', {
           staff_data: data
@@ -515,7 +515,39 @@ export function useExternalStaff(): UseExternalStaffReturn {
         return false;
       }
 
-      console.log("RPC function result:", result);
+      console.log("Change detection result:", result);
+
+      // Step 2: Add business keys to data and perform upsert
+      const dataWithKeys = data.map(record => {
+        const positionId = record["POSITION ID"];
+        const hireDate = record["HIRE DATE"];
+        
+        let businessKey: string;
+        if (positionId && positionId.trim() !== "") {
+          businessKey = `${positionId}_${hireDate}`;
+        } else {
+          const firstName = record["PAYROLL FIRST NAME"] || "";
+          const lastName = record["PAYROLL LAST NAME"] || "";
+          const associateId = record["ASSOCIATE ID"] || "";
+          businessKey = `${firstName}_${lastName}_${associateId}_${hireDate}`;
+        }
+        
+        return { ...record, business_key: businessKey };
+      });
+
+      // Step 3: Perform the actual upsert
+      const { error: upsertError } = await (supabase as any)
+        .from(TABLE_NAME)
+        .upsert(dataWithKeys, {
+          onConflict: 'business_key',
+          ignoreDuplicates: false
+        });
+
+      if (upsertError) {
+        console.error("Bulk upsert error:", upsertError);
+        toast.error("Failed to process external staff data");
+        return false;
+      }
 
       // Show success message with details
       if (result.records_archived > 0) {
