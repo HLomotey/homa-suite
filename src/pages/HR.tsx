@@ -69,9 +69,9 @@ export default function HR() {
             <Users className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsLoading ? "..." : stats.activeCount}</div>
+            <div className="text-2xl font-bold">{statsLoading ? "..." : stats.active}</div>
             <p className="text-xs text-green-500">
-              {statsLoading ? "..." : `${stats.totalCount > 0 ? Math.round((stats.activeCount / stats.totalCount) * 100) : 0}% of total`}
+              {statsLoading ? "..." : `${stats.totalCount > 0 ? Math.round((stats.active / stats.totalCount) * 100) : 0}% of total`}
             </p>
           </CardContent>
         </Card>
@@ -82,9 +82,9 @@ export default function HR() {
             <UserMinus className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statsLoading ? "..." : stats.terminatedCount}</div>
+            <div className="text-2xl font-bold">{statsLoading ? "..." : stats.terminated}</div>
             <p className="text-xs text-red-500">
-              {statsLoading ? "..." : `${stats.totalCount > 0 ? Math.round((stats.terminatedCount / stats.totalCount) * 100) : 0}% of total`}
+              {statsLoading ? "..." : `${stats.totalCount > 0 ? Math.round((stats.terminated / stats.totalCount) * 100) : 0}% of total`}
             </p>
           </CardContent>
         </Card>
@@ -98,7 +98,7 @@ export default function HR() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statsLoading ? "..." : stats.recentHiresCount}
+              {statsLoading ? "..." : stats.newThisMonth}
             </div>
             <p className="text-xs text-muted-foreground">
               In the last 30 days

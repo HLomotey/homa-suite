@@ -15,7 +15,7 @@ export function RetentionRate() {
   
   useEffect(() => {
     if (!statsLoading && stats.totalCount > 0) {
-      const calculatedRate = Math.round((stats.activeCount / stats.totalCount) * 100);
+      const calculatedRate = Math.round((stats.active / stats.totalCount) * 100);
       setRetentionRate(calculatedRate);
       
       // Update the retention history with the latest rate

@@ -12,9 +12,17 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
   stats,
   loading,
 }) => {
-  // Calculate percentages based on active staff only
-  const activePercentage = 100; // Active staff is 100% of active staff
-  const terminatedPercentage = 0; // No terminated staff in active view
+  // Use the totalCount from stats directly
+  const totalStaffCount = stats.totalCount;
+  const activePercentage = totalStaffCount > 0 ? Math.round((stats.active / totalStaffCount) * 100) : 0;
+  const terminatedPercentage = totalStaffCount > 0 ? Math.round((stats.terminated / totalStaffCount) * 100) : 0;
+  
+  console.log('ExternalStaffStats rendering with:', { 
+    totalCount: stats.totalCount, 
+    active: stats.active, 
+    terminated: stats.terminated,
+    calculated: stats.active + stats.terminated
+  });
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -26,10 +34,10 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {loading ? "..." : stats.activeCount}
+            {loading ? "..." : totalStaffCount}
           </div>
           <p className="text-xs text-muted-foreground">
-            Active external staff members
+            Total external staff members
           </p>
         </CardContent>
       </Card>
@@ -42,7 +50,7 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {loading ? "..." : stats.activeCount}
+            {loading ? "..." : stats.active}
           </div>
           <p className="text-xs text-muted-foreground">
             {loading ? "..." : `${activePercentage}% of total staff`}
@@ -58,7 +66,7 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {loading ? "..." : stats.terminatedCount}
+            {loading ? "..." : stats.terminated}
           </div>
           <p className="text-xs text-muted-foreground">
             {loading ? "..." : `${terminatedPercentage}% of total staff`}
@@ -74,7 +82,7 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {loading ? "..." : stats.recentHiresCount}
+            {loading ? "..." : stats.newThisMonth}
           </div>
           <p className="text-xs text-muted-foreground">
             In the last 30 days
@@ -99,7 +107,7 @@ export const ExternalStaffStats: React.FC<ExternalStaffStatsProps> = ({
                     {dept.department}
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {dept.count} staff ({Math.round((dept.count / stats.activeCount) * 100)}%)
+                    {dept.count} staff ({Math.round((dept.count / stats.active) * 100)}%)
                   </span>
                 </div>
               ))}

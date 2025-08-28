@@ -26,15 +26,15 @@ export function HRAnalytics() {
       setLoading(true);
       
       // Calculate head count (active staff)
-      const headCount = stats?.activeCount || 0;
+      const headCount = stats?.active || 0;
       
       // Calculate retention rate (active staff / total staff * 100)
       const retentionRate = stats?.totalCount > 0 
-        ? Math.round((stats.activeCount / stats.totalCount) * 100) 
+        ? Math.round((stats.active / stats.totalCount) * 100) 
         : 0;
       
       // Count terminations (staff with termination date)
-      const terminations = stats?.terminatedCount || 0;
+      const terminations = stats?.terminated || 0;
       
       // Calculate average days to hire
       // Find staff hired in the last 3 months

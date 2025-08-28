@@ -264,28 +264,24 @@ export function useExternalStaff(): UseExternalStaffReturn {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      console.log("Fetching stats...");
+      console.log("Fetching stats using paginated approach...");
       
-      // Get all records for accurate stats calculation
-      const { data: allStaff, error: statsError } = await supabase
-        .from(TABLE_NAME)
-        .select("*");
-        
-      if (statsError) {
-        console.error("Stats query error:", statsError);
-        throw statsError;
-      }
+      // Use the paginated function to get ALL records for accurate stats
+      const { data: allStaff, totalCount } = await fetchAllRowsPaginated("all");
       
-      if (!allStaff) {
+      if (!allStaff || allStaff.length === 0) {
         console.log("No data for stats calculation");
         return;
       }
       
-      console.log(`Calculating stats for ${allStaff.length} records`);
+      console.log(`Calculating stats for ${allStaff.length} records out of ${totalCount} total`);
       
-      const total = allStaff.length;
+      // Use the totalCount from the paginated fetch for accurate counts
+      const total = totalCount;
       const terminated = allStaff.filter(item => item["TERMINATION DATE"]).length;
       const active = total - terminated;
+      
+      console.log(`Stats calculation: total=${total}, active=${active}, terminated=${terminated}`);
       
       // Calculate new hires this month
       const currentDate = new Date();
@@ -330,17 +326,21 @@ export function useExternalStaff(): UseExternalStaffReturn {
       
       console.log("Stats calculated:", { total, active, terminated, newThisMonth });
       
-      setStats({ 
-        total, 
-        active, 
-        terminated, 
+      // Set the stats state with consistent values across all fields
+      const updatedStats = {
+        total: totalCount,
+        active,
+        terminated,
         newThisMonth,
         activeCount: active,
         terminatedCount: terminated,
         recentHiresCount: newThisMonth,
-        totalCount: total,
-        topDepartments
-      });
+        totalCount: totalCount,
+        topDepartments,
+      };
+      
+      console.log('Updated stats:', updatedStats);
+      setStats(updatedStats);
     } catch (e: any) {
       console.error("fetchStats error:", e);
     } finally {
