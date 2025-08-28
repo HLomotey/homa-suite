@@ -22,6 +22,7 @@ interface UseHistoricalExternalStaffReturn {
   setPagination: (pagination: PaginationState) => void;
   refreshAll: () => Promise<void>;
   fetchHistoricalStaff: () => Promise<void>;
+  deleteHistoricalStaff: (id: string) => Promise<void>;
 }
 
 async function fetchAllHistoricalRowsPaginated(
@@ -123,6 +124,27 @@ export function useHistoricalExternalStaff(): UseHistoricalExternalStaffReturn {
     await load();
   }, [load]);
 
+  const deleteHistoricalStaff = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from(HISTORY_TABLE_NAME)
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error("Error deleting historical staff:", error);
+        toast.error("Failed to delete historical staff record");
+        throw error;
+      }
+
+      toast.success("Historical staff record deleted successfully");
+      await refreshAll(); // Refresh the data after deletion
+    } catch (error: any) {
+      console.error("Delete historical staff error:", error);
+      throw error;
+    }
+  }, [refreshAll]);
+
   // Load data when pagination changes
   useEffect(() => {
     load();
@@ -146,5 +168,6 @@ export function useHistoricalExternalStaff(): UseHistoricalExternalStaffReturn {
     setPagination,
     refreshAll,
     fetchHistoricalStaff,
+    deleteHistoricalStaff,
   };
 }

@@ -22,7 +22,7 @@ import { ExternalStaffExcelUpload } from "@/components/external-staff/ExternalSt
 import { ExternalStaffStats } from "@/components/external-staff/ExternalStaffStats";
 import { HistoricalExternalStaff } from "@/components/external-staff/HistoricalExternalStaff";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
-import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -67,6 +67,8 @@ export default function ExternalStaff() {
   >();
   const [formLoading, setFormLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("current");
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
+  const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
 
   // Client-side filtering for search only - pagination and active/inactive filtering is done server-side
   const filteredStaff = externalStaff.filter((staff) => {
@@ -140,6 +142,51 @@ export default function ExternalStaff() {
     }
   };
 
+  // Handle individual checkbox selection
+  const handleStaffSelect = (staffId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedStaffIds(prev => [...prev, staffId]);
+    } else {
+      setSelectedStaffIds(prev => prev.filter(id => id !== staffId));
+    }
+  };
+
+  // Handle select all checkbox
+  const handleSelectAll = (checked: boolean) => {
+    setIsSelectAllChecked(checked);
+    if (checked) {
+      setSelectedStaffIds(filteredStaff.map(staff => staff.id));
+    } else {
+      setSelectedStaffIds([]);
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedStaffIds.length === 0) {
+      toast.error("Please select staff members to delete");
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedStaffIds.length} selected staff member${selectedStaffIds.length > 1 ? 's' : ''}?`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        // Delete each selected staff member
+        for (const staffId of selectedStaffIds) {
+          await deleteExternalStaff(staffId);
+        }
+        
+        // Clear selections after successful deletion
+        setSelectedStaffIds([]);
+        setIsSelectAllChecked(false);
+        
+        toast.success(`Successfully deleted ${selectedStaffIds.length} staff member${selectedStaffIds.length > 1 ? 's' : ''}`);
+      } catch (error) {
+        toast.error("Failed to delete some staff members");
+      }
+    }
+  };
+
   const handleEditStaff = (staff: FrontendExternalStaff) => {
     setEditingStaff(staff);
     setShowForm(true);
@@ -190,6 +237,16 @@ export default function ExternalStaff() {
             <Download className="h-4 w-4" />
             Export
           </Button>
+          {selectedStaffIds.length > 0 && (
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete ({selectedStaffIds.length})
+            </Button>
+          )}
           <Button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2"
@@ -248,6 +305,20 @@ export default function ExternalStaff() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSelectAll(!isSelectAllChecked)}
+                        className="p-0 h-6 w-6"
+                      >
+                        {isSelectAllChecked ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Job Title</TableHead>
                     <TableHead>Company</TableHead>
@@ -262,7 +333,7 @@ export default function ExternalStaff() {
                   {filteredStaff.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {searchTerm
@@ -273,6 +344,20 @@ export default function ExternalStaff() {
                   ) : (
                     filteredStaff.map((staff) => (
                       <TableRow key={staff.id}>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStaffSelect(staff.id, !selectedStaffIds.includes(staff.id))}
+                            className="p-0 h-6 w-6"
+                          >
+                            {selectedStaffIds.includes(staff.id) ? (
+                              <CheckSquare className="h-4 w-4" />
+                            ) : (
+                              <Square className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">

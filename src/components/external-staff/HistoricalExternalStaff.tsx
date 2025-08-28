@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useHistoricalExternalStaff } from "@/hooks/external-staff/useHistoricalExternalStaff";
 import { FrontendHistoryExternalStaff } from "@/integration/supabase/types/external-staff";
-import { Search, History, Calendar, Download } from "lucide-react";
+import { Search, History, Calendar, Download, CheckSquare, Square, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 import {
@@ -40,9 +40,12 @@ export function HistoricalExternalStaff() {
     totalCount,
     pagination,
     setPagination,
+    deleteHistoricalStaff,
   } = useHistoricalExternalStaff();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedHistoricalIds, setSelectedHistoricalIds] = useState<string[]>([]);
+  const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
 
   // Export function for historical data
   const exportHistoricalToExcel = (filteredData?: FrontendHistoryExternalStaff[]) => {
@@ -113,24 +116,67 @@ export function HistoricalExternalStaff() {
 
   const handleExportToExcel = () => {
     // Export filtered data if there's a search term, otherwise export all current data
-    exportHistoricalToExcel(searchTerm ? filteredStaff : undefined);
+    exportHistoricalToExcel(searchTerm ? filteredHistoricalStaff : undefined);
   };
 
   // Client-side filtering for search
-  const filteredStaff = historicalStaff.filter((staff) => {
-    if (!searchTerm) return true;
+  const filteredHistoricalStaff = useMemo(() => {
+    if (!searchTerm) return historicalStaff;
 
     const searchLower = searchTerm.toLowerCase();
-    return (
+    return historicalStaff.filter((staff) =>
       staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
       staff["PAYROLL LAST NAME"]?.toLowerCase().includes(searchLower) ||
       staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
-      staff["COMPANY CODE"]?.toLowerCase().includes(searchLower) ||
-      staff["LOCATION"]?.toLowerCase().includes(searchLower) ||
-      staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower) ||
-      staff["ASSOCIATE ID"]?.toLowerCase().includes(searchLower)
+      staff["COMPANY"]?.toLowerCase().includes(searchLower) ||
+      staff["LOCATION"]?.toLowerCase().includes(searchLower)
     );
-  });
+  }, [historicalStaff, searchTerm]);
+
+  // Handle individual checkbox selection
+  const handleHistoricalSelect = (staffId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedHistoricalIds(prev => [...prev, staffId]);
+    } else {
+      setSelectedHistoricalIds(prev => prev.filter(id => id !== staffId));
+    }
+  };
+
+  // Handle select all checkbox
+  const handleSelectAllHistorical = (checked: boolean) => {
+    setIsSelectAllChecked(checked);
+    if (checked) {
+      setSelectedHistoricalIds(filteredHistoricalStaff.map(staff => staff.id));
+    } else {
+      setSelectedHistoricalIds([]);
+    }
+  };
+
+  // Handle bulk delete for historical staff
+  const handleBulkDeleteHistorical = async () => {
+    if (selectedHistoricalIds.length === 0) {
+      toast.error("Please select historical records to delete");
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedHistoricalIds.length} selected historical record${selectedHistoricalIds.length > 1 ? 's' : ''}?`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        // Delete each selected historical record
+        for (const staffId of selectedHistoricalIds) {
+          await deleteHistoricalStaff(staffId);
+        }
+        
+        // Clear selections after successful deletion
+        setSelectedHistoricalIds([]);
+        setIsSelectAllChecked(false);
+        
+        toast.success(`Successfully deleted ${selectedHistoricalIds.length} historical record${selectedHistoricalIds.length > 1 ? 's' : ''}`);
+      } catch (error) {
+        toast.error("Failed to delete some historical records");
+      }
+    }
+  };
 
   // Calculate pagination values
   const pageCount = Math.ceil(totalCount / pagination.pageSize);
@@ -189,6 +235,17 @@ export function HistoricalExternalStaff() {
                 <Download className="h-4 w-4" />
                 Export
               </Button>
+              {selectedHistoricalIds.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDeleteHistorical}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete ({selectedHistoricalIds.length})
+                </Button>
+              )}
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -211,6 +268,20 @@ export function HistoricalExternalStaff() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSelectAllHistorical(!isSelectAllChecked)}
+                        className="p-0 h-6 w-6"
+                      >
+                        {isSelectAllChecked ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Associate ID</TableHead>
                     <TableHead>Job Title</TableHead>
@@ -223,10 +294,10 @@ export function HistoricalExternalStaff() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStaff.length === 0 ? (
+                  {filteredHistoricalStaff.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center py-8 text-muted-foreground"
                       >
                         {searchTerm
@@ -235,8 +306,22 @@ export function HistoricalExternalStaff() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredStaff.map((staff) => (
+                    filteredHistoricalStaff.map((staff) => (
                       <TableRow key={staff.id}>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleHistoricalSelect(staff.id, !selectedHistoricalIds.includes(staff.id))}
+                            className="p-0 h-6 w-6"
+                          >
+                            {selectedHistoricalIds.includes(staff.id) ? (
+                              <CheckSquare className="h-4 w-4" />
+                            ) : (
+                              <Square className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">
