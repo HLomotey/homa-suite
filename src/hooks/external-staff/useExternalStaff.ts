@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integration/supabase/client";
 import { FrontendExternalStaff, CreateExternalStaff, CreateHistoryExternalStaff } from '@/integration/supabase/types/external-staff';
 import { toast } from "sonner";
+import * as XLSX from 'xlsx';
 
 /**
  * Robust, paginated fetch for ALL external_staff rows.
@@ -67,6 +68,7 @@ type UseExternalStaffReturn = {
   updateExternalStaff: (id: string, data: Partial<FrontendExternalStaff>) => Promise<boolean>;
   deleteExternalStaff: (id: string) => Promise<boolean>;
   fetchStats: () => Promise<void>;
+  exportToExcel: (filteredData?: FrontendExternalStaff[]) => void;
 };
 
 async function fetchAllRowsPaginated(
@@ -340,20 +342,10 @@ export function useExternalStaff(): UseExternalStaffReturn {
     });
   };
 
-  // Helper function to find existing staff by unique identifier
+  // Helper function to find existing staff by unique identifier (using POSITION ID + HIRE DATE as composite key)
   const findExistingStaff = async (staffData: CreateExternalStaff[]): Promise<Map<string, FrontendExternalStaff>> => {
     const existingStaffMap = new Map<string, FrontendExternalStaff>();
     
-    // Create unique identifiers for matching (using combination of first name, last name, and associate ID)
-    const identifiers = staffData.map(staff => {
-      const firstName = staff["PAYROLL FIRST NAME"] || "";
-      const lastName = staff["PAYROLL LAST NAME"] || "";
-      const associateId = staff["ASSOCIATE ID"] || "";
-      return `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}`;
-    }).filter(id => id !== "__");
-
-    if (identifiers.length === 0) return existingStaffMap;
-
     // Fetch existing staff records
     const { data: existingStaff, error } = await supabase
       .from(TABLE_NAME)
@@ -364,13 +356,26 @@ export function useExternalStaff(): UseExternalStaffReturn {
       return existingStaffMap;
     }
 
-    // Map existing staff by their identifiers
+    // Map existing staff by composite key (POSITION ID + HIRE DATE)
     existingStaff?.forEach(staff => {
-      const firstName = staff["PAYROLL FIRST NAME"] || "";
-      const lastName = staff["PAYROLL LAST NAME"] || "";
-      const associateId = staff["ASSOCIATE ID"] || "";
-      const identifier = `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}`;
-      existingStaffMap.set(identifier, staff);
+      const positionId = staff["POSITION ID"];
+      const hireDate = staff["HIRE DATE"];
+      
+      if (positionId && positionId.trim() !== "") {
+        // Primary key: position ID + hire date
+        const compositeKey = `${positionId.trim()}_${hireDate || ""}`;
+        existingStaffMap.set(compositeKey, staff);
+        
+        // Also map by position ID alone for backward compatibility
+        existingStaffMap.set(`pos_${positionId.trim()}`, staff);
+      } else {
+        // Fallback mapping by name + associate ID + hire date
+        const firstName = staff["PAYROLL FIRST NAME"] || "";
+        const lastName = staff["PAYROLL LAST NAME"] || "";
+        const associateId = staff["ASSOCIATE ID"] || "";
+        const compositeKey = `name_${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}_${hireDate || ""}`;
+        existingStaffMap.set(compositeKey, staff);
+      }
     });
 
     return existingStaffMap;
@@ -432,82 +437,59 @@ export function useExternalStaff(): UseExternalStaffReturn {
 
   const bulkUpsertExternalStaff = useCallback(async (data: CreateExternalStaff[]): Promise<boolean> => {
     try {
-      // Find existing staff records
-      const existingStaffMap = await findExistingStaff(data);
-      
-      const recordsToInsert: CreateExternalStaff[] = [];
-      const recordsToUpdate: { id: string; data: CreateExternalStaff }[] = [];
-      const recordsToArchive: FrontendExternalStaff[] = [];
+      console.log(`Starting bulk upsert for ${data.length} records`);
 
-      // Process each incoming record
-      for (const incomingStaff of data) {
-        const firstName = incomingStaff["PAYROLL FIRST NAME"] || "";
-        const lastName = incomingStaff["PAYROLL LAST NAME"] || "";
-        const associateId = incomingStaff["ASSOCIATE ID"] || "";
-        const identifier = `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}`;
+      // Prepare data with business keys for upsert
+      const recordsToUpsert = data.map(record => {
+        const positionId = record["POSITION ID"];
+        const hireDate = record["HIRE DATE"];
+        const firstName = record["PAYROLL FIRST NAME"] || "";
+        const lastName = record["PAYROLL LAST NAME"] || "";
+        const associateId = record["ASSOCIATE ID"] || "";
 
-        const existingStaff = existingStaffMap.get(identifier);
-
-        if (existingStaff) {
-          // Check if key fields have changed
-          if (hasKeyFieldsChanged(existingStaff, incomingStaff)) {
-            // Archive existing record and prepare for update
-            recordsToArchive.push(existingStaff);
-            recordsToUpdate.push({ id: existingStaff.id, data: incomingStaff });
-          } else {
-            // Update existing record without archiving
-            recordsToUpdate.push({ id: existingStaff.id, data: incomingStaff });
-          }
+        // Create stable business key - prioritize POSITION ID + HIRE DATE
+        let businessKey: string;
+        if (positionId && positionId.trim() !== "") {
+          businessKey = `${positionId.trim()}_${hireDate || ""}`;
         } else {
-          // New record - insert
-          recordsToInsert.push(incomingStaff);
+          // Fallback to name + associate ID + hire date
+          businessKey = `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${associateId}_${hireDate || ""}`;
         }
+
+        return {
+          ...record,
+          business_key: businessKey
+        };
+      });
+
+      // Use PostgreSQL UPSERT with ON CONFLICT to maintain stable UUIDs
+      // This will update existing records (keeping their UUID) or insert new ones
+      const { data: upsertResult, error: upsertError } = await supabase
+        .from(TABLE_NAME)
+        .upsert(recordsToUpsert, {
+          onConflict: 'business_key',
+          ignoreDuplicates: false
+        })
+        .select('id, business_key, "PAYROLL FIRST NAME", "PAYROLL LAST NAME"');
+
+      if (upsertError) {
+        console.error("Bulk upsert error:", upsertError);
+        toast.error("Failed to process external staff data");
+        return false;
       }
 
-      // Move records to history if needed
-      for (const recordToArchive of recordsToArchive) {
-        const success = await moveToHistory(recordToArchive);
-        if (!success) {
-          console.error(`Failed to archive record for ${recordToArchive["PAYROLL FIRST NAME"]} ${recordToArchive["PAYROLL LAST NAME"]}`);
-        }
-      }
-
-      // Insert new records
-      if (recordsToInsert.length > 0) {
-        const { error: insertError } = await supabase
-          .from(TABLE_NAME)
-          .insert(recordsToInsert);
-
-        if (insertError) {
-          console.error("Bulk insert error:", insertError);
-          toast.error("Failed to insert new external staff members");
-          return false;
-        }
-      }
-
-      // Update existing records
-      for (const { id, data: updateData } of recordsToUpdate) {
-        const { error: updateError } = await supabase
-          .from(TABLE_NAME)
-          .update(updateData)
-          .eq('id', id);
-
-        if (updateError) {
-          console.error("Update error:", updateError);
-          toast.error(`Failed to update staff member with ID: ${id}`);
-          return false;
-        }
-      }
-
-      const totalProcessed = recordsToInsert.length + recordsToUpdate.length;
-      const archivedCount = recordsToArchive.length;
+      const processedCount = upsertResult?.length || 0;
+      
+      console.log(`Bulk upsert results:`, {
+        totalIncoming: data.length,
+        totalProcessed: processedCount,
+        upsertResult: upsertResult?.slice(0, 3) // Log first 3 for debugging
+      });
       
       toast.success(
-        `Successfully processed ${totalProcessed} records. ` +
-        `${recordsToInsert.length} new, ${recordsToUpdate.length} updated` +
-        (archivedCount > 0 ? `, ${archivedCount} archived to history` : '')
+        `Successfully processed ${processedCount} staff records using stable business keys`
       );
-      
+
       await load();
       await fetchStats();
       return true;
@@ -517,6 +499,72 @@ export function useExternalStaff(): UseExternalStaffReturn {
       return false;
     }
   }, [load, fetchStats]);
+
+  const exportToExcel = useCallback((filteredData?: FrontendExternalStaff[]) => {
+    try {
+      // Use filtered data if provided, otherwise use all current data
+      const dataToExport = filteredData || externalStaff;
+      
+      if (dataToExport.length === 0) {
+        toast.warning("No data to export");
+        return;
+      }
+
+      // Create worksheet data with clean column headers
+      const worksheetData = dataToExport.map(staff => ({
+        'Payroll Last Name': staff["PAYROLL LAST NAME"] || '',
+        'Payroll First Name': staff["PAYROLL FIRST NAME"] || '',
+        'Payroll Middle Name': staff["PAYROLL MIDDLE NAME"] || '',
+        'Generation Suffix': staff["GENERATION SUFFIX"] || '',
+        'Gender (Self-ID)': staff["GENDER (SELF-ID)"] || '',
+        'Birth Date': staff["BIRTH DATE"] || '',
+        'Primary Address Line 1': staff["PRIMARY ADDRESS LINE 1"] || '',
+        'Primary Address Line 2': staff["PRIMARY ADDRESS LINE 2"] || '',
+        'Primary Address Line 3': staff["PRIMARY ADDRESS LINE 3"] || '',
+        'Lived-In State': staff["LIVED-IN STATE"] || '',
+        'Worked In State': staff["WORKED IN STATE"] || '',
+        'Personal E-Mail': staff["PERSONAL E-MAIL"] || '',
+        'Work E-Mail': staff["WORK E-MAIL"] || '',
+        'Home Phone': staff["HOME PHONE"] || '',
+        'Work Phone': staff["WORK PHONE"] || '',
+        'Position ID': staff["POSITION ID"] || '',
+        'Associate ID': staff["ASSOCIATE ID"] || '',
+        'File Number': staff["FILE NUMBER"] || '',
+        'Company Code': staff["COMPANY CODE"] || '',
+        'Job Title': staff["JOB TITLE"] || '',
+        'Business Unit': staff["BUSINESS UNIT"] || '',
+        'Home Department': staff["HOME DEPARTMENT"] || '',
+        'Location': staff["LOCATION"] || '',
+        'Worker Category': staff["WORKER CATEGORY"] || '',
+        'Position Status': staff["POSITION STATUS"] || '',
+        'Hire Date': staff["HIRE DATE"] || '',
+        'Rehire Date': staff["REHIRE DATE"] || '',
+        'Termination Date': staff["TERMINATION DATE"] || '',
+        'Years of Service': staff["YEARS OF SERVICE"] || '',
+        'Reports To Name': staff["REPORTS TO NAME"] || '',
+        'Job Class': staff["JOB CLASS"] || '',
+        'Created At': staff.created_at || '',
+        'Updated At': staff.updated_at || ''
+      }));
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Staff Information');
+
+      // Generate filename with current date
+      const currentDate = new Date().toISOString().split('T')[0];
+      const filename = `staff_information_${currentDate}.xlsx`;
+
+      // Download the file
+      XLSX.writeFile(workbook, filename);
+      
+      toast.success(`Exported ${dataToExport.length} records to ${filename}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export data to Excel');
+    }
+  }, [externalStaff]);
 
   const bulkCreateExternalStaff = useCallback(async (data: CreateExternalStaff[]): Promise<boolean> => {
     try {
@@ -581,5 +629,6 @@ export function useExternalStaff(): UseExternalStaffReturn {
     updateExternalStaff,
     deleteExternalStaff,
     fetchStats,
+    exportToExcel
   };
 }

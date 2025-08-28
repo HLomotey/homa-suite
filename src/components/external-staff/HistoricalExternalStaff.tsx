@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -12,7 +13,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useHistoricalExternalStaff } from "@/hooks/external-staff/useHistoricalExternalStaff";
 import { FrontendHistoryExternalStaff } from "@/integration/supabase/types/external-staff";
-import { Search, History, Calendar } from "lucide-react";
+import { Search, History, Calendar, Download } from "lucide-react";
+import { toast } from "sonner";
+import * as XLSX from 'xlsx';
 import {
   Pagination,
   PaginationContent,
@@ -40,6 +43,78 @@ export function HistoricalExternalStaff() {
   } = useHistoricalExternalStaff();
   
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Export function for historical data
+  const exportHistoricalToExcel = (filteredData?: FrontendHistoryExternalStaff[]) => {
+    try {
+      // Use filtered data if provided, otherwise use all current data
+      const dataToExport = filteredData || historicalStaff;
+      
+      if (dataToExport.length === 0) {
+        toast.warning("No historical data to export");
+        return;
+      }
+
+      // Create worksheet data with clean column headers
+      const worksheetData = dataToExport.map(staff => ({
+        'Payroll Last Name': staff["PAYROLL LAST NAME"] || '',
+        'Payroll First Name': staff["PAYROLL FIRST NAME"] || '',
+        'Payroll Middle Name': staff["PAYROLL MIDDLE NAME"] || '',
+        'Generation Suffix': staff["GENERATION SUFFIX"] || '',
+        'Gender (Self-ID)': staff["GENDER (SELF-ID)"] || '',
+        'Birth Date': staff["BIRTH DATE"] || '',
+        'Primary Address Line 1': staff["PRIMARY ADDRESS LINE 1"] || '',
+        'Primary Address Line 2': staff["PRIMARY ADDRESS LINE 2"] || '',
+        'Primary Address Line 3': staff["PRIMARY ADDRESS LINE 3"] || '',
+        'Lived-In State': staff["LIVED-IN STATE"] || '',
+        'Worked In State': staff["WORKED IN STATE"] || '',
+        'Personal E-Mail': staff["PERSONAL E-MAIL"] || '',
+        'Work E-Mail': staff["WORK E-MAIL"] || '',
+        'Home Phone': staff["HOME PHONE"] || '',
+        'Work Phone': staff["WORK PHONE"] || '',
+        'Position ID': staff["POSITION ID"] || '',
+        'Associate ID': staff["ASSOCIATE ID"] || '',
+        'File Number': staff["FILE NUMBER"] || '',
+        'Company Code': staff["COMPANY CODE"] || '',
+        'Job Title': staff["JOB TITLE"] || '',
+        'Business Unit': staff["BUSINESS UNIT"] || '',
+        'Home Department': staff["HOME DEPARTMENT"] || '',
+        'Location': staff["LOCATION"] || '',
+        'Worker Category': staff["WORKER CATEGORY"] || '',
+        'Position Status': staff["POSITION STATUS"] || '',
+        'Hire Date': staff["HIRE DATE"] || '',
+        'Rehire Date': staff["REHIRE DATE"] || '',
+        'Termination Date': staff["TERMINATION DATE"] || '',
+        'Years of Service': staff["YEARS OF SERVICE"] || '',
+        'Reports To Name': staff["REPORTS TO NAME"] || '',
+        'Job Class': staff["JOB CLASS"] || '',
+        'Created At': staff.created_at || '',
+        'Updated At': staff.updated_at || ''
+      }));
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Historical Staff Information');
+
+      // Generate filename with current date
+      const currentDate = new Date().toISOString().split('T')[0];
+      const filename = `historical_staff_information_${currentDate}.xlsx`;
+
+      // Download the file
+      XLSX.writeFile(workbook, filename);
+      
+      toast.success(`Exported ${dataToExport.length} historical records to ${filename}`);
+    } catch (error) {
+      console.error('Historical export error:', error);
+      toast.error('Failed to export historical data to Excel');
+    }
+  };
+
+  const handleExportToExcel = () => {
+    // Export filtered data if there's a search term, otherwise export all current data
+    exportHistoricalToExcel(searchTerm ? filteredStaff : undefined);
+  };
 
   // Client-side filtering for search
   const filteredStaff = historicalStaff.filter((staff) => {
@@ -102,16 +177,27 @@ export function HistoricalExternalStaff() {
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Historical External Staff Records ({totalCount})
+              Historical Staff Information Records ({totalCount})
             </CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search historical records..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExportToExcel}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search historical records..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>

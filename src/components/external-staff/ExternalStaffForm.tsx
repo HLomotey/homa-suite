@@ -64,7 +64,7 @@ export function ExternalStaffForm({ staff, onSubmit, onCancel, loading = false }
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle>{staff ? 'Edit External Staff' : 'Add External Staff'}</CardTitle>
+          <CardTitle>{staff ? 'Edit Staff Information' : 'Add Staff Information'}</CardTitle>
           <Button variant="ghost" size="sm" onClick={onCancel}>
             <X className="h-4 w-4" />
           </Button>

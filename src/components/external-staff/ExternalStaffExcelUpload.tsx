@@ -199,7 +199,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
 
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'External Staff Template');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Staff Information Template');
     XLSX.writeFile(workbook, 'external_staff_template.xlsx');
   };
 
@@ -207,7 +207,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle>Import External Staff from Excel</CardTitle>
+          <CardTitle>Import Staff Information from Excel</CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -241,6 +241,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
                 accept=".xlsx,.xls"
                 onChange={handleFileSelect}
                 className="hidden"
+                aria-label="Select Excel file for staff information import"
               />
               <Button
                 variant="outline"

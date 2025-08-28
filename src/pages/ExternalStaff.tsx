@@ -57,6 +57,7 @@ export default function ExternalStaff() {
     updateExternalStaff,
     deleteExternalStaff,
     fetchStats,
+    exportToExcel,
   } = useExternalStaff();
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -149,6 +150,11 @@ export default function ExternalStaff() {
     setEditingStaff(undefined);
   };
 
+  const handleExportToExcel = () => {
+    // Export filtered data if there's a search term, otherwise export all current data
+    exportToExcel(searchTerm ? filteredStaff : undefined);
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
     try {
@@ -176,7 +182,11 @@ export default function ExternalStaff() {
             <Upload className="h-4 w-4" />
             Import Excel
           </Button>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleExportToExcel}
+            className="flex items-center gap-2"
+          >
             <Download className="h-4 w-4" />
             Export
           </Button>
@@ -204,7 +214,7 @@ export default function ExternalStaff() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>External Staff Members ({totalCount})</CardTitle>
+                <CardTitle>Staff Information ({totalCount})</CardTitle>
                 <div className="relative w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
