@@ -182,16 +182,7 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-6 border-b border-border">
-        <h2 className="text-lg font-semibold">
-          {benefit ? "Edit Housing and Transport Allocation" : "Add New Housing and Transport Allocation"}
-        </h2>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Staff Selection */}
           <Card>

@@ -3,6 +3,13 @@ import { StaffBenefitsList } from "@/components/staff-benefits/StaffBenefitsList
 import { StaffBenefitForm } from "@/components/staff-benefits/StaffBenefitForm";
 import { FrontendStaffBenefit } from "@/integration/supabase/types/staff-benefits";
 import { useStaffBenefits } from "@/hooks/staff-benefits/useStaffBenefits";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type ViewMode = "list" | "add" | "edit" | "view";
 
@@ -51,25 +58,39 @@ export default function StaffBenefits() {
     setSelectedBenefit(null);
   };
 
+  const isSheetOpen = viewMode === "add" || viewMode === "edit";
+
   return (
     <div className="space-y-6 p-6">
-      {viewMode === "list" && (
-        <StaffBenefitsList
-          onAddBenefit={handleAddBenefit}
-          onEditBenefit={handleEditBenefit}
-          onViewBenefit={handleViewBenefit}
-        />
-      )}
+      <StaffBenefitsList
+        onAddBenefit={handleAddBenefit}
+        onEditBenefit={handleEditBenefit}
+        onViewBenefit={handleViewBenefit}
+      />
 
-      {(viewMode === "add" || viewMode === "edit") && (
-        <div className="max-w-4xl mx-auto">
-          <StaffBenefitForm
-            benefit={selectedBenefit || undefined}
-            onSave={handleSaveBenefit}
-            onCancel={handleCancel}
-          />
-        </div>
-      )}
+      {/* Sheet for Add/Edit Form */}
+      <Sheet open={isSheetOpen} onOpenChange={(open) => !open && handleCancel()}>
+        <SheetContent className="w-[800px] sm:max-w-[800px]">
+          <SheetHeader>
+            <SheetTitle>
+              {viewMode === "add" ? "Add New Housing and Transport Allocation" : "Edit Housing and Transport Allocation"}
+            </SheetTitle>
+            <SheetDescription>
+              {viewMode === "add" 
+                ? "Create a new housing and transport allocation for a staff member."
+                : "Update the housing and transport allocation details."
+              }
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            <StaffBenefitForm
+              benefit={selectedBenefit || undefined}
+              onSave={handleSaveBenefit}
+              onCancel={handleCancel}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {viewMode === "view" && selectedBenefit && (
         <div className="max-w-4xl mx-auto">
