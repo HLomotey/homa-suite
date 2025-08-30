@@ -64,6 +64,10 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   );
   const [showTenantSuggestions, setShowTenantSuggestions] = React.useState(false);
   const [filteredStaff, setFilteredStaff] = React.useState<FrontendExternalStaff[]>([]);
+  
+  // Track if current selections are valid
+  const [isValidTenant, setIsValidTenant] = React.useState(!!assignment?.tenantId);
+  const [isValidStaff, setIsValidStaff] = React.useState(!!assignment?.staffId);
 
   // Rooms filtered by selected property
   const filteredRooms = rooms.filter((room) => room.propertyId === formData.propertyId);
@@ -178,8 +182,32 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   const handleTenantSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTenantSearchQuery(value);
-    setFormData((prev) => ({ ...prev, tenantName: value }));
     setShowTenantSuggestions(true);
+    
+    // Check if the typed value matches any staff member exactly
+    const matchingStaff = externalStaff.find(staff => {
+      const firstName = staff["PAYROLL FIRST NAME"] || "";
+      const lastName = staff["PAYROLL LAST NAME"] || "";
+      const fullName = `${firstName} ${lastName}`.trim();
+      return fullName.toLowerCase() === value.toLowerCase();
+    });
+    
+    if (matchingStaff) {
+      setFormData((prev) => ({ 
+        ...prev, 
+        tenantName: value,
+        tenantId: matchingStaff.id 
+      }));
+      setIsValidTenant(true);
+    } else {
+      // Clear tenant ID if no exact match
+      setFormData((prev) => ({ 
+        ...prev, 
+        tenantName: value,
+        tenantId: "" 
+      }));
+      setIsValidTenant(false);
+    }
   };
 
   const handleTenantSuggestionSelect = (staff: FrontendExternalStaff) => {
@@ -194,6 +222,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       tenantId: staff.id,
     }));
     setShowTenantSuggestions(false);
+    setIsValidTenant(true);
   };
 
   const handleChange = (
@@ -228,6 +257,35 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate tenant selection
+    if (!formData.tenantName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a tenant from the list",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidTenant || !formData.tenantId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a valid tenant from the dropdown list. Free text entry is not allowed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate staff selection (if provided)
+    if (formData.staffName && (!isValidStaff || !formData.staffId)) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a valid staff member from the dropdown list. Free text entry is not allowed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.propertyId) {
       toast({
         title: "Validation Error",
@@ -244,6 +302,30 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
         variant: "destructive",
       });
       return;
+    }
+
+    // Final validation: ensure tenant exists in external staff list
+    const tenantExists = externalStaff.some(staff => staff.id === formData.tenantId);
+    if (!tenantExists) {
+      toast({
+        title: "Validation Error",
+        description: "Selected tenant is not valid. Please select from the available list.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Final validation: ensure staff exists in external staff list (if provided)
+    if (formData.staffId) {
+      const staffExists = externalStaff.some(staff => staff.id === formData.staffId);
+      if (!staffExists) {
+        toast({
+          title: "Validation Error",
+          description: "Selected staff member is not valid. Please select from the available list.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     try {
@@ -380,6 +462,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                           ? `${selectedStaff["PAYROLL FIRST NAME"] || ""} ${selectedStaff["PAYROLL LAST NAME"] || ""}`.trim()
                           : "",
                       }));
+                      setIsValidStaff(!!selectedStaff);
                     }}
                   />
                 </div>
