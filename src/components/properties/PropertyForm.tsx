@@ -11,7 +11,8 @@ import {
 } from "@/integration/supabase/types";
 import { FrontendLocation } from "@/integration/supabase/types/location";
 import { useLocation } from "@/hooks/transport/useLocation";
-import { useBillingStaff } from "@/hooks/billing";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { useToast } from "@/components/ui/use-toast";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -34,31 +35,35 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   onSave,
   onCancel,
 }) => {
+  const { toast } = useToast();
   const { locations, loading: locationsLoading } = useLocation();
-  const { staff, loading: staffLoading } = useBillingStaff();
+  const { externalStaff, loading: staffLoading, fetchAllExternalStaff, setStatus } = useExternalStaff();
   const [managerSearchOpen, setManagerSearchOpen] = React.useState(false);
   const [managerSearchValue, setManagerSearchValue] = React.useState("");
 
   // Debug logging
-  console.log('PropertyForm - staff data:', staff);
+  console.log('PropertyForm - external staff data:', externalStaff);
   console.log('PropertyForm - staffLoading:', staffLoading);
-  console.log('PropertyForm - staff is array:', Array.isArray(staff));
-  console.log('PropertyForm - staff length:', staff?.length);
+  console.log('PropertyForm - staff is array:', Array.isArray(externalStaff));
+  console.log('PropertyForm - staff length:', externalStaff?.length);
   
   // Ensure staff is an array before filtering
-  const staffArray = Array.isArray(staff) ? staff : [];
-  console.log('PropertyForm - staff employment statuses:', staffArray.map(s => s.employmentStatus));
+  const staffArray = Array.isArray(externalStaff) ? externalStaff : [];
+  console.log('PropertyForm - staff termination dates:', staffArray.map(s => s["TERMINATION DATE"]));
   
-  // Filter active staff - try different employment status values
+  // Filter active staff - those without termination dates
   const activeStaff = staffArray.filter(member => 
-    member.employmentStatus === 'Active' || 
-    member.employmentStatus === 'Full-time' || 
-    member.employmentStatus === 'active' ||
-    member.employmentStatus === 'full-time'
+    !member["TERMINATION DATE"] || member["TERMINATION DATE"] === null || member["TERMINATION DATE"] === ""
   );
   
   console.log('PropertyForm - activeStaff:', activeStaff);
   console.log('PropertyForm - activeStaff length:', activeStaff.length);
+
+  // Load external staff on mount
+  React.useEffect(() => {
+    setStatus(null);
+    fetchAllExternalStaff();
+  }, [setStatus, fetchAllExternalStaff]);
   
   const searchStaff = (searchTerm: string) => {
     if (!searchTerm.trim()) return activeStaff || [];
@@ -66,10 +71,11 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
     const lowercaseSearch = searchTerm.toLowerCase();
     return (activeStaff || []).filter(
       (member) =>
-        member.legalName?.toLowerCase().includes(lowercaseSearch) ||
-        member.jobTitle?.toLowerCase().includes(lowercaseSearch) ||
-        member.department?.toLowerCase().includes(lowercaseSearch) ||
-        member.email?.toLowerCase().includes(lowercaseSearch)
+        (member["PAYROLL FIRST NAME"] || "").toLowerCase().includes(lowercaseSearch) ||
+        (member["PAYROLL LAST NAME"] || "").toLowerCase().includes(lowercaseSearch) ||
+        (member["JOB TITLE"] || "").toLowerCase().includes(lowercaseSearch) ||
+        (member["HOME DEPARTMENT"] || "").toLowerCase().includes(lowercaseSearch) ||
+        (member["WORK E-MAIL"] || "").toLowerCase().includes(lowercaseSearch)
     );
   };
   const [formData, setFormData] = React.useState<
@@ -109,6 +115,42 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that selected manager is in external staff table and is active
+    if (formData.managerId) {
+      // First check if manager exists in full external staff table
+      const selectedManager = externalStaff.find(s => s.id === formData.managerId);
+      if (!selectedManager) {
+        toast({
+          title: "Validation Error",
+          description: "Selected manager is not found in the external staff table. Please select a valid staff member from the dropdown.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Then check if manager is active
+      if (selectedManager["TERMINATION DATE"] && selectedManager["TERMINATION DATE"] !== null && selectedManager["TERMINATION DATE"] !== "") {
+        toast({
+          title: "Validation Error", 
+          description: "Selected manager is not active (has termination date). Please select an active staff member.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate that the search value matches the selected manager
+      const expectedName = `${selectedManager["PAYROLL FIRST NAME"] || ""} ${selectedManager["PAYROLL LAST NAME"] || ""}`.trim();
+      if (managerSearchValue.trim() && managerSearchValue.trim() !== expectedName) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a manager from the dropdown. Manual entry is not allowed.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     onSave(formData);
   };
 
@@ -233,8 +275,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                     {staffLoading ? (
                       "Loading managers..."
                     ) : formData.managerId ? (
-                      activeStaff.find((member) => member.id === formData.managerId)?.legalName ||
-                      "Manager not found"
+                      (() => {
+                        const manager = activeStaff.find((member) => member.id === formData.managerId);
+                        return manager ? `${manager["PAYROLL FIRST NAME"] || ""} ${manager["PAYROLL LAST NAME"] || ""}`.trim() : "Manager not found";
+                      })()
                     ) : (
                       "Select manager..."
                     )}
@@ -265,9 +309,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                                 setManagerSearchValue("");
                               }}
                             >
-                              <span className="font-medium">{member.legalName}</span>
+                              <span className="font-medium">{`${member["PAYROLL FIRST NAME"] || ""} ${member["PAYROLL LAST NAME"] || ""}`.trim()}</span>
                               <span className="text-sm text-muted-foreground">
-                                {member.jobTitle} • {member.department}
+                                {member["JOB TITLE"]} • {member["HOME DEPARTMENT"]}
                               </span>
                             </div>
                           ))

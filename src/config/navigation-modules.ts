@@ -63,7 +63,7 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     displayName: 'Operations',
     description: 'Operational management and analytics',
     icon: 'Activity',
-    routes: ['/operations', '/operations/*', '/analytics']
+    routes: ['/operations', '/operations/*', '/analytics', '/operations/month-end-reports', '/operations/month-end-reports/*']
   },
   {
     id: 'complaints',

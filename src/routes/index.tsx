@@ -103,6 +103,13 @@ const JobTypesDistributionDetail = lazy(() =>
   )
 );
 
+// Lazy load Month-End Reports components
+const MonthEndReportsContainer = lazy(() =>
+  import("@/components/operations/month-end-reports/MonthEndReportsContainer").then(
+    (module) => ({ default: module.MonthEndReportsContainer })
+  )
+);
+
 // Lazy load Maintenance Module components
 const MaintenanceLayout = lazy(() => import("@/routes/maintenance"));
 const MaintenanceDashboard = lazy(
@@ -546,6 +553,16 @@ export const routes: RouteObject[] = [
         element: (
           <LazyWrapper>
             <JobTypesDistributionDetail />
+          </LazyWrapper>
+        ),
+      },
+      {
+        path: "/operations/month-end-reports",
+        element: (
+          <LazyWrapper>
+            <ModuleRouteGuard module="operations">
+              <MonthEndReportsContainer />
+            </ModuleRouteGuard>
           </LazyWrapper>
         ),
       },

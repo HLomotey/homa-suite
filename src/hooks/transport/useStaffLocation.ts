@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integration/supabase/client";
-import { FrontendStaffLocation, StaffLocationFormData } from "@/integration/supabase/types/staffLocation";
+import { FrontendStaffLocation, StaffLocationFormData, FrontendStaffLocationHistory } from "@/integration/supabase/types/staffLocation";
 
 export default function useStaffLocation() {
   const [staffLocations, setStaffLocations] = useState<FrontendStaffLocation[]>([]);
@@ -19,6 +19,11 @@ export default function useStaffLocation() {
           *,
           company_locations (
             name
+          ),
+          manager:external_staff!manager_id (
+            id,
+            first_name,
+            last_name
           )
         `)
         .order('location_code');
@@ -38,6 +43,9 @@ export default function useStaffLocation() {
             locationCode: item.location_code,
             locationDescription: item.location_description,
             isActive: item.is_active,
+            externalStaffId: item.external_staff_id,
+            managerId: item.manager_id,
+            managerName: item.manager ? `${item.manager.first_name} ${item.manager.last_name}` : undefined,
           }))
         : [];
         
@@ -66,12 +74,19 @@ export default function useStaffLocation() {
           company_location_id: data.companyLocationId,
           location_code: data.locationCode,
           location_description: data.locationDescription,
-          is_active: data.isActive
+          is_active: data.isActive,
+          external_staff_id: data.externalStaffId,
+          manager_id: data.managerId
         }])
         .select(`
           *,
           company_locations (
             name
+          ),
+          manager:external_staff!manager_id (
+            id,
+            first_name,
+            last_name
           )
         `)
         .single();
@@ -84,7 +99,10 @@ export default function useStaffLocation() {
         companyLocationName: newLocation.company_locations?.name || "Unknown",
         locationCode: newLocation.location_code,
         locationDescription: newLocation.location_description,
-        isActive: newLocation.is_active
+        isActive: newLocation.is_active,
+        externalStaffId: newLocation.external_staff_id,
+        managerId: newLocation.manager_id,
+        managerName: newLocation.manager ? `${newLocation.manager.first_name} ${newLocation.manager.last_name}` : undefined,
       };
 
       setStaffLocations(prev => [...prev, frontendLocation]);
@@ -110,6 +128,8 @@ export default function useStaffLocation() {
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
+          external_staff_id: data.externalStaffId,
+          manager_id: data.managerId,
           updated_at: new Date().toISOString()
         })
         .eq("id", id)
@@ -117,6 +137,11 @@ export default function useStaffLocation() {
           *,
           company_locations (
             name
+          ),
+          manager:external_staff!manager_id (
+            id,
+            first_name,
+            last_name
           )
         `)
         .single();
@@ -129,7 +154,10 @@ export default function useStaffLocation() {
         companyLocationName: updatedLocation.company_locations?.name || "Unknown",
         locationCode: updatedLocation.location_code,
         locationDescription: updatedLocation.location_description,
-        isActive: updatedLocation.is_active
+        isActive: updatedLocation.is_active,
+        externalStaffId: updatedLocation.external_staff_id,
+        managerId: updatedLocation.manager_id,
+        managerName: updatedLocation.manager ? `${updatedLocation.manager.first_name} ${updatedLocation.manager.last_name}` : undefined,
       };
 
       setStaffLocations(prev => 
@@ -169,6 +197,47 @@ export default function useStaffLocation() {
     }
   };
 
+  const fetchStaffLocationHistory = async (staffLocationId: string): Promise<FrontendStaffLocationHistory[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("staff_locations_history")
+        .select(`
+          *,
+          manager:external_staff!manager_id (
+            id,
+            first_name,
+            last_name
+          )
+        `)
+        .eq("staff_location_id", staffLocationId)
+        .order("changed_at", { ascending: false });
+
+      if (error) throw error;
+
+      return Array.isArray(data) 
+        ? data.map((item: any) => ({
+            id: item.id,
+            staffLocationId: item.staff_location_id,
+            companyLocationId: item.company_location_id,
+            locationCode: item.location_code,
+            locationDescription: item.location_description,
+            isActive: item.is_active,
+            externalStaffId: item.external_staff_id,
+            managerId: item.manager_id,
+            managerName: item.manager ? `${item.manager.first_name} ${item.manager.last_name}` : undefined,
+            changedAt: item.changed_at,
+            changedBy: item.changed_by,
+            changeType: item.change_type,
+            oldValues: item.old_values,
+            newValues: item.new_values,
+          }))
+        : [];
+    } catch (err: unknown) {
+      console.error("Error fetching staff location history:", err);
+      throw err;
+    }
+  };
+
   // Load staff locations on component mount
   useEffect(() => {
     const loadStaffLocations = async () => {
@@ -188,6 +257,7 @@ export default function useStaffLocation() {
     fetchStaffLocations,
     createStaffLocation,
     updateStaffLocation,
-    deleteStaffLocation
+    deleteStaffLocation,
+    fetchStaffLocationHistory
   };
 }
