@@ -112,6 +112,8 @@ export function StaffLocationsTab() {
     isActive: true,
     externalStaffId: "",
     externalStaffName: "",
+    managerId: "",
+    managerName: "",
   });
 
   // Set external staff status to active and fetch on component mount
@@ -153,6 +155,8 @@ export function StaffLocationsTab() {
       isActive: true,
       externalStaffId: "",
       externalStaffName: "",
+      managerId: "",
+      managerName: "",
     });
   };
 
@@ -172,6 +176,8 @@ export function StaffLocationsTab() {
       isActive: staffLocation.isActive,
       externalStaffId: staffLocation.externalStaffId || "",
       externalStaffName: staffLocation.externalStaffName || "",
+      managerId: staffLocation.managerId || "",
+      managerName: staffLocation.managerName || "",
     });
     setIsSheetOpen(true);
   };
@@ -190,6 +196,8 @@ export function StaffLocationsTab() {
         isActive: formData.isActive,
         externalStaffId: formData.externalStaffId,
         externalStaffName: formData.externalStaffName,
+        managerId: formData.managerId,
+        managerName: formData.managerName,
       };
       
       if (formData.mode === "add") {
@@ -245,6 +253,7 @@ export function StaffLocationsTab() {
               <TableHead>Location Code</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>External Staff</TableHead>
+              <TableHead>Manager</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -263,6 +272,16 @@ export function StaffLocationsTab() {
                     </div>
                   ) : (
                     <span className="text-muted-foreground text-sm">Not assigned</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {location.managerName ? (
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-blue-500" />
+                      <span>{location.managerName}</span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">No manager</span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -374,6 +393,56 @@ export function StaffLocationsTab() {
                         externalStaffId: value,
                         externalStaffName: selectedStaff ? 
                           `${selectedStaff["PAYROLL FIRST NAME"] || ''} ${selectedStaff["PAYROLL LAST NAME"] || ''}`.trim() : "",
+                      });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Manager Searchable Input */}
+            <div className="space-y-2">
+              <Label htmlFor="manager">Manager</Label>
+              {loadingExternalStaff ? (
+                <div className="flex items-center space-x-2 mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading managers...</span>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <SearchableSelect
+                    options={externalStaff.map((staff): SearchableSelectOption => {
+                      const firstName = staff["PAYROLL FIRST NAME"] || '';
+                      const lastName = staff["PAYROLL LAST NAME"] || '';
+                      const jobTitle = staff["JOB TITLE"] || '';
+                      const email = staff["WORK E-MAIL"] || '';
+                      const department = staff["HOME DEPARTMENT"] || '';
+                      
+                      // Create variations of the name for better search matching
+                      const fullName = `${firstName} ${lastName}`.trim();
+                      const reverseName = `${lastName} ${firstName}`.trim();
+                      const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : '';
+                      
+                      // Additional variations to improve search matching
+                      const firstNameOnly = firstName.trim();
+                      const lastNameOnly = lastName.trim();
+                      
+                      return {
+                        value: staff.id,
+                        label: `${firstName} ${lastName} - ${jobTitle}`,
+                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`
+                      };
+                    })}
+                    value={formData.managerId}
+                    placeholder="Search and select manager..."
+                    emptyMessage="No managers found."
+                    onValueChange={(value) => {
+                      const selectedManager = externalStaff.find((s) => s.id === value);
+                      setFormData({
+                        ...formData,
+                        managerId: value,
+                        managerName: selectedManager ? 
+                          `${selectedManager["PAYROLL FIRST NAME"] || ''} ${selectedManager["PAYROLL LAST NAME"] || ''}`.trim() : "",
                       });
                     }}
                   />

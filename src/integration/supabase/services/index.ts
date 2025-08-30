@@ -8,3 +8,4 @@ export { default as MaintenanceTypeService } from './maintenanceTypeService';
 export { default as MaintenanceTransactionService } from './maintenanceTransactionService';
 export { default as RouteAssignmentService } from './routeAssignmentService';
 export { default as RouteExecutionLogService } from './routeExecutionLogService';
+export { default as MonthEndReportService } from './monthEndReportService';
