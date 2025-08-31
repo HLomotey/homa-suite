@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { OccupancyTab } from "../components/occupancy/OccupancyTab";
@@ -186,13 +188,73 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
       <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
         <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>Edit Occupancy Data</SheetTitle>
+            <SheetTitle>
+              {selectedReport ? "Edit Occupancy Data" : "Add Occupancy Data"}
+            </SheetTitle>
           </SheetHeader>
-          {selectedReport && (
-            <div className="text-center py-8 text-muted-foreground">
-              Form integration will be implemented here
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="property">Property</Label>
+                <Input 
+                  id="property" 
+                  value={selectedReport?.property_name || ""} 
+                  placeholder="Enter property name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="occupancy">Current Occupancy %</Label>
+                <Input 
+                  id="occupancy" 
+                  type="number" 
+                  placeholder="85.5"
+                  defaultValue={selectedReport?.avg_occupancy_pct || ""}
+                />
+              </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date">Start Date</Label>
+                <Input 
+                  id="start-date" 
+                  type="date"
+                  defaultValue={selectedReport?.start_date || ""}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end-date">End Date</Label>
+                <Input 
+                  id="end-date" 
+                  type="date"
+                  defaultValue={selectedReport?.end_date || ""}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Occupancy Notes</Label>
+              <Textarea 
+                id="notes" 
+                placeholder="Add notes about occupancy trends, seasonal factors, etc."
+                defaultValue={selectedReport?.narrative || ""}
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={handleCloseForm}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                // Handle save logic here
+                onSave({});
+                handleCloseForm();
+              }}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     </div>

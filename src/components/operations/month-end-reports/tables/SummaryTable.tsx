@@ -10,16 +10,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { SummaryTab } from "../components/summary/SummaryTab";
 import { 
   Search, 
   Edit, 
-  CheckCircle,
-  Calendar,
-  Building,
+  CheckCircle, 
+  Building, 
+  Calendar, 
   FileText,
+  TrendingUp,
+  Plus,
   MessageSquare
 } from "lucide-react";
 
@@ -83,15 +87,21 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
         <div className="relative w-72">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by property or headline..."
+            placeholder="Search by property..."
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CheckCircle className="h-4 w-4" />
-          {filteredReports.length} summaries
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle className="h-4 w-4" />
+            {filteredReports.length} properties
+          </div>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Summary Data
+          </Button>
         </div>
       </div>
 
@@ -187,13 +197,80 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
       <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
         <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>Edit Summary</SheetTitle>
+            <SheetTitle>
+              {selectedReport ? "Edit Summary Data" : "Add Summary Data"}
+            </SheetTitle>
           </SheetHeader>
-          {selectedReport && (
-            <div className="text-center py-8 text-muted-foreground">
-              Form integration will be implemented here
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="property">Property</Label>
+                <Input 
+                  id="property" 
+                  value={selectedReport?.property_name || ""} 
+                  placeholder="Enter property name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="headline">Executive Headline</Label>
+                <Input 
+                  id="headline" 
+                  placeholder="Monthly performance exceeded expectations with strong occupancy growth"
+                  defaultValue={selectedReport?.headline || ""}
+                />
+              </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date">Start Date</Label>
+                <Input 
+                  id="start-date" 
+                  type="date"
+                  defaultValue={selectedReport?.start_date || ""}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end-date">End Date</Label>
+                <Input 
+                  id="end-date" 
+                  type="date"
+                  defaultValue={selectedReport?.end_date || ""}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="executive-summary">Executive Summary</Label>
+              <Textarea 
+                id="executive-summary" 
+                placeholder="Provide a comprehensive summary of the month's performance, key achievements, challenges, and strategic insights for executive review."
+                defaultValue={selectedReport?.narrative || ""}
+                rows={6}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="key-highlights">Key Performance Highlights</Label>
+              <Textarea 
+                id="key-highlights" 
+                placeholder="• Occupancy increased by 15% month-over-month\n• Revenue exceeded budget by $50K\n• Customer satisfaction scores improved to 4.8/5\n• Completed 3 major maintenance projects"
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={handleCloseForm}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                onSave({});
+                handleCloseForm();
+              }}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     </div>

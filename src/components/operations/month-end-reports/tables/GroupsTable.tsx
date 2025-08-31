@@ -10,15 +10,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { GroupsTab } from "../components/groups/GroupsTab";
 import { 
   Search, 
   Edit, 
-  Users,
-  Calendar,
-  Building,
+  Users, 
+  Building, 
+  Calendar, 
+  MapPin,
+  Bed,
+  Plus,
   Ban
 } from "lucide-react";
 
@@ -81,9 +86,15 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          {filteredReports.length} properties
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="h-4 w-4" />
+            {filteredReports.length} properties
+          </div>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Group Data
+          </Button>
         </div>
       </div>
 
@@ -168,15 +179,95 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
 
       {/* Sheet for form */}
       <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>Edit Groups Data</SheetTitle>
+            <SheetTitle>
+              {selectedReport ? "Edit Group Data" : "Add Group Data"}
+            </SheetTitle>
           </SheetHeader>
-          {selectedReport && (
-            <div className="text-center py-8 text-muted-foreground">
-              Form integration will be implemented here
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="property">Property</Label>
+                <Input 
+                  id="property" 
+                  value={selectedReport?.property_name || ""} 
+                  placeholder="Enter property name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="total-groups">Total Groups</Label>
+                <Input 
+                  id="total-groups" 
+                  type="number" 
+                  placeholder="5"
+                  defaultValue={selectedReport?.groups?.length || ""}
+                />
+              </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="rooms-blocked">Rooms Blocked</Label>
+                <Input 
+                  id="rooms-blocked" 
+                  type="number"
+                  placeholder="25"
+                  defaultValue={selectedReport?.total_rooms_blocked || ""}
+                />
+              </div>
+              <div>
+                <Label htmlFor="group-revenue">Group Revenue</Label>
+                <Input 
+                  id="group-revenue" 
+                  type="number"
+                  step="0.01"
+                  placeholder="15000.00"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date">Start Date</Label>
+                <Input 
+                  id="start-date" 
+                  type="date"
+                  defaultValue={selectedReport?.start_date || ""}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end-date">End Date</Label>
+                <Input 
+                  id="end-date" 
+                  type="date"
+                  defaultValue={selectedReport?.end_date || ""}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="group-notes">Group Booking Notes</Label>
+              <Textarea 
+                id="group-notes" 
+                placeholder="Add notes about group bookings, special requirements, events, etc."
+                defaultValue={selectedReport?.narrative || ""}
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={handleCloseForm}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                onSave({});
+                handleCloseForm();
+              }}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     </div>
