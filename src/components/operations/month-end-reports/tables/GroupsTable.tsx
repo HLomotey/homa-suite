@@ -12,21 +12,19 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { Plus, Edit, Trash2, Users, DollarSign, Calendar, Building, Ban, AlertTriangle, MessageSquare, Loader2, Search } from "lucide-react";
+import { useProperties } from "@/hooks/property/useProperties";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { GroupsTab } from "../components/groups/GroupsTab";
-import { 
-  Search, 
-  Edit, 
-  Users, 
-  Building, 
-  Calendar, 
-  MapPin,
-  Bed,
-  Plus,
-  Ban
-} from "lucide-react";
 
 interface GroupsTableProps {
   reports: FrontendMonthEndReport[];
@@ -39,9 +37,18 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
   onSave,
   isLoading = false,
 }) => {
+  const { properties, isLoading: propertiesLoading } = useProperties();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    property_id: "",
+    property_name: "",
+    total_rooms_blocked: "",
+    start_date: "",
+    end_date: "",
+    narrative: "",
+  });
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
@@ -50,6 +57,14 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
 
   const handleEditReport = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
+    setFormData({
+      property_id: report.property_id || "",
+      property_name: report.property_name || "",
+      total_rooms_blocked: report.total_rooms_blocked?.toString() || "",
+      start_date: report.start_date || "",
+      end_date: report.end_date || "",
+      narrative: report.narrative || "",
+    });
     setIsFormOpen(true);
   };
 
@@ -75,6 +90,19 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
     return date.toLocaleDateString();
   };
 
+  const handleAddNew = () => {
+    setSelectedReport(null);
+    setFormData({
+      property_id: "",
+      property_name: "",
+      total_rooms_blocked: "",
+      start_date: "",
+      end_date: "",
+      narrative: "",
+    });
+    setIsFormOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -92,7 +120,7 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
             <Users className="h-4 w-4" />
             {filteredReports.length} properties
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
+          <Button onClick={handleAddNew}>
             <Plus className="h-4 w-4 mr-2" />
             Add Group Data
           </Button>
@@ -189,77 +217,75 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="property">Property</Label>
-                <Select defaultValue={selectedReport?.property_name || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Search and select property..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grand-hotel-downtown">Grand Hotel Downtown</SelectItem>
-                    <SelectItem value="seaside-resort">Seaside Resort & Spa</SelectItem>
-                    <SelectItem value="mountain-lodge">Mountain View Lodge</SelectItem>
-                    <SelectItem value="city-center-inn">City Center Inn</SelectItem>
-                    <SelectItem value="airport-hotel">Airport Business Hotel</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="property_id">Property</Label>
+                {propertiesLoading ? (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading properties...</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <SearchableSelect
+                      options={properties.map((property): SearchableSelectOption => ({
+                        value: property.id,
+                        label: `${property.name}${property.address ? ` - ${property.address}` : ""}`,
+                        searchText: `${property.name} ${property.address || ""} ${property.city || ""} ${property.state || ""}`,
+                      }))}
+                      value={formData.property_id}
+                      placeholder="Search and select property..."
+                      emptyMessage="No properties found."
+                      onValueChange={(value) => {
+                        const selectedProperty = properties.find((p) => p.id === value);
+                        setFormData({
+                          ...formData,
+                          property_id: value,
+                          property_name: selectedProperty?.name || "",
+                        });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
-                <Label htmlFor="total-groups">Total Groups</Label>
+                <Label htmlFor="total_rooms_blocked">Total Rooms Blocked</Label>
                 <Input 
-                  id="total-groups" 
+                  id="total_rooms_blocked" 
                   type="number" 
-                  placeholder="5"
-                  defaultValue={selectedReport?.groups?.length || ""}
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="rooms-blocked">Rooms Blocked</Label>
-                <Input 
-                  id="rooms-blocked" 
-                  type="number"
-                  placeholder="25"
-                  defaultValue={selectedReport?.total_rooms_blocked || ""}
-                />
-              </div>
-              <div>
-                <Label htmlFor="group-revenue">Group Revenue</Label>
-                <Input 
-                  id="group-revenue" 
-                  type="number"
-                  step="0.01"
-                  placeholder="15000.00"
+                  placeholder="150"
+                  value={formData.total_rooms_blocked}
+                  onChange={(e) => setFormData({ ...formData, total_rooms_blocked: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start_date">Start Date</Label>
                 <Input 
-                  id="start-date" 
+                  id="start_date" 
                   type="date"
-                  defaultValue={selectedReport?.start_date || ""}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end_date">End Date</Label>
                 <Input 
-                  id="end-date" 
+                  id="end_date" 
                   type="date"
-                  defaultValue={selectedReport?.end_date || ""}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="group-notes">Group Booking Notes</Label>
+              <Label htmlFor="narrative">Group Notes</Label>
               <Textarea 
-                id="group-notes" 
-                placeholder="Add notes about group bookings, special requirements, events, etc."
-                defaultValue={selectedReport?.narrative || ""}
+                id="narrative" 
+                placeholder="Add notes about group bookings, special requirements, etc."
+                value={formData.narrative}
+                onChange={(e) => setFormData({ ...formData, narrative: e.target.value })}
                 rows={4}
               />
             </div>
@@ -269,7 +295,7 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
                 Cancel
               </Button>
               <Button onClick={() => {
-                onSave({});
+                onSave(formData);
                 handleCloseForm();
               }}>
                 Save Changes

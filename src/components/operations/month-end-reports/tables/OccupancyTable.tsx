@@ -12,49 +12,61 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  SearchableSelect,
+  SearchableSelectOption,
+} from "@/components/ui/searchable-select";
+import { Plus, Edit, Trash2, Loader2, Search, TrendingUp, TrendingDown, Hotel, Calendar, Building } from "lucide-react";
+import { useProperties } from "@/hooks/property/useProperties";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { OccupancyTab } from "../components/occupancy/OccupancyTab";
-import { 
-  Search, 
-  Edit, 
-  TrendingUp, 
-  TrendingDown, 
-  Hotel,
-  Calendar,
-  Building,
-  Plus
-} from "lucide-react";
 
 interface OccupancyTableProps {
   reports: FrontendMonthEndReport[];
+  onEdit: (data: any) => Promise<void>;
+  onDelete: (data: any) => Promise<void>;
   onSave: (data: any) => Promise<void>;
   isLoading?: boolean;
 }
 
 export const OccupancyTable: React.FC<OccupancyTableProps> = ({
   reports,
+  onEdit,
+  onDelete,
   onSave,
   isLoading = false,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const { properties, isLoading: propertiesLoading } = useProperties();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState<FrontendMonthEndReport | null>(null);
+  const [formData, setFormData] = useState({
+    property_id: "",
+    property_name: "",
+    avg_occupancy_pct: "",
+    start_date: "",
+    end_date: "",
+    occupancy_notes: "",
+  });
 
-  // Filter reports based on search term
-  const filteredReports = reports.filter(report => 
-    report.property_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleEditReport = (report: FrontendMonthEndReport) => {
-    setSelectedReport(report);
-    setIsFormOpen(true);
-  };
-
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setSelectedReport(null);
+  const handleEdit = (report: FrontendMonthEndReport) => {
+    setEditingReport(report);
+    setFormData({
+      property_id: report.property_id || "",
+      property_name: report.property_name || "",
+      avg_occupancy_pct: report.avg_occupancy_pct?.toString() || "",
+      start_date: report.start_date || "",
+      end_date: report.end_date || "",
+      occupancy_notes: report.occupancy_notes || "",
+    });
+    setIsSheetOpen(true);
   };
 
   const getTrendIcon = (current: number, previous: number) => {
@@ -83,6 +95,19 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
     return date.toLocaleDateString();
   };
 
+  const handleAddNew = () => {
+    setEditingReport(null);
+    setFormData({
+      property_id: "",
+      property_name: "",
+      avg_occupancy_pct: "",
+      start_date: "",
+      end_date: "",
+      occupancy_notes: "",
+    });
+    setIsSheetOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -91,16 +116,16 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
           <Input
             placeholder="Search by property..."
             className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={""}
+            onChange={(e) => {}}
           />
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Hotel className="h-4 w-4" />
-            {filteredReports.length} properties
+            {reports.length} properties
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
+          <Button onClick={handleAddNew}>
             <Plus className="h-4 w-4 mr-2" />
             Add Occupancy Data
           </Button>
@@ -121,14 +146,14 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredReports.length === 0 ? (
+            {reports.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? "No properties match your search" : "No occupancy data available"}
+                  No occupancy data available
                 </TableCell>
               </TableRow>
             ) : (
-              filteredReports.map((report) => {
+              reports.map((report) => {
                 const currentOccupancy = report.avg_occupancy_pct || 0;
                 const previousOccupancy = 0; // Will be calculated from historical data
                 const change = currentOccupancy - previousOccupancy;
@@ -172,7 +197,7 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => handleEditReport(report)}
+                        onClick={() => handleEdit(report)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -186,78 +211,97 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
       </div>
 
       {/* Sheet for form */}
-      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>
-              {selectedReport ? "Edit Occupancy Data" : "Add Occupancy Data"}
+              {editingReport ? "Edit Occupancy Data" : "Add Occupancy Data"}
             </SheetTitle>
           </SheetHeader>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="property">Property</Label>
-                <Select defaultValue={selectedReport?.property_name || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Search and select property..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grand-hotel-downtown">Grand Hotel Downtown</SelectItem>
-                    <SelectItem value="seaside-resort">Seaside Resort & Spa</SelectItem>
-                    <SelectItem value="mountain-lodge">Mountain View Lodge</SelectItem>
-                    <SelectItem value="city-center-inn">City Center Inn</SelectItem>
-                    <SelectItem value="airport-hotel">Airport Business Hotel</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="property_id">Property</Label>
+                {propertiesLoading ? (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading properties...</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <SearchableSelect
+                      options={properties.map((property): SearchableSelectOption => ({
+                        value: property.id,
+                        label: `${property.name}${property.address ? ` - ${property.address}` : ""}`,
+                        searchText: `${property.name} ${property.address || ""} ${property.city || ""} ${property.state || ""}`,
+                      }))}
+                      value={formData.property_id}
+                      placeholder="Search and select property..."
+                      emptyMessage="No properties found."
+                      onValueChange={(value) => {
+                        const selectedProperty = properties.find((p) => p.id === value);
+                        setFormData({
+                          ...formData,
+                          property_id: value,
+                          property_name: selectedProperty?.name || "",
+                        });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
-                <Label htmlFor="occupancy">Current Occupancy %</Label>
+                <Label htmlFor="occupancy">Average Occupancy %</Label>
                 <Input 
                   id="occupancy" 
                   type="number" 
                   placeholder="85.5"
-                  defaultValue={selectedReport?.avg_occupancy_pct || ""}
+                  value={formData.avg_occupancy_pct}
+                  onChange={(e) => setFormData({ ...formData, avg_occupancy_pct: e.target.value })}
                 />
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start_date">Start Date</Label>
                 <Input 
-                  id="start-date" 
+                  id="start_date" 
                   type="date"
-                  defaultValue={selectedReport?.start_date || ""}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end_date">End Date</Label>
                 <Input 
-                  id="end-date" 
+                  id="end_date" 
                   type="date"
-                  defaultValue={selectedReport?.end_date || ""}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="notes">Occupancy Notes</Label>
+              <Label htmlFor="occupancy_notes">Occupancy Notes</Label>
               <Textarea 
-                id="notes" 
+                id="occupancy_notes" 
                 placeholder="Add notes about occupancy trends, seasonal factors, etc."
-                defaultValue={selectedReport?.narrative || ""}
+                value={formData.occupancy_notes}
+                onChange={(e) => setFormData({ ...formData, occupancy_notes: e.target.value })}
                 rows={4}
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={handleCloseForm}>
+              <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={() => {
                 // Handle save logic here
-                onSave({});
-                handleCloseForm();
+                onSave(formData);
+                setIsSheetOpen(false);
               }}>
                 Save Changes
               </Button>

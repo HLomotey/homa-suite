@@ -85,21 +85,12 @@ export const MonthEndReportsPage: React.FC = () => {
 
   // Handle saving a report (create or update)
   const handleSaveReport = async (data: MonthEndReportFormData) => {
-    setIsLoading(true);
     try {
-      if (data.id) {
-        await updateReport(data.id, data);
-        toast({
-          title: "Success",
-          description: "Report updated successfully",
-        });
-      } else {
-        await createReport(data);
-        toast({
-          title: "Success",
-          description: "Report created successfully",
-        });
-      }
+      await createReport(data);
+      toast({
+        title: "Success",
+        description: "Report created successfully",
+      });
       refetchReports();
     } catch (error) {
       console.error("Error saving report:", error);
@@ -108,9 +99,15 @@ export const MonthEndReportsPage: React.FC = () => {
         description: "Failed to save report",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+  };
+
+  const handleEditReport = async (data: any) => {
+    console.log("Edit report:", data);
+  };
+
+  const handleDeleteReportFromTable = async (data: any) => {
+    console.log("Delete report from table:", data);
   };
 
   // Handle submitting a report
@@ -288,6 +285,8 @@ export const MonthEndReportsPage: React.FC = () => {
           <OccupancyTable
             reports={reports || []}
             onSave={handleSaveReport}
+            onEdit={handleEditReport}
+            onDelete={handleDeleteReportFromTable}
             isLoading={isLoading}
           />
         </TabsContent>

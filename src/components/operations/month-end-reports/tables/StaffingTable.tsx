@@ -13,21 +13,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { Plus, Edit, Trash2, Users, Clock, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Ban, MessageSquare, Loader2, Search, Building, Calendar, Target } from "lucide-react";
+import { useProperties } from "@/hooks/property/useProperties";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { StaffingTab } from "../components/staffing/StaffingTab";
-import { 
-  Search, 
-  Edit, 
-  Target, 
-  Building, 
-  Calendar, 
-  CheckCircle,
-  Clock,
-  Users,
-  Plus,
-  AlertTriangle
-} from "lucide-react";
 
 interface StaffingTableProps {
   reports: FrontendMonthEndReport[];
@@ -40,9 +38,18 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
   onSave,
   isLoading = false,
 }) => {
+  const { properties, isLoading: propertiesLoading } = useProperties();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    property_id: "",
+    property_name: "",
+    training_updates: "",
+    start_date: "",
+    end_date: "",
+    absenteeism_notes: "",
+  });
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
@@ -51,6 +58,14 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
 
   const handleEditReport = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
+    setFormData({
+      property_id: report.property_id || "",
+      property_name: report.property_name || "",
+      training_updates: report.training_updates || "",
+      start_date: report.start_date || "",
+      end_date: report.end_date || "",
+      absenteeism_notes: report.absenteeism_notes || "",
+    });
     setIsFormOpen(true);
   };
 
@@ -226,30 +241,47 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="property">Property</Label>
-                <Select defaultValue={selectedReport?.property_name || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Search and select property..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grand-hotel-downtown">Grand Hotel Downtown</SelectItem>
-                    <SelectItem value="seaside-resort">Seaside Resort & Spa</SelectItem>
-                    <SelectItem value="mountain-lodge">Mountain View Lodge</SelectItem>
-                    <SelectItem value="city-center-inn">City Center Inn</SelectItem>
-                    <SelectItem value="airport-hotel">Airport Business Hotel</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="property_id">Property</Label>
+                {propertiesLoading ? (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading properties...</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <SearchableSelect
+                      options={properties.map((property): SearchableSelectOption => ({
+                        value: property.id,
+                        label: `${property.name}${property.address ? ` - ${property.address}` : ""}`,
+                        searchText: `${property.name} ${property.address || ""} ${property.city || ""} ${property.state || ""}`,
+                      }))}
+                      value={formData.property_id}
+                      placeholder="Search and select property..."
+                      emptyMessage="No properties found."
+                      onValueChange={(value) => {
+                        const selectedProperty = properties.find((p) => p.id === value);
+                        setFormData({
+                          ...formData,
+                          property_id: value,
+                          property_name: selectedProperty?.name || "",
+                        });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
-                <Label htmlFor="training-hours">Training Hours</Label>
-                <Input 
-                  id="training-hours" 
-                  type="number" 
-                  placeholder="40"
+                <Label htmlFor="training_updates">Training Updates</Label>
+                <Textarea 
+                  id="training_updates" 
+                  placeholder="Describe training programs, certifications, etc."
+                  value={formData.training_updates}
+                  onChange={(e) => setFormData({ ...formData, training_updates: e.target.value })}
+                  rows={3}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="open-actions">Open Action Items</Label>
@@ -271,31 +303,34 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start_date">Start Date</Label>
                 <Input 
-                  id="start-date" 
+                  id="start_date" 
                   type="date"
-                  defaultValue={selectedReport?.start_date || ""}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end_date">End Date</Label>
                 <Input 
-                  id="end-date" 
+                  id="end_date" 
                   type="date"
-                  defaultValue={selectedReport?.end_date || ""}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="staffing-notes">Staffing & Training Notes</Label>
+              <Label htmlFor="absenteeism_notes">Absenteeism Notes</Label>
               <Textarea 
-                id="staffing-notes" 
-                placeholder="Add notes about staffing levels, training programs, action items, performance metrics, etc."
-                defaultValue={selectedReport?.narrative || ""}
+                id="absenteeism_notes" 
+                placeholder="Add notes about staffing levels, absenteeism, performance, etc."
+                value={formData.absenteeism_notes}
+                onChange={(e) => setFormData({ ...formData, absenteeism_notes: e.target.value })}
                 rows={4}
               />
             </div>
@@ -305,6 +340,7 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
                 Cancel
               </Button>
               <Button onClick={() => {
+                onSave(formData);
                 onSave({});
                 handleCloseForm();
               }}>

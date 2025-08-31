@@ -124,6 +124,16 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
     console.log("Save report:", data);
   };
 
+  const handleEditReport = async (data: any) => {
+    // This will be handled by the parent container
+    console.log("Edit report:", data);
+  };
+
+  const handleDeleteReport = async (data: any) => {
+    // This will be handled by the parent container
+    console.log("Delete report:", data);
+  };
+
   const getStatusBadge = (status: ReportStatus) => {
     const variants = {
       draft: "secondary",
@@ -239,6 +249,8 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
             reports={filteredReports}
             isLoading={loading}
             onSave={handleSaveReport}
+            onEdit={handleEditReport}
+            onDelete={handleDeleteReport}
           />
         </TabsContent>
 

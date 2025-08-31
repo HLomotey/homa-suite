@@ -13,19 +13,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { Plus, Edit, Trash2, Star, AlertTriangle, CheckCircle, Loader2, Search, Building, Calendar, Shield, Sparkles } from "lucide-react";
+import { useProperties } from "@/hooks/property/useProperties";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { CleanlinessTab } from "../components/cleanliness/CleanlinessTab";
-import { 
-  Search, 
-  Edit, 
-  Sparkles, 
-  Building, 
-  Calendar, 
-  Star,
-  AlertTriangle,
-  Plus
-} from "lucide-react";
 
 interface CleanlinessTableProps {
   reports: FrontendMonthEndReport[];
@@ -38,9 +38,18 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
   onSave,
   isLoading = false,
 }) => {
+  const { properties, isLoading: propertiesLoading } = useProperties();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    property_id: "",
+    property_name: "",
+    cleanliness_score: "",
+    start_date: "",
+    end_date: "",
+    cleanliness_comments: "",
+  });
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
@@ -49,6 +58,14 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
 
   const handleEditReport = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
+    setFormData({
+      property_id: report.property_id || "",
+      property_name: report.property_name || "",
+      cleanliness_score: report.cleanliness_score?.toString() || "",
+      start_date: report.start_date || "",
+      end_date: report.end_date || "",
+      cleanliness_comments: report.cleanliness_comments || "",
+    });
     setIsFormOpen(true);
   };
 
@@ -208,59 +225,77 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="property">Property</Label>
-                <Select defaultValue={selectedReport?.property_name || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Search and select property..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grand-hotel-downtown">Grand Hotel Downtown</SelectItem>
-                    <SelectItem value="seaside-resort">Seaside Resort & Spa</SelectItem>
-                    <SelectItem value="mountain-lodge">Mountain View Lodge</SelectItem>
-                    <SelectItem value="city-center-inn">City Center Inn</SelectItem>
-                    <SelectItem value="airport-hotel">Airport Business Hotel</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="property_id">Property</Label>
+                {propertiesLoading ? (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading properties...</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <SearchableSelect
+                      options={properties.map((property): SearchableSelectOption => ({
+                        value: property.id,
+                        label: `${property.name}${property.address ? ` - ${property.address}` : ""}`,
+                        searchText: `${property.name} ${property.address || ""} ${property.city || ""} ${property.state || ""}`,
+                      }))}
+                      value={formData.property_id}
+                      placeholder="Search and select property..."
+                      emptyMessage="No properties found."
+                      onValueChange={(value) => {
+                        const selectedProperty = properties.find((p) => p.id === value);
+                        setFormData({
+                          ...formData,
+                          property_id: value,
+                          property_name: selectedProperty?.name || "",
+                        });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
-                <Label htmlFor="cleanliness-score">Cleanliness Score</Label>
+                <Label htmlFor="cleanliness_score">Cleanliness Score (1-10)</Label>
                 <Input 
-                  id="cleanliness-score" 
+                  id="cleanliness_score" 
                   type="number" 
-                  step="0.01"
-                  max="1"
-                  min="0"
-                  placeholder="0.95"
-                  defaultValue={selectedReport?.cleanliness_score || ""}
+                  min="1" 
+                  max="10" 
+                  placeholder="8.5"
+                  value={formData.cleanliness_score}
+                  onChange={(e) => setFormData({ ...formData, cleanliness_score: e.target.value })}
                 />
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start_date">Start Date</Label>
                 <Input 
-                  id="start-date" 
+                  id="start_date" 
                   type="date"
-                  defaultValue={selectedReport?.start_date || ""}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end_date">End Date</Label>
                 <Input 
-                  id="end-date" 
+                  id="end_date" 
                   type="date"
-                  defaultValue={selectedReport?.end_date || ""}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="maintenance-notes">Maintenance & Quality Notes</Label>
+              <Label htmlFor="cleanliness_comments">Cleanliness Comments</Label>
               <Textarea 
-                id="maintenance-notes" 
-                placeholder="Add notes about cleanliness standards, maintenance issues, quality improvements, etc."
-                defaultValue={selectedReport?.narrative || ""}
+                id="cleanliness_comments" 
+                placeholder="Add notes about cleanliness issues, maintenance needs, etc."
+                value={formData.cleanliness_comments}
+                onChange={(e) => setFormData({ ...formData, cleanliness_comments: e.target.value })}
                 rows={4}
               />
             </div>
@@ -270,6 +305,7 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
                 Cancel
               </Button>
               <Button onClick={() => {
+                onSave(formData);
                 onSave({});
                 handleCloseForm();
               }}>

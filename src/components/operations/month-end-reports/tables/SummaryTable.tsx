@@ -12,7 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  SearchableSelect,
+  SearchableSelectOption,
+} from "@/components/ui/searchable-select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { SummaryTab } from "../components/summary/SummaryTab";
@@ -25,8 +28,11 @@ import {
   FileText,
   TrendingUp,
   Plus,
-  MessageSquare
+  MessageSquare,
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
+import { useProperties } from "@/hooks/property/useProperties";
 
 interface SummaryTableProps {
   reports: FrontendMonthEndReport[];
@@ -39,9 +45,18 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
   onSave,
   isLoading = false,
 }) => {
+  const { properties, isLoading: propertiesLoading } = useProperties();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    property_id: "",
+    property_name: "",
+    headline: "",
+    start_date: "",
+    end_date: "",
+    narrative: "",
+  });
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
@@ -51,6 +66,14 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
 
   const handleEditReport = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
+    setFormData({
+      property_id: report.property_id || "",
+      property_name: report.property_name || "",
+      headline: report.headline || "",
+      start_date: report.start_date || "",
+      end_date: report.end_date || "",
+      narrative: report.narrative || "",
+    });
     setIsFormOpen(true);
   };
 
@@ -203,67 +226,77 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
             </SheetTitle>
           </SheetHeader>
           <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="property">Property</Label>
-                <Select defaultValue={selectedReport?.property_name || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Search and select property..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grand-hotel-downtown">Grand Hotel Downtown</SelectItem>
-                    <SelectItem value="seaside-resort">Seaside Resort & Spa</SelectItem>
-                    <SelectItem value="mountain-lodge">Mountain View Lodge</SelectItem>
-                    <SelectItem value="city-center-inn">City Center Inn</SelectItem>
-                    <SelectItem value="airport-hotel">Airport Business Hotel</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="property_id">Property</Label>
+                {propertiesLoading ? (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading properties...</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <SearchableSelect
+                      options={properties.map((property): SearchableSelectOption => ({
+                        value: property.id,
+                        label: `${property.name}${property.address ? ` - ${property.address}` : ""}`,
+                        searchText: `${property.name} ${property.address || ""} ${property.city || ""} ${property.state || ""}`,
+                      }))}
+                      value={formData.property_id}
+                      placeholder="Search and select property..."
+                      emptyMessage="No properties found."
+                      onValueChange={(value) => {
+                        const selectedProperty = properties.find((p) => p.id === value);
+                        setFormData({
+                          ...formData,
+                          property_id: value,
+                          property_name: selectedProperty?.name || "",
+                        });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="headline">Executive Headline</Label>
                 <Input 
                   id="headline" 
-                  placeholder="Monthly performance exceeded expectations with strong occupancy growth"
-                  defaultValue={selectedReport?.headline || ""}
+                  placeholder="Q4 Performance Summary"
+                  value={formData.headline}
+                  onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
                 />
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start_date">Start Date</Label>
                 <Input 
-                  id="start-date" 
+                  id="start_date" 
                   type="date"
-                  defaultValue={selectedReport?.start_date || ""}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end_date">End Date</Label>
                 <Input 
-                  id="end-date" 
+                  id="end_date" 
                   type="date"
-                  defaultValue={selectedReport?.end_date || ""}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="executive-summary">Executive Summary</Label>
+              <Label htmlFor="narrative">Executive Summary</Label>
               <Textarea 
-                id="executive-summary" 
-                placeholder="Provide a comprehensive summary of the month's performance, key achievements, challenges, and strategic insights for executive review."
-                defaultValue={selectedReport?.narrative || ""}
+                id="narrative" 
+                placeholder="Provide a comprehensive summary of the month's performance..."
+                value={formData.narrative}
+                onChange={(e) => setFormData({ ...formData, narrative: e.target.value })}
                 rows={6}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="key-highlights">Key Performance Highlights</Label>
-              <Textarea 
-                id="key-highlights" 
-                placeholder="• Occupancy increased by 15% month-over-month\n• Revenue exceeded budget by $50K\n• Customer satisfaction scores improved to 4.8/5\n• Completed 3 major maintenance projects"
-                rows={4}
               />
             </div>
 
@@ -272,6 +305,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
                 Cancel
               </Button>
               <Button onClick={() => {
+                onSave(formData);
                 onSave({});
                 handleCloseForm();
               }}>
