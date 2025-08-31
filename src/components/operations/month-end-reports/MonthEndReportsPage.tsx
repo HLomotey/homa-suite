@@ -61,7 +61,7 @@ export const MonthEndReportsPage: React.FC = () => {
   const propertyOptions: PropertyOption[] =
     properties?.map((property) => ({
       id: property.id,
-      name: property.name,
+      name: property.title,
     })) || [];
 
   // Calculate dashboard stats

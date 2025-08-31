@@ -1,25 +1,10 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integration/supabase/client";
-
-interface Property {
-  id: string;
-  name: string;
-  location?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  country?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Property, FrontendProperty, mapDatabasePropertyToFrontend } from "@/integration/supabase/types/property";
 
 export const useProperties = () => {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<FrontendProperty[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -29,12 +14,17 @@ export const useProperties = () => {
     try {
       const { data, error } = await supabase
         .from("properties")
-        .select("*")
-        .order("name");
+        .select(`
+          *,
+          company_locations(*),
+          billing_staff(legal_name)
+        `)
+        .order("title");
 
       if (error) throw error;
 
-      setProperties(data || []);
+      const mappedProperties = (data || []).map(mapDatabasePropertyToFrontend);
+      setProperties(mappedProperties);
     } catch (error) {
       console.error("Error fetching properties:", error);
       toast({

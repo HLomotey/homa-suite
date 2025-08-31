@@ -226,10 +226,9 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
                 ) : (
                   <div className="mt-2">
                     <SearchableSelect
-                      options={properties.map((property): SearchableSelectOption => ({
+                      options={properties.map(property => ({
                         value: property.id,
-                        label: `${property.name}${property.address ? ` - ${property.address}` : ""}`,
-                        searchText: `${property.name} ${property.address || ""} ${property.city || ""} ${property.state || ""}`,
+                        label: `${property.title} - ${property.address || (property.location?.city) || (property.location?.state) || 'No address'}`,
                       }))}
                       value={formData.property_id}
                       placeholder="Search and select property..."
@@ -239,7 +238,7 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
                         setFormData({
                           ...formData,
                           property_id: value,
-                          property_name: selectedProperty?.name || "",
+                          property_name: selectedProperty?.title || "",
                         });
                       }}
                     />
