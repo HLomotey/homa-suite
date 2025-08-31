@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,12 @@ import {
   Calendar,
   Building,
   TrendingUp,
-  FileText
+  FileText,
+  Hotel,
+  Sparkles,
+  Users,
+  Target,
+  Clock
 } from "lucide-react";
 import { useMonthEndReports } from "@/hooks/month-end-reports/useMonthEndReports";
 import {
@@ -39,6 +45,11 @@ import {
   ReportStatus,
   MonthEndReportFilters
 } from "@/integration/supabase/types/month-end-reports";
+import { OccupancyTable } from "./tables/OccupancyTable";
+import { CleanlinessTable } from "./tables/CleanlinessTable";
+import { GroupsTable } from "./tables/GroupsTable";
+import { StaffingTable } from "./tables/StaffingTable";
+import { SummaryTable } from "./tables/SummaryTable";
 
 export interface MonthEndReportsListProps {
   onCreateNew: () => void;
@@ -61,6 +72,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
   const [filteredReports, setFilteredReports] = useState<FrontendMonthEndReport[]>([]);
+  const [activeTab, setActiveTab] = useState("occupancy");
 
   // Filter reports based on search and status
   useEffect(() => {
@@ -90,6 +102,11 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
       filters.status = statusFilter;
     }
     fetchReports(filters);
+  };
+
+  const handleSaveReport = async (data: any) => {
+    // This will be handled by the parent container
+    console.log("Save report:", data);
   };
 
   const getStatusBadge = (status: ReportStatus) => {
@@ -162,7 +179,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Cleanliness</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{(stats.avg_cleanliness_score * 100).toFixed(1)}%</div>
@@ -173,173 +190,72 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         </Card>
       </div>
 
-      {/* Main Content */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Month-End Reports</CardTitle>
-              <CardDescription>
-                Manage and review monthly operational reports
-              </CardDescription>
-            </div>
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Report
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search reports..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ReportStatus | "all")}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={handleFilterChange}>
-              <Filter className="h-4 w-4 mr-2" />
-              Apply Filters
-            </Button>
-          </div>
+      {/* Tabs Section */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="occupancy" className="flex items-center gap-2">
+            <Hotel className="h-4 w-4" />
+            Occupancy
+          </TabsTrigger>
+          <TabsTrigger value="cleanliness" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Cleanliness
+          </TabsTrigger>
+          <TabsTrigger value="groups" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Groups
+          </TabsTrigger>
+          <TabsTrigger value="staffing" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Staffing
+          </TabsTrigger>
+          <TabsTrigger value="summary" className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Summary
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Reports Table */}
-          {loading ? (
-            <div className="text-center py-8">Loading reports...</div>
-          ) : filteredReports.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {reports.length === 0 ? "No reports found. Create your first report!" : "No reports match your filters."}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Headline</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Occupancy</TableHead>
-                  <TableHead>Groups</TableHead>
-                  <TableHead>Actions</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredReports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{report.property_name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {formatDate(report.start_date)} - {formatDate(report.end_date)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-[200px] truncate" title={report.headline}>
-                        {report.headline}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(report.status)}
-                    </TableCell>
-                    <TableCell>
-                      {report.avg_occupancy_pct ? `${report.avg_occupancy_pct.toFixed(1)}%` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span>{report.groups?.length || 0}</span>
-                        {report.total_rooms_blocked && report.total_rooms_blocked > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            ({report.total_rooms_blocked} rooms)
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {report.open_action_items && report.open_action_items > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {report.open_action_items} open
-                          </Badge>
-                        )}
-                        {report.completed_action_items && report.completed_action_items > 0 && (
-                          <Badge variant="outline" className="text-xs bg-green-50">
-                            {report.completed_action_items} done
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onView(report)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </DropdownMenuItem>
-                          {report.status !== "approved" && (
-                            <DropdownMenuItem onClick={() => onEdit(report)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                          )}
-                          {report.status === "draft" && (
-                            <DropdownMenuItem onClick={() => onSubmit(report.id)}>
-                              <Send className="h-4 w-4 mr-2" />
-                              Submit
-                            </DropdownMenuItem>
-                          )}
-                          {report.status === "submitted" && (
-                            <DropdownMenuItem onClick={() => onApprove(report.id)}>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Approve
-                            </DropdownMenuItem>
-                          )}
-                          {report.status === "draft" && (
-                            <DropdownMenuItem 
-                              onClick={() => onDelete(report.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+
+        <TabsContent value="occupancy" className="space-y-4">
+          <OccupancyTable 
+            reports={filteredReports}
+            isLoading={loading}
+            onSave={handleSaveReport}
+          />
+        </TabsContent>
+
+        <TabsContent value="cleanliness" className="space-y-4">
+          <CleanlinessTable 
+            reports={filteredReports}
+            isLoading={loading}
+            onSave={handleSaveReport}
+          />
+        </TabsContent>
+
+        <TabsContent value="groups" className="space-y-4">
+          <GroupsTable 
+            reports={filteredReports}
+            isLoading={loading}
+            onSave={handleSaveReport}
+          />
+        </TabsContent>
+
+        <TabsContent value="staffing" className="space-y-4">
+          <StaffingTable 
+            reports={filteredReports}
+            isLoading={loading}
+            onSave={handleSaveReport}
+          />
+        </TabsContent>
+
+        <TabsContent value="summary" className="space-y-4">
+          <SummaryTable 
+            reports={filteredReports}
+            isLoading={loading}
+            onSave={handleSaveReport}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

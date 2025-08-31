@@ -78,11 +78,12 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         
         try {
           // Parse the sum from the response
-          if (totalRevenueData.sum !== null) {
-            if (typeof totalRevenueData.sum === 'string') {
-              totalRevenue = parseFloat(totalRevenueData.sum) || 0;
-            } else if (typeof totalRevenueData.sum === 'number') {
-              totalRevenue = totalRevenueData.sum;
+          const responseData = totalRevenueData as any;
+          if (responseData.sum !== null) {
+            if (typeof responseData.sum === 'string') {
+              totalRevenue = parseFloat(responseData.sum) || 0;
+            } else if (typeof responseData.sum === 'number') {
+              totalRevenue = responseData.sum;
             }
           }
         } catch (err) {
