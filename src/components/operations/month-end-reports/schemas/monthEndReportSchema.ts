@@ -30,6 +30,7 @@ export const groupSchema = z.object({
 // Main month-end report schema
 export const monthEndReportSchema = z.object({
   // Meta information
+  id: z.string().optional(),
   property_id: z.string().optional(),
   property_name: z.string().min(1, "Property name is required"),
   start_date: z.string().min(1, "Start date is required"),

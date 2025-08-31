@@ -1,26 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
-  FileText,
+  Save, 
+  Send, 
+  CheckCircle,
+  FileText, 
   Hotel,
   Sparkles,
   Users,
-  Target
+  Target,
+  Building
 } from "lucide-react";
-
-// Import modular components
-import { ReportMetadata } from "./components/shared/ReportMetadata";
-import { FormActions } from "./components/shared/FormActions";
-import { SummaryTab } from "./components/summary/SummaryTab";
-import { OccupancyTab } from "./components/occupancy/OccupancyTab";
-import { CleanlinessTab } from "./components/cleanliness/CleanlinessTab";
-import { GroupsTab } from "./components/groups/GroupsTab";
-import { StaffingTab } from "./components/staffing/StaffingTab";
-
 import {
   monthEndReportSchema,
   MonthEndReportFormData
@@ -31,7 +29,14 @@ import {
   PropertyOption
 } from "@/integration/supabase/types/month-end-reports";
 
-export interface MonthEndReportFormProps {
+// Import form components
+import SummaryForm from "./forms/SummaryForm";
+import OccupancyForm from "./forms/OccupancyForm";
+import CleanlinessForm from "./forms/CleanlinessForm";
+import GroupsForm from "./forms/GroupsForm";
+import StaffingForm from "./forms/StaffingForm";
+
+export interface MonthEndReportSheetFormProps {
   report?: FrontendMonthEndReport;
   onSave: (data: MonthEndReportFormData) => Promise<void>;
   onSubmit?: (id: string) => Promise<void>;
@@ -41,7 +46,7 @@ export interface MonthEndReportFormProps {
   isLoading?: boolean;
 }
 
-export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
+export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = ({
   report,
   onSave,
   onSubmit,
@@ -94,7 +99,6 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
       })) || []
     }
   });
-
 
   // Auto-save functionality
   const triggerAutoSave = useCallback(async () => {
@@ -197,7 +201,6 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
     }
   };
 
-
   const getStatusBadge = (status: ReportStatus) => {
     const variants = {
       draft: "secondary",
@@ -222,28 +225,96 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Form Actions Component */}
-      <FormActions
-        reportId={report?.id}
-        status={report?.status}
-        isLoading={isLoading}
-        lastSaved={lastSaved}
-        onSave={handleManualSave}
-        onSubmit={handleSubmitReport}
-        onApprove={handleApproveReport}
-        onCancel={onCancel}
-      />
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {report ? "Edit Month-End Report" : "New Month-End Report"}
+          </h1>
+          <div className="flex items-center gap-4 mt-2">
+            {report?.status && getStatusBadge(report.status)}
+            {lastSaved && (
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <Save className="h-3 w-3" />
+                Saved • {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleManualSave} disabled={isLoading}>
+            <Save className="h-4 w-4 mr-2" />
+            Save
+          </Button>
+          {report?.status === "draft" && onSubmit && (
+            <Button onClick={handleSubmitReport} disabled={isLoading}>
+              <Send className="h-4 w-4 mr-2" />
+              Submit
+            </Button>
+          )}
+          {report?.status === "submitted" && onApprove && (
+            <Button onClick={handleApproveReport} disabled={isLoading}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Approve
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Meta Information Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Report Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="property_name">Property Name *</Label>
+            <Input
+              id="property_name"
+              {...form.register("property_name")}
+              disabled={isReadOnly}
+              placeholder="Enter property name"
+            />
+            {form.formState.errors.property_name && (
+              <p className="text-sm text-red-600">{form.formState.errors.property_name.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="start_date">Start Date *</Label>
+            <Input
+              id="start_date"
+              type="date"
+              {...form.register("start_date")}
+              disabled={isReadOnly}
+            />
+            {form.formState.errors.start_date && (
+              <p className="text-sm text-red-600">{form.formState.errors.start_date.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="end_date">End Date *</Label>
+            <Input
+              id="end_date"
+              type="date"
+              {...form.register("end_date")}
+              disabled={isReadOnly}
+            />
+            {form.formState.errors.end_date && (
+              <p className="text-sm text-red-600">{form.formState.errors.end_date.message}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Form Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {/* Report Metadata Component */}
-        <ReportMetadata 
-          form={form} 
-          isReadOnly={isReadOnly} 
-          properties={properties} 
-        />
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
+      <div className="flex-1 overflow-auto">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="summary" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -267,24 +338,25 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
             </TabsTrigger>
           </TabsList>
 
+          {/* Tab Contents */}
           <TabsContent value="summary" className="space-y-6">
-            <SummaryTab form={form} isReadOnly={isReadOnly} />
+            <SummaryForm form={form} isReadOnly={isReadOnly} />
           </TabsContent>
 
           <TabsContent value="occupancy" className="space-y-6">
-            <OccupancyTab form={form} isReadOnly={isReadOnly} />
+            <OccupancyForm form={form} isReadOnly={isReadOnly} />
           </TabsContent>
 
           <TabsContent value="cleanliness" className="space-y-6">
-            <CleanlinessTab form={form} isReadOnly={isReadOnly} />
+            <CleanlinessForm form={form} isReadOnly={isReadOnly} />
           </TabsContent>
 
           <TabsContent value="groups" className="space-y-6">
-            <GroupsTab form={form} isReadOnly={isReadOnly} />
+            <GroupsForm form={form} isReadOnly={isReadOnly} />
           </TabsContent>
 
           <TabsContent value="staffing" className="space-y-6">
-            <StaffingTab form={form} isReadOnly={isReadOnly} />
+            <StaffingForm form={form} isReadOnly={isReadOnly} />
           </TabsContent>
         </Tabs>
       </div>
@@ -292,4 +364,4 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
   );
 };
 
-export default MonthEndReportForm;
+export default MonthEndReportSheetForm;
