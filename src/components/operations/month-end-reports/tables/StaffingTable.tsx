@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { StaffingTab } from "../components/staffing/StaffingTab";
@@ -226,11 +227,18 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="property">Property</Label>
-                <Input 
-                  id="property" 
-                  value={selectedReport?.property_name || ""} 
-                  placeholder="Enter property name"
-                />
+                <Select defaultValue={selectedReport?.property_name || ""}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Search and select property..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grand-hotel-downtown">Grand Hotel Downtown</SelectItem>
+                    <SelectItem value="seaside-resort">Seaside Resort & Spa</SelectItem>
+                    <SelectItem value="mountain-lodge">Mountain View Lodge</SelectItem>
+                    <SelectItem value="city-center-inn">City Center Inn</SelectItem>
+                    <SelectItem value="airport-hotel">Airport Business Hotel</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="training-hours">Training Hours</Label>
