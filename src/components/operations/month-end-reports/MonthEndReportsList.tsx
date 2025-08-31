@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,15 +31,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  Send, 
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Eye,
+  Send,
   CheckCircle,
   Calendar,
   Building,
@@ -37,13 +49,13 @@ import {
   Sparkles,
   Users,
   Target,
-  Clock
+  Clock,
 } from "lucide-react";
 import { useMonthEndReports } from "@/hooks/month-end-reports/useMonthEndReports";
 import {
   FrontendMonthEndReport,
   ReportStatus,
-  MonthEndReportFilters
+  MonthEndReportFilters,
 } from "@/integration/supabase/types/month-end-reports";
 import { OccupancyTable } from "./tables/OccupancyTable";
 import { CleanlinessTable } from "./tables/CleanlinessTable";
@@ -66,12 +78,14 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   onView,
   onDelete,
   onSubmit,
-  onApprove
+  onApprove,
 }) => {
   const { reports, loading, stats, fetchReports } = useMonthEndReports();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
-  const [filteredReports, setFilteredReports] = useState<FrontendMonthEndReport[]>([]);
+  const [filteredReports, setFilteredReports] = useState<
+    FrontendMonthEndReport[]
+  >([]);
   const [activeTab, setActiveTab] = useState("occupancy");
 
   // Filter reports based on search and status
@@ -81,16 +95,17 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(report =>
-        report.property_name.toLowerCase().includes(query) ||
-        report.headline.toLowerCase().includes(query) ||
-        report.narrative.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (report) =>
+          report.property_name.toLowerCase().includes(query) ||
+          report.headline.toLowerCase().includes(query) ||
+          report.narrative.toLowerCase().includes(query)
       );
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
-      filtered = filtered.filter(report => report.status === statusFilter);
+      filtered = filtered.filter((report) => report.status === statusFilter);
     }
 
     setFilteredReports(filtered);
@@ -113,13 +128,13 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
     const variants = {
       draft: "secondary",
       submitted: "default",
-      approved: "default"
+      approved: "default",
     } as const;
 
     const colors = {
       draft: "bg-gray-100 text-gray-800",
       submitted: "bg-blue-100 text-blue-800",
-      approved: "bg-green-100 text-green-800"
+      approved: "bg-green-100 text-green-800",
     };
 
     return (
@@ -134,7 +149,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -152,7 +167,9 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Pending Approval
+            </CardTitle>
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -169,23 +186,25 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.avg_occupancy.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
-              Across all reports
-            </p>
+            <div className="text-2xl font-bold">
+              {stats.avg_occupancy.toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground">Across all reports</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Cleanliness</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg Cleanliness
+            </CardTitle>
             <Sparkles className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(stats.avg_cleanliness_score * 100).toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
-              Quality score
-            </p>
+            <div className="text-2xl font-bold">
+              {(stats.avg_cleanliness_score * 100).toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground">Quality score</p>
           </CardContent>
         </Card>
       </div>
@@ -215,9 +234,8 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
           </TabsTrigger>
         </TabsList>
 
-
         <TabsContent value="occupancy" className="space-y-4">
-          <OccupancyTable 
+          <OccupancyTable
             reports={filteredReports}
             isLoading={loading}
             onSave={handleSaveReport}
@@ -225,7 +243,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         </TabsContent>
 
         <TabsContent value="cleanliness" className="space-y-4">
-          <CleanlinessTable 
+          <CleanlinessTable
             reports={filteredReports}
             isLoading={loading}
             onSave={handleSaveReport}
@@ -233,7 +251,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         </TabsContent>
 
         <TabsContent value="groups" className="space-y-4">
-          <GroupsTable 
+          <GroupsTable
             reports={filteredReports}
             isLoading={loading}
             onSave={handleSaveReport}
@@ -241,7 +259,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         </TabsContent>
 
         <TabsContent value="staffing" className="space-y-4">
-          <StaffingTable 
+          <StaffingTable
             reports={filteredReports}
             isLoading={loading}
             onSave={handleSaveReport}
@@ -249,7 +267,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-4">
-          <SummaryTable 
+          <SummaryTable
             reports={filteredReports}
             isLoading={loading}
             onSave={handleSaveReport}
