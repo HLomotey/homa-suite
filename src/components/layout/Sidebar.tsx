@@ -33,6 +33,7 @@ import {
   Activity,
   UserCheck,
   UserPlus,
+  LineChart,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -60,6 +61,12 @@ const navigationItems = [
     label: "Operations",
     icon: ClipboardList,
     href: ROUTES.OPERATIONS,
+    module: "operations",
+  },
+  {
+    label: "Score Card",
+    icon: LineChart,
+    href: "/operations/month-end-reports",
     module: "operations",
   },
   {

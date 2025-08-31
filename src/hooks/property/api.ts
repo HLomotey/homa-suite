@@ -11,6 +11,7 @@ import {
   PropertyStatus,
   PropertyType,
 } from "../../integration/supabase/types";
+import { Database } from "../../integration/supabase/types/database";
 
 /**
  * Fetch all properties from Supabase
@@ -107,7 +108,7 @@ export const createProperty = async (
 
   const { data, error } = await supabase
     .from("properties")
-    .insert(dbProperty)
+    .insert(dbProperty as any)
     .select()
     .single() as { data: Property | null, error: any };
 
@@ -127,41 +128,56 @@ export const createProperty = async (
  */
 export const updateProperty = async (
   id: string,
-  property: Partial<Omit<FrontendProperty, "id" | "dateAdded">>
+  property: Partial<FrontendProperty>
 ): Promise<FrontendProperty> => {
-  // Convert frontend property to database format
-  const dbProperty: any = {};
+  try {
+    // Create a plain object for the update data
+    const updateData: Record<string, unknown> = {};
+    
+    // Only include fields that are defined
+    if (property.title !== undefined) updateData.title = property.title;
+    if (property.address !== undefined) updateData.address = property.address;
+    if (property.price !== undefined) updateData.price = property.price;
+    if (property.bedrooms !== undefined) updateData.bedrooms = property.bedrooms;
+    if (property.bathrooms !== undefined) updateData.bathrooms = property.bathrooms;
+    if (property.area !== undefined) updateData.area = property.area;
+    if (property.type !== undefined) updateData.type = property.type;
+    if (property.status !== undefined) updateData.status = property.status;
+    if (property.image !== undefined) updateData.image = property.image;
+    if (property.description !== undefined) updateData.description = property.description;
+    if (property.locationId !== undefined) updateData.location_id = property.locationId;
+    if (property.managerId !== undefined) updateData.manager_id = property.managerId;
+    
+    // Use a simpler approach with the Supabase client
+    // First, get the table reference
+    const propertiesTable = supabase.from("properties");
+    
+    // Then, perform the update operation with a type assertion
+    // This is necessary because of TypeScript's strict typing
+    const result = await (propertiesTable as any).update(updateData).eq("id", id).select(`
+      *,
+      company_locations(*),
+      external_staff(id, "PAYROLL LAST NAME", "PAYROLL FIRST NAME", business_key)
+    `).single();
+    
+    // Extract data and error from the result
+    const { data, error } = result;
 
-  if (property.title !== undefined) dbProperty.title = property.title;
-  if (property.address !== undefined) dbProperty.address = property.address;
-  if (property.price !== undefined) dbProperty.price = property.price;
-  if (property.bedrooms !== undefined) dbProperty.bedrooms = property.bedrooms;
-  if (property.bathrooms !== undefined)
-    dbProperty.bathrooms = property.bathrooms;
-  if (property.area !== undefined) dbProperty.area = property.area;
-  if (property.type !== undefined) dbProperty.type = property.type;
-  if (property.status !== undefined) dbProperty.status = property.status;
-  if (property.image !== undefined) dbProperty.image = property.image;
-  if (property.description !== undefined)
-    dbProperty.description = property.description;
-  if (property.locationId !== undefined)
-    dbProperty.location_id = property.locationId;
-  if (property.managerId !== undefined)
-    dbProperty.manager_id = property.managerId;
+    if (error) {
+      console.error(`Error updating property with ID ${id}:`, error);
+      throw new Error(error.message);
+    }
 
-  const { data, error } = await supabase
-    .from("properties")
-    .update(dbProperty)
-    .eq("id", id)
-    .select()
-    .single() as { data: Property | null, error: any };
-
-  if (error) {
-    console.error(`Error updating property with ID ${id}:`, error);
-    throw new Error(error.message);
+    if (!data) {
+      throw new Error(`No data returned when updating property with ID ${id}`);
+    }
+    
+    // Map the database property to frontend format
+    return mapDatabasePropertyToFrontend(data);
+  } catch (err) {
+    console.error(`Exception in updateProperty for ID ${id}:`, err);
+    throw err;
   }
-
-  return mapDatabasePropertyToFrontend(data as Property);
 };
 
 /**
