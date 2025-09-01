@@ -40,24 +40,24 @@ import {
   CheckCircle
 } from "lucide-react";
 
-import {
+import { OpsCallFormData, FrontendOpsCall } from "@/integration/supabase/types/operations-call";
+import { 
   monthEndReportSchema,
   MonthEndReportFormData,
   GroupFormData,
   ActionItemFormData
 } from "../../schemas/monthEndReportSchema";
 import {
-  FrontendMonthEndReport,
   ReportStatus,
   PropertyOption
 } from "@/integration/supabase/types/month-end-reports";
 
 interface MonthEndReportSheetFormProps {
-  report?: FrontendMonthEndReport | null;
+  report?: FrontendOpsCall | null;
   mode: 'create' | 'edit' | 'view';
   properties?: PropertyOption[];
   staffLocations?: any[];
-  onSave: (data: MonthEndReportFormData) => Promise<void>;
+  onSave: (data: OpsCallFormData) => Promise<void>;
   onSubmit?: (id: string) => Promise<void>;
   onApprove?: (id: string) => Promise<void>;
   onCancel: () => void;
@@ -79,66 +79,40 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
 
   const isReadOnly = mode === 'view' || report?.status === 'approved';
 
-  const form = useForm<MonthEndReportFormData>({
-    resolver: zodResolver(monthEndReportSchema),
+  const form = useForm<OpsCallFormData>({
     defaultValues: {
       hotel_site: report?.hotel_site || "",
-      property_id: report?.property_id || "",
       start_date: report?.start_date || new Date().toISOString().split("T")[0],
       end_date: report?.end_date || new Date().toISOString().split("T")[0],
       headline: report?.headline || "",
       narrative: report?.narrative || "",
-      key_risks: report?.key_risks || [],
-      key_wins: report?.key_wins || [],
-      occupancy_start_pct: report?.occupancy_start_pct || undefined,
-      occupancy_end_pct: report?.occupancy_end_pct || undefined,
-      avg_occupancy_pct: report?.avg_occupancy_pct || undefined,
+      start_occupancy_pct: report?.start_occupancy_pct || undefined,
+      end_occupancy_pct: report?.end_occupancy_pct || undefined,
+      average_occupancy_pct: report?.average_occupancy_pct || undefined,
       occupancy_notes: report?.occupancy_notes || "",
       cleanliness_score: report?.cleanliness_score || undefined,
-      inspection_count: report?.inspection_count || undefined,
-      issues_found: report?.issues_found || undefined,
-      cleanliness_comments: report?.cleanliness_comments || "",
-      training_updates: report?.training_updates || "",
-      absenteeism_notes: report?.absenteeism_notes || "",
-      incidents: report?.incidents || "",
-      groups: report?.groups?.map(g => ({
-        id: g.id,
-        group_name: g.group_name,
-        arrival_date: g.arrival_date,
-        departure_date: g.departure_date,
-        rooms_blocked: g.rooms_blocked,
-        notes: g.notes
-      })) || [],
-      action_items: report?.action_items?.map(a => ({
-        id: a.id,
-        title: a.title,
-        owner: a.owner,
-        due_date: a.due_date,
-        status: a.status
-      })) || []
+      cleanliness_notes: report?.cleanliness_notes || "",
+      groups_notes: report?.groups_notes || "",
+      staffing_notes: report?.staffing_notes || ""
     }
   });
 
   const { control, watch, setValue } = form;
-  const groups = watch("groups") || [];
-  const actionItems = watch("action_items") || [];
-  const keyRisks = watch("key_risks") || [];
-  const keyWins = watch("key_wins") || [];
 
   // Calculate average occupancy when start/end values change
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === "occupancy_start_pct" || name === "occupancy_end_pct") {
-        const start = value.occupancy_start_pct;
-        const end = value.occupancy_end_pct;
-        if (start !== undefined && end !== undefined) {
-          const avg = (start + end) / 2;
-          form.setValue("avg_occupancy_pct", Number(avg.toFixed(2)));
+      if (name === "start_occupancy_pct" || name === "end_occupancy_pct") {
+        const startPct = value.start_occupancy_pct;
+        const endPct = value.end_occupancy_pct;
+        if (startPct !== undefined && endPct !== undefined) {
+          const avgPct = (startPct + endPct) / 2;
+          setValue("average_occupancy_pct", Number(avgPct.toFixed(1)));
         }
       }
     });
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [form, setValue]);
 
   const handleSave = async () => {
     try {
@@ -238,15 +212,15 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
                         <FormControl>
                           <SearchableSelect
                             options={hookStaffLocations.map((location) => ({
-                              value: location.locationDescription,
+                              value: location.id,
                               label: location.locationDescription,
                             }))}
-                            value={field.value || ""}
+                            value={hookStaffLocations.find(loc => loc.locationDescription === field.value)?.id || ""}
                             placeholder={staffLocationsLoading ? "Loading locations..." : "Search and select hotel site..."}
                             emptyMessage="No hotel sites found."
                             onValueChange={(value) => {
-                              const selectedLocation = hookStaffLocations.find(loc => loc.locationDescription === value);
-                              field.onChange(value);
+                              const selectedLocation = hookStaffLocations.find(loc => loc.id === value);
+                              field.onChange(selectedLocation?.locationDescription || "");
                             }}
                             disabled={isReadOnly || staffLocationsLoading}
                           />
@@ -355,7 +329,7 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={control}
-                    name="occupancy_start_pct"
+                    name="start_occupancy_pct"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Start Occupancy %</FormLabel>
@@ -378,7 +352,7 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
 
                   <FormField
                     control={control}
-                    name="occupancy_end_pct"
+                    name="end_occupancy_pct"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>End Occupancy %</FormLabel>
@@ -401,7 +375,7 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
 
                   <FormField
                     control={control}
-                    name="avg_occupancy_pct"
+                    name="average_occupancy_pct"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Average Occupancy %</FormLabel>
@@ -479,39 +453,16 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
 
                   <FormField
                     control={control}
-                    name="inspection_count"
+                    name="cleanliness_notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inspection Count</FormLabel>
+                        <FormLabel>Cleanliness Notes</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
+                          <Textarea
+                            placeholder="Add notes about cleanliness standards, issues, improvements..."
+                            className="min-h-[100px]"
                             disabled={isReadOnly}
                             {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={control}
-                    name="issues_found"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Issues Found</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            disabled={isReadOnly}
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -520,15 +471,27 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
                   />
                 </div>
 
+              </CardContent>
+            </Card>
+
+            {/* Groups Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Groups & Events
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <FormField
                   control={control}
-                  name="cleanliness_comments"
+                  name="groups_notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cleanliness Comments</FormLabel>
+                      <FormLabel>Groups Notes</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Add notes about cleanliness issues, maintenance needs, etc."
+                          placeholder="Add notes about group bookings, events, special arrangements, etc."
                           className="min-h-[100px]"
                           disabled={isReadOnly}
                           {...field}
@@ -552,13 +515,13 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
               <CardContent className="space-y-4">
                 <FormField
                   control={control}
-                  name="training_updates"
+                  name="staffing_notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Training Updates</FormLabel>
+                      <FormLabel>Staffing Notes</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Add notes about training programs, certifications, skill development, etc."
+                          placeholder="Add notes about staffing levels, training, attendance patterns, etc."
                           className="min-h-[100px]"
                           disabled={isReadOnly}
                           {...field}
@@ -569,43 +532,7 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
                   )}
                 />
 
-                <FormField
-                  control={control}
-                  name="absenteeism_notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Absenteeism Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Add notes about attendance patterns, sick leave trends, etc."
-                          className="min-h-[100px]"
-                          disabled={isReadOnly}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                <FormField
-                  control={control}
-                  name="incidents"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Incidents</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Document any incidents, safety issues, or notable events"
-                          className="min-h-[100px]"
-                          disabled={isReadOnly}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
           </div>

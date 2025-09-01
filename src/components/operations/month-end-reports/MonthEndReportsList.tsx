@@ -49,12 +49,12 @@ import {
   Target,
   Clock,
 } from "lucide-react";
-import { useMonthEndReports } from "@/hooks/month-end-reports/useMonthEndReports";
+import { useOpsCall } from "@/hooks/operations/ops-call/useOpsCall";
 import {
-  FrontendMonthEndReport,
-  ReportStatus,
-  MonthEndReportFilters,
-} from "@/integration/supabase/types/month-end-reports";
+  FrontendOpsCall,
+  OpsCallStatus,
+  OpsCallFilters,
+} from "@/integration/supabase/types/operations-call";
 import { OccupancyTable } from "./tables/OccupancyTable";
 import { CleanlinessTable } from "./tables/CleanlinessTable";
 import { GroupsTable } from "./tables/GroupsTable";
@@ -63,8 +63,8 @@ import { SummaryTable } from "./tables/SummaryTable";
 
 export interface MonthEndReportsListProps {
   onCreateNew: () => void;
-  onEdit: (report: FrontendMonthEndReport) => void;
-  onView: (report: FrontendMonthEndReport) => void;
+  onEdit: (report: FrontendOpsCall) => void;
+  onView: (report: FrontendOpsCall) => void;
   onDelete: (id: string) => void;
   onSubmit: (id: string) => void;
   onApprove: (id: string) => void;
@@ -78,13 +78,18 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   onSubmit,
   onApprove,
 }) => {
-  const { reports, loading, stats, fetchReports } = useMonthEndReports();
+  const { opsCalls: reports, loading, stats, fetchOpsCalls: fetchReports } = useOpsCall();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<OpsCallStatus | "all">("all");
   const [filteredReports, setFilteredReports] = useState<
-    FrontendMonthEndReport[]
+    FrontendOpsCall[]
   >([]);
   const [activeTab, setActiveTab] = useState("occupancy");
+
+  // Load ops calls on component mount
+  useEffect(() => {
+    fetchReports();
+  }, []);
 
   // Filter reports based on search and status
   useEffect(() => {
@@ -110,7 +115,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   }, [reports, searchQuery, statusFilter]);
 
   const handleFilterChange = () => {
-    const filters: MonthEndReportFilters = {};
+    const filters: OpsCallFilters = {};
     if (statusFilter !== "all") {
       filters.status = statusFilter;
     }

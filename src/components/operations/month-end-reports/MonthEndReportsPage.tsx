@@ -9,12 +9,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { MonthEndReportSheetForm } from "./components/sheet/MonthEndReportSheetForm";
-import { MonthEndReportFormData } from "./schemas/monthEndReportSchema";
+import { OpsCallFormData } from "@/integration/supabase/types/operations-call";
 import {
   FrontendMonthEndReport,
   PropertyOption,
 } from "@/integration/supabase/types/month-end-reports";
-import { useMonthEndReports } from "@/hooks/operations/month-end-reports/useMonthEndReports";
+import { useOpsCall } from "@/hooks/operations/ops-call/useOpsCall";
 import { useProperties } from "@/hooks/property/useProperties";
 import {
   Plus,
@@ -25,12 +25,12 @@ export const MonthEndReportsPage: React.FC = () => {
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // Fetch reports and properties
+  // Fetch ops calls and properties
   const {
-    createReport,
-    submitReport,
-    approveReport,
-  } = useMonthEndReports();
+    createOpsCall,
+    submitOpsCall,
+    approveOpsCall,
+  } = useOpsCall();
 
   const { properties } = useProperties();
 
@@ -41,20 +41,20 @@ export const MonthEndReportsPage: React.FC = () => {
       name: property.title,
     })) || [];
 
-  // Handle saving a report
-  const handleSaveReport = async (data: MonthEndReportFormData) => {
+  // Handle saving an ops call
+  const handleSaveReport = async (data: OpsCallFormData) => {
     try {
-      await createReport(data);
+      await createOpsCall(data);
       toast({
         title: "Success",
-        description: "Report created successfully",
+        description: "Ops call created successfully",
       });
       setIsSheetOpen(false);
     } catch (error) {
-      console.error("Error saving report:", error);
+      console.error("Error saving ops call:", error);
       toast({
         title: "Error",
-        description: "Failed to save report",
+        description: "Failed to save ops call",
         variant: "destructive",
       });
     }
@@ -113,18 +113,18 @@ export const MonthEndReportsPage: React.FC = () => {
             onSave={handleSaveReport}
             onSubmit={async (id) => {
               try {
-                await submitReport(id);
+                await submitOpsCall(id);
                 setIsSheetOpen(false);
               } catch (error) {
-                console.error('Error submitting report:', error);
+                console.error('Error submitting ops call:', error);
               }
             }}
             onApprove={async (id) => {
               try {
-                await approveReport(id);
+                await approveOpsCall(id);
                 setIsSheetOpen(false);
               } catch (error) {
-                console.error('Error approving report:', error);
+                console.error('Error approving ops call:', error);
               }
             }}
             onCancel={() => setIsSheetOpen(false)}

@@ -25,11 +25,7 @@ export const useOpsCall = () => {
       // Apply filters
       let query = supabase
         .from("ops_calls")
-        .select(`
-          *,
-          created_by_profile:created_by(full_name),
-          approved_by_profile:approved_by(full_name)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (filters?.status) {
@@ -55,8 +51,8 @@ export const useOpsCall = () => {
       // Transform data to include computed fields
       const transformedData: FrontendOpsCall[] = data?.map((item: any) => ({
         ...item,
-        created_by_name: item.created_by_profile?.full_name,
-        approved_by_name: item.approved_by_profile?.full_name,
+        created_by_name: null, // Will be populated separately if needed
+        approved_by_name: null, // Will be populated separately if needed
       })) || [];
 
       setOpsCalls(transformedData);
