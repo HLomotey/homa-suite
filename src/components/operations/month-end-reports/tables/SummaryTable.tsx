@@ -122,10 +122,6 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
             <CheckCircle className="h-4 w-4" />
             {filteredReports.length} hotel sites
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Summary Data
-          </Button>
         </div>
       </div>
 

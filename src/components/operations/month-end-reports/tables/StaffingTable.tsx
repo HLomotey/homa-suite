@@ -143,10 +143,6 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
             <Target className="h-4 w-4" />
             {filteredReports.length} properties
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Staffing Data
-          </Button>
         </div>
       </div>
 

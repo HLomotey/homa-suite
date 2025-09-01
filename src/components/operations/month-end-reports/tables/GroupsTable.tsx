@@ -122,10 +122,6 @@ export const GroupsTable: React.FC<GroupsTableProps> = ({
             <Users className="h-4 w-4" />
             {filteredReports.length} properties
           </div>
-          <Button onClick={handleAddNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Group Data
-          </Button>
         </div>
       </div>
 

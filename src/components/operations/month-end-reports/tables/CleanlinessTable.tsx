@@ -129,10 +129,6 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
             <Sparkles className="h-4 w-4" />
             {filteredReports.length} properties
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Cleanliness Data
-          </Button>
         </div>
       </div>
 

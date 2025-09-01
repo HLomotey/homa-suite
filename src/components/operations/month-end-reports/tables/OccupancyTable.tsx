@@ -128,10 +128,6 @@ export const OccupancyTable: React.FC<OccupancyTableProps> = ({
             <Hotel className="h-4 w-4" />
             {reports.length} properties
           </div>
-          <Button onClick={handleAddNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Occupancy Data
-          </Button>
         </div>
       </div>
 
