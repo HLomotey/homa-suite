@@ -9,6 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { MonthEndReportSheetForm } from "./components/sheet/MonthEndReportSheetForm";
+import { MonthEndReportsList } from "./MonthEndReportsList";
 import { OpsCallFormData } from "@/integration/supabase/types/operations-call";
 import {
   FrontendMonthEndReport,
@@ -27,9 +28,14 @@ export const MonthEndReportsPage: React.FC = () => {
 
   // Fetch ops calls and properties
   const {
+    opsCalls,
+    loading,
     createOpsCall,
+    fetchOpsCalls,
     submitOpsCall,
     approveOpsCall,
+    updateOpsCall,
+    deleteOpsCall,
   } = useOpsCall();
 
   const { properties } = useProperties();
@@ -45,6 +51,8 @@ export const MonthEndReportsPage: React.FC = () => {
   const handleSaveReport = async (data: OpsCallFormData) => {
     try {
       await createOpsCall(data);
+      // Refresh the list to show the new data
+      await fetchOpsCalls();
       toast({
         title: "Success",
         description: "Ops call created successfully",
@@ -79,20 +87,88 @@ export const MonthEndReportsPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4">
-          <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
-          <div>
-            <h2 className="text-xl font-semibold mb-2">No reports yet</h2>
-            <p className="text-muted-foreground mb-4">
-              Get started by creating your first month-end report
-            </p>
-            <Button onClick={handleOpenForm} size="lg">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Report
-            </Button>
+      <div className="flex-1">
+        {loading ? (
+          <div className="flex items-center justify-center p-6">
+            <div className="text-center">Loading...</div>
           </div>
-        </div>
+        ) : opsCalls && opsCalls.length > 0 ? (
+          <MonthEndReportsList
+            onCreateNew={handleOpenForm}
+            onEdit={(report) => {
+              // Handle edit functionality
+              console.log("Edit report:", report);
+            }}
+            onView={(report) => {
+              // Handle view functionality
+              console.log("View report:", report);
+            }}
+            onDelete={async (id) => {
+              try {
+                await deleteOpsCall(id);
+                await fetchOpsCalls();
+                toast({
+                  title: "Success",
+                  description: "Ops call deleted successfully",
+                });
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: "Failed to delete ops call",
+                  variant: "destructive",
+                });
+              }
+            }}
+            onSubmit={async (id) => {
+              try {
+                await submitOpsCall(id);
+                await fetchOpsCalls();
+                toast({
+                  title: "Success",
+                  description: "Ops call submitted successfully",
+                });
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: "Failed to submit ops call",
+                  variant: "destructive",
+                });
+              }
+            }}
+            onApprove={async (id) => {
+              try {
+                await approveOpsCall(id);
+                await fetchOpsCalls();
+                toast({
+                  title: "Success",
+                  description: "Ops call approved successfully",
+                });
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: "Failed to approve ops call",
+                  variant: "destructive",
+                });
+              }
+            }}
+          />
+        ) : (
+          <div className="flex items-center justify-center p-6">
+            <div className="text-center space-y-4">
+              <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
+              <div>
+                <h2 className="text-xl font-semibold mb-2">No reports yet</h2>
+                <p className="text-muted-foreground mb-4">
+                  Get started by creating your first month-end report
+                </p>
+                <Button onClick={handleOpenForm} size="lg">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Report
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sheet Form */}

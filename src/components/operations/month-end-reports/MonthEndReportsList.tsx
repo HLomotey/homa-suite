@@ -163,9 +163,9 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold">{stats?.total || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.this_month} this month
+              {stats?.this_month || 0} this month
             </p>
           </CardContent>
         </Card>
@@ -180,8 +180,8 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.submitted}</div>
-            <p className="text-xs text-muted-foreground">{stats.draft} drafts</p>
+            <div className="text-2xl font-bold">{stats?.submitted || 0}</div>
+            <p className="text-xs text-muted-foreground">{stats?.draft || 0} drafts</p>
           </CardContent>
         </Card>
 
@@ -192,7 +192,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.avg_occupancy.toFixed(1)}%
+              {stats?.avg_occupancy ? stats.avg_occupancy.toFixed(1) : '0.0'}%
             </div>
             <p className="text-xs text-muted-foreground">Across all reports</p>
           </CardContent>
@@ -207,7 +207,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(stats.avg_cleanliness_score * 100).toFixed(1)}%
+              {stats?.avg_cleanliness_score ? (stats.avg_cleanliness_score * 100).toFixed(1) : '0.0'}%
             </div>
             <p className="text-xs text-muted-foreground">Quality score</p>
           </CardContent>
