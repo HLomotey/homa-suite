@@ -178,7 +178,7 @@ export interface MonthEndReportFilters {
 
 // Property interface for dropdown
 export interface PropertyOption {
-  id?: string;
+  id: string;
   name: string;
   location?: string;
 }
