@@ -95,7 +95,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (report) =>
-          report.property_name.toLowerCase().includes(query) ||
+          report.hotel_site.toLowerCase().includes(query) ||
           report.headline.toLowerCase().includes(query) ||
           report.narrative.toLowerCase().includes(query)
       );
@@ -168,7 +168,9 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Pending Approval
+              <span className="font-medium">
+                {reports[0]?.hotel_site}
+              </span>
             </CardTitle>
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>

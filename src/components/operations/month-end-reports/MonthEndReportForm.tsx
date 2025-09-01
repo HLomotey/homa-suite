@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import useStaffLocation from "@/hooks/transport/useStaffLocation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +39,7 @@ export interface MonthEndReportFormProps {
   onApprove?: (id: string) => Promise<void>;
   onCancel: () => void;
   properties?: PropertyOption[];
+  staffLocations?: any[];
   isLoading?: boolean;
 }
 
@@ -48,8 +50,10 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
   onApprove,
   onCancel,
   properties = [],
+  staffLocations = [],
   isLoading = false
 }) => {
+  const { staffLocations: hookStaffLocations } = useStaffLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("summary");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -58,7 +62,7 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
   const form = useForm<MonthEndReportFormData>({
     resolver: zodResolver(monthEndReportSchema),
     defaultValues: {
-      property_name: report?.property_name || "",
+      hotel_site: report?.hotel_site || "",
       property_id: report?.property_id || "",
       start_date: report?.start_date || new Date().toISOString().split("T")[0],
       end_date: report?.end_date || new Date().toISOString().split("T")[0],
@@ -240,7 +244,8 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
         <ReportMetadata 
           form={form} 
           isReadOnly={isReadOnly} 
-          properties={properties} 
+          properties={properties}
+          staffLocations={hookStaffLocations} 
         />
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">

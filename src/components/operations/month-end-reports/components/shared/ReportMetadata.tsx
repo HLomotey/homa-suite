@@ -6,16 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Building } from "lucide-react";
 import { MonthEndReportFormData } from "../../schemas/monthEndReportSchema";
 import { PropertyOption } from "@/integration/supabase/types/month-end-reports";
+import { FrontendStaffLocation } from "@/integration/supabase/types/staffLocation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ReportMetadataProps {
   form: UseFormReturn<MonthEndReportFormData>;
   properties?: PropertyOption[];
+  staffLocations?: FrontendStaffLocation[];
   isReadOnly?: boolean;
 }
 
 export const ReportMetadata: React.FC<ReportMetadataProps> = ({ 
   form, 
   properties = [],
+  staffLocations = [],
   isReadOnly = false 
 }) => {
   return (
@@ -28,15 +32,29 @@ export const ReportMetadata: React.FC<ReportMetadataProps> = ({
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="property_name">Property Name *</Label>
-          <Input
-            id="property_name"
-            {...form.register("property_name")}
+          <Label htmlFor="hotel_site">Hotel Site *</Label>
+          <Select
+            value={form.watch("property_id") || ""}
+            onValueChange={(value) => {
+              const selectedLocation = staffLocations.find(loc => loc.id === value);
+              form.setValue("property_id", value);
+              form.setValue("hotel_site", selectedLocation?.locationDescription || "");
+            }}
             disabled={isReadOnly}
-            placeholder="Enter property name"
-          />
-          {form.formState.errors.property_name && (
-            <p className="text-sm text-red-600">{form.formState.errors.property_name.message}</p>
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select hotel site" />
+            </SelectTrigger>
+            <SelectContent>
+              {staffLocations.map((location) => (
+                <SelectItem key={location.id} value={location.id}>
+                  {location.locationDescription}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {form.formState.errors.hotel_site && (
+            <p className="text-sm text-red-600">{form.formState.errors.hotel_site.message}</p>
           )}
         </div>
         <div className="space-y-2">

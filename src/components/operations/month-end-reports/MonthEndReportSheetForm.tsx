@@ -63,7 +63,7 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
   const form = useForm<MonthEndReportFormData>({
     resolver: zodResolver(monthEndReportSchema),
     defaultValues: {
-      property_name: report?.property_name || "",
+      hotel_site: report?.hotel_site || "",
       property_id: report?.property_id || "",
       start_date: report?.start_date || new Date().toISOString().split("T")[0],
       end_date: report?.end_date || new Date().toISOString().split("T")[0],
@@ -274,15 +274,15 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="property_name">Property Name *</Label>
+            <Label htmlFor="hotel_site">Hotel Site *</Label>
             <Input
-              id="property_name"
-              {...form.register("property_name")}
+              id="hotel_site"
+              {...form.register("hotel_site")}
               disabled={isReadOnly}
               placeholder="Enter property name"
             />
-            {form.formState.errors.property_name && (
-              <p className="text-sm text-red-600">{form.formState.errors.property_name.message}</p>
+            {form.formState.errors.hotel_site && (
+              <p className="text-sm text-red-600">{form.formState.errors.hotel_site.message}</p>
             )}
           </div>
           <div className="space-y-2">

@@ -24,6 +24,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 import { Plus, Edit, Trash2, Users, Clock, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Ban, MessageSquare, Loader2, Search, Building, Calendar, Target } from "lucide-react";
 import { useProperties } from "@/hooks/property/useProperties";
+import useStaffLocation from "@/hooks/transport/useStaffLocation";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { StaffingTab } from "../components/staffing/StaffingTab";
 
@@ -39,12 +40,13 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
   isLoading = false,
 }) => {
   const { properties, isLoading: propertiesLoading } = useProperties();
+  const { staffLocations, loading: staffLocationsLoading } = useStaffLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     property_id: "",
-    property_name: "",
+    hotel_site: "",
     training_updates: "",
     start_date: "",
     end_date: "",
@@ -53,14 +55,14 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
-    report.property_name.toLowerCase().includes(searchTerm.toLowerCase())
+    report.hotel_site.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEditReport = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
     setFormData({
       property_id: report.property_id || "",
-      property_name: report.property_name || "",
+      hotel_site: report.hotel_site || "",
       training_updates: report.training_updates || "",
       start_date: report.start_date || "",
       end_date: report.end_date || "",
@@ -152,7 +154,7 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px]">Property</TableHead>
+              <TableHead className="w-[200px]">Hotel Site</TableHead>
               <TableHead>Period</TableHead>
               <TableHead className="text-center">Training Hours</TableHead>
               <TableHead className="text-center">Absenteeism %</TableHead>
@@ -183,7 +185,7 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
                     <TableCell className="font-medium">
                       <div className="flex items-center">
                         <Building className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {report.property_name}
+                        {report.hotel_site}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -241,32 +243,35 @@ export const StaffingTable: React.FC<StaffingTableProps> = ({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="property_id">Property</Label>
-                {propertiesLoading ? (
+                <Label htmlFor="property_id">Hotel Site</Label>
+                {staffLocationsLoading ? (
                   <div className="flex items-center space-x-2 mt-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Loading properties...</span>
+                    <span className="text-sm text-gray-500">Loading locations...</span>
                   </div>
                 ) : (
-                  <div className="mt-2">
-                    <SearchableSelect
-                      options={properties.map(property => ({
-                        value: property.id,
-                        label: `${property.title} - ${property.address || (property.location?.city) || (property.location?.state) || 'No address'}`
-                      }))}
-                      value={formData.property_id}
-                      placeholder="Search and select property..."
-                      emptyMessage="No properties found."
-                      onValueChange={(value) => {
-                        const selectedProperty = properties.find((p) => p.id === value);
-                        setFormData({
-                          ...formData,
-                          property_id: value,
-                          property_name: selectedProperty?.title || "",
-                        });
-                      }}
-                    />
-                  </div>
+                  <Select
+                    value={formData.property_id?.toString() || ""}
+                    onValueChange={(value) => {
+                      const selectedLocation = staffLocations?.find(loc => loc.id.toString() === value);
+                      setFormData({
+                        ...formData,
+                        property_id: value,
+                        hotel_site: selectedLocation?.locationDescription || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select hotel site" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staffLocations?.map((location) => (
+                        <SelectItem key={location.id} value={location.id.toString()}>
+                          {location.locationDescription}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
               <div>

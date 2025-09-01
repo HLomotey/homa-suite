@@ -64,7 +64,7 @@ export const MonthEndReportTable: React.FC<MonthEndReportTableProps> = ({
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
-    report.property_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.hotel_site.toLowerCase().includes(searchTerm.toLowerCase()) ||
     report.headline.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -137,7 +137,7 @@ export const MonthEndReportTable: React.FC<MonthEndReportTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[180px]">Property</TableHead>
+              <TableHead className="w-[180px]">Hotel Site</TableHead>
               <TableHead>Period</TableHead>
               <TableHead className="w-[300px]">Headline</TableHead>
               <TableHead>Status</TableHead>
@@ -157,7 +157,7 @@ export const MonthEndReportTable: React.FC<MonthEndReportTableProps> = ({
                   <TableCell className="font-medium">
                     <div className="flex items-center">
                       <Building className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {report.property_name}
+                      {report.hotel_site}
                     </div>
                   </TableCell>
                   <TableCell>
