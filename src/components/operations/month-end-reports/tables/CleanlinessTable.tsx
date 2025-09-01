@@ -24,6 +24,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 import { Plus, Edit, Trash2, Star, AlertTriangle, CheckCircle, Loader2, Search, Building, Calendar, Shield, Sparkles } from "lucide-react";
 import { useProperties } from "@/hooks/property/useProperties";
+import useStaffLocation from "@/hooks/transport/useStaffLocation";
 import { FrontendMonthEndReport } from "@/integration/supabase/types/month-end-reports";
 import { CleanlinessTab } from "../components/cleanliness/CleanlinessTab";
 
@@ -39,12 +40,13 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
   isLoading = false,
 }) => {
   const { properties, isLoading: propertiesLoading } = useProperties();
+  const { staffLocations, loading: staffLocationsLoading } = useStaffLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     property_id: "",
-    property_name: "",
+    hotel_site: "",
     cleanliness_score: "",
     start_date: "",
     end_date: "",
@@ -53,14 +55,14 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
-    report.property_name.toLowerCase().includes(searchTerm.toLowerCase())
+    report.hotel_site.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEditReport = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
     setFormData({
       property_id: report.property_id || "",
-      property_name: report.property_name || "",
+      hotel_site: report.hotel_site || "",
       cleanliness_score: report.cleanliness_score?.toString() || "",
       start_date: report.start_date || "",
       end_date: report.end_date || "",
@@ -138,7 +140,7 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px]">Property</TableHead>
+              <TableHead className="w-[200px]">Hotel Site</TableHead>
               <TableHead>Period</TableHead>
               <TableHead className="text-center">Cleanliness Score</TableHead>
               <TableHead className="text-center">Rating</TableHead>
@@ -164,7 +166,7 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
                     <TableCell className="font-medium">
                       <div className="flex items-center">
                         <Building className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {report.property_name}
+                        {report.hotel_site}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -225,28 +227,28 @@ export const CleanlinessTable: React.FC<CleanlinessTableProps> = ({
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="property_id">Property</Label>
-                {propertiesLoading ? (
+                <Label htmlFor="property_id">Hotel Site</Label>
+                {staffLocationsLoading ? (
                   <div className="flex items-center space-x-2 mt-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Loading properties...</span>
+                    <span className="text-sm">Loading hotel sites...</span>
                   </div>
                 ) : (
                   <div className="mt-2">
                     <SearchableSelect
-                      options={properties.map(property => ({
-                        value: property.id,
-                        label: `${property.title} - ${property.address || (property.location?.city) || (property.location?.state) || 'No address'}`,
+                      options={staffLocations.map((location) => ({
+                        value: location.id,
+                        label: location.locationDescription,
                       }))}
                       value={formData.property_id}
-                      placeholder="Search and select property..."
-                      emptyMessage="No properties found."
+                      placeholder="Search and select hotel site..."
+                      emptyMessage="No hotel sites found."
                       onValueChange={(value) => {
-                        const selectedProperty = properties.find((p) => p.id === value);
+                        const selectedLocation = staffLocations.find((loc) => loc.id === value);
                         setFormData({
                           ...formData,
                           property_id: value,
-                          property_name: selectedProperty?.title || "",
+                          hotel_site: selectedLocation?.locationDescription || "",
                         });
                       }}
                     />

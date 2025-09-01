@@ -32,7 +32,7 @@ import {
   AlertTriangle,
   Loader2
 } from "lucide-react";
-import { useProperties } from "@/hooks/property/useProperties";
+import useStaffLocation from "@/hooks/transport/useStaffLocation";
 
 interface SummaryTableProps {
   reports: FrontendMonthEndReport[];
@@ -45,13 +45,13 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
   onSave,
   isLoading = false,
 }) => {
-  const { properties, isLoading: propertiesLoading } = useProperties();
+  const { staffLocations, loading: staffLocationsLoading } = useStaffLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     property_id: "",
-    property_name: "",
+    hotel_site: "",
     headline: "",
     start_date: "",
     end_date: "",
@@ -60,7 +60,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
 
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
-    report.property_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.hotel_site.toLowerCase().includes(searchTerm.toLowerCase()) ||
     report.headline.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -68,7 +68,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
     setSelectedReport(report);
     setFormData({
       property_id: report.property_id || "",
-      property_name: report.property_name || "",
+      hotel_site: report.hotel_site || "",
       headline: report.headline || "",
       start_date: report.start_date || "",
       end_date: report.end_date || "",
@@ -111,7 +111,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
         <div className="relative w-72">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by property..."
+            placeholder="Search by hotel site..."
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -120,7 +120,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CheckCircle className="h-4 w-4" />
-            {filteredReports.length} properties
+            {filteredReports.length} hotel sites
           </div>
           <Button onClick={() => setIsFormOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -133,7 +133,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[180px]">Property</TableHead>
+              <TableHead className="w-[200px]">Hotel Site</TableHead>
               <TableHead>Period</TableHead>
               <TableHead className="w-[300px]">Headline</TableHead>
               <TableHead className="w-[350px]">Narrative Preview</TableHead>
@@ -158,7 +158,7 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
                     <TableCell className="font-medium">
                       <div className="flex items-center">
                         <Building className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {report.property_name}
+                        {report.hotel_site}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -228,28 +228,28 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
           <div className="space-y-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="property_id">Property</Label>
-                {propertiesLoading ? (
+                <Label htmlFor="property_id">Hotel Site</Label>
+                {staffLocationsLoading ? (
                   <div className="flex items-center space-x-2 mt-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Loading properties...</span>
+                    <span className="text-sm text-gray-500">Loading locations...</span>
                   </div>
                 ) : (
                   <div className="mt-2">
                     <SearchableSelect
-                      options={properties.map(property => ({
-                        value: property.id,
-                        label: `${property.title} - ${property.address || (property.location?.city) || (property.location?.state) || 'No address'}`,
-                      }))}
+                      options={staffLocations?.map(location => ({
+                        value: location.id.toString(),
+                        label: location.locationDescription,
+                      })) || []}
                       value={formData.property_id}
-                      placeholder="Search and select property..."
-                      emptyMessage="No properties found."
+                      placeholder="Search and select hotel site..."
+                      emptyMessage="No hotel sites found."
                       onValueChange={(value) => {
-                        const selectedProperty = properties.find((p) => p.id === value);
+                        const selectedLocation = staffLocations?.find((loc) => loc.id.toString() === value);
                         setFormData({
                           ...formData,
                           property_id: value,
-                          property_name: selectedProperty?.title || "",
+                          hotel_site: selectedLocation?.locationDescription || "",
                         });
                       }}
                     />
@@ -305,7 +305,6 @@ export const SummaryTable: React.FC<SummaryTableProps> = ({
               </Button>
               <Button onClick={() => {
                 onSave(formData);
-                onSave({});
                 handleCloseForm();
               }}>
                 Save Changes

@@ -32,7 +32,7 @@ export const monthEndReportSchema = z.object({
   // Meta information
   id: z.string().optional(),
   property_id: z.string().optional(),
-  property_name: z.string().min(1, "Property name is required"),
+  hotel_site: z.string().min(1, "Hotel site is required"),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
   

@@ -10,7 +10,7 @@ export interface MonthEndReport {
   
   // Meta information
   property_id?: string;
-  property_name: string;
+  hotel_site: string;
   start_date: string;
   end_date: string;
   prepared_by?: string;
@@ -106,7 +106,7 @@ export interface FrontendMonthEndReport extends MonthEndReport {
 export interface MonthEndReportFormData {
   // Meta information
   property_id?: string;
-  property_name: string;
+  hotel_site: string;
   start_date: string;
   end_date: string;
   
