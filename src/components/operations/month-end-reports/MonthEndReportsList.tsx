@@ -31,8 +31,14 @@ import {
   Calendar,
   Building,
   TrendingUp,
-  FileText
+  FileText,
+  FileSpreadsheet,
+  Grid3X3,
+  Table as TableIcon
 } from "lucide-react";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import { cn } from "@/lib/utils";
 import { useMonthEndReports } from "@/hooks/month-end-reports/useMonthEndReports";
 import {
   FrontendMonthEndReport,
@@ -61,6 +67,8 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
   const [filteredReports, setFilteredReports] = useState<FrontendMonthEndReport[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+  const [isExporting, setIsExporting] = useState(false);
 
   // Filter reports based on search and status
   useEffect(() => {
@@ -92,21 +100,62 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
     fetchReports(filters);
   };
 
-  const getStatusBadge = (status: ReportStatus) => {
-    const variants = {
-      draft: "secondary",
-      submitted: "default",
-      approved: "default"
-    } as const;
+  // Function to export reports to Excel
+  const exportToExcel = () => {
+    try {
+      setIsExporting(true);
+      
+      // Prepare data for export
+      const exportData = filteredReports.map(report => ({
+        'Property': report.property_name,
+        'Period': `${formatDate(report.start_date)} - ${formatDate(report.end_date)}`,
+        'Headline': report.headline,
+        'Status': report.status,
+        'Occupancy': report.avg_occupancy_pct ? `${report.avg_occupancy_pct.toFixed(1)}%` : '-',
+        'Groups': report.groups?.length || 0,
+        'Open Actions': report.open_action_items || 0,
+        'Completed Actions': report.completed_action_items || 0,
+        'Created': formatDate(report.created_at),
+        'Updated': formatDate(report.updated_at)
+      }));
+      
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Month-End Reports');
+      
+      // Generate Excel file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      
+      // Save file
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, `month_end_reports_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      setIsExporting(false);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setIsExporting(false);
+    }
+  };
 
-    const colors = {
-      draft: "bg-gray-100 text-gray-800",
-      submitted: "bg-blue-100 text-blue-800",
-      approved: "bg-green-100 text-green-800"
+  const getStatusBadge = (status: ReportStatus) => {
+    const getStatusColor = (status: string) => {
+      switch (status.toLowerCase()) {
+        case "draft":
+          return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+        case "submitted":
+          return "bg-blue-500/20 text-blue-500 border-blue-500/30";
+        case "approved":
+          return "bg-green-500/20 text-green-500 border-green-500/30";
+        default:
+          return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+      }
     };
 
     return (
-      <Badge variant={variants[status]} className={colors[status]}>
+      <Badge className={`${getStatusColor(status)} border`} variant="outline">
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
@@ -117,9 +166,68 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">
+            Operations Call (Ops Call)
+          </h2>
+          <p className="text-white/60">Manage and review monthly operational reports</p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* View Toggle */}
+          <div className="flex items-center bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-1">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "rounded-md",
+                viewMode === "grid"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "rounded-md",
+                viewMode === "table"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground"
+              )}
+            >
+              <TableIcon className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <Button onClick={exportToExcel} variant="outline" disabled={isExporting} className="mr-2">
+            {isExporting ? (
+              <>
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export to Excel
+              </>
+            )}
+          </Button>
+          <Button onClick={onCreateNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Report
+          </Button>
+        </div>
+      </div>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
@@ -173,54 +281,63 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         </Card>
       </div>
 
-      {/* Main Content */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Month-End Reports</CardTitle>
-              <CardDescription>
-                Manage and review monthly operational reports
-              </CardDescription>
-            </div>
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Report
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search reports..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ReportStatus | "all")}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={handleFilterChange}>
-              <Filter className="h-4 w-4 mr-2" />
-              Apply Filters
-            </Button>
-          </div>
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search reports..."
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <select
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ReportStatus | "all")}
+            aria-label="Filter reports by status"
+            title="Filter reports by status"
+          >
+            <option value="all">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="submitted">Submitted</option>
+            <option value="approved">Approved</option>
+          </select>
+        </div>
+      </div>
 
-          {/* Reports Table */}
+      {/* Reports Grid or Table */}
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
-            <div className="text-center py-8">Loading reports...</div>
+            <div className="col-span-full text-center py-8 text-white/60">Loading reports...</div>
+          ) : filteredReports.length === 0 ? (
+            <div className="col-span-full text-center py-8 text-muted-foreground">
+              {reports.length === 0 ? "No reports found. Create your first report!" : "No reports match your filters."}
+            </div>
+          ) : (
+            filteredReports.map((report) => (
+              <ReportCard
+                key={report.id}
+                report={report}
+                onEdit={() => onEdit(report)}
+                onView={() => onView(report)}
+                onDelete={() => onDelete(report.id)}
+                onSubmit={() => onSubmit(report.id)}
+                onApprove={() => onApprove(report.id)}
+                getStatusBadge={getStatusBadge}
+                formatDate={formatDate}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border overflow-hidden">
+          {loading ? (
+            <div className="text-center py-8 text-white/60">Loading reports...</div>
           ) : filteredReports.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {reports.length === 0 ? "No reports found. Create your first report!" : "No reports match your filters."}
@@ -338,8 +455,108 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Report Card Component for Grid View
+const ReportCard = ({
+  report,
+  onEdit,
+  onView,
+  onDelete,
+  onSubmit,
+  onApprove,
+  getStatusBadge,
+  formatDate,
+}: {
+  report: FrontendMonthEndReport;
+  onEdit: () => void;
+  onView: () => void;
+  onDelete: () => void;
+  onSubmit: () => void;
+  onApprove: () => void;
+  getStatusBadge: (status: ReportStatus) => JSX.Element;
+  formatDate: (dateString: string) => string;
+}) => {
+  return (
+    <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-white">
+            {report.property_name}
+          </h3>
+          {getStatusBadge(report.status)}
+        </div>
+        
+        <p className="text-white/60 text-sm mb-2 flex items-center">
+          <Calendar className="h-3 w-3 mr-1" />
+          {formatDate(report.start_date)} - {formatDate(report.end_date)}
+        </p>
+        
+        <p className="text-white/60 text-sm mb-3 line-clamp-2">
+          {report.headline}
+        </p>
+        
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-4 text-white/60 text-sm">
+            <span className="flex items-center">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              {report.avg_occupancy_pct ? `${report.avg_occupancy_pct.toFixed(1)}%` : "-"}
+            </span>
+            <span className="flex items-center">
+              <Building className="h-3 w-3 mr-1" />
+              {report.groups?.length || 0} groups
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-white/60">
+            {report.open_action_items && report.open_action_items > 0 && (
+              <span className="text-amber-400">{report.open_action_items} open actions</span>
+            )}
+          </div>
+          <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onView();
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            {report.status !== "approved" && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            {report.status === "draft" && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

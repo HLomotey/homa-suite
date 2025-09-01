@@ -304,12 +304,49 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                     <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />
                   )}
 
-                  {/* Active staff suggestions only */}
+                  {/* Active staff suggestions with immediate feedback */}
                   {showStaffSuggestions && !staffLoading && (
                     <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-72 overflow-auto">
                       {Array.isArray(activeStaff) && activeStaff.length > 0 ? (
-                        searchStaff(staffSearchQuery).length > 0 ? (
-                          searchStaff(staffSearchQuery).map((staff) => {
+                        staffSearchQuery.trim() ? (
+                          searchStaff(staffSearchQuery).length > 0 ? (
+                            searchStaff(staffSearchQuery).map((staff) => {
+                              const firstName = staff["PAYROLL FIRST NAME"] || "";
+                              const lastName = staff["PAYROLL LAST NAME"] || "";
+                              const email = staff["WORK E-MAIL"] || "";
+                              const dept = staff["HOME DEPARTMENT"] || "";
+                              const job = staff["JOB TITLE"] || "";
+                              return (
+                                <div
+                                  key={staff.id}
+                                  className="px-4 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer border-b border-border last:border-b-0"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleStaffSelect(staff);
+                                  }}
+                                >
+                                  <div className="font-medium">
+                                    {`${firstName} ${lastName}`.trim()}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {email}
+                                    {dept ? ` • ${dept}` : ""}
+                                    {job ? ` • ${job}` : ""}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-red-600 bg-red-50 border-red-200">
+                              <div className="font-medium">Staff not found</div>
+                              <div className="text-xs mt-1">
+                                No active staff member matches "{staffSearchQuery}". Please check the spelling or try a different search term.
+                              </div>
+                            </div>
+                          )
+                        ) : (
+                          // Show all active staff when no search query
+                          activeStaff.slice(0, 10).map((staff) => {
                             const firstName = staff["PAYROLL FIRST NAME"] || "";
                             const lastName = staff["PAYROLL LAST NAME"] || "";
                             const email = staff["WORK E-MAIL"] || "";
@@ -335,14 +372,13 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                               </div>
                             );
                           })
-                        ) : (
-                          <div className="px-4 py-3 text-sm text-muted-foreground">
-                            No active staff match your search
-                          </div>
                         )
                       ) : (
-                        <div className="px-4 py-3 text-sm text-muted-foreground">
-                          No active staff found
+                        <div className="px-4 py-3 text-sm text-red-600 bg-red-50 border-red-200">
+                          <div className="font-medium">No active staff available</div>
+                          <div className="text-xs mt-1">
+                            No active staff members found in the external staff table.
+                          </div>
                         </div>
                       )}
                     </div>

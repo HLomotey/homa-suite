@@ -66,10 +66,11 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
   }, [setStatus, fetchAllExternalStaff]);
   
   const searchStaff = (searchTerm: string) => {
-    if (!searchTerm.trim()) return activeStaff || [];
+    if (!searchTerm.trim()) return activeStaff || []; // Show only active staff when no search
     
     const lowercaseSearch = searchTerm.toLowerCase();
-    return (activeStaff || []).filter(
+    // Search through ALL external staff (active and inactive) to check if staff exists
+    return (externalStaff || []).filter(
       (member) =>
         (member["PAYROLL FIRST NAME"] || "").toLowerCase().includes(lowercaseSearch) ||
         (member["PAYROLL LAST NAME"] || "").toLowerCase().includes(lowercaseSearch) ||
@@ -294,9 +295,60 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                       className="mb-2"
                     />
                     <div className="max-h-64 overflow-auto">
-                      {Array.isArray(activeStaff) && activeStaff.length > 0 ? (
-                        searchStaff(managerSearchValue).length > 0 ? (
-                          searchStaff(managerSearchValue).map((member) => (
+                      {Array.isArray(externalStaff) && externalStaff.length > 0 ? (
+                        managerSearchValue.trim() ? (
+                          searchStaff(managerSearchValue).length > 0 ? (
+                            searchStaff(managerSearchValue).map((member) => {
+                              const isActive = !member["TERMINATION DATE"] || member["TERMINATION DATE"] === null || member["TERMINATION DATE"] === "";
+                              return (
+                                <div
+                                  key={member.id}
+                                  className={`flex flex-col p-2 rounded-sm ${
+                                    isActive 
+                                      ? "hover:bg-accent cursor-pointer" 
+                                      : "bg-gray-50 cursor-not-allowed opacity-75"
+                                  }`}
+                                  onClick={() => {
+                                    if (isActive) {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        managerId: member.id,
+                                      }));
+                                      setManagerSearchOpen(false);
+                                      setManagerSearchValue("");
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{`${member["PAYROLL FIRST NAME"] || ""} ${member["PAYROLL LAST NAME"] || ""}`.trim()}</span>
+                                    {!isActive && (
+                                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                                        Inactive
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-sm text-muted-foreground">
+                                    {member["JOB TITLE"]} • {member["HOME DEPARTMENT"]}
+                                  </span>
+                                  {!isActive && (
+                                    <span className="text-xs text-red-600 mt-1">
+                                      Cannot select inactive staff member
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="p-4 text-center text-red-600 bg-red-50 border-red-200 rounded-sm">
+                              <div className="font-medium">Staff not found</div>
+                              <div className="text-xs mt-1">
+                                No staff member matches "{managerSearchValue}" in the external staff table. Please check the spelling or try a different search term.
+                              </div>
+                            </div>
+                          )
+                        ) : (
+                          // Show first 10 active staff when no search query
+                          activeStaff.slice(0, 10).map((member) => (
                             <div
                               key={member.id}
                               className="flex flex-col p-2 hover:bg-accent cursor-pointer rounded-sm"
@@ -315,14 +367,13 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                               </span>
                             </div>
                           ))
-                        ) : (
-                          <div className="p-4 text-center text-muted-foreground">
-                            No managers match your search
-                          </div>
                         )
                       ) : (
-                        <div className="p-4 text-center text-muted-foreground">
-                          No active managers found
+                        <div className="p-4 text-center text-red-600 bg-red-50 border-red-200 rounded-sm">
+                          <div className="font-medium">No staff available</div>
+                          <div className="text-xs mt-1">
+                            No staff members found in the external staff table.
+                          </div>
                         </div>
                       )}
                     </div>

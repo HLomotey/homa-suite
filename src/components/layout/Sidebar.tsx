@@ -64,8 +64,8 @@ const navigationItems = [
     module: "operations",
   },
   {
-    label: "Score Card",
-    icon: LineChart,
+    label: "Operations Call (Ops Call)",
+    icon: FileBarChart2,
     href: "/operations/month-end-reports",
     module: "operations",
   },
