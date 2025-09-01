@@ -78,12 +78,17 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
   onSubmit,
   onApprove,
 }) => {
-  const { opsCalls: reports, loading, stats, fetchOpsCalls: fetchReports } = useOpsCall();
+  const {
+    opsCalls: reports,
+    loading,
+    stats,
+    fetchOpsCalls: fetchReports,
+  } = useOpsCall();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OpsCallStatus | "all">("all");
-  const [filteredReports, setFilteredReports] = useState<
-    FrontendOpsCall[]
-  >([]);
+  const [statusFilter, setStatusFilter] = useState<OpsCallStatus | "all">(
+    "all"
+  );
+  const [filteredReports, setFilteredReports] = useState<FrontendOpsCall[]>([]);
   const [activeTab, setActiveTab] = useState("occupancy");
 
   // Load ops calls on component mount
@@ -147,12 +152,6 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
             Manage and review monthly operational reports
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={onCreateNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Report
-          </Button>
-        </div>
       </div>
 
       {/* Stats Cards */}
@@ -173,15 +172,15 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              <span className="font-medium">
-                {reports[0]?.hotel_site}
-              </span>
+              <span className="font-medium">{reports[0]?.hotel_site}</span>
             </CardTitle>
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.submitted || 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.draft || 0} drafts</p>
+            <p className="text-xs text-muted-foreground">
+              {stats?.draft || 0} drafts
+            </p>
           </CardContent>
         </Card>
 
@@ -192,7 +191,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.avg_occupancy ? stats.avg_occupancy.toFixed(1) : '0.0'}%
+              {stats?.avg_occupancy ? stats.avg_occupancy.toFixed(1) : "0.0"}%
             </div>
             <p className="text-xs text-muted-foreground">Across all reports</p>
           </CardContent>
@@ -207,7 +206,10 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.avg_cleanliness_score ? (stats.avg_cleanliness_score * 100).toFixed(1) : '0.0'}%
+              {stats?.avg_cleanliness_score
+                ? (stats.avg_cleanliness_score * 100).toFixed(1)
+                : "0.0"}
+              %
             </div>
             <p className="text-xs text-muted-foreground">Quality score</p>
           </CardContent>
