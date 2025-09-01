@@ -15,7 +15,7 @@ import { useHistoricalExternalStaff } from "@/hooks/external-staff/useHistorical
 import { FrontendHistoryExternalStaff } from "@/integration/supabase/types/external-staff";
 import { Search, History, Calendar, Download, CheckSquare, Square, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import * as XLSX from 'xlsx';
+import { downloadExcelFile } from '@/utils/excelJSHelper';
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   Pagination,
@@ -60,7 +60,7 @@ export function HistoricalExternalStaff() {
   });
 
   // Export function for historical data
-  const exportHistoricalToExcel = (filteredData?: FrontendHistoryExternalStaff[]) => {
+  const exportHistoricalToExcel = async (filteredData?: FrontendHistoryExternalStaff[]) => {
     try {
       // Use filtered data if provided, otherwise use all current data
       const dataToExport = filteredData || historicalStaff;
@@ -107,17 +107,12 @@ export function HistoricalExternalStaff() {
         'Updated At': staff.updated_at || ''
       }));
 
-      // Create workbook and worksheet
-      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Historical Staff Information');
-
       // Generate filename with current date
       const currentDate = new Date().toISOString().split('T')[0];
       const filename = `historical_staff_information_${currentDate}.xlsx`;
 
-      // Download the file
-      XLSX.writeFile(workbook, filename);
+      // Download the file using ExcelJS
+      await downloadExcelFile(worksheetData, filename, 'Historical Staff Information');
       
       toast.success(`Exported ${dataToExport.length} historical records to ${filename}`);
     } catch (error) {
@@ -126,7 +121,7 @@ export function HistoricalExternalStaff() {
     }
   };
 
-  const handleExportToExcel = () => {
+  const exportToExcel = async () => {
     // Export filtered data if there's a search term, otherwise export all current data
     exportHistoricalToExcel(searchTerm ? filteredHistoricalStaff : undefined);
   };
@@ -245,7 +240,7 @@ export function HistoricalExternalStaff() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={handleExportToExcel}
+                onClick={exportToExcel}
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />

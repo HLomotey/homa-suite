@@ -7,7 +7,7 @@ import { PropertiesList } from "@/components/properties/PropertiesList";
 import { RoomsList } from "@/components/properties/RoomsList";
 import { AssignmentsList } from "@/components/properties/AssignmentsList";
 import { TenantsList } from "@/components/properties/TenantsList";
-import { StaffTransactionLog } from "@/components/properties/StaffTransactionLog";
+import { BillingLog } from "@/components/properties/BillingLog";
 import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
 import { Inventory } from "@/components/inventory";
@@ -123,7 +123,7 @@ const HousingPage: React.FC = () => {
           <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="staff-transactions">
-            Staff Transactions
+            Billing
           </TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="utilities">Utilities</TabsTrigger>
@@ -170,7 +170,7 @@ const HousingPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="staff-transactions">
-          <StaffTransactionLog />
+          <BillingLog />
         </TabsContent>
 
         <TabsContent value="inventory">

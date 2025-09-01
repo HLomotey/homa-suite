@@ -10,7 +10,7 @@ import {
 } from "@/integration/supabase/types/finance";
 import { supabase } from "@/integration/supabase/client";
 import { mapDatabaseInvoiceToFrontend } from "@/integration/supabase/types/finance";
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 
 /**
  * Hook for fetching all invoices
@@ -128,17 +128,17 @@ export const useCreateInvoice = () => {
           currency: invoiceData.currency
         };
         
-        const { data, error: supabaseError } = await supabase
-          .from("finance_invoices")
+        const { data: newInvoice, error: supabaseError } = await (supabase
+          .from("finance_invoices") as any)
           .insert(dbInvoiceData)
           .select()
           .single();
         
         if (supabaseError) throw new Error(supabaseError.message);
         
-        const newInvoice = mapDatabaseInvoiceToFrontend(data);
-        setCreatedInvoice(newInvoice);
-        return newInvoice;
+        const newInvoiceMapped = mapDatabaseInvoiceToFrontend(newInvoice);
+        setCreatedInvoice(newInvoiceMapped);
+        return newInvoiceMapped;
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error("An unknown error occurred")
@@ -172,39 +172,38 @@ export const useUpdateInvoice = () => {
         setLoading(true);
         setError(null);
         
-        // Convert frontend data to database format
-        const dbInvoiceData: Record<string, any> = {};
+        const updateData: Record<string, any> = {};
         
-        if (invoiceData.clientName !== undefined) dbInvoiceData.client_name = invoiceData.clientName;
-        if (invoiceData.invoiceNumber !== undefined) dbInvoiceData.invoice_number = invoiceData.invoiceNumber;
-        if (invoiceData.dateIssued !== undefined) dbInvoiceData.date_issued = invoiceData.dateIssued;
-        if (invoiceData.invoiceStatus !== undefined) dbInvoiceData.invoice_status = invoiceData.invoiceStatus;
-        if (invoiceData.datePaid !== undefined) dbInvoiceData.date_paid = invoiceData.datePaid;
-        if (invoiceData.itemName !== undefined) dbInvoiceData.item_name = invoiceData.itemName;
-        if (invoiceData.itemDescription !== undefined) dbInvoiceData.item_description = invoiceData.itemDescription;
-        if (invoiceData.rate !== undefined) dbInvoiceData.rate = invoiceData.rate;
-        if (invoiceData.quantity !== undefined) dbInvoiceData.quantity = invoiceData.quantity;
-        if (invoiceData.discountPercentage !== undefined) dbInvoiceData.discount_percentage = invoiceData.discountPercentage;
-        if (invoiceData.lineSubtotal !== undefined) dbInvoiceData.line_subtotal = invoiceData.lineSubtotal;
-        if (invoiceData.tax1Type !== undefined) dbInvoiceData.tax_1_type = invoiceData.tax1Type;
-        if (invoiceData.tax1Amount !== undefined) dbInvoiceData.tax_1_amount = invoiceData.tax1Amount;
-        if (invoiceData.tax2Type !== undefined) dbInvoiceData.tax_2_type = invoiceData.tax2Type;
-        if (invoiceData.tax2Amount !== undefined) dbInvoiceData.tax_2_amount = invoiceData.tax2Amount;
-        if (invoiceData.lineTotal !== undefined) dbInvoiceData.line_total = invoiceData.lineTotal;
-        if (invoiceData.currency !== undefined) dbInvoiceData.currency = invoiceData.currency;
+        if (invoiceData.clientName !== undefined) updateData.client_name = invoiceData.clientName;
+        if (invoiceData.invoiceNumber !== undefined) updateData.invoice_number = invoiceData.invoiceNumber;
+        if (invoiceData.dateIssued !== undefined) updateData.date_issued = invoiceData.dateIssued;
+        if (invoiceData.invoiceStatus !== undefined) updateData.invoice_status = invoiceData.invoiceStatus;
+        if (invoiceData.datePaid !== undefined) updateData.date_paid = invoiceData.datePaid;
+        if (invoiceData.itemName !== undefined) updateData.item_name = invoiceData.itemName;
+        if (invoiceData.itemDescription !== undefined) updateData.item_description = invoiceData.itemDescription;
+        if (invoiceData.rate !== undefined) updateData.rate = invoiceData.rate;
+        if (invoiceData.quantity !== undefined) updateData.quantity = invoiceData.quantity;
+        if (invoiceData.discountPercentage !== undefined) updateData.discount_percentage = invoiceData.discountPercentage;
+        if (invoiceData.lineSubtotal !== undefined) updateData.line_subtotal = invoiceData.lineSubtotal;
+        if (invoiceData.tax1Type !== undefined) updateData.tax_1_type = invoiceData.tax1Type;
+        if (invoiceData.tax1Amount !== undefined) updateData.tax_1_amount = invoiceData.tax1Amount;
+        if (invoiceData.tax2Type !== undefined) updateData.tax_2_type = invoiceData.tax2Type;
+        if (invoiceData.tax2Amount !== undefined) updateData.tax_2_amount = invoiceData.tax2Amount;
+        if (invoiceData.lineTotal !== undefined) updateData.line_total = invoiceData.lineTotal;
+        if (invoiceData.currency !== undefined) updateData.currency = invoiceData.currency;
         
-        const { data, error: supabaseError } = await supabase
-          .from("finance_invoices")
-          .update(dbInvoiceData)
+        const { data: updatedInvoice, error: supabaseError } = await (supabase
+          .from("finance_invoices") as any)
+          .update(updateData)
           .eq("id", id)
           .select()
           .single();
         
         if (supabaseError) throw new Error(supabaseError.message);
         
-        const updatedInvoice = mapDatabaseInvoiceToFrontend(data);
-        setUpdatedInvoice(updatedInvoice);
-        return updatedInvoice;
+        const updatedInvoiceMapped = mapDatabaseInvoiceToFrontend(updatedInvoice);
+        setUpdatedInvoice(updatedInvoiceMapped);
+        return updatedInvoiceMapped;
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error("An unknown error occurred")
@@ -416,17 +415,11 @@ export const useUploadInvoices = () => {
       const fileData = await file.arrayBuffer();
       setProgress(10);
       
-      // Parse the Excel data
-      const workbook = XLSX.read(fileData, { type: 'array' });
-      setProgress(20);
-      
-      // Get the first worksheet
-      const worksheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[worksheetName];
+      // Parse the Excel data using ExcelJS
+      const { data: jsonData } = await import('@/utils/excelJSHelper').then(async (module) => {
+        return await module.readExcelFile(fileData);
+      });
       setProgress(30);
-      
-      // Convert to JSON
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 'A' });
       setProgress(40);
       
       // Check if the file has headers

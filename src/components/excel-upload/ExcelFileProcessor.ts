@@ -2,7 +2,7 @@
  * Excel file processing utilities
  */
 
-import * as XLSX from 'xlsx';
+import { readExcelFile } from '@/utils/excelJSHelper';
 
 export interface ProcessedExcelData {
   data: any[];
@@ -14,10 +14,7 @@ export class ExcelFileProcessor {
   static async processFile(file: File): Promise<ProcessedExcelData> {
     // Read and parse Excel file
     const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data, { type: 'array' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    const { data: jsonData } = await readExcelFile(data);
 
     console.log(`Processing ${jsonData.length} rows from Excel file`);
     

@@ -208,15 +208,15 @@ export async function processFinanceData(
       };
     }
 
-    // Import XLSX dynamically to avoid issues
-    console.log("Importing XLSX library");
-    const XLSX = await import("xlsx");
+    // Import ExcelJS helper to parse data
+    console.log("Importing ExcelJS helper");
+    const { readExcelFile } = await import("@/utils/excelJSHelper");
 
     // Parse the Excel data
     console.log(`Parsing Excel data, size: ${fileData.byteLength} bytes`);
-    let workbook;
+    let result;
     try {
-      workbook = XLSX.read(fileData, { type: "array" });
+      result = await readExcelFile(fileData);
     } catch (error) {
       console.error("Error parsing Excel file:", error);
       return {
@@ -229,35 +229,22 @@ export async function processFinanceData(
       };
     }
 
-    // Check if workbook has sheets
-    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-      console.error("No worksheets found in Excel file");
+    // Check if data was parsed successfully
+    if (!result.data || result.data.length === 0) {
+      console.error("No data found in Excel file");
       return {
         success: false,
-        errors: ["No worksheets found in Excel file"],
+        errors: ["No data found in Excel file"],
         totalRows: 0,
         processedRows: 0,
       };
     }
 
-    // Get the first worksheet
-    const worksheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[worksheetName];
-    console.log(`Using worksheet: ${worksheetName}`);
+    console.log(`Found ${result.data.length} rows in Excel file`);
 
-    if (!worksheet) {
-      console.error("Worksheet is empty or invalid");
-      return {
-        success: false,
-        errors: ["The worksheet appears to be empty or invalid"],
-        totalRows: 0,
-        processedRows: 0,
-      };
-    }
-
-    // Convert to JSON
-    console.log("Converting worksheet to JSON");
-    const rawData = XLSX.utils.sheet_to_json(worksheet);
+    // Get the parsed data
+    console.log("Processing parsed JSON data");
+    const rawData = result.data;
     const errors: string[] = [];
     const warnings: string[] = [];
     const processedData: Omit<FrontendFinanceTransaction, "id">[] = [];

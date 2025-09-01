@@ -22,7 +22,7 @@ import {
   Zap,
   Calendar,
 } from "lucide-react";
-import * as XLSX from 'xlsx';
+import { downloadExcelFile } from '@/utils/excelJSHelper';
 import { saveAs } from 'file-saver';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -244,7 +244,7 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
   };
 
   // Function to export bills to Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       setIsExporting(true);
       
@@ -265,19 +265,8 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
         };
       });
       
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Utility Bills');
-      
-      // Generate Excel file
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      
-      // Save file
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(data, `utility_bills_${new Date().toISOString().split('T')[0]}.xlsx`);
+      // Generate and download Excel file
+      await downloadExcelFile(exportData, `utility_bills_export_${new Date().toISOString().split('T')[0]}.xlsx`, 'Utility Bills');
       
       setIsExporting(false);
     } catch (error) {

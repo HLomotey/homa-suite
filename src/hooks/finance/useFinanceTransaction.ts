@@ -10,7 +10,7 @@ import {
   mapDatabaseInvoiceToFrontend
 } from "@/integration/supabase/types/finance";
 import { supabase } from "@/integration/supabase/client";
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { processFinanceData, generateFinanceTemplate } from "@/utils/financeProcessor";
 import { toast } from "sonner";
 
@@ -130,15 +130,15 @@ export const useCreateFinanceTransaction = () => {
           currency: invoiceData.currency
         };
         
-        const { data, error: supabaseError } = await supabase
+        const { data: newTransaction, error: supabaseError } = await supabase
           .from("finance_invoices")
-          .insert(dbInvoiceData)
+          .insert(dbInvoiceData as any)
           .select()
           .single();
         
         if (supabaseError) throw new Error(supabaseError.message);
         
-        const newInvoice = mapDatabaseInvoiceToFrontend(data);
+        const newInvoice = mapDatabaseInvoiceToFrontend(newTransaction);
         setCreatedInvoice(newInvoice);
         return newInvoice;
       } catch (err) {
@@ -175,38 +175,38 @@ export const useUpdateFinanceTransaction = () => {
         setError(null);
         
         // Convert frontend data to database format
-        const dbInvoiceData: Record<string, any> = {};
+        const updateData: Record<string, any> = {};
         
-        if (invoiceData.clientName !== undefined) dbInvoiceData.client_name = invoiceData.clientName;
-        if (invoiceData.invoiceNumber !== undefined) dbInvoiceData.invoice_number = invoiceData.invoiceNumber;
-        if (invoiceData.dateIssued !== undefined) dbInvoiceData.date_issued = invoiceData.dateIssued;
-        if (invoiceData.invoiceStatus !== undefined) dbInvoiceData.invoice_status = invoiceData.invoiceStatus;
-        if (invoiceData.datePaid !== undefined) dbInvoiceData.date_paid = invoiceData.datePaid;
-        if (invoiceData.itemName !== undefined) dbInvoiceData.item_name = invoiceData.itemName;
-        if (invoiceData.itemDescription !== undefined) dbInvoiceData.item_description = invoiceData.itemDescription;
-        if (invoiceData.rate !== undefined) dbInvoiceData.rate = invoiceData.rate;
-        if (invoiceData.quantity !== undefined) dbInvoiceData.quantity = invoiceData.quantity;
-        if (invoiceData.discountPercentage !== undefined) dbInvoiceData.discount_percentage = invoiceData.discountPercentage;
-        if (invoiceData.lineSubtotal !== undefined) dbInvoiceData.line_subtotal = invoiceData.lineSubtotal;
-        if (invoiceData.tax1Type !== undefined) dbInvoiceData.tax_1_type = invoiceData.tax1Type;
-        if (invoiceData.tax1Amount !== undefined) dbInvoiceData.tax_1_amount = invoiceData.tax1Amount;
-        if (invoiceData.tax2Type !== undefined) dbInvoiceData.tax_2_type = invoiceData.tax2Type;
-        if (invoiceData.tax2Amount !== undefined) dbInvoiceData.tax_2_amount = invoiceData.tax2Amount;
-        if (invoiceData.lineTotal !== undefined) dbInvoiceData.line_total = invoiceData.lineTotal;
-        if (invoiceData.currency !== undefined) dbInvoiceData.currency = invoiceData.currency;
+        if (invoiceData.clientName !== undefined) updateData.client_name = invoiceData.clientName;
+        if (invoiceData.invoiceNumber !== undefined) updateData.invoice_number = invoiceData.invoiceNumber;
+        if (invoiceData.dateIssued !== undefined) updateData.date_issued = invoiceData.dateIssued;
+        if (invoiceData.invoiceStatus !== undefined) updateData.invoice_status = invoiceData.invoiceStatus;
+        if (invoiceData.datePaid !== undefined) updateData.date_paid = invoiceData.datePaid;
+        if (invoiceData.itemName !== undefined) updateData.item_name = invoiceData.itemName;
+        if (invoiceData.itemDescription !== undefined) updateData.item_description = invoiceData.itemDescription;
+        if (invoiceData.rate !== undefined) updateData.rate = invoiceData.rate;
+        if (invoiceData.quantity !== undefined) updateData.quantity = invoiceData.quantity;
+        if (invoiceData.discountPercentage !== undefined) updateData.discount_percentage = invoiceData.discountPercentage;
+        if (invoiceData.lineSubtotal !== undefined) updateData.line_subtotal = invoiceData.lineSubtotal;
+        if (invoiceData.tax1Type !== undefined) updateData.tax_1_type = invoiceData.tax1Type;
+        if (invoiceData.tax1Amount !== undefined) updateData.tax_1_amount = invoiceData.tax1Amount;
+        if (invoiceData.tax2Type !== undefined) updateData.tax_2_type = invoiceData.tax2Type;
+        if (invoiceData.tax2Amount !== undefined) updateData.tax_2_amount = invoiceData.tax2Amount;
+        if (invoiceData.lineTotal !== undefined) updateData.line_total = invoiceData.lineTotal;
+        if (invoiceData.currency !== undefined) updateData.currency = invoiceData.currency;
         
-        const { data, error: supabaseError } = await supabase
-          .from("finance_invoices")
-          .update(dbInvoiceData)
+        const { data: updatedTransaction, error: supabaseError } = await (supabase
+          .from("finance_invoices") as any)
+          .update(updateData)
           .eq("id", id)
           .select()
           .single();
         
         if (supabaseError) throw new Error(supabaseError.message);
         
-        const updatedInvoice = mapDatabaseInvoiceToFrontend(data);
+        const updatedInvoice = mapDatabaseInvoiceToFrontend(updatedTransaction);
         setUpdatedInvoice(updatedInvoice);
-        return updatedInvoice;
+        return (updatedTransaction as any)?.invoice_number;
       } catch (err) {
         setError(
           err instanceof Error ? err : new Error("An unknown error occurred")
@@ -367,7 +367,7 @@ export const useUploadFinanceTransactions = () => {
           throw new Error(`Error checking for duplicates: ${checkError.message}`);
         }
         
-        const existingInvoiceNumbers = new Set(existingInvoices?.map(inv => inv.invoice_number) || []);
+        const existingInvoiceNumbers = new Set((existingInvoices as any)?.map((inv: any) => inv.invoice_number) || []);
         
         if (existingInvoiceNumbers.size > 0) {
           console.warn(`Found ${existingInvoiceNumbers.size} duplicate invoice numbers:`, Array.from(existingInvoiceNumbers));

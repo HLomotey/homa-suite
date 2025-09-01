@@ -32,41 +32,33 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { FrontendBill, FrontendBillingStaff } from "../../integration/supabase/types/billing";
-
+import { BillingRow, PaymentStatus } from "@/types/billing";
 
 interface BillingListProps {
-  bills: FrontendBill[];
-  staff: FrontendBillingStaff[];
+  bills: BillingRow[];
   onOpenForm: () => void;
-  onSelectBill?: (bill: FrontendBill) => void;
+  onSelectBill?: (bill: BillingRow) => void;
   activeTab?: string;
   onChangeTab?: (tab: string) => void;
-  onStaffUploaded?: (staff: Omit<FrontendBillingStaff, "id">[]) => Promise<void>;
 }
 
 export function BillingList({
   bills,
-  staff,
   onOpenForm,
   onSelectBill,
   activeTab = "all",
   onChangeTab,
-  onStaffUploaded,
 }: BillingListProps) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const filteredBills = bills.filter((bill) => {
-    const staffMember = staff.find((s) => s.id === bill.staffId);
-    if (!staffMember) return false;
-
-    const matchesSearch = (staffMember.legalName || "")
+    const matchesSearch = (bill.tenantName || "")
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesStatus =
-      statusFilter === "all" || bill.status === statusFilter;
+      statusFilter === "all" || bill.paymentStatus === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -76,10 +68,12 @@ export function BillingList({
     switch (status) {
       case "paid":
         return "default";
-      case "pending":
-        return "secondary";
-      case "overdue":
+      case "unpaid":
         return "destructive";
+      case "partial":
+        return "secondary";
+      case "waived":
+        return "outline";
       default:
         return "outline";
     }
@@ -101,8 +95,8 @@ export function BillingList({
           <TabsList className="bg-black/40 backdrop-blur-md border border-white/10">
             <TabsTrigger value="all">All Bills</TabsTrigger>
             <TabsTrigger value="paid">Paid</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="overdue">Overdue</TabsTrigger>
+            <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
+            <TabsTrigger value="partial">Partial</TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2">
@@ -110,7 +104,7 @@ export function BillingList({
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search by staff name..."
+                placeholder="Search by tenant name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-64 pl-8"
@@ -160,18 +154,17 @@ export function BillingList({
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBills.map((bill) => {
-            const staffMember = staff.find((s) => s.id === bill.staffId);
-            if (!staffMember) return null;
-
             // Get color based on status
             const getCardColor = (status: string) => {
               switch (status) {
                 case "paid":
                   return "bg-gradient-to-br from-green-900/40 to-green-800/20";
-                case "pending":
-                  return "bg-gradient-to-br from-blue-900/40 to-blue-800/20";
-                case "overdue":
+                case "unpaid":
                   return "bg-gradient-to-br from-red-900/40 to-red-800/20";
+                case "partial":
+                  return "bg-gradient-to-br from-yellow-900/40 to-yellow-800/20";
+                case "waived":
+                  return "bg-gradient-to-br from-blue-900/40 to-blue-800/20";
                 default:
                   return "bg-gradient-to-br from-gray-900/40 to-gray-800/20";
               }
@@ -181,7 +174,7 @@ export function BillingList({
               <Card
                 key={bill.id}
                 className={`${getCardColor(
-                  bill.status
+                  bill.paymentStatus
                 )} border-white/10 cursor-pointer hover:border-white/20 transition-all`}
                 onClick={() => onSelectBill && onSelectBill(bill)}
               >
@@ -189,33 +182,33 @@ export function BillingList({
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white">
-                        {staffMember.legalName || "Unknown Staff"}
+                        {bill.tenantName || "Unknown Tenant"}
                       </h3>
-                      <p className="text-white/60">{staffMember.department}</p>
+                      <p className="text-white/60">{bill.propertyName}</p>
                     </div>
                     <Badge
-                      variant={getStatusVariant(bill.status)}
+                      variant={getStatusVariant(bill.paymentStatus)}
                       className={
-                        bill.status === "paid"
+                        bill.paymentStatus === "paid"
                           ? "bg-green-600 hover:bg-green-700"
                           : ""
                       }
                     >
-                      {getStatusText(bill.status)}
+                      {getStatusText(bill.paymentStatus)}
                     </Badge>
                   </div>
                   <div className="space-y-2">
                     <p className="text-white/80">
                       <DollarSign className="h-4 w-4 inline-block mr-2" />$
-                      {bill.amount}
+                      {bill.rentAmount}
                     </p>
                     <p className="text-white/80">
                       <Receipt className="h-4 w-4 inline-block mr-2" />
-                      {bill.type}
+                      {bill.roomName}
                     </p>
                     <p className="text-white/80">
                       <CreditCard className="h-4 w-4 inline-block mr-2" />
-                      Due: {bill.dueDate}
+                      Period: {bill.periodStart} - {bill.periodEnd}
                     </p>
                   </div>
                 </CardContent>
@@ -233,19 +226,16 @@ export function BillingList({
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-white/5">
-                <TableHead>Staff</TableHead>
-                <TableHead>Department</TableHead>
+                <TableHead>Tenant Name</TableHead>
+                <TableHead>Property</TableHead>
+                <TableHead>Room</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Due Date</TableHead>
+                <TableHead>Period</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredBills.map((bill) => {
-                const staffMember = staff.find((s) => s.id === bill.staffId);
-                if (!staffMember) return null;
-
                 return (
                   <TableRow
                     key={bill.id}
@@ -253,15 +243,15 @@ export function BillingList({
                     onClick={() => onSelectBill && onSelectBill(bill)}
                   >
                     <TableCell className="font-medium">
-                      {staffMember.legalName || "Unknown Staff"}
+                      {bill.tenantName || "Unknown Tenant"}
                     </TableCell>
-                    <TableCell>{staffMember.department}</TableCell>
-                    <TableCell>${bill.amount}</TableCell>
-                    <TableCell>{bill.type}</TableCell>
-                    <TableCell>{bill.dueDate}</TableCell>
+                    <TableCell>{bill.propertyName}</TableCell>
+                    <TableCell>{bill.roomName}</TableCell>
+                    <TableCell>${bill.rentAmount}</TableCell>
+                    <TableCell>{bill.periodStart} - {bill.periodEnd}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusVariant(bill.status)}>
-                        {getStatusText(bill.status)}
+                      <Badge variant={getStatusVariant(bill.paymentStatus)}>
+                        {getStatusText(bill.paymentStatus)}
                       </Badge>
                     </TableCell>
                   </TableRow>
