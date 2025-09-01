@@ -4,7 +4,7 @@ import { supabase } from "@/integration/supabase/client";
 import { FrontendExternalStaff, CreateExternalStaff, CreateHistoryExternalStaff, ExternalStaff } from '@/integration/supabase/types/external-staff';
 import { Database } from '@/integration/supabase/types/database';
 import { toast } from "sonner";
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 
 /**
  * Robust, paginated fetch for ALL external_staff rows.

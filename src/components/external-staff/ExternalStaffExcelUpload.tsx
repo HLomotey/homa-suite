@@ -7,7 +7,7 @@ import { useExternalStaff } from '@/hooks/external-staff/useExternalStaff';
 import { FrontendExternalStaff, CreateExternalStaff } from '@/integration/supabase/types/external-staff';
 import { Upload, Download, FileText, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { readExcelFile } from '@/utils/excelJSHelper';
 import { normalizeGender } from '@/utils/gender-normalizer';
 import { normalizeDate, formatDate } from '@/utils/date-normalizer';
 
@@ -49,14 +49,11 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
 
     try {
       const fileBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(fileBuffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const rawData = XLSX.utils.sheet_to_json(worksheet);
+      const { data: jsonData } = await readExcelFile(fileBuffer);
 
       setProgress(25);
 
-      if (!rawData || rawData.length === 0) {
+      if (!jsonData || jsonData.length === 0) {
         throw new Error('No data found in the Excel file');
       }
 
@@ -66,7 +63,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
       const processedStaff: CreateExternalStaff[] = [];
       const errors: string[] = [];
 
-      rawData.forEach((row: any, index) => {
+      jsonData.forEach((row: any, index) => {
         const rowNumber = index + 1;
         try {
           const staff: CreateExternalStaff = {
@@ -121,7 +118,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
         success: errors.length === 0,
         data: processedStaff,
         errors: errors.length > 0 ? errors : undefined,
-        totalRows: rawData.length,
+        totalRows: jsonData.length,
         processedRows: processedStaff.length,
       };
 
@@ -162,7 +159,7 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
     }
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const templateData = [{
       'PAYROLL LAST NAME': 'Smith',
       'PAYROLL FIRST NAME': 'John',
@@ -197,10 +194,8 @@ export function ExternalStaffExcelUpload({ onClose }: ExternalStaffExcelUploadPr
       'JOB CLASS': 'Faculty',
     }];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Staff Information Template');
-    XLSX.writeFile(workbook, 'external_staff_template.xlsx');
+    const { downloadExcelFile } = await import('@/utils/excelJSHelper');
+    await downloadExcelFile(templateData, 'external_staff_template.xlsx', 'Staff Information Template');
   };
 
   return (

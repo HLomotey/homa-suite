@@ -442,7 +442,7 @@ export interface Database {
           assigned_at?: string;
         };
       };
-      staff_locations: {
+      company_locations: {
         Row: {
           id: string;
           name: string;
@@ -472,6 +472,79 @@ export interface Database {
           zip_code?: string | null;
           country?: string | null;
           is_active?: boolean;
+        };
+      };
+      staff_locations: {
+        Row: {
+          id: string;
+          company_location_id: string;
+          location_code: string;
+          location_description: string;
+          is_active: boolean;
+          external_staff_id: string | null;
+          manager_id: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          company_location_id: string;
+          location_code: string;
+          location_description: string;
+          is_active?: boolean;
+          external_staff_id?: string | null;
+          manager_id?: string | null;
+        };
+        Update: {
+          company_location_id?: string;
+          location_code?: string;
+          location_description?: string;
+          is_active?: boolean;
+          external_staff_id?: string | null;
+          manager_id?: string | null;
+          updated_at?: string;
+        };
+      };
+      staff_locations_history: {
+        Row: {
+          id: string;
+          staff_location_id: string;
+          company_location_id: string;
+          location_code: string;
+          location_description: string;
+          is_active: boolean;
+          external_staff_id: string | null;
+          manager_id: string | null;
+          changed_at: string;
+          changed_by: string | null;
+          change_type: 'INSERT' | 'UPDATE' | 'DELETE';
+          old_values: Json | null;
+          new_values: Json | null;
+        };
+        Insert: {
+          staff_location_id: string;
+          company_location_id: string;
+          location_code: string;
+          location_description: string;
+          is_active: boolean;
+          external_staff_id?: string | null;
+          manager_id?: string | null;
+          changed_by?: string | null;
+          change_type: 'INSERT' | 'UPDATE' | 'DELETE';
+          old_values?: Json | null;
+          new_values?: Json | null;
+        };
+        Update: {
+          staff_location_id?: string;
+          company_location_id?: string;
+          location_code?: string;
+          location_description?: string;
+          is_active?: boolean;
+          external_staff_id?: string | null;
+          manager_id?: string | null;
+          changed_by?: string | null;
+          change_type?: 'INSERT' | 'UPDATE' | 'DELETE';
+          old_values?: Json | null;
+          new_values?: Json | null;
         };
       };
     };

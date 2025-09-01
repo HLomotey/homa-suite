@@ -22,8 +22,9 @@ import { ExternalStaffExcelUpload } from "@/components/external-staff/ExternalSt
 import { ExternalStaffStats } from "@/components/external-staff/ExternalStaffStats";
 import { HistoricalExternalStaff } from "@/components/external-staff/HistoricalExternalStaff";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
-import { Plus, Search, Edit, Trash2, Upload, Download, CheckSquare, Square } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download, CheckSquare, Square, Calendar, Filter } from "lucide-react";
 import { toast } from "sonner";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
@@ -71,6 +72,8 @@ export default function ExternalStaff() {
   const [activeTab, setActiveTab] = useState("current");
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
+  const [dateRangeFilter, setDateRangeFilter] = useState<string>("all");
+  const [terminationPeriodFilter, setTerminationPeriodFilter] = useState<string>("all");
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -83,19 +86,82 @@ export default function ExternalStaff() {
     onConfirm: () => {},
   });
 
-  // Client-side filtering for search only - pagination and active/inactive filtering is done server-side
-  const filteredStaff = externalStaff.filter((staff) => {
-    if (!searchTerm) return true;
+  // Get date range bounds for filtering
+  const getDateRangeBounds = (range: string) => {
+    const now = new Date();
+    switch (range) {
+      case "this-week":
+        return {
+          start: startOfWeek(now),
+          end: endOfWeek(now)
+        };
+      case "previous-week":
+        return {
+          start: startOfWeek(subWeeks(now, 1)),
+          end: endOfWeek(subWeeks(now, 1))
+        };
+      case "this-month":
+        return {
+          start: startOfMonth(now),
+          end: endOfMonth(now)
+        };
+      case "previous-month":
+        return {
+          start: startOfMonth(subMonths(now, 1)),
+          end: endOfMonth(subMonths(now, 1))
+        };
+      case "current-month":
+        return {
+          start: startOfMonth(now),
+          end: endOfMonth(now)
+        };
+      default:
+        return null;
+    }
+  };
 
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
-      staff["PAYROLL LAST NAME"]?.toLowerCase().includes(searchLower) ||
-      staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
-      staff["COMPANY CODE"]?.toLowerCase().includes(searchLower) ||
-      staff["LOCATION"]?.toLowerCase().includes(searchLower) ||
-      staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower)
-    );
+  // Client-side filtering for search and date ranges
+  const filteredStaff = externalStaff.filter((staff) => {
+    // Search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = (
+        staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
+        staff["PAYROLL LAST NAME"]?.toLowerCase().includes(searchLower) ||
+        staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
+        staff["COMPANY CODE"]?.toLowerCase().includes(searchLower) ||
+        staff["LOCATION"]?.toLowerCase().includes(searchLower) ||
+        staff["BUSINESS UNIT"]?.toLowerCase().includes(searchLower)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    // Date range filter based on hire date
+    if (dateRangeFilter !== "all") {
+      const bounds = getDateRangeBounds(dateRangeFilter);
+      if (bounds && staff["HIRE DATE"]) {
+        const hireDate = new Date(staff["HIRE DATE"]);
+        if (hireDate < bounds.start || hireDate > bounds.end) {
+          return false;
+        }
+      }
+    }
+
+    // Termination period filter
+    if (terminationPeriodFilter !== "all") {
+      const bounds = getDateRangeBounds(terminationPeriodFilter);
+      if (bounds && staff["TERMINATION DATE"]) {
+        const termDate = new Date(staff["TERMINATION DATE"]);
+        if (termDate < bounds.start || termDate > bounds.end) {
+          return false;
+        }
+      } else if (terminationPeriodFilter !== "all" && !staff["TERMINATION DATE"]) {
+        // If filtering by termination period but staff has no termination date, exclude them
+        return false;
+      }
+    }
+
+    return true;
   });
 
   // Calculate pagination values
@@ -297,6 +363,51 @@ export default function ExternalStaff() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8"
                   />
+                </div>
+              </div>
+              
+              {/* Date Range Filters */}
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Filter className="h-4 w-4" />
+                  <span className="text-sm font-medium">Filters</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Hire Date Range Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Hire Date Period</label>
+                    <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="this-week">This Week</SelectItem>
+                        <SelectItem value="previous-week">Previous Week</SelectItem>
+                        <SelectItem value="this-month">This Month</SelectItem>
+                        <SelectItem value="previous-month">Previous Month</SelectItem>
+                        <SelectItem value="current-month">Current Month</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Termination Period Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Termination Period</label>
+                    <Select value={terminationPeriodFilter} onValueChange={setTerminationPeriodFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Staff" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Staff</SelectItem>
+                        <SelectItem value="this-week">Terminated This Week</SelectItem>
+                        <SelectItem value="previous-week">Terminated Previous Week</SelectItem>
+                        <SelectItem value="this-month">Terminated This Month</SelectItem>
+                        <SelectItem value="previous-month">Terminated Previous Month</SelectItem>
+                        <SelectItem value="current-month">Terminated Current Month</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </CardHeader>

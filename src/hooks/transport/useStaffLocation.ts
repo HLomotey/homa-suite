@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integration/supabase/client";
 import { FrontendStaffLocation, StaffLocationFormData, FrontendStaffLocationHistory } from "@/integration/supabase/types/staffLocation";
+import type { Database } from "@/integration/supabase/types/database";
 
 export default function useStaffLocation() {
   const [staffLocations, setStaffLocations] = useState<FrontendStaffLocation[]>([]);
@@ -26,7 +27,7 @@ export default function useStaffLocation() {
             "PAYROLL LAST NAME"
           )
         `)
-        .order('location_code');
+        .order('location_code') as { data: any[] | null; error: any };
 
       console.log('Staff locations response:', { data, error });
 
@@ -70,14 +71,14 @@ export default function useStaffLocation() {
 
       const { data: newLocation, error } = await supabase
         .from("staff_locations")
-        .insert([{
+        .insert({
           company_location_id: data.companyLocationId,
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
           external_staff_id: data.externalStaffId,
           manager_id: data.managerId
-        }])
+        })
         .select(`
           *,
           company_locations (
@@ -89,9 +90,10 @@ export default function useStaffLocation() {
             "PAYROLL LAST NAME"
           )
         `)
-        .single();
+        .single() as { data: any | null; error: any };
       
       if (error) throw error;
+      if (!newLocation) throw new Error("No data returned from insert");
 
       const frontendLocation: FrontendStaffLocation = {
         id: newLocation.id,
@@ -102,7 +104,7 @@ export default function useStaffLocation() {
         isActive: newLocation.is_active,
         externalStaffId: newLocation.external_staff_id,
         managerId: newLocation.manager_id,
-        managerName: newLocation.manager ? `${newLocation.manager.first_name} ${newLocation.manager.last_name}` : undefined,
+        managerName: newLocation.manager ? `${newLocation.manager["PAYROLL FIRST NAME"]} ${newLocation.manager["PAYROLL LAST NAME"]}` : undefined,
       };
 
       setStaffLocations(prev => [...prev, frontendLocation]);
@@ -144,9 +146,10 @@ export default function useStaffLocation() {
             "PAYROLL LAST NAME"
           )
         `)
-        .single();
+        .single() as { data: any | null; error: any };
       
       if (error) throw error;
+      if (!updatedLocation) throw new Error("No data returned from update");
 
       const frontendLocation: FrontendStaffLocation = {
         id: updatedLocation.id,
@@ -157,7 +160,7 @@ export default function useStaffLocation() {
         isActive: updatedLocation.is_active,
         externalStaffId: updatedLocation.external_staff_id,
         managerId: updatedLocation.manager_id,
-        managerName: updatedLocation.manager ? `${updatedLocation.manager.first_name} ${updatedLocation.manager.last_name}` : undefined,
+        managerName: updatedLocation.manager ? `${updatedLocation.manager["PAYROLL FIRST NAME"]} ${updatedLocation.manager["PAYROLL LAST NAME"]}` : undefined,
       };
 
       setStaffLocations(prev => 
@@ -210,7 +213,7 @@ export default function useStaffLocation() {
           )
         `)
         .eq("staff_location_id", staffLocationId)
-        .order("changed_at", { ascending: false });
+        .order("changed_at", { ascending: false }) as { data: any[] | null; error: any };
 
       if (error) throw error;
 

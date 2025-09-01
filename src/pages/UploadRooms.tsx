@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { bulkImportRooms } from "../hooks/room/api";
 
 const UploadRooms = () => {
@@ -66,14 +66,12 @@ const UploadRooms = () => {
           console.log("Raw file data received", !!data);
           console.log("File data type:", typeof data);
           
-          // Use 'array' type for ArrayBuffer data
-          const workbook = XLSX.read(data, { type: 'array' });
-          console.log("%c XLSX WORKBOOK CREATED ", "background: #00aaff; color: white; font-size: 20px;");
-          console.log("Workbook created with sheets:", workbook.SheetNames);
-          
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          // Use ExcelJS to read the file
+          const { data: jsonData } = await import('@/utils/excelJSHelper').then(async (module) => {
+            return await module.readExcelFile(data as ArrayBuffer);
+          });
+          console.log("%c EXCEL WORKBOOK PROCESSED ", "background: #00aaff; color: white; font-size: 20px;");
+          console.log("Parsed data:", jsonData);
 
           console.log("Parsed Excel data:", JSON.stringify(jsonData, null, 2));
           console.log("Number of records found:", jsonData.length);

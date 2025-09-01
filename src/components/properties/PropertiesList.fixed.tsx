@@ -28,7 +28,7 @@ import {
   FileSpreadsheet,
   Download,
 } from "lucide-react";
-import * as XLSX from 'xlsx';
+import { downloadExcelFile } from '@/utils/excelJSHelper';
 import { saveAs } from 'file-saver';
 import { cn } from "@/lib/utils";
 
@@ -69,7 +69,7 @@ export const PropertiesList = ({
   });
 
   // Function to export properties to Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       setIsExporting(true);
       
@@ -86,19 +86,8 @@ export const PropertiesList = ({
         'Date Added': property.dateAdded
       }));
       
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Properties');
-      
-      // Generate Excel file
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      
-      // Save file
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(data, `properties_${new Date().toISOString().split('T')[0]}.xlsx`);
+      // Generate and download Excel file
+      await downloadExcelFile(exportData, `properties_export_${new Date().toISOString().split('T')[0]}.xlsx`, 'Properties');
       
       setIsExporting(false);
     } catch (error) {
