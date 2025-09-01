@@ -10,7 +10,7 @@ import {
 } from '@/integration/supabase/types/staff-benefits';
 
 /**
- * Fetch all staff benefits with optional filtering
+ * Fetch all Housing & Transportation with optional filtering
  */
 export async function fetchStaffBenefits(filters?: {
   status?: BenefitStatus;
@@ -45,11 +45,11 @@ export async function fetchStaffBenefits(filters?: {
 
     if (error) {
       console.error('Supabase error in fetchStaffBenefits:', error);
-      throw new Error(`Failed to fetch staff benefits: ${error.message}`);
+      throw new Error(`Failed to fetch Housing & Transportation: ${error.message}`);
     }
 
     if (!data || data.length === 0) {
-      console.log('No staff benefits data found');
+      console.log('No Housing & Transportation data found');
       return [];
     }
 
@@ -110,7 +110,7 @@ export async function fetchStaffBenefits(filters?: {
 }
 
 /**
- * Fetch staff benefits for a specific staff member
+ * Fetch Housing & Transportation for a specific staff member
  */
 export async function fetchStaffBenefitsByStaffId(staffId: string): Promise<FrontendStaffBenefit[]> {
   return fetchStaffBenefits({ staff_id: staffId });
@@ -337,7 +337,7 @@ export async function fetchStaffLocations() {
 }
 
 /**
- * Fetch staff benefits statistics
+ * Fetch Housing & Transportation statistics
  */
 export async function fetchStaffBenefitsStats(): Promise<StaffBenefitStats> {
   const { data, error } = await supabase
@@ -345,7 +345,7 @@ export async function fetchStaffBenefitsStats(): Promise<StaffBenefitStats> {
     .select('benefit_type, status, staff_id');
 
   if (error) {
-    throw new Error(`Failed to fetch staff benefits stats: ${error.message}`);
+    throw new Error(`Failed to fetch Housing & Transportation stats: ${error.message}`);
   }
 
   // Get unique staff members who have benefits
