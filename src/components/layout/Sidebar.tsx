@@ -241,15 +241,21 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
       >
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center border-b border-border px-6">
-            <Building2 className="h-8 w-8 text-primary" />
+          <div className="flex h-20 items-center border-b border-border px-6 py-3">
+            <div className="flex items-center justify-center min-w-[40px]">
+              <img 
+                src="/Compass.png" 
+                alt="BOH Concepts Logo" 
+                className={cn("w-auto object-contain", collapsed ? "h-10" : "h-12")}
+              />
+            </div>
             {!collapsed && (
-              <div className="ml-3">
-                <h1 className="text-lg font-semibold text-foreground">
-                  BoH ERP
+              <div className="ml-3 min-w-0 flex-1">
+                <h1 className="text-lg font-semibold text-foreground truncate">
+                  BOH Concepts
                 </h1>
-                <p className="text-xs text-muted-foreground">
-                  BOH Concepts ERP
+                <p className="text-xs text-muted-foreground truncate">
+                  Operations Management
                 </p>
               </div>
             )}

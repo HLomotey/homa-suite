@@ -211,7 +211,7 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Housing and Transportation Assignment
+              Housing Assignments{" "}
             </CardTitle>
             <Badge variant="outline">{stats.total}</Badge>
           </CardHeader>
@@ -223,7 +223,7 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Active Benefits
+              Active Housing Assignments{" "}
             </CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
@@ -251,7 +251,7 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Transportation Benefits
+              Transportation Assignments{" "}
             </CardTitle>
             <Car className="h-4 w-4 text-green-600" />
           </CardHeader>

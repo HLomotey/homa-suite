@@ -11,16 +11,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription, SheetClose } from "@/components/ui/sheet";
-import { Pencil, Trash2, User, X, Check, ChevronsUpDown, Loader2, Plus, Search } from "lucide-react";
-import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
+import {
+  Pencil,
+  Trash2,
+  User,
+  X,
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  Plus,
+  Search,
+} from "lucide-react";
+import {
+  SearchableSelect,
+  SearchableSelectOption,
+} from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { useLocation } from "@/hooks/transport/useLocation";
 import useStaffLocation from "@/hooks/transport/useStaffLocation";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
-import { FrontendStaffLocation, StaffLocationFormData } from "@/integration/supabase/types/staffLocation";
+import {
+  FrontendStaffLocation,
+  StaffLocationFormData,
+} from "@/integration/supabase/types/staffLocation";
 import { supabaseAdmin } from "@/integration/supabase/client";
 import {
   Dialog,
@@ -40,16 +64,30 @@ import {
 
 export function StaffLocationsTab() {
   const { locations } = useLocation();
-  const { staffLocations, createStaffLocation, updateStaffLocation, deleteStaffLocation, loading, error } = useStaffLocation();
-  const { externalStaff, loading: loadingExternalStaff, fetchExternalStaff, setStatus } = useExternalStaff();
-  
+  const {
+    staffLocations,
+    createStaffLocation,
+    updateStaffLocation,
+    deleteStaffLocation,
+    loading,
+    error,
+  } = useStaffLocation();
+  const {
+    externalStaff,
+    loading: loadingExternalStaff,
+    fetchExternalStaff,
+    setStatus,
+  } = useExternalStaff();
+
   // External staff search state
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<FrontendExternalStaff[]>([]);
+  const [searchResults, setSearchResults] = useState<FrontendExternalStaff[]>(
+    []
+  );
   const [openCombobox, setOpenCombobox] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   // Function to search external staff by manager ID
   const searchExternalStaffByManager = async (searchTerm: string) => {
     setIsSearching(true);
@@ -76,9 +114,9 @@ export function StaffLocationsTab() {
       setIsSearching(false);
     }
   };
-  
+
   // We already have externalStaff from the hook above
-  
+
   // Effect to trigger search when debounced search term changes
   useEffect(() => {
     if (debouncedSearchTerm) {
@@ -88,13 +126,15 @@ export function StaffLocationsTab() {
       setSearchResults([]);
     }
   }, [debouncedSearchTerm]);
-  
+
   // Handle staff selection
   const handleStaffSelect = (staff: FrontendExternalStaff) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       externalStaffId: staff.id,
-      externalStaffName: `${staff["PAYROLL FIRST NAME"] || ''} ${staff["PAYROLL LAST NAME"] || ''}`.trim(),
+      externalStaffName: `${staff["PAYROLL FIRST NAME"] || ""} ${
+        staff["PAYROLL LAST NAME"] || ""
+      }`.trim(),
     }));
     setOpenCombobox(false);
     setSearchTerm("");
@@ -103,7 +143,8 @@ export function StaffLocationsTab() {
   // Form states
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedStaffLocation, setSelectedStaffLocation] = useState<FrontendStaffLocation | null>(null);
+  const [selectedStaffLocation, setSelectedStaffLocation] =
+    useState<FrontendStaffLocation | null>(null);
   const [formData, setFormData] = useState({
     mode: "add", // "add" or "edit"
     companyLocationId: "",
@@ -119,9 +160,8 @@ export function StaffLocationsTab() {
   // Set external staff status to active and fetch on component mount
   useEffect(() => {
     // Set status to active to only show active staff
-    setStatus('active');
-    // Fetch external staff
-    fetchExternalStaff();
+    setStatus("active");
+    // Fetch Staff Information    fetchExternalStaff();
   }, []); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,7 +202,7 @@ export function StaffLocationsTab() {
 
   const openAddSheet = () => {
     resetForm();
-    setFormData(prev => ({ ...prev, mode: "add" }));
+    setFormData((prev) => ({ ...prev, mode: "add" }));
     setIsSheetOpen(true);
   };
 
@@ -199,14 +239,14 @@ export function StaffLocationsTab() {
         managerId: formData.managerId,
         managerName: formData.managerName,
       };
-      
+
       if (formData.mode === "add") {
         await createStaffLocation(locationData);
       } else {
         if (!selectedStaffLocation) return;
         await updateStaffLocation(selectedStaffLocation.id, locationData);
       }
-      
+
       setIsSheetOpen(false);
       resetForm();
     } catch (error) {
@@ -216,7 +256,7 @@ export function StaffLocationsTab() {
 
   const handleDeleteStaffLocation = async () => {
     if (!selectedStaffLocation) return;
-    
+
     try {
       await deleteStaffLocation(selectedStaffLocation.id);
       setIsDeleteDialogOpen(false);
@@ -243,7 +283,8 @@ export function StaffLocationsTab() {
         <div className="text-center text-red-500 p-4">{error}</div>
       ) : staffLocations.length === 0 ? (
         <div className="text-center text-muted-foreground p-8">
-          No staff locations found. Add your first staff location to get started.
+          No staff locations found. Add your first staff location to get
+          started.
         </div>
       ) : (
         <Table>
@@ -261,7 +302,9 @@ export function StaffLocationsTab() {
           <TableBody>
             {staffLocations.map((location) => (
               <TableRow key={location.id}>
-                <TableCell className="font-medium">{location.companyLocationName}</TableCell>
+                <TableCell className="font-medium">
+                  {location.companyLocationName}
+                </TableCell>
                 <TableCell>{location.locationCode}</TableCell>
                 <TableCell>{location.locationDescription}</TableCell>
                 <TableCell>
@@ -271,7 +314,9 @@ export function StaffLocationsTab() {
                       <span>{location.externalStaffName}</span>
                     </div>
                   ) : (
-                    <span className="text-muted-foreground text-sm">Not assigned</span>
+                    <span className="text-muted-foreground text-sm">
+                      Not assigned
+                    </span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -281,7 +326,9 @@ export function StaffLocationsTab() {
                       <span>{location.managerName}</span>
                     </div>
                   ) : (
-                    <span className="text-muted-foreground text-sm">No manager</span>
+                    <span className="text-muted-foreground text-sm">
+                      No manager
+                    </span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -323,10 +370,14 @@ export function StaffLocationsTab() {
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>{formData.mode === "add" ? "Add New Staff Location" : "Edit Staff Location"}</SheetTitle>
+            <SheetTitle>
+              {formData.mode === "add"
+                ? "Add New Staff Location"
+                : "Edit Staff Location"}
+            </SheetTitle>
             <SheetDescription>
-              {formData.mode === "add" 
-                ? "Enter the details for the new staff location." 
+              {formData.mode === "add"
+                ? "Enter the details for the new staff location."
                 : "Update the details for this staff location."}
             </SheetDescription>
           </SheetHeader>
@@ -349,7 +400,7 @@ export function StaffLocationsTab() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* External Staff Searchable Input */}
             <div className="space-y-2">
               <Label htmlFor="externalStaff">External Staff</Label>
@@ -361,38 +412,47 @@ export function StaffLocationsTab() {
               ) : (
                 <div className="mt-2">
                   <SearchableSelect
-                    options={externalStaff.map((staff): SearchableSelectOption => {
-                      const firstName = staff["PAYROLL FIRST NAME"] || '';
-                      const lastName = staff["PAYROLL LAST NAME"] || '';
-                      const jobTitle = staff["JOB TITLE"] || '';
-                      const email = staff["WORK E-MAIL"] || '';
-                      const department = staff["HOME DEPARTMENT"] || '';
-                      
-                      // Create variations of the name for better search matching
-                      const fullName = `${firstName} ${lastName}`.trim();
-                      const reverseName = `${lastName} ${firstName}`.trim();
-                      const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : '';
-                      
-                      // Additional variations to improve search matching
-                      const firstNameOnly = firstName.trim();
-                      const lastNameOnly = lastName.trim();
-                      
-                      return {
-                        value: staff.id,
-                        label: `${firstName} ${lastName} - ${jobTitle}`,
-                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`
-                      };
-                    })}
+                    options={externalStaff.map(
+                      (staff): SearchableSelectOption => {
+                        const firstName = staff["PAYROLL FIRST NAME"] || "";
+                        const lastName = staff["PAYROLL LAST NAME"] || "";
+                        const jobTitle = staff["JOB TITLE"] || "";
+                        const email = staff["WORK E-MAIL"] || "";
+                        const department = staff["HOME DEPARTMENT"] || "";
+
+                        // Create variations of the name for better search matching
+                        const fullName = `${firstName} ${lastName}`.trim();
+                        const reverseName = `${lastName} ${firstName}`.trim();
+                        const firstInitialLastName = firstName
+                          ? `${firstName[0]}. ${lastName}`.trim()
+                          : "";
+
+                        // Additional variations to improve search matching
+                        const firstNameOnly = firstName.trim();
+                        const lastNameOnly = lastName.trim();
+
+                        return {
+                          value: staff.id,
+                          label: `${firstName} ${lastName} - ${jobTitle}`,
+                          searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`,
+                        };
+                      }
+                    )}
                     value={formData.externalStaffId}
                     placeholder="Search and select external staff member..."
                     emptyMessage="No external staff found."
                     onValueChange={(value) => {
-                      const selectedStaff = externalStaff.find((s) => s.id === value);
+                      const selectedStaff = externalStaff.find(
+                        (s) => s.id === value
+                      );
                       setFormData({
                         ...formData,
                         externalStaffId: value,
-                        externalStaffName: selectedStaff ? 
-                          `${selectedStaff["PAYROLL FIRST NAME"] || ''} ${selectedStaff["PAYROLL LAST NAME"] || ''}`.trim() : "",
+                        externalStaffName: selectedStaff
+                          ? `${selectedStaff["PAYROLL FIRST NAME"] || ""} ${
+                              selectedStaff["PAYROLL LAST NAME"] || ""
+                            }`.trim()
+                          : "",
                       });
                     }}
                   />
@@ -411,45 +471,54 @@ export function StaffLocationsTab() {
               ) : (
                 <div className="mt-2">
                   <SearchableSelect
-                    options={externalStaff.map((staff): SearchableSelectOption => {
-                      const firstName = staff["PAYROLL FIRST NAME"] || '';
-                      const lastName = staff["PAYROLL LAST NAME"] || '';
-                      const jobTitle = staff["JOB TITLE"] || '';
-                      const email = staff["WORK E-MAIL"] || '';
-                      const department = staff["HOME DEPARTMENT"] || '';
-                      
-                      // Create variations of the name for better search matching
-                      const fullName = `${firstName} ${lastName}`.trim();
-                      const reverseName = `${lastName} ${firstName}`.trim();
-                      const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : '';
-                      
-                      // Additional variations to improve search matching
-                      const firstNameOnly = firstName.trim();
-                      const lastNameOnly = lastName.trim();
-                      
-                      return {
-                        value: staff.id,
-                        label: `${firstName} ${lastName} - ${jobTitle}`,
-                        searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`
-                      };
-                    })}
+                    options={externalStaff.map(
+                      (staff): SearchableSelectOption => {
+                        const firstName = staff["PAYROLL FIRST NAME"] || "";
+                        const lastName = staff["PAYROLL LAST NAME"] || "";
+                        const jobTitle = staff["JOB TITLE"] || "";
+                        const email = staff["WORK E-MAIL"] || "";
+                        const department = staff["HOME DEPARTMENT"] || "";
+
+                        // Create variations of the name for better search matching
+                        const fullName = `${firstName} ${lastName}`.trim();
+                        const reverseName = `${lastName} ${firstName}`.trim();
+                        const firstInitialLastName = firstName
+                          ? `${firstName[0]}. ${lastName}`.trim()
+                          : "";
+
+                        // Additional variations to improve search matching
+                        const firstNameOnly = firstName.trim();
+                        const lastNameOnly = lastName.trim();
+
+                        return {
+                          value: staff.id,
+                          label: `${firstName} ${lastName} - ${jobTitle}`,
+                          searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`,
+                        };
+                      }
+                    )}
                     value={formData.managerId}
                     placeholder="Search and select manager..."
                     emptyMessage="No managers found."
                     onValueChange={(value) => {
-                      const selectedManager = externalStaff.find((s) => s.id === value);
+                      const selectedManager = externalStaff.find(
+                        (s) => s.id === value
+                      );
                       setFormData({
                         ...formData,
                         managerId: value,
-                        managerName: selectedManager ? 
-                          `${selectedManager["PAYROLL FIRST NAME"] || ''} ${selectedManager["PAYROLL LAST NAME"] || ''}`.trim() : "",
+                        managerName: selectedManager
+                          ? `${selectedManager["PAYROLL FIRST NAME"] || ""} ${
+                              selectedManager["PAYROLL LAST NAME"] || ""
+                            }`.trim()
+                          : "",
                       });
                     }}
                   />
                 </div>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="locationCode">Location Code</Label>
               <Input
@@ -483,7 +552,9 @@ export function StaffLocationsTab() {
           </div>
           <SheetFooter>
             <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setIsSheetOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={handleSaveStaffLocation}>Save</Button>
             </div>
           </SheetFooter>
@@ -496,17 +567,24 @@ export function StaffLocationsTab() {
           <DialogHeader>
             <DialogTitle>Delete Staff Location</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this staff location? This action cannot be undone.
+              Are you sure you want to delete this staff location? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="font-medium">{selectedStaffLocation?.companyLocationName}</p>
+            <p className="font-medium">
+              {selectedStaffLocation?.companyLocationName}
+            </p>
             <p className="text-sm text-muted-foreground">
-              {selectedStaffLocation?.locationCode} - {selectedStaffLocation?.locationDescription}
+              {selectedStaffLocation?.locationCode} -{" "}
+              {selectedStaffLocation?.locationDescription}
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDeleteStaffLocation}>

@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="sr-only">Toggle menu</span>
           </Button>
         )}
-        <h1 className="text-xl font-semibold">Homa Suite</h1>
+        <h1 className="text-xl font-semibold">BOH Concepts Operations Management System</h1>
       </div>
       
       <div className="flex items-center gap-2">

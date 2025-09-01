@@ -52,7 +52,7 @@ export function useMonthEndReports(): UseMonthEndReportsReturn {
       const data = await MonthEndReportService.getAllMonthEndReports(filters);
       setReports(data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch month-end reports';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Operations Call Meeting Report';
       setError(errorMessage);
       toast({
         title: "Error",

@@ -18,10 +18,14 @@ const AttendancePage = lazy(() =>
 );
 const Transport = lazy(() => import("@/pages/Transport"));
 const Settings = lazy(() => import("@/pages/Settings"));
-const Profile = lazy(() => import("@/pages/Profile").catch(error => {
-  console.error("Error loading Profile module:", error);
-  return { default: () => <div>Error loading profile. Please try again.</div> };
-}));
+const Profile = lazy(() =>
+  import("@/pages/Profile").catch((error) => {
+    console.error("Error loading Profile module:", error);
+    return {
+      default: () => <div>Error loading profile. Please try again.</div>,
+    };
+  })
+);
 const Users = lazy(() => import("@/pages/Users"));
 const Roles = lazy(() => import("@/pages/Roles"));
 const ExcelUploads = lazy(() => import("@/pages/ExcelUploads"));
@@ -36,6 +40,7 @@ const ActivityLogPage = lazy(() => import("@/pages/ActivityLogPage"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const StaffBenefits = lazy(() => import("@/pages/StaffBenefits"));
+const Login = lazy(() => import("@/pages/Login"));
 
 // Lazy load HR components
 const HRRecruitment = lazy(() =>
@@ -103,7 +108,7 @@ const JobTypesDistributionDetail = lazy(() =>
   )
 );
 
-// Lazy load Month-End Reports components
+// Lazy load Operations Call Meeting Report components
 const MonthEndReportsPage = lazy(() =>
   import("@/components/operations/month-end-reports/MonthEndReportsPage").then(
     (module) => ({ default: module.MonthEndReportsPage })
@@ -172,7 +177,9 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="flex flex-col items-center justify-center h-full p-6">
           <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
-          <p className="text-gray-500 mb-4">Failed to load the requested page</p>
+          <p className="text-gray-500 mb-4">
+            Failed to load the requested page
+          </p>
           <button
             onClick={() => {
               this.setState({ hasError: false, error: null });
@@ -199,6 +206,14 @@ const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
 
 // Define all application routes
 export const routes: RouteObject[] = [
+  {
+    path: "/login",
+    element: (
+      <LazyWrapper>
+        <Login />
+      </LazyWrapper>
+    ),
+  },
   {
     path: "/reset-password",
     element: (
