@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { 
   FileText,
   Hotel,
@@ -73,6 +74,7 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
   onCancel
 }) => {
   const { toast } = useToast();
+  const { staffLocations: hookStaffLocations, loading: staffLocationsLoading } = useStaffLocation();
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   const isReadOnly = mode === 'view' || report?.status === 'approved';
@@ -234,10 +236,19 @@ export const MonthEndReportSheetForm: React.FC<MonthEndReportSheetFormProps> = (
                       <FormItem>
                         <FormLabel>Hotel Site *</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Enter hotel site"
-                            disabled={isReadOnly}
-                            {...field}
+                          <SearchableSelect
+                            options={hookStaffLocations.map((location) => ({
+                              value: location.locationDescription,
+                              label: location.locationDescription,
+                            }))}
+                            value={field.value || ""}
+                            placeholder={staffLocationsLoading ? "Loading locations..." : "Search and select hotel site..."}
+                            emptyMessage="No hotel sites found."
+                            onValueChange={(value) => {
+                              const selectedLocation = hookStaffLocations.find(loc => loc.locationDescription === value);
+                              field.onChange(value);
+                            }}
+                            disabled={isReadOnly || staffLocationsLoading}
                           />
                         </FormControl>
                         <FormMessage />
