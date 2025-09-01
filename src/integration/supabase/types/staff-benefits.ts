@@ -1,5 +1,5 @@
 /**
- * Staff Benefits types for housing and transportation benefits
+ * Housing & Transportation types for housing and transportation benefits
  */
 
 export type BenefitType = "housing" | "transportation";

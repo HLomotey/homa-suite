@@ -28,7 +28,7 @@ const Onboarding = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Users className="h-5 w-5" />
-              <span>Staff Benefits</span>
+              <span>Housing & Transportation</span>
             </CardTitle>
             <CardDescription>
               Set up housing and transportation benefits for new employees

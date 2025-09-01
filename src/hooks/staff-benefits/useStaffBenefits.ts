@@ -71,7 +71,7 @@ export function useStaffBenefits(): UseStaffBenefitsReturn {
       const data = await fetchStaffBenefits(filters);
       setBenefits(data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch staff benefits';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Housing & Transportation';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
