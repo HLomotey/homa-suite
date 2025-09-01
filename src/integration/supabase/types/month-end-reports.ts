@@ -95,6 +95,7 @@ export interface FrontendMonthEndReport extends MonthEndReport {
   action_items?: MonthEndReportActionItem[];
   
   // Computed fields
+  property_name?: string;
   prepared_by_name?: string;
   approved_by_name?: string;
   total_rooms_blocked?: number;

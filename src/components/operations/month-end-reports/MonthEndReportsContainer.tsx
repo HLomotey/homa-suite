@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { MonthEndReportsList } from "./MonthEndReportsList";
-import { MonthEndReportForm } from "./MonthEndReportForm";
+import { MonthEndReports } from "./MonthEndReportForm";
 import { useMonthEndReports } from "@/hooks/month-end-reports/useMonthEndReports";
 import {
   FrontendMonthEndReport,
@@ -100,13 +100,9 @@ export const MonthEndReportsContainer: React.FC = () => {
   }
 
   return (
-    <MonthEndReportForm
-      report={selectedReport || undefined}
-      onSave={handleSave}
-      onSubmit={selectedReport ? handleFormSubmit : undefined}
-      onApprove={selectedReport ? handleFormApprove : undefined}
-      onCancel={handleCancel}
-      isLoading={false}
+    <MonthEndReports
+      properties={[]}
+      staffLocations={[]}
     />
   );
 };

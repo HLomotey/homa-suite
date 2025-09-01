@@ -1,206 +1,103 @@
-import React, { useState, useEffect, useCallback } from "react";
-import useStaffLocation from "@/hooks/transport/useStaffLocation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { 
-  FileText,
-  Hotel,
-  Sparkles,
-  Users,
-  Target
+  Plus,
+  Search,
+  Edit,
+  Eye,
+  Trash2,
+  Calendar,
+  MapPin
 } from "lucide-react";
 
-// Import modular components
-import { ReportMetadata } from "./components/shared/ReportMetadata";
-import { FormActions } from "./components/shared/FormActions";
-import { SummaryTab } from "./components/summary/SummaryTab";
-import { OccupancyTab } from "./components/occupancy/OccupancyTab";
-import { CleanlinessTab } from "./components/cleanliness/CleanlinessTab";
-import { GroupsTab } from "./components/groups/GroupsTab";
-import { StaffingTab } from "./components/staffing/StaffingTab";
+// Import form component
+import { MonthEndReportSheetForm } from "./components/sheet/MonthEndReportSheetForm";
 
-import {
-  monthEndReportSchema,
-  MonthEndReportFormData
-} from "./schemas/monthEndReportSchema";
 import {
   FrontendMonthEndReport,
   ReportStatus,
   PropertyOption
 } from "@/integration/supabase/types/month-end-reports";
+import { useMonthEndReports } from "@/hooks/operations/month-end-reports/useMonthEndReports";
 
-export interface MonthEndReportFormProps {
-  report?: FrontendMonthEndReport;
-  onSave: (data: MonthEndReportFormData) => Promise<void>;
-  onSubmit?: (id: string) => Promise<void>;
-  onApprove?: (id: string) => Promise<void>;
-  onCancel: () => void;
+export interface MonthEndReportsProps {
   properties?: PropertyOption[];
   staffLocations?: any[];
-  isLoading?: boolean;
 }
 
-export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
-  report,
-  onSave,
-  onSubmit,
-  onApprove,
-  onCancel,
+export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
   properties = [],
-  staffLocations = [],
-  isLoading = false
+  staffLocations = []
 }) => {
-  const { staffLocations: hookStaffLocations } = useStaffLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("summary");
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const {
+    reports,
+    isLoading,
+    createReport,
+    updateReport,
+    submitReport,
+    approveReport,
+    deleteReport
+  } = useMonthEndReports();
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<'create' | 'edit' | 'view'>('create');
 
-  const form = useForm<MonthEndReportFormData>({
-    resolver: zodResolver(monthEndReportSchema),
-    defaultValues: {
-      hotel_site: report?.hotel_site || "",
-      property_id: report?.property_id || "",
-      start_date: report?.start_date || new Date().toISOString().split("T")[0],
-      end_date: report?.end_date || new Date().toISOString().split("T")[0],
-      headline: report?.headline || "",
-      narrative: report?.narrative || "",
-      key_risks: report?.key_risks || [],
-      key_wins: report?.key_wins || [],
-      occupancy_start_pct: report?.occupancy_start_pct || undefined,
-      occupancy_end_pct: report?.occupancy_end_pct || undefined,
-      avg_occupancy_pct: report?.avg_occupancy_pct || undefined,
-      occupancy_notes: report?.occupancy_notes || "",
-      cleanliness_score: report?.cleanliness_score || undefined,
-      inspection_count: report?.inspection_count || undefined,
-      issues_found: report?.issues_found || undefined,
-      cleanliness_comments: report?.cleanliness_comments || "",
-      training_updates: report?.training_updates || "",
-      absenteeism_notes: report?.absenteeism_notes || "",
-      incidents: report?.incidents || "",
-      groups: report?.groups?.map(g => ({
-        id: g.id,
-        group_name: g.group_name,
-        arrival_date: g.arrival_date,
-        departure_date: g.departure_date,
-        rooms_blocked: g.rooms_blocked,
-        notes: g.notes
-      })) || [],
-      action_items: report?.action_items?.map(a => ({
-        id: a.id,
-        title: a.title,
-        owner: a.owner,
-        due_date: a.due_date,
-        status: a.status
-      })) || []
-    }
-  });
+  // Filter reports based on search term
+  const filteredReports = reports.filter(report => 
+    report.headline?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.property_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
+  const handleCreateNew = () => {
+    setSelectedReport(null);
+    setSheetMode('create');
+    setIsSheetOpen(true);
+  };
 
-  // Auto-save functionality
-  const triggerAutoSave = useCallback(async () => {
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
-    }
+  const handleEdit = (report: FrontendMonthEndReport) => {
+    setSelectedReport(report);
+    setSheetMode('edit');
+    setIsSheetOpen(true);
+  };
 
-    const timeout = setTimeout(async () => {
+  const handleView = (report: FrontendMonthEndReport) => {
+    setSelectedReport(report);
+    setSheetMode('view');
+    setIsSheetOpen(true);
+  };
+
+  const handleDelete = async (reportId: string) => {
+    if (window.confirm('Are you sure you want to delete this report?')) {
       try {
-        const formData = form.getValues();
-        await onSave(formData);
-        setLastSaved(new Date());
-        toast({
-          title: "Auto-saved",
-          description: `Saved at ${new Date().toLocaleTimeString()}`,
-          duration: 2000
-        });
+        await deleteReport(reportId);
       } catch (error) {
-        console.error("Auto-save failed:", error);
+        console.error('Error deleting report:', error);
       }
-    }, 3000);
-
-    setAutoSaveTimeout(timeout);
-  }, [form, onSave, autoSaveTimeout, toast]);
-
-  // Watch for form changes to trigger auto-save
-  useEffect(() => {
-    const subscription = form.watch(() => {
-      triggerAutoSave();
-    });
-    return () => subscription.unsubscribe();
-  }, [form, triggerAutoSave]);
-
-  // Calculate average occupancy when start/end values change
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "occupancy_start_pct" || name === "occupancy_end_pct") {
-        const start = value.occupancy_start_pct;
-        const end = value.occupancy_end_pct;
-        if (start !== undefined && end !== undefined) {
-          const avg = (start + end) / 2;
-          form.setValue("avg_occupancy_pct", Number(avg.toFixed(2)));
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  const handleManualSave = async () => {
-    try {
-      const formData = form.getValues();
-      await onSave(formData);
-      setLastSaved(new Date());
-      toast({
-        title: "Saved",
-        description: "Report saved successfully"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save report",
-        variant: "destructive"
-      });
     }
   };
-
-  const handleSubmitReport = async () => {
-    if (!report?.id || !onSubmit) return;
-    
-    try {
-      await onSubmit(report.id);
-      toast({
-        title: "Submitted",
-        description: "Report submitted for approval"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit report",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleApproveReport = async () => {
-    if (!report?.id || !onApprove) return;
-    
-    try {
-      await onApprove(report.id);
-      toast({
-        title: "Approved",
-        description: "Report approved successfully"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to approve report",
-        variant: "destructive"
-      });
-    }
-  };
-
 
   const getStatusBadge = (status: ReportStatus) => {
     const variants = {
@@ -222,79 +119,210 @@ export const MonthEndReportForm: React.FC<MonthEndReportFormProps> = ({
     );
   };
 
-  const isReadOnly = report?.status === "approved";
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Form Actions Component */}
-      <FormActions
-        reportId={report?.id}
-        status={report?.status}
-        isLoading={isLoading}
-        lastSaved={lastSaved}
-        onSave={handleManualSave}
-        onSubmit={handleSubmitReport}
-        onApprove={handleApproveReport}
-        onCancel={onCancel}
-      />
-
-      {/* Form Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {/* Report Metadata Component */}
-        <ReportMetadata 
-          form={form} 
-          isReadOnly={isReadOnly} 
-          properties={properties}
-          staffLocations={hookStaffLocations} 
-        />
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="summary" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Summary
-            </TabsTrigger>
-            <TabsTrigger value="occupancy" className="flex items-center gap-2">
-              <Hotel className="h-4 w-4" />
-              Occupancy
-            </TabsTrigger>
-            <TabsTrigger value="cleanliness" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Cleanliness
-            </TabsTrigger>
-            <TabsTrigger value="groups" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Groups
-            </TabsTrigger>
-            <TabsTrigger value="staffing" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Staffing
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="summary" className="space-y-6">
-            <SummaryTab form={form} isReadOnly={isReadOnly} />
-          </TabsContent>
-
-          <TabsContent value="occupancy" className="space-y-6">
-            <OccupancyTab form={form} isReadOnly={isReadOnly} />
-          </TabsContent>
-
-          <TabsContent value="cleanliness" className="space-y-6">
-            <CleanlinessTab form={form} isReadOnly={isReadOnly} />
-          </TabsContent>
-
-          <TabsContent value="groups" className="space-y-6">
-            <GroupsTab form={form} isReadOnly={isReadOnly} />
-          </TabsContent>
-
-          <TabsContent value="staffing" className="space-y-6">
-            <StaffingTab form={form} isReadOnly={isReadOnly} />
-          </TabsContent>
-        </Tabs>
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b">
+        <div>
+          <h1 className="text-2xl font-bold">Month-End Reports</h1>
+          <p className="text-muted-foreground">Manage and review monthly operational reports</p>
+        </div>
+        <Button onClick={handleCreateNew}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Report
+        </Button>
       </div>
+
+      {/* Search and Filters */}
+      <div className="p-6 border-b">
+        <div className="flex items-center space-x-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search reports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Reports Table */}
+      <div className="flex-1 overflow-auto p-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Property</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead>Headline</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Occupancy</TableHead>
+              <TableHead>Groups</TableHead>
+              <TableHead>Action Items</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-8">
+                  Loading reports...
+                </TableCell>
+              </TableRow>
+            ) : filteredReports.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-8">
+                  {searchTerm ? 'No reports match your search.' : 'No reports found. Create your first report to get started.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredReports.map((report) => (
+                <TableRow key={report.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      {report.property_name || 'Unknown Property'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div className="text-sm">
+                        {formatDate(report.start_date)} - {formatDate(report.end_date)}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {report.headline || 'No headline'}
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(report.status)}
+                  </TableCell>
+                  <TableCell>
+                    {report.avg_occupancy_pct ? `${report.avg_occupancy_pct}%` : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {report.groups?.length || 0} groups
+                      {report.total_rooms_blocked ? ` (${report.total_rooms_blocked} rooms)` : ''}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      <div className="text-green-600">{report.completed_action_items || 0} completed</div>
+                      <div className="text-orange-600">{report.open_action_items || 0} open</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDate(report.created_at)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleView(report)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {report.status !== 'approved' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(report)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(report.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Sheet Form */}
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent className="w-full sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>
+              {sheetMode === 'create' ? 'Create New Report' : 
+               sheetMode === 'edit' ? 'Edit Report' : 'View Report'}
+            </SheetTitle>
+            <SheetDescription>
+              {sheetMode === 'create' ? 'Fill out the form below to create a new month-end report.' :
+               sheetMode === 'edit' ? 'Update the report details below.' : 
+               'Review the report details below.'}
+            </SheetDescription>
+          </SheetHeader>
+          
+          <MonthEndReportSheetForm
+            report={selectedReport}
+            mode={sheetMode}
+            properties={properties}
+            staffLocations={staffLocations}
+            onSave={async (data) => {
+              try {
+                if (sheetMode === 'create') {
+                  await createReport(data);
+                  toast({
+                    title: "Success",
+                    description: "Report created successfully"
+                  });
+                } else if (sheetMode === 'edit' && selectedReport) {
+                  await updateReport(selectedReport.id, data);
+                  toast({
+                    title: "Success",
+                    description: "Report updated successfully"
+                  });
+                }
+                setIsSheetOpen(false);
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: "Failed to save report",
+                  variant: "destructive"
+                });
+              }
+            }}
+            onSubmit={async (id) => {
+              try {
+                await submitReport(id);
+                setIsSheetOpen(false);
+              } catch (error) {
+                console.error('Error submitting report:', error);
+              }
+            }}
+            onApprove={async (id) => {
+              try {
+                await approveReport(id);
+                setIsSheetOpen(false);
+              } catch (error) {
+                console.error('Error approving report:', error);
+              }
+            }}
+            onCancel={() => setIsSheetOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
 
-export default MonthEndReportForm;
+export default MonthEndReports;
