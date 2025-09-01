@@ -33,8 +33,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Plus,
-  Search,
-  Filter,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -134,34 +132,26 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
     console.log("Delete report:", data);
   };
 
-  const getStatusBadge = (status: ReportStatus) => {
-    const variants = {
-      draft: "secondary",
-      submitted: "default",
-      approved: "default",
-    } as const;
-
-    const colors = {
-      draft: "bg-gray-100 text-gray-800",
-      submitted: "bg-blue-100 text-blue-800",
-      approved: "bg-green-100 text-green-800",
-    };
-
-    return (
-      <Badge variant={variants[status]} className={colors[status]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
   return (
     <div className="space-y-6 p-6">
+      {/* Header / Actions */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Operations Call (Ops Call)</h2>
+          <p className="text-muted-foreground">
+            Manage and review monthly operational reports
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={onCreateNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Report
+          </Button>
+        </div>
+      </div>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
@@ -184,9 +174,7 @@ export const MonthEndReportsList: React.FC<MonthEndReportsListProps> = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.submitted}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.draft} drafts
-            </p>
+            <p className="text-xs text-muted-foreground">{stats.draft} drafts</p>
           </CardContent>
         </Card>
 

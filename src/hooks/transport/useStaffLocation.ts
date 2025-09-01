@@ -20,10 +20,10 @@ export default function useStaffLocation() {
           company_locations (
             name
           ),
-          manager:external_staff!manager_id (
+          manager:external_staff (
             id,
-            first_name,
-            last_name
+            "PAYROLL FIRST NAME",
+            "PAYROLL LAST NAME"
           )
         `)
         .order('location_code');
@@ -45,7 +45,7 @@ export default function useStaffLocation() {
             isActive: item.is_active,
             externalStaffId: item.external_staff_id,
             managerId: item.manager_id,
-            managerName: item.manager ? `${item.manager.first_name} ${item.manager.last_name}` : undefined,
+            managerName: item.manager ? `${item.manager["PAYROLL FIRST NAME"]} ${item.manager["PAYROLL LAST NAME"]}` : undefined,
           }))
         : [];
         
@@ -83,10 +83,10 @@ export default function useStaffLocation() {
           company_locations (
             name
           ),
-          manager:external_staff!manager_id (
+          manager:external_staff (
             id,
-            first_name,
-            last_name
+            "PAYROLL FIRST NAME",
+            "PAYROLL LAST NAME"
           )
         `)
         .single();
@@ -138,10 +138,10 @@ export default function useStaffLocation() {
           company_locations (
             name
           ),
-          manager:external_staff!manager_id (
+          manager:external_staff (
             id,
-            first_name,
-            last_name
+            "PAYROLL FIRST NAME",
+            "PAYROLL LAST NAME"
           )
         `)
         .single();
@@ -203,10 +203,10 @@ export default function useStaffLocation() {
         .from("staff_locations_history")
         .select(`
           *,
-          manager:external_staff!manager_id (
+          manager:external_staff (
             id,
-            first_name,
-            last_name
+            "PAYROLL FIRST NAME",
+            "PAYROLL LAST NAME"
           )
         `)
         .eq("staff_location_id", staffLocationId)
@@ -224,7 +224,7 @@ export default function useStaffLocation() {
             isActive: item.is_active,
             externalStaffId: item.external_staff_id,
             managerId: item.manager_id,
-            managerName: item.manager ? `${item.manager.first_name} ${item.manager.last_name}` : undefined,
+            managerName: item.manager ? `${item.manager["PAYROLL FIRST NAME"]} ${item.manager["PAYROLL LAST NAME"]}` : undefined,
             changedAt: item.changed_at,
             changedBy: item.changed_by,
             changeType: item.change_type,
