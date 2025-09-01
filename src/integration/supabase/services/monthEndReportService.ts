@@ -23,13 +23,13 @@ interface MonthEndReportWithJoins extends MonthEndReport {
 }
 
 /**
- * Service for managing month-end reports in the system
+ * Service for managing Operations Call Meeting Report in the system
  */
 export const MonthEndReportService = {
   /**
-   * Get all month-end reports with optional filtering
+   * Get all Operations Call Meeting Report with optional filtering
    * @param filters - Optional filters to apply
-   * @returns Promise with array of month-end reports
+   * @returns Promise with array of Operations Call Meeting Report
    */
   getAllMonthEndReports: async (filters?: MonthEndReportFilters): Promise<FrontendMonthEndReport[]> => {
     try {
@@ -62,7 +62,7 @@ export const MonthEndReportService = {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching month-end reports:', error);
+        console.error('Error fetching Operations Call Meeting Report:', error);
         throw error;
       }
 

@@ -1,5 +1,5 @@
 /**
- * Month-End Reports types for Operations Call functionality
+ * Operations Call Meeting Report types for Operations Call functionality
  */
 
 export type ReportStatus = "draft" | "submitted" | "approved";

@@ -1,6 +1,5 @@
 /**
- * Housing & Transportation types for housing and transportation benefits
- */
+ * Housing & Transportation types for housing and Transportation Assignments */
 
 export type BenefitType = "housing" | "transportation";
 export type BenefitStatus = 'active' | 'inactive' | 'pending' | 'suspended';

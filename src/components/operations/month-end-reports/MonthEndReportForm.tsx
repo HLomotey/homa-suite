@@ -19,14 +19,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { 
+import {
   Plus,
   Search,
   Edit,
   Eye,
   Trash2,
   Calendar,
-  MapPin
+  MapPin,
 } from "lucide-react";
 
 // Import form component
@@ -35,7 +35,7 @@ import { MonthEndReportSheetForm } from "./components/sheet/MonthEndReportSheetF
 import {
   FrontendMonthEndReport,
   ReportStatus,
-  PropertyOption
+  PropertyOption,
 } from "@/integration/supabase/types/month-end-reports";
 import { useMonthEndReports } from "@/hooks/operations/month-end-reports/useMonthEndReports";
 
@@ -46,7 +46,7 @@ export interface MonthEndReportsProps {
 
 export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
   properties = [],
-  staffLocations = []
+  staffLocations = [],
 }) => {
   const { toast } = useToast();
   const {
@@ -56,45 +56,49 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
     updateReport,
     submitReport,
     approveReport,
-    deleteReport
+    deleteReport,
   } = useMonthEndReports();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedReport, setSelectedReport] = useState<FrontendMonthEndReport | null>(null);
+  const [selectedReport, setSelectedReport] =
+    useState<FrontendMonthEndReport | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<'create' | 'edit' | 'view'>('create');
+  const [sheetMode, setSheetMode] = useState<"create" | "edit" | "view">(
+    "create"
+  );
 
   // Filter reports based on search term
-  const filteredReports = reports.filter(report => 
-    report.headline?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.property_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.status.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredReports = reports.filter(
+    (report) =>
+      report.headline?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.property_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCreateNew = () => {
     setSelectedReport(null);
-    setSheetMode('create');
+    setSheetMode("create");
     setIsSheetOpen(true);
   };
 
   const handleEdit = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
-    setSheetMode('edit');
+    setSheetMode("edit");
     setIsSheetOpen(true);
   };
 
   const handleView = (report: FrontendMonthEndReport) => {
     setSelectedReport(report);
-    setSheetMode('view');
+    setSheetMode("view");
     setIsSheetOpen(true);
   };
 
   const handleDelete = async (reportId: string) => {
-    if (window.confirm('Are you sure you want to delete this report?')) {
+    if (window.confirm("Are you sure you want to delete this report?")) {
       try {
         await deleteReport(reportId);
       } catch (error) {
-        console.error('Error deleting report:', error);
+        console.error("Error deleting report:", error);
       }
     }
   };
@@ -103,13 +107,13 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
     const variants = {
       draft: "secondary",
       submitted: "default",
-      approved: "default"
+      approved: "default",
     } as const;
 
     const colors = {
       draft: "bg-gray-100 text-gray-800",
       submitted: "bg-blue-100 text-blue-800",
-      approved: "bg-green-100 text-green-800"
+      approved: "bg-green-100 text-green-800",
     };
 
     return (
@@ -128,8 +132,10 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b">
         <div>
-          <h1 className="text-2xl font-bold">Month-End Reports</h1>
-          <p className="text-muted-foreground">Manage and review monthly operational reports</p>
+          <h1 className="text-2xl font-bold">Operations Call Meeting Report</h1>
+          <p className="text-muted-foreground">
+            Manage and review monthly operational reports
+          </p>
         </div>
         <Button onClick={handleCreateNew}>
           <Plus className="h-4 w-4 mr-2" />
@@ -178,7 +184,9 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
             ) : filteredReports.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
-                  {searchTerm ? 'No reports match your search.' : 'No reports found. Create your first report to get started.'}
+                  {searchTerm
+                    ? "No reports match your search."
+                    : "No reports found. Create your first report to get started."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -187,36 +195,43 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      {report.property_name || 'Unknown Property'}
+                      {report.property_name || "Unknown Property"}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div className="text-sm">
-                        {formatDate(report.start_date)} - {formatDate(report.end_date)}
+                        {formatDate(report.start_date)} -{" "}
+                        {formatDate(report.end_date)}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {report.headline || 'No headline'}
+                    {report.headline || "No headline"}
                   </TableCell>
+                  <TableCell>{getStatusBadge(report.status)}</TableCell>
                   <TableCell>
-                    {getStatusBadge(report.status)}
-                  </TableCell>
-                  <TableCell>
-                    {report.avg_occupancy_pct ? `${report.avg_occupancy_pct}%` : 'N/A'}
+                    {report.avg_occupancy_pct
+                      ? `${report.avg_occupancy_pct}%`
+                      : "N/A"}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
                       {report.groups?.length || 0} groups
-                      {report.total_rooms_blocked ? ` (${report.total_rooms_blocked} rooms)` : ''}
+                      {report.total_rooms_blocked
+                        ? ` (${report.total_rooms_blocked} rooms)`
+                        : ""}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <div className="text-green-600">{report.completed_action_items || 0} completed</div>
-                      <div className="text-orange-600">{report.open_action_items || 0} open</div>
+                      <div className="text-green-600">
+                        {report.completed_action_items || 0} completed
+                      </div>
+                      <div className="text-orange-600">
+                        {report.open_action_items || 0} open
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -231,7 +246,7 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {report.status !== 'approved' && (
+                      {report.status !== "approved" && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -262,16 +277,21 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
         <SheetContent className="w-full sm:max-w-2xl">
           <SheetHeader>
             <SheetTitle>
-              {sheetMode === 'create' ? 'Create New Report' : 
-               sheetMode === 'edit' ? 'Edit Report' : 'View Report'}
+              {sheetMode === "create"
+                ? "Create New Report"
+                : sheetMode === "edit"
+                ? "Edit Report"
+                : "View Report"}
             </SheetTitle>
             <SheetDescription>
-              {sheetMode === 'create' ? 'Fill out the form below to create a new month-end report.' :
-               sheetMode === 'edit' ? 'Update the report details below.' : 
-               'Review the report details below.'}
+              {sheetMode === "create"
+                ? "Fill out the form below to create a new month-end report."
+                : sheetMode === "edit"
+                ? "Update the report details below."
+                : "Review the report details below."}
             </SheetDescription>
           </SheetHeader>
-          
+
           <MonthEndReportSheetForm
             report={selectedReport}
             mode={sheetMode}
@@ -279,17 +299,17 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
             staffLocations={staffLocations}
             onSave={async (data) => {
               try {
-                if (sheetMode === 'create') {
+                if (sheetMode === "create") {
                   await createReport(data);
                   toast({
                     title: "Success",
-                    description: "Report created successfully"
+                    description: "Report created successfully",
                   });
-                } else if (sheetMode === 'edit' && selectedReport) {
+                } else if (sheetMode === "edit" && selectedReport) {
                   await updateReport(selectedReport.id, data);
                   toast({
                     title: "Success",
-                    description: "Report updated successfully"
+                    description: "Report updated successfully",
                   });
                 }
                 setIsSheetOpen(false);
@@ -297,7 +317,7 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
                 toast({
                   title: "Error",
                   description: "Failed to save report",
-                  variant: "destructive"
+                  variant: "destructive",
                 });
               }
             }}
@@ -306,7 +326,7 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
                 await submitReport(id);
                 setIsSheetOpen(false);
               } catch (error) {
-                console.error('Error submitting report:', error);
+                console.error("Error submitting report:", error);
               }
             }}
             onApprove={async (id) => {
@@ -314,7 +334,7 @@ export const MonthEndReports: React.FC<MonthEndReportsProps> = ({
                 await approveReport(id);
                 setIsSheetOpen(false);
               } catch (error) {
-                console.error('Error approving report:', error);
+                console.error("Error approving report:", error);
               }
             }}
             onCancel={() => setIsSheetOpen(false)}

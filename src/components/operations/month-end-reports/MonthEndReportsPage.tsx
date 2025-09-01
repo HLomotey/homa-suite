@@ -17,10 +17,7 @@ import {
 } from "@/integration/supabase/types/month-end-reports";
 import { useOpsCall } from "@/hooks/operations/ops-call/useOpsCall";
 import { useProperties } from "@/hooks/property/useProperties";
-import {
-  Plus,
-  FileText
-} from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 
 export const MonthEndReportsPage: React.FC = () => {
   const { toast } = useToast();
@@ -77,8 +74,10 @@ export const MonthEndReportsPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b">
         <div>
-          <h1 className="text-2xl font-bold">Month-End Reports</h1>
-          <p className="text-muted-foreground">Create and manage monthly operational reports</p>
+          <h1 className="text-2xl font-bold">Operations Call Meeting Report</h1>
+          <p className="text-muted-foreground">
+            Create and manage monthly operational reports
+          </p>
         </div>
         <Button onClick={handleOpenForm}>
           <Plus className="h-4 w-4 mr-2" />
@@ -180,7 +179,7 @@ export const MonthEndReportsPage: React.FC = () => {
               Fill out the form below to create a new month-end report.
             </SheetDescription>
           </SheetHeader>
-          
+
           <MonthEndReportSheetForm
             report={null}
             mode="create"
@@ -192,7 +191,7 @@ export const MonthEndReportsPage: React.FC = () => {
                 await submitOpsCall(id);
                 setIsSheetOpen(false);
               } catch (error) {
-                console.error('Error submitting ops call:', error);
+                console.error("Error submitting ops call:", error);
               }
             }}
             onApprove={async (id) => {
@@ -200,7 +199,7 @@ export const MonthEndReportsPage: React.FC = () => {
                 await approveOpsCall(id);
                 setIsSheetOpen(false);
               } catch (error) {
-                console.error('Error approving ops call:', error);
+                console.error("Error approving ops call:", error);
               }
             }}
             onCancel={() => setIsSheetOpen(false)}

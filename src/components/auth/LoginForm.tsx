@@ -102,17 +102,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pt-32 pb-8">
+      <div className="w-full max-w-md mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <Building className="h-8 w-8 text-primary" />
-            </div>
+        <div className="text-center mb-8 mt-16">
+          <div className="flex justify-center mb-6">
+            <img 
+              src="/boh-logo.svg" 
+              alt="BOH Concepts Logo" 
+              className="h-20 w-auto"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">BoH EPR</h1>
-          <p className="text-muted-foreground mt-2">ERP System</p>
+          <h1 className="text-2xl font-bold text-foreground leading-tight">BOH Concepts Operations Management System</h1>
+          <p className="text-muted-foreground mt-3">Enterprise Resource Planning</p>
         </div>
 
         {/* Login Card */}
