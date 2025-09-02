@@ -15,10 +15,12 @@ if (!supabaseServiceRoleKey) {
 
 // Create Supabase admin client with service role key (or anon key as fallback)
 // This client has full admin privileges and bypasses RLS policies when using service role key
+// Use a unique storage key to avoid conflicts with the main client
 export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
+    persistSession: false,
+    storageKey: 'supabase-admin-auth-token' // Unique storage key
   }
 });
 
