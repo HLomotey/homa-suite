@@ -6,11 +6,11 @@ import { Json } from "./database";
 
 // Complaint status enum
 export type ComplaintStatus = 
-  | "new" 
+  | "open" 
   | "in_progress" 
-  | "waiting_on_user" 
   | "resolved" 
-  | "closed";
+  | "closed"
+  | "escalated";
 
 // Complaint priority enum
 export type ComplaintPriority = 
@@ -30,18 +30,20 @@ export interface Complaint {
   id: string;
   title: string;
   description: string;
-  asset_type: ComplaintAssetType;
-  asset_id: string; // Reference to property_id or vehicle_id
+  asset_type: ComplaintAssetType | string; // Allow string for database compatibility
+  asset_id: string | null; // Reference to property_id or vehicle_id
   category_id: string;
   subcategory_id: string | null;
-  priority: ComplaintPriority;
-  status: ComplaintStatus;
+  priority: ComplaintPriority | string; // Allow string for database compatibility
+  status: ComplaintStatus | string; // Allow string for database compatibility
   created_by: string; // User ID of the complainant
   assigned_to: string | null; // User ID of the assigned manager
   escalated_to: string | null; // User ID of the escalation owner
   due_date: string | null; // ISO date string for SLA deadline
   location: Json | null; // Geolocation data
   contact_method: string | null; // Preferred contact method
+  property_id?: string | null; // For property complaints
+  vehicle_id?: string | null; // For vehicle complaints
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -53,8 +55,8 @@ export interface Complaint {
 export interface ComplaintCategory {
   id: string;
   name: string;
-  asset_type: ComplaintAssetType;
-  sla_hours: number; // Default SLA hours for this category
+  asset_type: ComplaintAssetType | string; // Allow string for database compatibility
+  sla_hours: number | null; // Default SLA hours for this category
   description: string | null;
   created_at: string;
   updated_at: string;
@@ -71,14 +73,15 @@ export interface ComplaintSubcategory {
   updated_at: string;
 }
 
-// Complaint comment/thread
+// Complaint comment
 export interface ComplaintComment {
   id: string;
   complaint_id: string;
   user_id: string;
-  content: string;
-  is_internal: boolean; // Internal notes vs public comments
-  attachments: Json | null; // Array of attachment URLs
+  comment: string; // The comment text (matches database column)
+  content?: string; // Alias for backward compatibility
+  is_internal?: boolean; // Internal notes vs public comments
+  attachments?: Json | null; // Array of attachment URLs
   created_at: string;
   updated_at: string;
 }
@@ -90,9 +93,10 @@ export interface ComplaintAttachment {
   file_name: string;
   file_type: string;
   file_size: number;
-  file_url: string;
+  file_path: string; // Database column name
+  file_url?: string; // Alias for backward compatibility
   uploaded_by: string;
-  is_internal: boolean; // Internal vs public attachment
+  is_internal?: boolean; // Internal vs public attachment
   created_at: string;
 }
 

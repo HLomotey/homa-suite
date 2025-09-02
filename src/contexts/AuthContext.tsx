@@ -15,8 +15,7 @@ export interface ExternalStaffMember {
   id: string;
   email: string;
   full_name: string;
-  department: string;
-  position: string;
+  position_status: string;
   is_active: boolean;
 }
 
@@ -24,14 +23,14 @@ interface Profile {
   id: string;
   full_name: string;
   email: string;
-  role_id: number | null;
+  role_id: string | null;
   status: string;
   created_at: string;
   updated_at: string;
 }
 
 interface Role {
-  id: number;
+  id: string;
   name: string;
   display_name: string;
   description: string;
@@ -41,11 +40,9 @@ interface Role {
 
 interface Permission {
   id: string;
-  permission_key: string;
+  name: string;
   display_name: string;
   description: string;
-  module_id: string;
-  action_id: string;
 }
 
 export interface AuthUser {
@@ -111,19 +108,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const { data, error } = await supabaseAdmin
+      // Use type assertion to avoid complex type inference
+      const { data, error } = await (supabaseAdmin as any)
         .from("external_staff")
         .select("*")
         .eq('"PERSONAL E-MAIL"', normalizedEmail)
         .eq('"POSITION STATUS"', "A - Active")
-        .limit(1);
+        .maybeSingle();
 
       if (error) {
         console.error("Error validating external staff email:", error);
         return null;
       }
 
-      return data && data.length > 0 ? data[0] : null;
+      if (!data) {
+        return null;
+      }
+
+      return {
+        id: (data as any)["EMPLOYEE ID"] || "",
+        email: (data as any)["PERSONAL E-MAIL"] || "",
+        full_name: (data as any)["FULL NAME"] || "",
+        position_status: (data as any)["POSITION STATUS"] || "",
+        is_active: (data as any)["POSITION STATUS"] === "A - Active"
+      };
     } catch (error) {
       console.error("Error in validateExternalStaffEmail:", error);
       return null;
@@ -152,7 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Get user role
-  const getUserRole = async (roleId: number): Promise<Role | null> => {
+  const getUserRole = async (roleId: string): Promise<Role | null> => {
     try {
       const { data, error } = await supabaseAdmin
         .from("roles")
@@ -174,7 +182,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Get user permissions based on role
-  const getUserPermissions = async (roleId: number): Promise<Permission[]> => {
+  const getUserPermissions = async (roleId: string): Promise<Permission[]> => {
     try {
       // Check if this is an admin role (system role with admin privileges)
       const { data: roleData, error: roleError } = await supabaseAdmin
@@ -196,7 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: allPermissions, error: permError } = await supabaseAdmin
           .from("permissions")
           .select(
-            "id, permission_key, display_name, description, module_id, action_id"
+            "id, name, display_name, description"
           )
           .eq("is_active", true);
 
@@ -270,8 +278,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       userType = "management";
     } else if (externalStaff) {
-      // User is general staff - only complaints and maintenance modules
-      const staffModules = ["complaints", "maintenance", "profile"];
+      // User is general staff - only complaints and properties (for maintenance) modules
+      const staffModules = ["complaints", "properties", "settings"];
       modules = staffModules.filter((moduleId) =>
         NAVIGATION_MODULES.some((navModule) => navModule.id === moduleId)
       );
@@ -436,7 +444,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Management users check permissions
     if (currentUser.userType === "management") {
       return currentUser.permissions.some(
-        (p) => p.permission_key === permissionKey
+        (p) => p.name === permissionKey
       );
     }
 

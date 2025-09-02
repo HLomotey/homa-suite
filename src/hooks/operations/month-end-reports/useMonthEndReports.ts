@@ -15,7 +15,7 @@ import { MonthEndReportFormData } from "@/components/operations/month-end-report
 interface MonthEndReportDB {
   id: string;
   property_id: string;
-  property_name: string;
+  hotel_site: string;
   start_date: string;
   end_date: string;
   headline: string;
@@ -165,7 +165,7 @@ export const useMonthEndReports = () => {
         .from("month_end_reports")
         .insert({
           property_id: data.property_id,
-          property_name: data.property_name,
+          hotel_site: data.hotel_site,
           start_date: data.start_date,
           end_date: data.end_date,
           headline: data.headline,
@@ -255,7 +255,7 @@ export const useMonthEndReports = () => {
         .from("month_end_reports") as any)
         .update({
           property_id: data.property_id,
-          property_name: data.property_name,
+          hotel_site: data.hotel_site,
           start_date: data.start_date,
           end_date: data.end_date,
           headline: data.headline,

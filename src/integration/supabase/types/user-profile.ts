@@ -34,13 +34,12 @@ export interface Profile {
   email: string;
   full_name: string | null;
   status: string;
+  role_id: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  department: string | null;
-  create_user: string | null;
+  phone: string | null;
+  avatar_url: string | null;
 }
 
 /**
@@ -54,28 +53,18 @@ export type UserStatus = 'active' | 'inactive' | 'pending';
 export type UserRole = string;
 
 /**
- * Role interface representing the roles table in Supabase
+ * Import Role from rbac-types to avoid duplication
  */
-export interface Role {
-  id: string;
-  name: string;
-  display_name: string;
-  description: string | null;
-  permissions: string[] | null;
-  is_system_role: boolean;
-  is_active: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
+import type { Role } from './rbac-types';
 
 /**
  * Profile with role information
  */
 export interface ProfileWithRole extends Profile {
   role?: Role | null;
-  role_id?: string | null;
-  avatar_url?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  department?: string | null;
   bio?: string | null;
   user_roles?: Array<{
     role: Role;
