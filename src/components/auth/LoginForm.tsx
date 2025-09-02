@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Lock, Mail, Building, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, RefreshCw } from "lucide-react";
 import { supabase } from "@/integration/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -19,23 +19,56 @@ interface LoginFormProps {
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot password state
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [resetCooldownEnd, setResetCooldownEnd] = useState<number | null>(null);
+  const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
   const { toast } = useToast();
+
+  // Restore cooldown from localStorage on mount
+  useEffect(() => {
+    const last = localStorage.getItem("lastPasswordResetAttempt");
+    if (last) {
+      const lastAttemptTime = parseInt(last);
+      const cooldownDuration = 5 * 60 * 1000; // 5 minutes
+      const cooldownEnd = lastAttemptTime + cooldownDuration;
+      const now = Date.now();
+      if (now < cooldownEnd) {
+        setResetCooldownEnd(cooldownEnd);
+        setCooldownTimeLeft(Math.ceil((cooldownEnd - now) / 1000));
+      }
+    }
+  }, []);
+
+  // Tick cooldown timer
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (resetCooldownEnd) {
+      interval = setInterval(() => {
+        const now = Date.now();
+        const secs = Math.ceil((resetCooldownEnd - now) / 1000);
+        if (secs <= 0) {
+          setResetCooldownEnd(null);
+          setCooldownTimeLeft(0);
+          localStorage.removeItem("lastPasswordResetAttempt");
+        } else {
+          setCooldownTimeLeft(secs);
+        }
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resetCooldownEnd]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear error when user starts typing
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) setError(null);
   };
 
@@ -45,9 +78,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
+      const email = formData.email.trim().toLowerCase();
+      const password = formData.password;
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+        email,
+        password,
       });
 
       if (error) {
@@ -57,49 +93,112 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
       if (data.user) {
         onLoginSuccess();
+      } else {
+        setError("Sign in failed. Please try again.");
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Login error:", {
+        message: err?.message,
+        raw: JSON.stringify(err, Object.getOwnPropertyNames(err || {})),
+      });
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const isFormValid = formData.email && formData.password;
-  
   const handleForgotPassword = async () => {
     if (!formData.email) {
       setError("Please enter your email address to reset your password");
       return;
     }
-    
+
+    if (resetCooldownEnd && Date.now() < resetCooldownEnd) {
+      toast({
+        title: "Please wait",
+        description: `You can request another password reset in ${Math.ceil(
+          cooldownTimeLeft / 60
+        )} minute(s).`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSendingResetEmail(true);
     setError(null);
-    
+
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const email = formData.email.trim().toLowerCase();
+      const redirectTo = `${window.location.origin}/reset-password`;
+
+      console.log('Attempting password reset for:', email, 'with redirect:', redirectTo);
+      
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
       });
       
+      console.log('Reset password response:', { data, error });
+
       if (error) {
-        throw new Error(error.message);
+        const anyErr = error as any;
+        console.error("Supabase reset error:", {
+          name: error.name,
+          message: error.message,
+          status: anyErr?.status,
+          raw: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+        });
+
+        if (anyErr?.status === 429 || /rate limit|429/i.test(error.message)) {
+          const cdEnd = Date.now() + 5 * 60 * 1000;
+          setResetCooldownEnd(cdEnd);
+          setCooldownTimeLeft(5 * 60);
+          localStorage.setItem("lastPasswordResetAttempt", String(Date.now()));
+          toast({
+            title: "Too many requests",
+            description:
+              "Please wait 5 minutes before requesting another password reset email.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Reset email failed",
+          description: error.message || "We couldn't send the reset email.",
+          variant: "destructive",
+        });
+        return;
       }
-      
+
+      // Success → start cooldown
+      const cdEnd = Date.now() + 5 * 60 * 1000;
+      setResetCooldownEnd(cdEnd);
+      setCooldownTimeLeft(5 * 60);
+      localStorage.setItem("lastPasswordResetAttempt", String(Date.now()));
+
       toast({
         title: "Password reset email sent",
-        description: `If an account exists for ${formData.email}, you will receive a password reset link shortly.`,
+        description: `If an account exists for ${email}, you will receive a password reset link shortly.`,
       });
-    } catch (err) {
-      console.error("Error sending password reset email:", err);
-      // Don't show specific errors for security reasons
+    } catch (err: any) {
+      console.error("Error sending password reset email:", {
+        message: err?.message,
+        raw: JSON.stringify(err, Object.getOwnPropertyNames(err || {})),
+      });
       toast({
-        title: "Password reset email sent",
-        description: `If an account exists for ${formData.email}, you will receive a password reset link shortly.`,
+        title: "Reset email failed",
+        description:
+          err?.message ?? "Something went wrong sending the reset email.",
+        variant: "destructive",
       });
     } finally {
       setIsSendingResetEmail(false);
     }
   };
+
+  const isFormValid = Boolean(formData.email && formData.password);
+  const isInCooldown =
+    resetCooldownEnd !== null && Date.now() < resetCooldownEnd;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pt-32 pb-8">
@@ -107,13 +206,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         {/* Header */}
         <div className="text-center mb-8 mt-16">
           <div className="flex justify-center mb-6">
-            <img 
-              src="/Compass.png" 
-              alt="BOH Concepts Logo" 
+            <img
+              src="/Compass.png"
+              alt="BOH Concepts Logo"
               className="h-20 w-auto object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold text-foreground leading-tight">BOH Concepts Operations Management System</h1>
+          <h1 className="text-2xl font-bold text-foreground leading-tight">
+            BOH Concepts Operations Management System
+          </h1>
           <p className="text-muted-foreground mt-3">Enterprise Resource Planning</p>
         </div>
 
@@ -176,7 +277,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                     variant="ghost"
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((s) => !s)}
                     disabled={loading}
                   >
                     {showPassword ? (
@@ -189,11 +290,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               </div>
 
               {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={!isFormValid || loading}
-              >
+              <Button type="submit" className="w-full" disabled={!isFormValid || loading}>
                 {loading ? (
                   <>
                     <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent" />
@@ -203,20 +300,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   "Sign In"
                 )}
               </Button>
-              
+
               {/* Forgot Password Link */}
               <div className="text-center">
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded px-2 py-1"
-                  disabled={isSendingResetEmail || !formData.email}
+                  className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded px-2 py-1 disabled:text-gray-400 disabled:hover:no-underline"
+                  disabled={isSendingResetEmail || !formData.email || isInCooldown}
                 >
                   {isSendingResetEmail ? (
                     <span className="flex items-center justify-center">
                       <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
                       Sending...
                     </span>
+                  ) : isInCooldown ? (
+                    `Wait ${Math.floor(cooldownTimeLeft / 60)}:${String(
+                      cooldownTimeLeft % 60
+                    ).padStart(2, "0")}`
                   ) : (
                     "Forgot password?"
                   )}
@@ -226,7 +327,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
             {/* Footer */}
             <div className="text-center mt-6 text-sm text-muted-foreground">
-              <p>© 2024 BOH Concepts. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} BOH Concepts. All rights reserved.</p>
             </div>
           </CardContent>
         </Card>
