@@ -27,4 +27,6 @@ export type BillingRow = {
   paymentStatus: PaymentStatus;
   periodStart: string; // YYYY-MM-DD
   periodEnd: string;   // YYYY-MM-DD
+  assignmentStatus?: string; // Active, Pending, Expired, Terminated
+  assignmentEndDate?: string; // YYYY-MM-DD - End date from assignments table
 };

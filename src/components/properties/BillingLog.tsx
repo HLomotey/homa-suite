@@ -161,13 +161,17 @@ export const BillingLog: React.FC<BillingLogProps> = ({
 
   const handleExport = () => {
     const csvContent = [
-      ["Tenant Name", "Property", "Room", "Rent Amount", "Payment Status", "Period Start", "Period End"].join(","),
+      ["Tenant Name", "Property", "Room", "Rent Amount", "Payment Status", "Assignment Status", "End Date", "Period Start", "Period End"].join(","),
       ...filteredBillingRows.map(billingRow => [
         billingRow.tenantName,
         billingRow.propertyName,
         billingRow.roomName || "",
         billingRow.rentAmount,
         billingRow.paymentStatus,
+        billingRow.assignmentStatus || "Unknown",
+        (billingRow.assignmentEndDate && 
+         (billingRow.assignmentStatus === "Expired" || billingRow.assignmentStatus === "Terminated")) 
+          ? billingRow.assignmentEndDate : "",
         billingRow.periodStart,
         billingRow.periodEnd
       ].join(","))
@@ -402,6 +406,8 @@ export const BillingLog: React.FC<BillingLogProps> = ({
                     <TableHead className="text-white/80">Room</TableHead>
                     <TableHead className="text-white/80">Rent Amount</TableHead>
                     <TableHead className="text-white/80">Payment Status</TableHead>
+                    <TableHead className="text-white/80">Assignment Status</TableHead>
+                    <TableHead className="text-white/80">End Date</TableHead>
                     <TableHead className="text-white/80">Period</TableHead>
                     <TableHead className="text-white/80">Actions</TableHead>
                   </TableRow>

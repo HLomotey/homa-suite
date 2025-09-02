@@ -108,6 +108,30 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
           </Badge>
         )}
       </TableCell>
+      <TableCell>
+        <Badge 
+          variant="outline"
+          className={
+            billingRow.assignmentStatus === "Active" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+            billingRow.assignmentStatus === "Pending" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+            billingRow.assignmentStatus === "Expired" ? "bg-orange-500/20 text-orange-400 border-orange-500/30" :
+            billingRow.assignmentStatus === "Terminated" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+            "bg-gray-500/20 text-gray-400 border-gray-500/30"
+          }
+        >
+          {billingRow.assignmentStatus || "Unknown"}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-white/90">
+        {billingRow.assignmentEndDate && 
+         (billingRow.assignmentStatus === "Expired" || billingRow.assignmentStatus === "Terminated") ? (
+          <span className="text-orange-400">
+            {format(new Date(billingRow.assignmentEndDate), "MMM dd, yyyy")}
+          </span>
+        ) : (
+          <span className="text-white/40">-</span>
+        )}
+      </TableCell>
       <TableCell className="text-white/90">
         {format(new Date(billingRow.periodStart), "MMM dd")} → {format(new Date(billingRow.periodEnd), "MMM dd, yyyy")}
       </TableCell>

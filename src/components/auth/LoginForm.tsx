@@ -108,9 +108,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         <div className="text-center mb-8 mt-16">
           <div className="flex justify-center mb-6">
             <img 
-              src="/boh-logo.svg" 
+              src="/Compass.png" 
               alt="BOH Concepts Logo" 
-              className="h-20 w-auto"
+              className="h-20 w-auto object-contain"
             />
           </div>
           <h1 className="text-2xl font-bold text-foreground leading-tight">BOH Concepts Operations Management System</h1>
