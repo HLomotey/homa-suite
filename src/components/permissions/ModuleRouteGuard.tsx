@@ -20,15 +20,15 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
   showError = true
 }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [userModules, setUserModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
     const checkAccess = async () => {
-      if (!user?.id) {
-        console.log('No user ID found');
+      if (!currentUser) {
+        console.log('No current user found');
         setLoading(false);
         setHasAccess(false);
         return;
@@ -36,9 +36,9 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
 
       try {
         setLoading(true);
-        console.log('Checking access for user:', user.id);
-        const modules = await getUserModules(user.id);
-        console.log('Retrieved modules:', modules);
+        console.log('Checking access for user:', currentUser.user.email);
+        const modules = currentUser.modules || [];
+        console.log('User modules from AuthContext:', modules);
         setUserModules(modules);
 
         // Determine which module to check
@@ -64,7 +64,7 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
     };
 
     checkAccess();
-  }, [user?.id, location.pathname, module]);
+  }, [currentUser, location.pathname, module]);
 
   // Show loading state while checking access
   if (loading) {
