@@ -372,20 +372,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
       }
 
-      // Create user account
-      const { data, error } = await supabase.auth.signUp({
+      // Create user account using admin client to bypass email confirmation
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
         password,
-        options: {
-          data: {
-            full_name: `${externalStaff["PAYROLL FIRST NAME"]} ${externalStaff["PAYROLL LAST NAME"]}`,
-            first_name: externalStaff["PAYROLL FIRST NAME"],
-            last_name: externalStaff["PAYROLL LAST NAME"],
-            job_title: externalStaff["JOB TITLE"],
-            department: externalStaff["HOME DEPARTMENT"],
-            location: externalStaff["LOCATION"],
-            external_staff_id: externalStaff.id,
-          },
+        email_confirm: true, // Skip email confirmation
+        user_metadata: {
+          full_name: externalStaff.full_name,
+          external_staff_id: externalStaff.id,
         },
       });
 
@@ -395,6 +389,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           error: error.message,
         };
       }
+
+      // Profile creation is handled by database trigger automatically
+      // No manual profile creation needed for regular users
 
       return { success: true };
     } catch (error: any) {
