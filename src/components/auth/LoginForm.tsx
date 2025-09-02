@@ -13,9 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Lock, Mail, RefreshCw, UserPlus } from "lucide-react";
 import { supabase } from "@/integration/supabase/client";
-import { supabaseAdmin } from "@/integration/supabase/admin-client";
 import { useToast } from "@/components/ui/use-toast";
-import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -24,15 +23,13 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [signUpData, setSignUpData] = useState({ email: "", password: "", confirmPassword: "" });
-  const [loading, setLoading] = useState(false);
-  const [signUpLoading, setSignUpLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signUpError, setSignUpError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
-  const { externalStaff } = useExternalStaff();
+  const { signIn, signUp, loading } = useAuth();
 
   // Forgot password state
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
@@ -90,36 +87,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    try {
-      const email = formData.email.trim().toLowerCase();
-      const password = formData.password;
+    const email = formData.email.trim().toLowerCase();
+    const password = formData.password;
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      if (data.user) {
-        onLoginSuccess();
-      } else {
-        setError("Sign in failed. Please try again.");
-      }
-    } catch (err: any) {
-      console.error("Login error:", {
-        message: err?.message,
-        raw: JSON.stringify(err, Object.getOwnPropertyNames(err || {})),
-      });
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
+    const result = await signIn(email, password);
+    
+    if (result.success) {
+      onLoginSuccess();
+    } else {
+      setError(result.error || "Sign in failed. Please try again.");
     }
   };
 
@@ -212,116 +190,43 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // Validate external staff email against personal email field using admin client
-  const validateExternalStaffEmail = async (email: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    
-    try {
-      console.log('Validating email:', normalizedEmail);
-      
-      const { data, error } = await supabaseAdmin
-        .from('external_staff')
-        .select('*')
-        .eq('"PERSONAL E-MAIL"', normalizedEmail)
-        .is('"TERMINATION DATE"', null)
-        .limit(1);
-      
-      console.log('Validation query result:', { data, error });
-      
-      if (error) {
-        console.error('Error validating external staff email:', error);
-        return null;
-      }
-      
-      return data && data.length > 0 ? data[0] : null;
-    } catch (error) {
-      console.error('Error in validateExternalStaffEmail:', error);
-      return null;
-    }
-  };
-
   // Handle sign up submission
   const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSignUpLoading(true);
     setSignUpError(null);
 
-    try {
-      const email = signUpData.email.trim().toLowerCase();
-      const password = signUpData.password;
-      const confirmPassword = signUpData.confirmPassword;
+    const email = signUpData.email.trim().toLowerCase();
+    const password = signUpData.password;
+    const confirmPassword = signUpData.confirmPassword;
 
-      // Validate passwords match
-      if (password !== confirmPassword) {
-        setSignUpError("Passwords do not match");
-        return;
-      }
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setSignUpError("Passwords do not match");
+      return;
+    }
 
-      // Validate password strength
-      if (password.length < 8) {
-        setSignUpError("Password must be at least 8 characters long");
-        return;
-      }
+    // Validate password strength
+    if (password.length < 8) {
+      setSignUpError("Password must be at least 8 characters long");
+      return;
+    }
 
-      // Check if email exists in external staff
-      const externalStaffMember = await validateExternalStaffEmail(email);
-      if (!externalStaffMember) {
-        setSignUpError("Email address not found in our staff directory. Please contact HR to verify your email address.");
-        return;
-      }
-
-      // Check if staff member is active (not terminated)
-      if (externalStaffMember["TERMINATION DATE"]) {
-        setSignUpError("Cannot create account for terminated staff. Please contact HR for assistance.");
-        return;
-      }
-
-      // Create user with external staff data
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: `${externalStaffMember["PAYROLL FIRST NAME"]} ${externalStaffMember["PAYROLL LAST NAME"]}`,
-            first_name: externalStaffMember["PAYROLL FIRST NAME"],
-            last_name: externalStaffMember["PAYROLL LAST NAME"],
-            job_title: externalStaffMember["JOB TITLE"],
-            department: externalStaffMember["HOME DEPARTMENT"],
-            location: externalStaffMember["LOCATION"],
-            business_unit: externalStaffMember["BUSINESS UNIT"],
-            position_id: externalStaffMember["POSITION ID"],
-            associate_id: externalStaffMember["ASSOCIATE ID"],
-            hire_date: externalStaffMember["HIRE DATE"],
-            work_email: externalStaffMember["WORK E-MAIL"],
-            personal_email: externalStaffMember["PERSONAL E-MAIL"],
-            external_staff_id: externalStaffMember.id
-          }
-        }
+    const result = await signUp(email, password);
+    
+    if (result.success) {
+      toast({
+        title: "Account Created",
+        description: "Your account has been created successfully. Please check your email to verify your account.",
+        variant: "default",
       });
-
-      if (error) {
-        setSignUpError(error.message);
-        return;
-      }
-
-      if (data.user) {
-        toast({
-          title: "Account Created",
-          description: "Your account has been created successfully. Please check your email to verify your account.",
-          variant: "default",
-        });
-        
-        // Switch to login tab
-        setActiveTab("login");
-        
-        // Pre-fill login email
-        setFormData(prev => ({ ...prev, email }));
-      }
-    } catch (err: any) {
-      console.error("Sign up error:", err);
-      setSignUpError("An unexpected error occurred. Please try again.");
-    } finally {
-      setSignUpLoading(false);
+      
+      // Switch to login tab
+      setActiveTab("login");
+      
+      // Pre-fill login email
+      setFormData(prev => ({ ...prev, email }));
+    } else {
+      setSignUpError(result.error || "An unexpected error occurred. Please try again.");
     }
   };
 
@@ -491,7 +396,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                         onChange={handleSignUpInputChange}
                         className="pl-10"
                         required
-                        disabled={signUpLoading}
+                        disabled={loading}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -513,7 +418,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                         onChange={handleSignUpInputChange}
                         className="pl-10 pr-10"
                         required
-                        disabled={signUpLoading}
+                        disabled={loading}
                       />
                       <Button
                         type="button"
@@ -521,7 +426,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                         size="sm"
                         className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                         onClick={() => setShowSignUpPassword((s) => !s)}
-                        disabled={signUpLoading}
+                        disabled={loading}
                       >
                         {showSignUpPassword ? (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -546,7 +451,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                         onChange={handleSignUpInputChange}
                         className="pl-10 pr-10"
                         required
-                        disabled={signUpLoading}
+                        disabled={loading}
                       />
                       <Button
                         type="button"
@@ -554,7 +459,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                         size="sm"
                         className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                         onClick={() => setShowConfirmPassword((s) => !s)}
-                        disabled={signUpLoading}
+                        disabled={loading}
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -566,8 +471,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   </div>
 
                   {/* Submit Button */}
-                  <Button type="submit" className="w-full" disabled={!isSignUpFormValid || signUpLoading}>
-                    {signUpLoading ? (
+                  <Button type="submit" className="w-full" disabled={!isSignUpFormValid || loading}>
+                    {loading ? (
                       <>
                         <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent" />
                         Creating Account...

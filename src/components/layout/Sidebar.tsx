@@ -2,11 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth";
-import { getUserModules } from "@/hooks/role/modules-api";
-import {
-  NAVIGATION_MODULES,
-  getModuleByRoute,
-} from "@/config/navigation-modules";
 import {
   Building2,
   Users,
@@ -185,38 +180,15 @@ interface SidebarProps {
 
 export const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [userModules, setUserModules] = useState<string[]>([]);
-  const [modulesLoading, setModulesLoading] = useState(true);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { currentUser, signOut, hasModule } = useAuth();
 
-  // Load user's assigned modules
-  useEffect(() => {
-    const loadUserModules = async () => {
-      if (!user?.id) {
-        setModulesLoading(false);
-        return;
-      }
-
-      try {
-        const modules = await getUserModules(user.id);
-        console.log("User modules loaded for sidebar:", modules);
-        setUserModules(modules);
-      } catch (error) {
-        console.error("Error loading user modules for sidebar:", error);
-        setUserModules([]);
-      } finally {
-        setModulesLoading(false);
-      }
-    };
-
-    loadUserModules();
-  }, [user?.id]);
-
-  // Filter navigation items based on user's modules
+  // Filter navigation items based on user's permissions and role
   const filteredNavigationItems = navigationItems.filter((item) => {
-    // Show item only if user has the required module (no exceptions)
-    return userModules.includes(item.module);
+    if (!currentUser) return false;
+
+    // Use module-based access control
+    return hasModule(item.module);
   });
 
   return (
@@ -263,35 +235,29 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-4">
-            {modulesLoading ? (
-              <div className="text-center text-muted-foreground py-4">
-                Loading menu...
-              </div>
-            ) : (
-              filteredNavigationItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={cn(
-                      "flex items-center rounded-md py-2 text-sm font-medium transition-colors",
-                      collapsed ? "justify-center px-2" : "px-3",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                    onClick={() => setIsOpen(false)}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <item.icon
-                      className={cn("h-4 w-4", collapsed ? "" : "mr-3")}
-                    />
-                    {!collapsed && item.label}
-                  </Link>
-                );
-              })
-            )}
+            {filteredNavigationItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center rounded-md py-2 text-sm font-medium transition-colors",
+                    collapsed ? "justify-center px-2" : "px-3",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                  onClick={() => setIsOpen(false)}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <item.icon
+                    className={cn("h-4 w-4", collapsed ? "" : "mr-3")}
+                  />
+                  {!collapsed && item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Footer */}
@@ -315,14 +281,14 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
               <>
                 <div className="flex items-center">
                   <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                    {user?.email?.[0]?.toUpperCase() || "U"}
+                    {currentUser?.user?.email?.[0]?.toUpperCase() || "U"}
                   </div>
                   <div className="ml-3 flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">
-                      Signed in as
+                      {currentUser?.userType === 'management' ? 'Management' : 'Staff'}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {user?.email}
+                      {currentUser?.user?.email}
                     </p>
                   </div>
                 </div>
