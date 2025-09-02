@@ -10,7 +10,6 @@ import {
   Profile,
   UserRole,
   UserWithProfile,
-  UserStatus,
   mapDatabaseProfileToProfile
 } from "../../integration/supabase/types";
 
@@ -23,7 +22,7 @@ const profileToFrontendUser = (profile: Profile): FrontendUser => ({
   email: profile.email,
   role: (profile.role_id ? 'admin' : 'staff') as UserRole,
   department: '', // Not available in current schema
-  status: (profile.status === 'active' ? 'active' : profile.status === 'inactive' ? 'inactive' : 'pending') as UserStatus,
+  status: profile.status === 'active' ? 'active' : profile.status === 'inactive' ? 'inactive' : 'pending',
   lastActive: undefined,
   permissions: [],
   createdAt: profile.created_at
