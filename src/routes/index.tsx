@@ -340,9 +340,7 @@ export const routes: RouteObject[] = [
         path: "profile",
         element: (
           <LazyWrapper>
-            <ModuleRouteGuard module="settings">
-              <Profile />
-            </ModuleRouteGuard>
+            <Profile />
           </LazyWrapper>
         ),
       },
