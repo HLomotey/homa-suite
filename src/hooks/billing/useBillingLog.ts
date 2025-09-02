@@ -56,6 +56,32 @@ export function useBillingLogs({ staffId }: UseBillingLogsParams = {}) {
           throw billingError;
         }
 
+        // Get unique tenant IDs to fetch their assignment statuses
+        const tenantIds = [...new Set((billingData || []).map((b: any) => b.tenant_id).filter(Boolean))];
+        
+        // Fetch assignment statuses for all tenants
+        const { data: assignmentsData, error: assignmentsError } = await supabase
+          .from('assignments')
+          .select('tenant_id, status, property_id, room_id, start_date, end_date')
+          .in('tenant_id', tenantIds)
+          .order('start_date', { ascending: false });
+
+        if (assignmentsError) {
+          console.warn('Error fetching assignments:', assignmentsError);
+        }
+
+        // Create a map of tenant assignments for quick lookup
+        const assignmentMap = new Map<string, { status: string; endDate: string | null }>();
+        (assignmentsData || []).forEach((assignment: any) => {
+          const key = `${assignment.tenant_id}-${assignment.property_id}-${assignment.room_id}`;
+          if (!assignmentMap.has(key)) {
+            assignmentMap.set(key, {
+              status: assignment.status,
+              endDate: assignment.end_date
+            });
+          }
+        });
+
         // Transform data to BillingRow format
         const transformedData: BillingRow[] = (billingData || []).map((billing: any) => {
           const externalStaff = billing.external_staff;
@@ -65,6 +91,12 @@ export function useBillingLogs({ staffId }: UseBillingLogsParams = {}) {
           
           const propertyName = billing.properties?.title || "Unknown Property";
           const roomName = billing.rooms?.name || "Unknown Room";
+          
+          // Get assignment status and end date from the assignment map
+          const assignmentKey = `${billing.tenant_id}-${billing.property_id}-${billing.room_id}`;
+          const assignmentData = assignmentMap.get(assignmentKey);
+          const assignmentStatus = assignmentData?.status || "Unknown";
+          const assignmentEndDate = assignmentData?.endDate || null;
 
           return {
             id: billing.id,
@@ -77,7 +109,9 @@ export function useBillingLogs({ staffId }: UseBillingLogsParams = {}) {
             rentAmount: billing.rent_amount,
             paymentStatus: billing.payment_status as PaymentStatus,
             periodStart: billing.period_start,
-            periodEnd: billing.period_end
+            periodEnd: billing.period_end,
+            assignmentStatus,
+            assignmentEndDate
           };
         });
         
