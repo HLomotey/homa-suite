@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase, supabaseAdmin } from '@/integration/supabase/client';
-import { getUserModules } from '@/hooks/role/modules-api';
-import { NAVIGATION_MODULES } from '@/config/navigation-modules';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase, supabaseAdmin } from "@/integration/supabase/client";
+import { getUserModules } from "@/hooks/role/modules-api";
+import { NAVIGATION_MODULES } from "@/config/navigation-modules";
 
 // Types for our authentication system
 export interface ExternalStaffMember {
@@ -46,25 +52,31 @@ export interface AuthUser {
   // Supabase auth user
   user: User;
   session: Session;
-  
+
   // Staff information
   externalStaff: ExternalStaffMember | null;
-  
+
   // Management information (if applicable)
   profile: Profile | null;
   role: Role | null;
   permissions: Permission[];
   modules: string[];
-  
+
   // User type
-  userType: 'general_staff' | 'management' | null;
+  userType: "general_staff" | "management" | null;
 }
 
 interface AuthContextType {
   currentUser: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refreshUserData: () => Promise<void>;
   hasPermission: (permissionKey: string) => boolean;
@@ -79,7 +91,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -93,25 +105,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   // Validate if email exists in external staff and is active
-  const validateExternalStaffEmail = async (email: string): Promise<ExternalStaffMember | null> => {
+  const validateExternalStaffEmail = async (
+    email: string
+  ): Promise<ExternalStaffMember | null> => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      
+
       const { data, error } = await supabaseAdmin
-        .from('external_staff')
-        .select('*')
+        .from("external_staff")
+        .select("*")
         .eq('"PERSONAL E-MAIL"', normalizedEmail)
-        .eq('"POSITION STATUS"', 'A - Active')
+        .eq('"POSITION STATUS"', "A - Active")
         .limit(1);
-      
+
       if (error) {
-        console.error('Error validating external staff email:', error);
+        console.error("Error validating external staff email:", error);
         return null;
       }
-      
+
       return data && data.length > 0 ? data[0] : null;
     } catch (error) {
-      console.error('Error in validateExternalStaffEmail:', error);
+      console.error("Error in validateExternalStaffEmail:", error);
       return null;
     }
   };
@@ -120,19 +134,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const getUserProfile = async (userId: string): Promise<Profile | null> => {
     try {
       const { data, error } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
         .single();
-      
+
       if (error) {
-        console.error('Error getting user profile:', error);
+        console.error("Error getting user profile:", error);
         return null;
       }
-      
+
       return data;
     } catch (error) {
-      console.error('Error in getUserProfile:', error);
+      console.error("Error in getUserProfile:", error);
       return null;
     }
   };
@@ -141,20 +155,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const getUserRole = async (roleId: number): Promise<Role | null> => {
     try {
       const { data, error } = await supabaseAdmin
-        .from('roles')
-        .select('*')
-        .eq('id', roleId)
-        .eq('is_active', true)
+        .from("roles")
+        .select("*")
+        .eq("id", roleId)
+        .eq("is_active", true)
         .single();
-      
+
       if (error) {
-        console.error('Error getting user role:', error);
+        console.error("Error getting user role:", error);
         return null;
       }
-      
+
       return data;
     } catch (error) {
-      console.error('Error in getUserRole:', error);
+      console.error("Error in getUserRole:", error);
       return null;
     }
   };
@@ -164,25 +178,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Check if this is an admin role (system role with admin privileges)
       const { data: roleData, error: roleError } = await supabaseAdmin
-        .from('roles')
-        .select('name, is_system_role')
-        .eq('id', roleId)
+        .from("roles")
+        .select("name, is_system_role")
+        .eq("id", roleId)
         .single();
 
       if (roleError) {
-        console.error('Error getting role info:', roleError);
+        console.error("Error getting role info:", roleError);
         return [];
       }
 
       // If it's an admin role, return all permissions
-      if (roleData && ((roleData as any).name === 'Admin' || (roleData as any).is_system_role)) {
+      if (
+        roleData &&
+        ((roleData as any).name === "Admin" || (roleData as any).is_system_role)
+      ) {
         const { data: allPermissions, error: permError } = await supabaseAdmin
-          .from('permissions')
-          .select('id, permission_key, display_name, description, module_id, action_id')
-          .eq('is_active', true);
+          .from("permissions")
+          .select(
+            "id, permission_key, display_name, description, module_id, action_id"
+          )
+          .eq("is_active", true);
 
         if (permError) {
-          console.error('Error getting all permissions for admin:', permError);
+          console.error("Error getting all permissions for admin:", permError);
           return [];
         }
 
@@ -191,8 +210,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // For non-admin roles, get specific permissions
       const { data, error } = await supabaseAdmin
-        .from('role_permissions')
-        .select(`
+        .from("role_permissions")
+        .select(
+          `
           permissions!inner (
             id,
             permission_key,
@@ -201,59 +221,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             module_id,
             action_id
           )
-        `)
-        .eq('role_id', roleId);
-      
+        `
+        )
+        .eq("role_id", roleId);
+
       if (error) {
-        console.error('Error getting user permissions:', error);
+        console.error("Error getting user permissions:", error);
         return [];
       }
-      
+
       return data?.map((item: any) => item.permissions).filter(Boolean) || [];
     } catch (error) {
-      console.error('Error in getUserPermissions:', error);
+      console.error("Error in getUserPermissions:", error);
       return [];
     }
   };
 
   // Build complete user object
-  const buildAuthUser = async (user: User, session: Session): Promise<AuthUser> => {
+  const buildAuthUser = async (
+    user: User,
+    session: Session
+  ): Promise<AuthUser> => {
     const email = user.email!;
-    
+
     // Get external staff information
     const externalStaff = await validateExternalStaffEmail(email);
-    
+
     // Get profile information (for management users)
     const profile = await getUserProfile(user.id);
-    
+
     let role: Role | null = null;
     let permissions: Permission[] = [];
     let modules: string[] = [];
-    let userType: 'general_staff' | 'management' | null = null;
-    
+    let userType: "general_staff" | "management" | null = null;
+
     if (profile && profile.role_id) {
       // User is management - get modules based on role assignment
       role = await getUserRole(profile.role_id);
       permissions = await getUserPermissions(profile.role_id);
-      
+
       try {
         modules = await getUserModules(user.id);
         console.log(`AuthContext: User ${user.email} has modules:`, modules);
       } catch (error) {
-        console.error('AuthContext: Error getting user modules:', error);
+        console.error("AuthContext: Error getting user modules:", error);
         modules = [];
       }
-      
-      userType = 'management';
+
+      userType = "management";
     } else if (externalStaff) {
       // User is general staff - only complaints and maintenance modules
-      const staffModules = ['complaints', 'properties'];
-      modules = staffModules.filter(moduleId => 
-        NAVIGATION_MODULES.some(navModule => navModule.id === moduleId)
+      const staffModules = ["complaints", "maintenance", "profile"];
+      modules = staffModules.filter((moduleId) =>
+        NAVIGATION_MODULES.some((navModule) => navModule.id === moduleId)
       );
-      userType = 'general_staff';
+      userType = "general_staff";
     }
-    
+
     return {
       user,
       session,
@@ -262,54 +286,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       role,
       permissions,
       modules,
-      userType
+      userType,
     };
   };
 
   // Sign in function
-  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signIn = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       setLoading(true);
-      
+
       const normalizedEmail = email.trim().toLowerCase();
-      
+
       // First validate that the email exists in external staff
       const externalStaff = await validateExternalStaffEmail(normalizedEmail);
       if (!externalStaff) {
         return {
           success: false,
-          error: 'Email address not found in our staff directory. Please contact HR to verify your email address.'
+          error:
+            "Email address not found in our staff directory. Please contact HR to verify your email address.",
         };
       }
-      
+
       // Attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
       });
-      
+
       if (error) {
         return {
           success: false,
-          error: error.message
+          error: error.message,
         };
       }
-      
+
       if (data.user && data.session) {
         const authUser = await buildAuthUser(data.user, data.session);
         setCurrentUser(authUser);
         return { success: true };
       }
-      
+
       return {
         success: false,
-        error: 'Sign in failed. Please try again.'
+        error: "Sign in failed. Please try again.",
       };
     } catch (error: any) {
-      console.error('Sign in error:', error);
+      console.error("Sign in error:", error);
       return {
         success: false,
-        error: 'An unexpected error occurred. Please try again.'
+        error: "An unexpected error occurred. Please try again.",
       };
     } finally {
       setLoading(false);
@@ -317,21 +345,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Sign up function
-  const signUp = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signUp = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       setLoading(true);
-      
+
       const normalizedEmail = email.trim().toLowerCase();
-      
+
       // Validate that email exists in external staff and is active
       const externalStaff = await validateExternalStaffEmail(normalizedEmail);
       if (!externalStaff) {
         return {
           success: false,
-          error: 'Email address not found in our staff directory. Please contact HR to verify your email address.'
+          error:
+            "Email address not found in our staff directory. Please contact HR to verify your email address.",
         };
       }
-      
+
       // Create user account
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -344,24 +376,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             job_title: externalStaff["JOB TITLE"],
             department: externalStaff["HOME DEPARTMENT"],
             location: externalStaff["LOCATION"],
-            external_staff_id: externalStaff.id
-          }
-        }
+            external_staff_id: externalStaff.id,
+          },
+        },
       });
-      
+
       if (error) {
         return {
           success: false,
-          error: error.message
+          error: error.message,
         };
       }
-      
+
       return { success: true };
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      console.error("Sign up error:", error);
       return {
         success: false,
-        error: 'An unexpected error occurred. Please try again.'
+        error: "An unexpected error occurred. Please try again.",
       };
     } finally {
       setLoading(false);
@@ -374,15 +406,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await supabase.auth.signOut();
       setCurrentUser(null);
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error("Sign out error:", error);
     }
   };
 
   // Refresh user data
   const refreshUserData = async (): Promise<void> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session?.user) {
         const authUser = await buildAuthUser(session.user, session);
         setCurrentUser(authUser);
@@ -390,7 +424,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setCurrentUser(null);
       }
     } catch (error) {
-      console.error('Error refreshing user data:', error);
+      console.error("Error refreshing user data:", error);
       setCurrentUser(null);
     }
   };
@@ -398,22 +432,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user has specific permission
   const hasPermission = (permissionKey: string): boolean => {
     if (!currentUser) return false;
-    
+
     // Management users check permissions
-    if (currentUser.userType === 'management') {
-      return currentUser.permissions.some(p => p.permission_key === permissionKey);
+    if (currentUser.userType === "management") {
+      return currentUser.permissions.some(
+        (p) => p.permission_key === permissionKey
+      );
     }
-    
+
     // General staff have limited default permissions
-    if (currentUser.userType === 'general_staff') {
+    if (currentUser.userType === "general_staff") {
       const generalStaffPermissions = [
-        'dashboard:view',
-        'profile:view',
-        'profile:edit'
+        "dashboard:view",
+        "profile:view",
+        "profile:edit",
       ];
       return generalStaffPermissions.includes(permissionKey);
     }
-    
+
     return false;
   };
 
@@ -431,12 +467,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check if user is management
   const isManagement = (): boolean => {
-    return currentUser?.userType === 'management';
+    return currentUser?.userType === "management";
   };
 
   // Check if user is general staff
   const isGeneralStaff = (): boolean => {
-    return currentUser?.userType === 'general_staff';
+    return currentUser?.userType === "general_staff";
   };
 
   // Initialize auth state
@@ -445,8 +481,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (mounted) {
           if (session?.user) {
             const authUser = await buildAuthUser(session.user, session);
@@ -457,7 +495,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setLoading(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error("Error initializing auth:", error);
         if (mounted) {
           setCurrentUser(null);
           setLoading(false);
@@ -468,19 +506,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (mounted) {
-          if (session?.user) {
-            const authUser = await buildAuthUser(session.user, session);
-            setCurrentUser(authUser);
-          } else {
-            setCurrentUser(null);
-          }
-          setLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (mounted) {
+        if (session?.user) {
+          const authUser = await buildAuthUser(session.user, session);
+          setCurrentUser(authUser);
+        } else {
+          setCurrentUser(null);
         }
+        setLoading(false);
       }
-    );
+    });
 
     return () => {
       mounted = false;
@@ -502,9 +540,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isGeneralStaff,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
