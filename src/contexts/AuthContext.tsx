@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin } from '@/integration/supabase/client';
 import { getUserModules } from '@/hooks/role/modules-api';
+import { NAVIGATION_MODULES } from '@/config/navigation-modules';
 
 // Types for our authentication system
 export interface ExternalStaffMember {
@@ -231,14 +232,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let userType: 'general_staff' | 'management' | null = null;
     
     if (profile && profile.role_id) {
-      // User is management
+      // User is management - get modules based on role assignment
       role = await getUserRole(profile.role_id);
       permissions = await getUserPermissions(profile.role_id);
-      modules = await getUserModules(user.id);
+      
+      try {
+        modules = await getUserModules(user.id);
+        console.log(`AuthContext: User ${user.email} has modules:`, modules);
+      } catch (error) {
+        console.error('AuthContext: Error getting user modules:', error);
+        modules = [];
+      }
+      
       userType = 'management';
     } else if (externalStaff) {
-      // User is general staff - only dashboard and settings
-      modules = ['dashboard', 'settings'];
+      // User is general staff - only complaints and maintenance modules
+      const staffModules = ['complaints', 'properties'];
+      modules = staffModules.filter(moduleId => 
+        NAVIGATION_MODULES.some(navModule => navModule.id === moduleId)
+      );
       userType = 'general_staff';
     }
     
