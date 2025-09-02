@@ -278,8 +278,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       userType = "management";
     } else if (externalStaff) {
-      // User is general staff - only complaints and properties (for maintenance) modules
-      const staffModules = ["complaints", "properties", "settings"];
+      // User is general staff - only maintenance, complaints (incident report), and profile modules
+      const staffModules = ["properties", "complaints", "profile"];
       modules = staffModules.filter((moduleId) =>
         NAVIGATION_MODULES.some((navModule) => navModule.id === moduleId)
       );
