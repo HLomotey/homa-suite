@@ -11,8 +11,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase URL or Anonymous Key is missing. Please check your environment variables.');
 }
 
-// Create Supabase client with debugging
+// Create Supabase client with debugging and unique storage key
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storageKey: 'supabase-main-auth-token' // Unique storage key for main client
+  },
   global: {
     fetch: (url, options) => {
       // Log requests to help debug malformed queries

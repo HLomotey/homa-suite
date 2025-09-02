@@ -9,10 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Lock, Mail, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, RefreshCw, UserPlus } from "lucide-react";
 import { supabase } from "@/integration/supabase/client";
+import { supabaseAdmin } from "@/integration/supabase/admin-client";
 import { useToast } from "@/components/ui/use-toast";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -20,9 +23,16 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [signUpData, setSignUpData] = useState({ email: "", password: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
+  const [signUpLoading, setSignUpLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signUpError, setSignUpError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
+  const { externalStaff } = useExternalStaff();
 
   // Forgot password state
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
@@ -70,6 +80,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) setError(null);
+  };
+
+  const handleSignUpInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSignUpData((prev) => ({ ...prev, [name]: value }));
+    if (signUpError) setSignUpError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,7 +212,126 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     }
   };
 
+  // Validate external staff email against personal email field using admin client
+  const validateExternalStaffEmail = async (email: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    try {
+      console.log('Validating email:', normalizedEmail);
+      
+      const { data, error } = await supabaseAdmin
+        .from('external_staff')
+        .select('*')
+        .eq('"PERSONAL E-MAIL"', normalizedEmail)
+        .is('"TERMINATION DATE"', null)
+        .limit(1);
+      
+      console.log('Validation query result:', { data, error });
+      
+      if (error) {
+        console.error('Error validating external staff email:', error);
+        return null;
+      }
+      
+      return data && data.length > 0 ? data[0] : null;
+    } catch (error) {
+      console.error('Error in validateExternalStaffEmail:', error);
+      return null;
+    }
+  };
+
+  // Handle sign up submission
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignUpLoading(true);
+    setSignUpError(null);
+
+    try {
+      const email = signUpData.email.trim().toLowerCase();
+      const password = signUpData.password;
+      const confirmPassword = signUpData.confirmPassword;
+
+      // Validate passwords match
+      if (password !== confirmPassword) {
+        setSignUpError("Passwords do not match");
+        return;
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        setSignUpError("Password must be at least 8 characters long");
+        return;
+      }
+
+      // Check if email exists in external staff
+      const externalStaffMember = await validateExternalStaffEmail(email);
+      if (!externalStaffMember) {
+        setSignUpError("Email address not found in our staff directory. Please contact HR to verify your email address.");
+        return;
+      }
+
+      // Check if staff member is active (not terminated)
+      if (externalStaffMember["TERMINATION DATE"]) {
+        setSignUpError("Cannot create account for terminated staff. Please contact HR for assistance.");
+        return;
+      }
+
+      // Create user with external staff data
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: `${externalStaffMember["PAYROLL FIRST NAME"]} ${externalStaffMember["PAYROLL LAST NAME"]}`,
+            first_name: externalStaffMember["PAYROLL FIRST NAME"],
+            last_name: externalStaffMember["PAYROLL LAST NAME"],
+            job_title: externalStaffMember["JOB TITLE"],
+            department: externalStaffMember["HOME DEPARTMENT"],
+            location: externalStaffMember["LOCATION"],
+            business_unit: externalStaffMember["BUSINESS UNIT"],
+            position_id: externalStaffMember["POSITION ID"],
+            associate_id: externalStaffMember["ASSOCIATE ID"],
+            hire_date: externalStaffMember["HIRE DATE"],
+            work_email: externalStaffMember["WORK E-MAIL"],
+            personal_email: externalStaffMember["PERSONAL E-MAIL"],
+            external_staff_id: externalStaffMember.id
+          }
+        }
+      });
+
+      if (error) {
+        setSignUpError(error.message);
+        return;
+      }
+
+      if (data.user) {
+        toast({
+          title: "Account Created",
+          description: "Your account has been created successfully. Please check your email to verify your account.",
+          variant: "default",
+        });
+        
+        // Switch to login tab
+        setActiveTab("login");
+        
+        // Pre-fill login email
+        setFormData(prev => ({ ...prev, email }));
+      }
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+      setSignUpError("An unexpected error occurred. Please try again.");
+    } finally {
+      setSignUpLoading(false);
+    }
+  };
+
   const isFormValid = Boolean(formData.email && formData.password);
+  const isSignUpFormValid = Boolean(
+    signUpData.email && 
+    signUpData.password && 
+    signUpData.confirmPassword &&
+    signUpData.password === signUpData.confirmPassword
+  );
   const isInCooldown =
     resetCooldownEnd !== null && Date.now() < resetCooldownEnd;
 
@@ -218,17 +353,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           <p className="text-muted-foreground mt-3">Enterprise Resource Planning</p>
         </div>
 
-        {/* Login Card */}
+        {/* Auth Card with Tabs */}
         <Card className="backdrop-blur-sm bg-card/95 border-border/50 shadow-xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-semibold text-center">
-              Sign In
+              Welcome
             </CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access the system
+              Sign in to your account or create a new one
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login" className="space-y-4 mt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Error Alert */}
               {error && (
@@ -323,7 +465,128 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   )}
                 </button>
               </div>
-            </form>
+              </form>
+              </TabsContent>
+              
+              <TabsContent value="signup" className="space-y-4 mt-6">
+                <form onSubmit={handleSignUpSubmit} className="space-y-4">
+                  {/* Sign Up Error Alert */}
+                  {signUpError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{signUpError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Work or Personal Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-email"
+                        name="email"
+                        type="email"
+                        placeholder="Enter your work or personal email"
+                        value={signUpData.email}
+                        onChange={handleSignUpInputChange}
+                        className="pl-10"
+                        required
+                        disabled={signUpLoading}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Must match an email in our staff directory
+                    </p>
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-password"
+                        name="password"
+                        type={showSignUpPassword ? "text" : "password"}
+                        placeholder="Create a password (min 8 characters)"
+                        value={signUpData.password}
+                        onChange={handleSignUpInputChange}
+                        className="pl-10 pr-10"
+                        required
+                        disabled={signUpLoading}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowSignUpPassword((s) => !s)}
+                        disabled={signUpLoading}
+                      >
+                        {showSignUpPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Confirm Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirm-password"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        value={signUpData.confirmPassword}
+                        onChange={handleSignUpInputChange}
+                        className="pl-10 pr-10"
+                        required
+                        disabled={signUpLoading}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword((s) => !s)}
+                        disabled={signUpLoading}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button type="submit" className="w-full" disabled={!isSignUpFormValid || signUpLoading}>
+                    {signUpLoading ? (
+                      <>
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Create Account
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="text-center text-xs text-muted-foreground">
+                    <p>Only staff members with verified email addresses can create accounts.</p>
+                    <p>Contact HR if your email is not recognized.</p>
+                  </div>
+                </form>
+              </TabsContent>
+            </Tabs>
 
             {/* Footer */}
             <div className="text-center mt-6 text-sm text-muted-foreground">
