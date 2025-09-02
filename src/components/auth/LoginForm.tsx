@@ -241,8 +241,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     resetCooldownEnd !== null && Date.now() < resetCooldownEnd;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pt-32 pb-8">
-      <div className="w-full max-w-md mx-auto">
+    <div className="min-h-screen p-4 pt-32 pb-8 relative bg-cover bg-center bg-no-repeat" 
+         style={{ backgroundImage: 'url("/lissete-laverde-7jOeRc0dOWs-unsplash-1.jpg")' }}>
+      {/* Dark overlay for better readability */}
+      <div className="absolute inset-0 bg-black/40"></div>
+      <div className="w-full max-w-md mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-8 mt-16">
           <div className="flex justify-center mb-6">
@@ -252,10 +255,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               className="h-20 w-auto object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold text-foreground leading-tight">
+          <h1 className="text-2xl font-bold text-white leading-tight drop-shadow-lg">
             BOH Concepts Operations Management System
           </h1>
-          <p className="text-muted-foreground mt-3">Enterprise Resource Planning</p>
+          <p className="text-white/90 mt-3 drop-shadow-md">Enterprise Resource Planning</p>
         </div>
 
         {/* Auth Card with Tabs */}
