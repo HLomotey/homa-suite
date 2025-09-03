@@ -7,11 +7,10 @@ import {
   MapPin,
   Briefcase,
   Clock,
-  TrendingUp,
-  TrendingDown,
-  UserCheck,
   Calendar,
   Globe,
+  TrendingUp, // (kept if you’ll add trend badges later)
+  TrendingDown,
 } from "lucide-react";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 
@@ -56,45 +55,47 @@ export function HRAnalytics() {
     if (!statsLoading && externalStaff.length > 0) {
       setLoading(true);
 
-      const activeStaff = externalStaff.filter(
+      const activeStaffArr = externalStaff.filter(
         (staff) => !staff["TERMINATION DATE"]
       );
       const totalStaff = externalStaff.length;
+      const activeCount = activeStaffArr.length;
+      const denom = Math.max(activeCount, 1); // avoid division by zero
 
       // 1. Workforce Composition Analysis
-      const departmentCounts = activeStaff.reduce((acc, staff) => {
+      const departmentCounts = activeStaffArr.reduce((acc, staff) => {
         const dept = staff["HOME DEPARTMENT"] || "Unknown";
         acc[dept] = (acc[dept] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      const locationCounts = activeStaff.reduce((acc, staff) => {
+      const locationCounts = activeStaffArr.reduce((acc, staff) => {
         const location = staff["LOCATION"] || "Unknown";
         acc[location] = (acc[location] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      const jobTitleCounts = activeStaff.reduce((acc, staff) => {
+      const jobTitleCounts = activeStaffArr.reduce((acc, staff) => {
         const title = staff["JOB TITLE"] || "Unknown";
         acc[title] = (acc[title] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       // 2. Employment Status & Categories
-      const seasonalStaff = activeStaff.filter(
+      const seasonalStaff = activeStaffArr.filter(
         (staff) =>
           staff["WORKER CATEGORY"]?.includes("SEAS") ||
           staff["POSITION STATUS"]?.includes("Seasonal")
       ).length;
 
-      const fullTimeStaff = activeStaff.filter(
+      const fullTimeStaff = activeStaffArr.filter(
         (staff) =>
           staff["WORKER CATEGORY"]?.includes("FT") ||
           staff["POSITION STATUS"]?.includes("Full")
       ).length;
 
       // 3. Tenure & Service Analysis
-      const yearsOfService = activeStaff
+      const yearsOfService = activeStaffArr
         .map((staff) => parseFloat(staff["YEARS OF SERVICE"] || "0"))
         .filter((years) => !isNaN(years));
 
@@ -104,7 +105,7 @@ export function HRAnalytics() {
             yearsOfService.length
           : 0;
 
-      const newHires2025 = activeStaff.filter((staff) => {
+      const newHires2025 = activeStaffArr.filter((staff) => {
         const hireDate = staff["HIRE DATE"];
         return hireDate && new Date(hireDate).getFullYear() === 2025;
       }).length;
@@ -112,7 +113,7 @@ export function HRAnalytics() {
       const longTermStaff = yearsOfService.filter((years) => years >= 5).length;
 
       // 4. Managerial Oversight
-      const managerCounts = activeStaff.reduce((acc, staff) => {
+      const managerCounts = activeStaffArr.reduce((acc, staff) => {
         const manager = staff["REPORTS TO NAME"];
         if (manager && manager.trim() !== "") {
           acc[manager] = (acc[manager] || 0) + 1;
@@ -129,13 +130,13 @@ export function HRAnalytics() {
         managersCount > 0 ? totalReports / managersCount : 0;
 
       // 5. Geographic Analysis
-      const crossStateBorder = activeStaff.filter((staff) => {
+      const crossStateBorder = activeStaffArr.filter((staff) => {
         const livedState = staff["LIVED-IN STATE"];
         const workedState = staff["WORKED IN STATE"];
         return livedState && workedState && livedState !== workedState;
       }).length;
 
-      const livedStateCounts = activeStaff.reduce((acc, staff) => {
+      const livedStateCounts = activeStaffArr.reduce((acc, staff) => {
         const state = staff["LIVED-IN STATE"];
         if (state && state.trim() !== "") {
           acc[state] = (acc[state] || 0) + 1;
@@ -143,7 +144,7 @@ export function HRAnalytics() {
         return acc;
       }, {} as Record<string, number>);
 
-      const workedStateCounts = activeStaff.reduce((acc, staff) => {
+      const workedStateCounts = activeStaffArr.reduce((acc, staff) => {
         const state = staff["WORKED IN STATE"];
         if (state && state.trim() !== "") {
           acc[state] = (acc[state] || 0) + 1;
@@ -156,7 +157,7 @@ export function HRAnalytics() {
         .map(([department, count]) => ({
           department,
           count,
-          percentage: Math.round((count / activeStaff.length) * 100),
+          percentage: Math.round((count / denom) * 100),
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
@@ -165,7 +166,7 @@ export function HRAnalytics() {
         .map(([location, count]) => ({
           location,
           count,
-          percentage: Math.round((count / activeStaff.length) * 100),
+          percentage: Math.round((count / denom) * 100),
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 3);
@@ -174,7 +175,7 @@ export function HRAnalytics() {
         .map(([title, count]) => ({
           title,
           count,
-          percentage: Math.round((count / activeStaff.length) * 100),
+          percentage: Math.round((count / denom) * 100),
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
@@ -194,8 +195,8 @@ export function HRAnalytics() {
         topDepartments,
         topLocations,
         topJobTitles,
-        activeStaff: activeStaff.length,
-        inactiveStaff: totalStaff - activeStaff.length,
+        activeStaff: activeCount,
+        inactiveStaff: totalStaff - activeCount,
         seasonalStaff,
         fullTimeStaff,
         avgYearsOfService: Math.round(avgYearsOfService * 10) / 10,
@@ -240,6 +241,9 @@ export function HRAnalytics() {
     );
   }
 
+  const pct = (num: number, den: number) =>
+    Math.round(((den === 0 ? 0 : num / den) * 100));
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -254,19 +258,18 @@ export function HRAnalytics() {
 
       {/* Key Workforce Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KWAME version: Active Staff card */}
         <Card className="bg-background border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Total Staff
-              </p>
+              <p className="text-xs font-medium text-muted-foreground">Active Staff</p>
               <Users className="h-3 w-3 text-muted-foreground" />
             </div>
             <p className="text-lg font-semibold text-foreground">
-              {analytics.totalStaff.toLocaleString()}
+              {analytics.activeStaff.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">
-              {analytics.activeStaff} active, {analytics.inactiveStaff} inactive
+              {pct(analytics.activeStaff, analytics.totalStaff)}% of total workforce
             </p>
           </CardContent>
         </Card>
@@ -300,31 +303,32 @@ export function HRAnalytics() {
               {analytics.newHires2025}
             </p>
             <p className="text-xs text-muted-foreground">
-              {Math.round(
-                (analytics.newHires2025 / analytics.activeStaff) * 100
-              )}
-              % of active staff
+              {pct(analytics.newHires2025, analytics.activeStaff)}% of active staff
             </p>
           </CardContent>
         </Card>
 
+        {/* KWAME version: Hiring Trends card */}
         <Card className="bg-background border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Cross-State Workers
-              </p>
-              <Globe className="h-3 w-3 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Hiring Trends</p>
+              <TrendingUp className="h-3 w-3 text-muted-foreground" />
             </div>
-            <p className="text-lg font-semibold text-foreground">
-              {analytics.crossStateBorder}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {Math.round(
-                (analytics.crossStateBorder / analytics.activeStaff) * 100
-              )}
-              % commute across states
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-green-500">
+                  +{analytics.newHires2025}
+                </p>
+                <p className="text-xs text-muted-foreground">New hires</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-red-500">
+                  -{analytics.inactiveStaff}
+                </p>
+                <p className="text-xs text-muted-foreground">Terminated</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -425,7 +429,7 @@ export function HRAnalytics() {
         <Card className="bg-background border-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-muted-foreground" />
               <h4 className="text-sm font-medium text-foreground">
                 Employment Categories
               </h4>
@@ -439,10 +443,7 @@ export function HRAnalytics() {
                   Seasonal Workers
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {Math.round(
-                    (analytics.seasonalStaff / analytics.activeStaff) * 100
-                  )}
-                  % of active
+                  {pct(analytics.seasonalStaff, analytics.activeStaff)}% of active
                 </p>
               </div>
               <div className="text-center">
@@ -451,10 +452,7 @@ export function HRAnalytics() {
                 </p>
                 <p className="text-xs text-muted-foreground">Full-Time Staff</p>
                 <p className="text-xs text-muted-foreground">
-                  {Math.round(
-                    (analytics.fullTimeStaff / analytics.activeStaff) * 100
-                  )}
-                  % of active
+                  {pct(analytics.fullTimeStaff, analytics.activeStaff)}% of active
                 </p>
               </div>
             </div>
@@ -493,15 +491,23 @@ export function HRAnalytics() {
         </Card>
       </div>
 
-      {/* Drill-down Modal */}
-      {drillDownView && (
-        <HRDrillDownModal
-          isOpen={!!drillDownView}
-          onClose={closeDrillDown}
-          view={drillDownView}
-          hrData={hrAnalytics}
-        />
-      )}
+      {/* Optional geo callout (uses Globe icon already imported) */}
+      <Card className="bg-background border-border">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Cross-State Workers
+            </p>
+            <Globe className="h-3 w-3 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">
+            {analytics.crossStateBorder}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {pct(analytics.crossStateBorder, analytics.activeStaff)}% commute across states
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

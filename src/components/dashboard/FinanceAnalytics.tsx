@@ -18,12 +18,8 @@ import {
 import { useState } from "react";
 
 export function FinanceAnalytics() {
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
-  );
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth() + 1
-  );
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
 
   const {
     data: financeData,
@@ -32,33 +28,36 @@ export function FinanceAnalytics() {
     isError,
     refetch,
   } = useFinanceAnalytics(selectedYear, selectedMonth);
+
   const {
     data: revenueData,
     isLoading: isRevenueLoading,
     refetch: refetchRevenue,
   } = useRevenueMetrics(selectedYear, selectedMonth);
 
-  // Calculate derived metrics
-  const revenueGrowth = revenueData?.growthRate || 0;
+  // Derived metrics
+  const revenueGrowth = revenueData?.growthRate ?? 0;
   const paidPercentage =
-    financeData?.totalInvoices > 0
-      ? (financeData.paidInvoices / financeData.totalInvoices) * 100
+    (financeData?.totalInvoices ?? 0) > 0
+      ? ((financeData?.paidInvoices ?? 0) / (financeData?.totalInvoices ?? 0)) * 100
       : 0;
   const loading = isLoading || isRevenueLoading;
-  const outstandingAmount = financeData?.averageInvoiceValue
-    ? financeData.averageInvoiceValue *
-      ((financeData?.pendingInvoices || 0) +
-        (financeData?.overdueInvoices || 0))
-    : 0;
+
+  const outstandingAmount =
+    financeData?.averageInvoiceValue
+      ? financeData.averageInvoiceValue *
+        ((financeData?.pendingInvoices ?? 0) + (financeData?.overdueInvoices ?? 0))
+      : 0;
 
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 500);
+    // Refresh both queries (no local loading state needed)
+    void refetch();
+    void refetchRevenue();
   };
 
-  // Format currency values
+  // Currency formatter
   const formatCurrency = (value: number | undefined) => {
-    if (value === undefined || isNaN(value)) return "$0";
+    if (value === undefined || Number.isNaN(value)) return "$0";
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
@@ -74,9 +73,7 @@ export function FinanceAnalytics() {
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-slate-600" />
             <h3 className="text-sm font-medium text-slate-900">Finance</h3>
-            <Badge variant="secondary" className="text-xs">
-              Finance
-            </Badge>
+            <Badge variant="secondary" className="text-xs">Finance</Badge>
           </div>
           <button
             onClick={handleRefresh}
@@ -96,9 +93,7 @@ export function FinanceAnalytics() {
                   Failed to load finance data
                 </h4>
                 <p className="text-xs text-red-700 mt-1">
-                  {error instanceof Error
-                    ? error.message
-                    : "An unknown error occurred"}
+                  {error instanceof Error ? error.message : "An unknown error occurred"}
                 </p>
               </div>
             </div>
@@ -118,16 +113,12 @@ export function FinanceAnalytics() {
     },
     {
       title: "Total Invoices",
-      value: loading
-        ? "..."
-        : financeData?.totalInvoices?.toLocaleString() || "0",
+      value: loading ? "..." : (financeData?.totalInvoices ?? 0).toLocaleString(),
       loading,
     },
     {
       title: "Paid Invoices",
-      value: loading
-        ? "..."
-        : financeData?.paidInvoices?.toLocaleString() || "0",
+      value: loading ? "..." : (financeData?.paidInvoices ?? 0).toLocaleString(),
       loading,
     },
     {
@@ -138,9 +129,7 @@ export function FinanceAnalytics() {
     },
     {
       title: "Avg Invoice Value",
-      value: loading
-        ? "..."
-        : formatCurrency(financeData?.averageInvoiceValue || 0),
+      value: loading ? "..." : formatCurrency(financeData?.averageInvoiceValue || 0),
       loading,
     },
     {
@@ -149,17 +138,16 @@ export function FinanceAnalytics() {
       icon: Target,
       loading,
     },
-  ];
+  ] as const;
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-slate-600" />
           <h3 className="text-sm font-medium text-slate-900">Finance</h3>
-          <Badge variant="secondary" className="text-xs">
-            Finance
-          </Badge>
+          <Badge variant="secondary" className="text-xs">Finance</Badge>
         </div>
         <button
           onClick={handleRefresh}
@@ -170,80 +158,72 @@ export function FinanceAnalytics() {
         </button>
       </div>
 
+      {/* Metrics grid */}
       <div className="grid grid-cols-3 gap-3">
         {metrics.map((metric, index) => (
-          <Card
-            key={index}
-            className="border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
-          >
+          <Card key={index} className="border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-slate-600">
-                  {metric.title}
-                </p>
-                {metric.icon && (
+                <p className="text-xs font-medium text-slate-600">{metric.title}</p>
+                {"icon" in metric && metric.icon ? (
                   <metric.icon className="h-3 w-3 text-slate-400" />
-                )}
+                ) : null}
               </div>
               <div className="space-y-1">
-                <p className="text-lg font-semibold text-slate-900">
-                  {metric.value}
-                </p>
+                <p className="text-lg font-semibold text-slate-900">{metric.value}</p>
                 {metric.change !== undefined && !metric.loading && (
                   <div className="flex items-center text-xs">
                     {metric.change > 0 ? (
                       <TrendingUp className="h-3 w-3 text-emerald-600 mr-1" />
                     ) : (
-                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                      <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                     )}
-                    <span
-                      className={`${
-                        metric.change > 0 ? "text-emerald-600" : "text-red-600"
-                      }`}
-                    >
+                    <span className={metric.change > 0 ? "text-emerald-600" : "text-red-600"}>
                       {metric.change > 0 ? "+" : ""}
                       {metric.change.toFixed(1)}%
                     </span>
-                    <span className="text-slate-500 ml-1">vs last month</span>
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
         ))}
-      </div>
 
-      {/* Additional Details Row */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="border-slate-200 bg-white shadow-sm">
+        {/* Extras tied to existing data, still from main-only fields */}
+        <Card className="border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-600">
-                Outstanding Invoices
-              </p>
+              <p className="text-xs font-medium text-slate-600">Outstanding Invoices</p>
               <Clock className="h-3 w-3 text-slate-400" />
             </div>
             <p className="text-lg font-semibold text-slate-900">
               {loading
                 ? "..."
-                : (
-                    (financeData?.pendingInvoices || 0) +
-                    (financeData?.overdueInvoices || 0)
-                  ).toLocaleString()}
+                : ((financeData?.pendingInvoices ?? 0) + (financeData?.overdueInvoices ?? 0)).toLocaleString()}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-sm">
+        <Card className="border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-600">
-                Collection Rate
-              </p>
+              <p className="text-xs font-medium text-slate-600">Collection Rate</p>
               <CheckCircle className="h-3 w-3 text-slate-400" />
             </div>
             <p className="text-lg font-semibold text-slate-900">
-              {loading ? "..." : `${paidPercentage.toFixed(1)}%`}
+              {loading ? "..." : `${paidPercentage.toFixed(0)}%`}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-slate-600">Invoices</p>
+              <Receipt className="h-3 w-3 text-slate-400" />
+            </div>
+            <p className="text-lg font-semibold text-slate-900">
+              {loading ? "..." : (financeData?.totalInvoices ?? 0).toLocaleString()}
             </p>
           </CardContent>
         </Card>
