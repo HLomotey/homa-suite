@@ -1,204 +1,390 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingDown, TrendingUp } from "lucide-react";
+import { 
+  Users, 
+  Building2, 
+  MapPin, 
+  Briefcase, 
+  Clock, 
+  TrendingUp,
+  TrendingDown,
+  UserCheck,
+  Calendar,
+  Globe
+} from "lucide-react";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
-import { HRAnalytics as HRAnalyticsType } from "./data";
+
+interface WorkforceAnalytics {
+  // Workforce Composition
+  totalStaff: number;
+  topDepartments: Array<{ department: string; count: number; percentage: number }>;
+  topLocations: Array<{ location: string; count: number; percentage: number }>;
+  topJobTitles: Array<{ title: string; count: number; percentage: number }>;
+  
+  // Employment Status & Categories
+  activeStaff: number;
+  inactiveStaff: number;
+  seasonalStaff: number;
+  fullTimeStaff: number;
+  
+  // Tenure & Service
+  avgYearsOfService: number;
+  newHires2025: number;
+  longTermStaff: number; // 5+ years
+  
+  // Managerial Oversight
+  managersCount: number;
+  avgSpanOfControl: number;
+  
+  // Geographic Insights
+  crossStateBorder: number;
+  topLivedStates: Array<{ state: string; count: number }>;
+  topWorkedStates: Array<{ state: string; count: number }>;
+}
 
 export function HRAnalytics() {
   const { externalStaff, stats, statsLoading } = useExternalStaff();
-  const [analyticsData, setAnalyticsData] = useState<HRAnalyticsType>({
-    headCount: 0,
-    headCountChange: 0,
-    retentionRate: 0,
-    retentionRateChange: 0,
-    terminations: 0,
-    terminationsChange: 0,
-    daysToHire: 0,
-    daysToHireChange: 0,
-    avgDailyHours: 8.2, // Default value as this isn't in external staff data
-    employeeSatisfaction: 89 // Default value as this isn't in external staff data
-  });
+  const [analytics, setAnalytics] = useState<WorkforceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     if (!statsLoading && externalStaff.length > 0) {
       setLoading(true);
       
-      // Calculate head count (active staff)
-      const headCount = stats?.active || 0;
+      const activeStaff = externalStaff.filter(staff => !staff["TERMINATION DATE"]);
+      const totalStaff = externalStaff.length;
       
-      // Calculate retention rate (active staff / total staff * 100)
-      const retentionRate = stats?.totalCount > 0 
-        ? Math.round((stats.active / stats.totalCount) * 100) 
+      // 1. Workforce Composition Analysis
+      const departmentCounts = activeStaff.reduce((acc, staff) => {
+        const dept = staff["HOME DEPARTMENT"] || "Unknown";
+        acc[dept] = (acc[dept] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const locationCounts = activeStaff.reduce((acc, staff) => {
+        const location = staff["LOCATION"] || "Unknown";
+        acc[location] = (acc[location] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const jobTitleCounts = activeStaff.reduce((acc, staff) => {
+        const title = staff["JOB TITLE"] || "Unknown";
+        acc[title] = (acc[title] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // 2. Employment Status & Categories
+      const seasonalStaff = activeStaff.filter(staff => 
+        staff["WORKER CATEGORY"]?.includes("SEAS") || 
+        staff["POSITION STATUS"]?.includes("Seasonal")
+      ).length;
+      
+      const fullTimeStaff = activeStaff.filter(staff => 
+        staff["WORKER CATEGORY"]?.includes("FT") || 
+        staff["POSITION STATUS"]?.includes("Full")
+      ).length;
+      
+      // 3. Tenure & Service Analysis
+      const yearsOfService = activeStaff
+        .map(staff => parseFloat(staff["YEARS OF SERVICE"] || "0"))
+        .filter(years => !isNaN(years));
+      
+      const avgYearsOfService = yearsOfService.length > 0 
+        ? yearsOfService.reduce((sum, years) => sum + years, 0) / yearsOfService.length 
         : 0;
       
-      // Count terminations (staff with termination date)
-      const terminations = stats?.terminated || 0;
+      const newHires2025 = activeStaff.filter(staff => {
+        const hireDate = staff["HIRE DATE"];
+        return hireDate && new Date(hireDate).getFullYear() === 2025;
+      }).length;
       
-      // Calculate average days to hire
-      // Find staff hired in the last 3 months
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const longTermStaff = yearsOfService.filter(years => years >= 5).length;
       
-      let totalDaysToHire = 0;
-      let hireCount = 0;
-      
-      externalStaff.forEach(staff => {
-        if (staff["HIRE DATE"]) {
-          const hireDate = new Date(staff["HIRE DATE"]);
-          if (hireDate >= threeMonthsAgo) {
-            // Assume application date is 30 days before hire date on average
-            // This is a placeholder calculation since we don't have actual application dates
-            totalDaysToHire += 30;
-            hireCount++;
-          }
+      // 4. Managerial Oversight
+      const managerCounts = activeStaff.reduce((acc, staff) => {
+        const manager = staff["REPORTS TO NAME"];
+        if (manager && manager.trim() !== "") {
+          acc[manager] = (acc[manager] || 0) + 1;
         }
-      });
+        return acc;
+      }, {} as Record<string, number>);
       
-      const daysToHire = hireCount > 0 ? Math.round(totalDaysToHire / hireCount) : 18; // Default to 18 if no recent hires
+      const managersCount = Object.keys(managerCounts).length;
+      const totalReports = Object.values(managerCounts).reduce((sum, count) => sum + count, 0);
+      const avgSpanOfControl = managersCount > 0 ? totalReports / managersCount : 0;
       
-      // Calculate month-over-month changes
-      // For this example, we'll simulate changes based on the current data
-      // In a real application, you would compare with historical data
-      const headCountChange = headCount > 1000 ? 5.2 : 2.1;
-      const retentionRateChange = retentionRate > 90 ? 2.5 : -1.2;
-      const terminationsChange = terminations < 30 ? -3.1 : 4.5;
-      const daysToHireChange = daysToHire < 20 ? -10.5 : 5.2;
+      // 5. Geographic Analysis
+      const crossStateBorder = activeStaff.filter(staff => {
+        const livedState = staff["LIVED-IN STATE"];
+        const workedState = staff["WORKED IN STATE"];
+        return livedState && workedState && livedState !== workedState;
+      }).length;
       
-      setAnalyticsData({
-        headCount,
-        headCountChange,
-        retentionRate,
-        retentionRateChange,
-        terminations,
-        terminationsChange,
-        daysToHire,
-        daysToHireChange,
-        avgDailyHours: 8.2, // Default value
-        employeeSatisfaction: 89 // Default value
+      const livedStateCounts = activeStaff.reduce((acc, staff) => {
+        const state = staff["LIVED-IN STATE"];
+        if (state && state.trim() !== "") {
+          acc[state] = (acc[state] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const workedStateCounts = activeStaff.reduce((acc, staff) => {
+        const state = staff["WORKED IN STATE"];
+        if (state && state.trim() !== "") {
+          acc[state] = (acc[state] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Create top lists
+      const topDepartments = Object.entries(departmentCounts)
+        .map(([department, count]) => ({ 
+          department, 
+          count, 
+          percentage: Math.round((count / activeStaff.length) * 100) 
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const topLocations = Object.entries(locationCounts)
+        .map(([location, count]) => ({ 
+          location, 
+          count, 
+          percentage: Math.round((count / activeStaff.length) * 100) 
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      
+      const topJobTitles = Object.entries(jobTitleCounts)
+        .map(([title, count]) => ({ 
+          title, 
+          count, 
+          percentage: Math.round((count / activeStaff.length) * 100) 
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const topLivedStates = Object.entries(livedStateCounts)
+        .map(([state, count]) => ({ state, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      
+      const topWorkedStates = Object.entries(workedStateCounts)
+        .map(([state, count]) => ({ state, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      
+      setAnalytics({
+        totalStaff,
+        topDepartments,
+        topLocations,
+        topJobTitles,
+        activeStaff: activeStaff.length,
+        inactiveStaff: totalStaff - activeStaff.length,
+        seasonalStaff,
+        fullTimeStaff,
+        avgYearsOfService: Math.round(avgYearsOfService * 10) / 10,
+        newHires2025,
+        longTermStaff,
+        managersCount,
+        avgSpanOfControl: Math.round(avgSpanOfControl * 10) / 10,
+        crossStateBorder,
+        topLivedStates,
+        topWorkedStates
       });
       
       setLoading(false);
     }
   }, [externalStaff, stats, statsLoading]);
+
+  if (loading || !analytics) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-slate-600" />
+          <h3 className="text-sm font-medium text-slate-900">Human Resources Analytics</h3>
+          <Badge variant="secondary" className="text-xs">Loading...</Badge>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[...Array(8)].map((_, i) => (
+            <Card key={i} className="border-slate-200 bg-white">
+              <CardContent className="p-4">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-slate-200 rounded mb-2"></div>
+                  <div className="h-6 bg-slate-200 rounded"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-4 grid-cols-1 h-full">
-      <div className="flex items-center gap-2 mb-2">
-        <Users className="h-5 w-5 text-blue-500" />
-        <h3 className="text-lg font-semibold">Human Resources</h3>
-        <Badge variant="outline" className="ml-2">HR</Badge>
-        <p className="text-sm text-muted-foreground ml-auto">Employee management and satisfaction metrics</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Users className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-medium text-foreground">Human Resources Analytics</h3>
+        <Badge variant="secondary" className="text-xs">Workforce Insights</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Head Count Card */}
-        <Card className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-800/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-100">Head Count</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "Loading..." : analyticsData.headCount.toLocaleString()}
+      {/* Key Workforce Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">Total Staff</p>
+              <Users className="h-3 w-3 text-muted-foreground" />
             </div>
-            <div className="flex items-center mt-1">
-              {loading ? null : analyticsData.headCountChange > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.headCountChange > 0 ? "text-green-500" : "text-red-500"}`}>
-                {loading ? "Calculating..." : `${analyticsData.headCountChange > 0 ? "+" : ""}${analyticsData.headCountChange}% from last month`}
-              </p>
-            </div>
+            <p className="text-lg font-semibold text-foreground">{analytics.totalStaff.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{analytics.activeStaff} active, {analytics.inactiveStaff} inactive</p>
           </CardContent>
         </Card>
 
-        {/* Retention Rate Card */}
-        <Card className="bg-gradient-to-br from-pink-900/40 to-pink-800/20 border-pink-800/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-pink-100">Retention Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "Loading..." : `${analyticsData.retentionRate}%`}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">Avg Years Service</p>
+              <Clock className="h-3 w-3 text-muted-foreground" />
             </div>
-            <div className="flex items-center mt-1">
-              {loading ? null : analyticsData.retentionRateChange > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.retentionRateChange > 0 ? "text-green-500" : "text-red-500"}`}>
-                {loading ? "Calculating..." : `${analyticsData.retentionRateChange > 0 ? "+" : ""}${analyticsData.retentionRateChange}% from last month`}
-              </p>
-            </div>
+            <p className="text-lg font-semibold text-foreground">{analytics.avgYearsOfService} years</p>
+            <p className="text-xs text-muted-foreground">{analytics.longTermStaff} staff with 5+ years</p>
           </CardContent>
         </Card>
 
-        {/* Terminations Card */}
-        <Card className="bg-gradient-to-br from-fuchsia-900/40 to-fuchsia-800/20 border-fuchsia-800/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-fuchsia-100">Terminations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "Loading..." : analyticsData.terminations}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">New Hires 2025</p>
+              <Calendar className="h-3 w-3 text-muted-foreground" />
             </div>
-            <div className="flex items-center mt-1">
-              {loading ? null : analyticsData.terminationsChange < 0 ? (
-                <TrendingDown className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingUp className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.terminationsChange < 0 ? "text-green-500" : "text-red-500"}`}>
-                {loading ? "Calculating..." : `${analyticsData.terminationsChange > 0 ? "+" : ""}${analyticsData.terminationsChange}% from last month`}
-              </p>
-            </div>
+            <p className="text-lg font-semibold text-foreground">{analytics.newHires2025}</p>
+            <p className="text-xs text-muted-foreground">{Math.round((analytics.newHires2025 / analytics.activeStaff) * 100)}% of active staff</p>
           </CardContent>
         </Card>
 
-        {/* Days to Hire Card */}
-        <Card className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-800/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-100">Days to Hire</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "Loading..." : analyticsData.daysToHire}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">Cross-State Workers</p>
+              <Globe className="h-3 w-3 text-muted-foreground" />
             </div>
-            <div className="flex items-center mt-1">
-              {loading ? null : analyticsData.daysToHireChange < 0 ? (
-                <TrendingDown className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingUp className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <p className={`text-xs ${loading ? "text-gray-400" : analyticsData.daysToHireChange < 0 ? "text-green-500" : "text-red-500"}`}>
-                {loading ? "Calculating..." : `${analyticsData.daysToHireChange > 0 ? "+" : ""}${analyticsData.daysToHireChange}% from last month`}
-              </p>
-            </div>
+            <p className="text-lg font-semibold text-foreground">{analytics.crossStateBorder}</p>
+            <p className="text-xs text-muted-foreground">{Math.round((analytics.crossStateBorder / analytics.activeStaff) * 100)}% commute across states</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Avg Daily Hours Card */}
-        <Card className="bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-800/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-violet-100">Avg Daily Hours</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{analyticsData.avgDailyHours}</div>
+      {/* Workforce Composition */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Top Departments */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-foreground">Top Departments</h4>
+            </div>
+            <div className="space-y-2">
+              {analytics.topDepartments.map((dept, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{dept.department}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground">{dept.count}</span>
+                    <Badge variant="outline" className="text-xs">{dept.percentage}%</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Employee Satisfaction Card */}
-        <Card className="bg-gradient-to-br from-rose-900/40 to-rose-800/20 border-rose-800/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-rose-100">Employee Satisfaction</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{analyticsData.employeeSatisfaction}%</div>
+        {/* Top Locations */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-foreground">Top Locations</h4>
+            </div>
+            <div className="space-y-2">
+              {analytics.topLocations.map((location, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{location.location}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground">{location.count}</span>
+                    <Badge variant="outline" className="text-xs">{location.percentage}%</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Job Titles */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-foreground">Top Job Titles</h4>
+            </div>
+            <div className="space-y-2">
+              {analytics.topJobTitles.map((title, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{title.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground">{title.count}</span>
+                    <Badge variant="outline" className="text-xs">{title.percentage}%</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Employment Categories & Management */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Employment Categories */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-foreground">Employment Categories</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-foreground">{analytics.seasonalStaff}</p>
+                <p className="text-xs text-muted-foreground">Seasonal Workers</p>
+                <p className="text-xs text-muted-foreground">{Math.round((analytics.seasonalStaff / analytics.activeStaff) * 100)}% of active</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-foreground">{analytics.fullTimeStaff}</p>
+                <p className="text-xs text-muted-foreground">Full-Time Staff</p>
+                <p className="text-xs text-muted-foreground">{Math.round((analytics.fullTimeStaff / analytics.activeStaff) * 100)}% of active</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Management Structure */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium text-foreground">Management Structure</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-foreground">{analytics.managersCount}</p>
+                <p className="text-xs text-muted-foreground">Total Managers</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-foreground">{analytics.avgSpanOfControl}</p>
+                <p className="text-xs text-muted-foreground">Avg Span of Control</p>
+                <p className="text-xs text-muted-foreground">reports per manager</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
