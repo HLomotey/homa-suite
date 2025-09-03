@@ -64,9 +64,8 @@ export function FinanceAnalytics() {
   const { data: financeData, isLoading, error, isError } = useFinanceAnalytics(selectedYear, selectedMonth);
   
   useEffect(() => {
-    if (!isLoading && financeData) {
-      setLoading(true);
-      
+    // Always set insights with mock data to prevent null reference errors
+    const initializeInsights = () => {
       // Calculate comprehensive financial insights
       const totalRevenue = 4190000; // $4.19M
       const collectedRevenue = 3530000; // $3.53M
@@ -150,7 +149,10 @@ export function FinanceAnalytics() {
       });
       
       setLoading(false);
-    }
+    };
+
+    // Initialize insights immediately to prevent null reference errors
+    initializeInsights();
   }, [financeData, isLoading]);
 
   // Format currency values
