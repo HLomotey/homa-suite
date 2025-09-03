@@ -21,6 +21,7 @@ export function FinanceAnalytics() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
 
+  // --- keep code from kwame ---
   const {
     data: financeData,
     isLoading,
@@ -50,10 +51,10 @@ export function FinanceAnalytics() {
       : 0;
 
   const handleRefresh = () => {
-    // Refresh both queries (no local loading state needed)
     void refetch();
     void refetchRevenue();
   };
+  // --- end keep ---
 
   // Currency formatter
   const formatCurrency = (value: number | undefined) => {
@@ -189,7 +190,7 @@ export function FinanceAnalytics() {
           </Card>
         ))}
 
-        {/* Extras tied to existing data, still from main-only fields */}
+        {/* Extras */}
         <Card className="border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
