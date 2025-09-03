@@ -316,21 +316,35 @@ export function FinanceAnalytics() {
               <h4 className="text-sm font-medium text-foreground">Top Clients by Revenue</h4>
             </div>
             <div className="space-y-2">
-              {insights.topClients.map((client, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-foreground">{formatCurrency(client.revenue)}</span>
-                    <Badge variant="outline" className="text-xs">{client.percentage.toFixed(1)}%</Badge>
+              {financeData?.topClients?.slice(0, 5).map((client, index) => {
+                const totalRevenue = financeData.topClients.reduce((sum, c) => sum + c.total_revenue, 0);
+                const percentage = totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0;
+                return (
+                  <div key={index} className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client_name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground">{formatCurrency(client.total_revenue)}</span>
+                      <Badge variant="outline" className="text-xs">{percentage.toFixed(1)}%</Badge>
+                    </div>
                   </div>
+                );
+              }) || (
+                <div className="text-center py-4">
+                  <p className="text-xs text-muted-foreground">No client data available</p>
                 </div>
-              ))}
+              )}
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
-              <p className="text-xs text-orange-600">
-                ⚠️ Top 2 clients: {insights.clientConcentrationRisk.toFixed(1)}% concentration risk
-              </p>
-            </div>
+            {financeData?.topClients && financeData.topClients.length >= 2 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-orange-600">
+                  ⚠️ Top 2 clients: {(() => {
+                    const totalRevenue = financeData.topClients.reduce((sum, c) => sum + c.total_revenue, 0);
+                    const topTwoRevenue = financeData.topClients.slice(0, 2).reduce((sum, c) => sum + c.total_revenue, 0);
+                    return totalRevenue > 0 ? ((topTwoRevenue / totalRevenue) * 100).toFixed(1) : '0.0';
+                  })()}% concentration risk
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

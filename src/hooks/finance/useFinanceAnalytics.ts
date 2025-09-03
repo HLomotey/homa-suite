@@ -238,19 +238,19 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         })
       );
 
-      // Tax analysis by Tax 1 Type
-      const taxData = typedInvoices.reduce((acc, inv) => {
-        const taxType = inv.tax_1_type || "No Tax";
-        if (!acc[taxType]) {
-          acc[taxType] = { total_revenue: 0, invoice_count: 0 };
+      // Client revenue aggregation by client_name
+      const clientData = typedInvoices.reduce((acc, inv) => {
+        const clientName = inv.client_name || "Unknown Client";
+        if (!acc[clientName]) {
+          acc[clientName] = { total_revenue: 0, invoice_count: 0 };
         }
         const lineTotal = parseFloat(inv.line_total);
-        acc[taxType].total_revenue += isNaN(lineTotal) ? 0 : lineTotal;
-        acc[taxType].invoice_count += 1;
+        acc[clientName].total_revenue += isNaN(lineTotal) ? 0 : lineTotal;
+        acc[clientName].invoice_count += 1;
         return acc;
       }, {} as Record<string, { total_revenue: number; invoice_count: number }>);
 
-      const topClients = Object.entries(taxData)
+      const topClients = Object.entries(clientData)
         .map(([client_name, data]) => ({
           client_name,
           total_revenue: (

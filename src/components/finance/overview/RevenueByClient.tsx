@@ -1,25 +1,96 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Users, AlertTriangle, TrendingUp } from "lucide-react";
+import { ChevronRight, Users, AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
+import { useMemo } from "react";
 
 export function RevenueByClient() {
   const navigate = useNavigate();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
   
-  // Mock data based on dashboard insights
-  const clientData = [
-    { client: "TechCorp Solutions", revenue: 485000, percentage: 17.0, color: "bg-blue-500" },
-    { client: "Global Industries", revenue: 342000, percentage: 12.0, color: "bg-green-500" },
-    { client: "Innovation Labs", revenue: 285000, percentage: 10.0, color: "bg-purple-500" },
-    { client: "Digital Dynamics", revenue: 228000, percentage: 8.0, color: "bg-orange-500" },
-    { client: "Future Systems", revenue: 171000, percentage: 6.0, color: "bg-yellow-500" },
-    { client: "Others", revenue: 1339000, percentage: 47.0, color: "bg-gray-400" }
-  ];
+  const { data: financeData, isLoading, error } = useFinanceAnalytics(currentYear, currentMonth);
 
-  const totalRevenue = clientData.reduce((sum, client) => sum + client.revenue, 0);
-  const topTwoConcentration = clientData[0].percentage + clientData[1].percentage;
-  const formatCurrency = (value: number) => `$${(value / 1000).toFixed(0)}K`;
+  // Process real client data from finance analytics
+  const clientData = useMemo(() => {
+    if (!financeData?.topClients || financeData.topClients.length === 0) {
+      return [];
+    }
+
+    const colors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-yellow-500"];
+    const totalRevenue = financeData.topClients.reduce((sum, client) => sum + client.total_revenue, 0);
+    
+    // Calculate percentages and add colors
+    const processedClients = financeData.topClients.slice(0, 5).map((client, index) => ({
+      client: client.client_name,
+      revenue: client.total_revenue,
+      percentage: totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0,
+      color: colors[index] || "bg-gray-500",
+      invoiceCount: client.invoice_count
+    }));
+
+    // Calculate "Others" if there are more clients
+    const displayedRevenue = processedClients.reduce((sum, client) => sum + client.revenue, 0);
+    const othersRevenue = totalRevenue - displayedRevenue;
+    
+    if (othersRevenue > 0) {
+      processedClients.push({
+        client: "Others",
+        revenue: othersRevenue,
+        percentage: (othersRevenue / totalRevenue) * 100,
+        color: "bg-gray-400",
+        invoiceCount: 0
+      });
+    }
+
+    return processedClients;
+  }, [financeData]);
+
+  const totalRevenue = useMemo(() => {
+    return clientData.reduce((sum, client) => sum + client.revenue, 0);
+  }, [clientData]);
+
+  const topTwoConcentration = useMemo(() => {
+    if (clientData.length >= 2) {
+      return clientData[0].percentage + clientData[1].percentage;
+    }
+    return clientData[0]?.percentage || 0;
+  }, [clientData]);
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(0)}K`;
+    }
+    return `$${value.toFixed(0)}`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading client data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || clientData.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {error ? "Failed to load client data" : "No client data available"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -31,7 +102,10 @@ export function RevenueByClient() {
               <div className={`w-4 h-4 ${client.color} rounded-full`}></div>
               <div>
                 <div className="font-medium text-sm text-foreground">{client.client}</div>
-                <div className="text-xs text-muted-foreground">{formatCurrency(client.revenue)} revenue</div>
+                <div className="text-xs text-muted-foreground">
+                  {formatCurrency(client.revenue)} revenue
+                  {client.invoiceCount > 0 && ` • ${client.invoiceCount} invoices`}
+                </div>
               </div>
             </div>
             <div className="text-right">
@@ -64,7 +138,9 @@ export function RevenueByClient() {
       {/* Key Metrics */}
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center">
-          <div className="text-lg font-semibold text-foreground">{clientData.length - 1}</div>
+          <div className="text-lg font-semibold text-foreground">
+            {financeData?.topClients?.length || 0}
+          </div>
           <div className="text-xs text-muted-foreground">Active Clients</div>
         </div>
         <div className="text-center">
@@ -73,7 +149,9 @@ export function RevenueByClient() {
         </div>
         <div className="text-center">
           <div className="flex items-center justify-center gap-1">
-            <span className="text-lg font-semibold text-foreground">{formatCurrency(totalRevenue / (clientData.length - 1))}</span>
+            <span className="text-lg font-semibold text-foreground">
+              {financeData?.topClients?.length ? formatCurrency(totalRevenue / financeData.topClients.length) : '$0'}
+            </span>
             <TrendingUp className="h-3 w-3 text-green-500" />
           </div>
           <div className="text-xs text-muted-foreground">Avg per Client</div>
