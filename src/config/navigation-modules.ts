@@ -20,10 +20,10 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
   {
     id: 'properties',
     name: 'properties',
-    displayName: 'Properties',
-    description: 'Property management and housing',
-    icon: 'Building',
-    routes: ['/properties', '/housing', '/maintenance', '/maintenance/*']
+    displayName: 'Maintenance',
+    description: 'Property maintenance management',
+    icon: 'Wrench',
+    routes: ['/properties', '/maintenance', '/maintenance/*']
   },
   {
     id: 'transport',

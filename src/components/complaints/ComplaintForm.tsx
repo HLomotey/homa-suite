@@ -67,7 +67,7 @@ interface ComplaintFormProps {
 }
 
 export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const { createComplaint, isCreating } = useComplaints();
   const [assetType, setAssetType] = useState<ComplaintAssetType>("property");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -138,7 +138,7 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
 
   // Handle form submission
   const onSubmit = async (data: ComplaintFormValues) => {
-    if (!user) {
+    if (!currentUser) {
       toast({
         title: "Error",
         description: "You must be logged in to submit a complaint",
@@ -161,9 +161,9 @@ export function ComplaintForm({ onSuccess, onCancel }: ComplaintFormProps) {
         priority: data.priority,
         contact_method: data.contactMethod,
         location: data.location,
-        created_by: user.id,
+        created_by: currentUser.user.id,
         assigned_to: data.supervisorId || null,
-        status: "new",
+        status: "open",
         escalated_to: null,
         due_date: null,
         resolved_at: null,

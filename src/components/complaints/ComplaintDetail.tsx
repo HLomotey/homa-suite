@@ -60,7 +60,7 @@ interface ComplaintDetailProps {
 }
 
 export function ComplaintDetail({ id, onBack }: ComplaintDetailProps) {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const { complaint, isLoading, updateComplaint } = useComplaint(id);
   const { comments, addComment, isLoading: isLoadingComments } = useComplaintComments(id, true);
   const { attachments, uploadAttachment, isLoading: isLoadingAttachments } = useComplaintAttachments(id, true);
@@ -72,9 +72,9 @@ export function ComplaintDetail({ id, onBack }: ComplaintDetailProps) {
   const [isInternalFile, setIsInternalFile] = useState(false);
   
   // Check if user is assigned to this complaint or is an admin
-  const isAssigned = user?.id === complaint?.assignedTo;
+  const isAssigned = currentUser?.user?.id === complaint?.assignedTo;
   // Assuming admin role check is done via a function or property
-  const canManage = isAssigned || (user?.app_metadata?.role === 'admin');
+  const canManage = isAssigned || (currentUser?.user?.app_metadata?.role === 'admin');
   
   // Handle status change
   const handleStatusChange = (status: ComplaintStatus) => {

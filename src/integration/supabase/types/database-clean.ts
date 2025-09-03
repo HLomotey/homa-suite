@@ -63,8 +63,6 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          asset_type: string | null
-          sla_hours: number | null
           updated_at: string | null
         }
         Insert: {
@@ -72,8 +70,6 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          asset_type?: string | null
-          sla_hours?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -81,8 +77,6 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-          asset_type?: string | null
-          sla_hours?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -287,7 +281,6 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          sla_hours: number | null
           updated_at: string | null
         }
         Insert: {
@@ -296,7 +289,6 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          sla_hours?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -305,7 +297,6 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-          sla_hours?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -599,7 +590,6 @@ export type Database = {
           phone: string | null
           avatar_url: string | null
           status: string
-          role_id: string | null
           created_at: string
           updated_at: string
         }
@@ -610,7 +600,6 @@ export type Database = {
           phone?: string | null
           avatar_url?: string | null
           status?: string
-          role_id?: string | null
           id?: string
           created_at?: string
           updated_at?: string
@@ -622,7 +611,6 @@ export type Database = {
           phone?: string | null
           avatar_url?: string | null
           status?: string
-          role_id?: string | null
           id?: string
           created_at?: string
           updated_at?: string

@@ -1,101 +1,84 @@
 /**
- * User Profile API functions for Supabase integration
- * These functions handle direct communication with Supabase for user and profile data
+ * Clean User Profile API functions for Supabase integration
+ * Simplified version that works with current database schema (profiles table only)
  */
 
 import { supabase } from "../../integration/supabase/client";
 import { supabaseAdmin } from "../../integration/supabase/admin-client";
 import {
   FrontendUser,
-  User,
   Profile,
   UserRole,
   UserWithProfile,
   UserStatus,
-  UserPreferences,
-  UserActivity,
-  mapDatabaseUserToFrontend,
-  mapDatabaseProfileToProfile
+  mapDatabaseProfileToProfile,
 } from "../../integration/supabase/types";
-// Omit is a TypeScript built-in utility type, no need to import
 
 /**
- * Fetch all users from Supabase
- * @returns Promise with array of users
+ * Convert Profile data to FrontendUser format
+ */
+const profileToFrontendUser = (profile: Profile): FrontendUser => ({
+  id: profile.id,
+  name: profile.full_name || profile.email.split("@")[0],
+  email: profile.email,
+  role: (profile.role_id ? "admin" : "staff") as UserRole,
+  department: "", // Not available in current schema
+  status: (profile.status === "active"
+    ? "active"
+    : profile.status === "inactive"
+    ? "inactive"
+    : "pending") as UserStatus,
+  lastActive: undefined,
+  permissions: [],
+  createdAt: profile.created_at,
+});
+
+/**
+ * Fetch all users from profiles table
  */
 export const fetchUsers = async (): Promise<FrontendUser[]> => {
-  console.log('🔍 [UPDATED API] Fetching users from database...', new Date().toISOString());
-  
-  // Check authentication status
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  console.log('🔐 Auth status for users:', { user: user?.email || 'Not authenticated', authError });
-  
-  // Try to fetch from users table first
-  const { data: usersData, error: usersError } = await supabase
-    .from("users")
-    .select("*")
-    .order("email", { ascending: true });
+  console.log(
+    "🔍 Fetching users from profiles table...",
+    new Date().toISOString()
+  );
 
-  console.log('👥 Users table query result:', { 
-    count: usersData?.length || 0, 
-    data: usersData, 
-    error: usersError 
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  console.log("🔐 Auth status:", {
+    user: user?.email || "Not authenticated",
+    authError,
   });
 
-  // Also try to fetch from profiles table
   const { data: profilesData, error: profilesError } = await supabase
     .from("profiles")
     .select("*")
     .order("email", { ascending: true });
 
-  console.log('📋 Profiles table query result:', { 
-    count: profilesData?.length || 0, 
-    data: profilesData, 
-    error: profilesError 
+  console.log("📋 Profiles query result:", {
+    count: profilesData?.length || 0,
+    error: profilesError,
   });
 
-  // If we have users data, use it
-  if (usersData && usersData.length > 0) {
-    console.log(`✅ Found ${usersData.length} users from users table`);
-    return (usersData as User[]).map(mapDatabaseUserToFrontend);
-  }
-
-  // If we have profiles data, use it
-  if (profilesData && profilesData.length > 0) {
-    console.log(`✅ Found ${profilesData.length} profiles from profiles table`);
-    return (profilesData as Profile[]).map(profile => ({
-      id: profile.id,
-      name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email.split('@')[0],
-      email: profile.email,
-      role: 'staff' as UserRole, // Default role since profiles table doesn't have role
-      department: profile.department || '',
-      status: profile.status === 'active' ? 'active' : profile.status === 'inactive' ? 'inactive' : 'pending',
-      lastActive: undefined,
-      permissions: [],
-      createdAt: profile.created_at
-    }));
-  }
-
-  // If both queries failed, log errors
-  if (usersError) {
-    console.error("❌ Error fetching users:", usersError);
-  }
   if (profilesError) {
     console.error("❌ Error fetching profiles:", profilesError);
+    return [];
   }
 
-  console.log('⚠️ No data found in users or profiles tables');
+  if (profilesData && profilesData.length > 0) {
+    console.log(`✅ Found ${profilesData.length} profiles`);
+    return profilesData.map(profileToFrontendUser);
+  }
+
+  console.log("⚠️ No profiles found");
   return [];
 };
 
 /**
- * Fetch a single user by ID
- * @param id User ID
- * @returns Promise with user data
+ * Fetch a single user by ID from profiles table
  */
-export const fetchUserById = async (
-  id: string
-): Promise<FrontendUser> => {
+export const fetchUserById = async (id: string): Promise<FrontendUser> => {
   const { data, error } = await supabaseAdmin
     .from("profiles")
     .select("*")
@@ -107,18 +90,15 @@ export const fetchUserById = async (
     throw new Error(error.message);
   }
 
-  return mapDatabaseUserToFrontend(data as User);
+  return profileToFrontendUser(data as Profile);
 };
 
 /**
  * Fetch a user with their profile information
- * @param id User ID
- * @returns Promise with user and profile data
  */
 export const fetchUserWithProfile = async (
   id: string
 ): Promise<UserWithProfile> => {
-  // Fetch profile data directly (profiles table contains user info)
   const { data: profileData, error: profileError } = await supabaseAdmin
     .from("profiles")
     .select("*")
@@ -130,14 +110,12 @@ export const fetchUserWithProfile = async (
     throw new Error(profileError.message);
   }
 
-  const user = mapDatabaseUserToFrontend(profileData as User);
-  const profile = profileData 
-    ? mapDatabaseProfileToProfile(profileData as Profile)
-    : undefined;
+  const user = profileToFrontendUser(profileData as Profile);
+  const profile = mapDatabaseProfileToProfile(profileData as Profile);
 
   return {
     ...user,
-    profile
+    profile,
   };
 };
 
@@ -154,16 +132,16 @@ export const fetchUsersByRole = async (
     .from("profiles")
     .select("*")
     .order("email", { ascending: true }); // Using email instead of name which doesn't exist
-  
+
   // Only apply role filter if role is provided and not null
   if (role) {
     query = query.eq("role", role);
   }
-  
+
   const { data, error } = await query;
 
   if (error) {
-    console.error(`Error fetching users with role ${role || 'all'}:`, error);
+    console.error(`Error fetching users with role ${role || "all"}:`, error);
     throw new Error(error.message);
   }
 
@@ -221,53 +199,59 @@ export const fetchUsersByStatus = async (
  * @param user User data to create
  * @returns Promise with created user data
  */
-export const createUser = async (
-  user: FrontendUser
-): Promise<FrontendUser> => {
+export const createUser = async (user: FrontendUser): Promise<FrontendUser> => {
   // Map role to valid enum values until we remove the enum constraint
-  const validEnumRoles = ['admin', 'manager', 'staff', 'tenant', 'driver', 'maintenance', 'guest'];
-  let userRole = 'staff'; // default fallback
-  
+  const validEnumRoles = [
+    "admin",
+    "manager",
+    "staff",
+    "tenant",
+    "driver",
+    "maintenance",
+    "guest",
+  ];
+  let userRole = "staff"; // default fallback
+
   // Check if the role exists in roles table and map to valid enum
-  const { data: roleData } = await (supabaseAdmin as any)
-    .from('roles')
-    .select('name')
-    .eq('name', user.role)
+  const { data: roleData } = await supabaseAdmin
+    .from("roles")
+    .select("name")
+    .eq("name", user.role)
     .single();
-  
+
   if (roleData?.name && validEnumRoles.includes(roleData.name)) {
     userRole = roleData.name;
   } else if (validEnumRoles.includes(user.role)) {
     userRole = user.role;
   }
-  
+
   console.log(`Role mapping: ${user.role} -> ${userRole}`);
-  
+
   // Convert frontend user to database format for public.users table
   const dbUser = {
     id: user.id, // Use the provided user ID (from auth)
     email: user.email,
-    is_active: user.status === 'active',
+    is_active: user.status === "active",
     last_login: user.lastActive || null,
-    name: user.name || '',
-    department: user.department || null
+    name: user.name || "",
+    department: user.department || null,
   };
 
   // Check if user already exists in users table
-  const { data: existingUser, error: userCheckError } = await (supabaseAdmin as any)
+  const { data: existingUser, error: userCheckError } = await supabaseAdmin
     .from("users")
     .select("*")
     .eq("id", user.id)
     .single();
 
   let data;
-  if (userCheckError && userCheckError.code !== 'PGRST116') {
+  if (userCheckError && userCheckError.code !== "PGRST116") {
     console.error("Error checking existing user:", userCheckError);
   }
 
   if (!existingUser) {
     // Create the user record in public.users using admin client
-    const { data: newUser, error } = await (supabaseAdmin as any)
+    const { data: newUser, error } = await supabaseAdmin
       .from("users")
       .insert(dbUser)
       .select()
@@ -281,14 +265,14 @@ export const createUser = async (
   } else {
     console.log("User already exists in users table:", user.id);
     // Update the existing user with new data
-    const { data: updatedUser, error: updateError } = await (supabaseAdmin as any)
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from("users")
       .update({
         email: dbUser.email,
         is_active: dbUser.is_active,
         name: dbUser.name,
         department: dbUser.department,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", user.id)
       .select()
@@ -300,30 +284,36 @@ export const createUser = async (
     }
     data = updatedUser;
   }
-  
-  // Check if profile already exists before creating
-  const { data: existingProfile, error: profileCheckError } = await (supabaseAdmin as any)
-    .from("profiles")
-    .select("id")
-    .eq("id", data?.id || user.id)
-    .single();
 
-  if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+  // Check if profile already exists before creating
+  const { data: existingProfile, error: profileCheckError } =
+    await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", data.id)
+      .single();
+
+  if (profileCheckError && profileCheckError.code !== "PGRST116") {
     console.error("Error checking existing profile:", profileCheckError);
   }
 
   if (!existingProfile) {
     // Create the profile record in public.profiles using admin client
-    const { error: profileError } = await (supabaseAdmin as any)
+    const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
-        id: data?.id || user.id, // Use id as primary key that references auth.users(id)
+        id: data.id, // Use id as primary key that references auth.users(id)
         email: user.email, // Required field
-        full_name: user.name || user.email.split('@')[0], // Fallback to email username
-        status: user.status === 'active' ? 'active' : user.status === 'inactive' ? 'inactive' : 'active', // Ensure valid status
-        user_id: data?.id || user.id // Add user_id field
+        full_name: user.name || user.email.split("@")[0], // Fallback to email username
+        status:
+          user.status === "active"
+            ? "active"
+            : user.status === "inactive"
+            ? "inactive"
+            : "active", // Ensure valid status
+        user_id: data.id, // Add user_id field
       });
-      
+
     if (profileError) {
       console.error("Error creating user profile:", profileError);
       // Don't throw here, as the user was created successfully
@@ -332,16 +322,21 @@ export const createUser = async (
   } else {
     console.log("Profile already exists for user:", data.id);
     // Optionally update the existing profile with new data
-    const { error: updateError } = await (supabaseAdmin as any)
+    const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({
-        full_name: user.name || user.email.split('@')[0],
-        status: user.status === 'active' ? 'active' : user.status === 'inactive' ? 'inactive' : 'active',
+        full_name: user.name || user.email.split("@")[0],
+        status:
+          user.status === "active"
+            ? "active"
+            : user.status === "inactive"
+            ? "inactive"
+            : "active",
         role_id: userRole ? parseInt(userRole.toString()) : null, // Update role in profile
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq("id", data?.id || user.id);
-      
+      .eq("id", data.id);
+
     if (updateError) {
       console.error("Error updating existing profile:", updateError);
     }
@@ -349,7 +344,7 @@ export const createUser = async (
 
   // Role is now stored directly in users table, no need for separate assignment
 
-  return mapDatabaseUserToFrontend((data || { id: user.id, email: user.email, name: user.name }) as User);
+  return mapDatabaseUserToFrontend(data as User);
 };
 
 /**
@@ -364,22 +359,22 @@ export const updateUser = async (
 ): Promise<FrontendUser> => {
   // Convert frontend user to database format - only use columns that exist in users table
   const dbUser: any = {};
-  
+
   // Fields that go in the users table
   if (user.email !== undefined) dbUser.email = user.email;
   if (user.role !== undefined) dbUser.role = user.role;
-  if (user.status !== undefined) dbUser.is_active = user.status === 'active';
+  if (user.status !== undefined) dbUser.is_active = user.status === "active";
   if (user.lastActive !== undefined) dbUser.last_login = user.lastActive;
   if (user.department !== undefined) dbUser.department = user.department;
   if (user.permissions !== undefined) dbUser.permissions = user.permissions;
-  
+
   // Extract profile-related fields
   const profileUpdate: any = {};
   let hasProfileUpdates = false;
 
   if (user.name !== undefined) {
-    profileUpdate.first_name = user.name.split(' ')[0] || '';
-    profileUpdate.last_name = user.name.split(' ').slice(1).join(' ') || '';
+    profileUpdate.first_name = user.name.split(" ")[0] || "";
+    profileUpdate.last_name = user.name.split(" ").slice(1).join(" ") || "";
     hasProfileUpdates = true;
   }
   if (user.bio !== undefined) {
@@ -394,11 +389,12 @@ export const updateUser = async (
   // Update profile table - only update fields that are provided
   const profileUpdates: any = {};
   if (user.name !== undefined) profileUpdates.full_name = user.name;
-  if (user.department !== undefined) profileUpdates.department = user.department;
+  if (user.department !== undefined)
+    profileUpdates.department = user.department;
   if (user.status !== undefined) profileUpdates.status = user.status;
   profileUpdates.updated_at = new Date().toISOString();
 
-  const { data, error } = await (supabaseAdmin as any)
+  const { data, error } = await supabaseAdmin
     .from("profiles")
     .update(profileUpdates)
     .eq("id", id)
@@ -409,7 +405,7 @@ export const updateUser = async (
     console.error(`Error updating user profile with ID ${id}:`, error);
     throw new Error(error.message);
   }
-  
+
   // Update profile if we have profile updates
   if (hasProfileUpdates) {
     // Check if profile exists
@@ -418,18 +414,21 @@ export const updateUser = async (
       .select("id")
       .eq("user_id", id)
       .limit(1);
-      
+
     if (profileCheckError) {
-      console.error(`Error checking profile for user ${id}:`, profileCheckError);
+      console.error(
+        `Error checking profile for user ${id}:`,
+        profileCheckError
+      );
       // Don't throw, just log the error
     } else {
       if (profileData && profileData.length > 0) {
         // Update existing profile
-        const { error: updateError } = await (supabaseAdmin as any)
+        const { error: updateError } = await supabaseAdmin
           .from("profiles")
           .update(profileUpdate)
           .eq("user_id", id);
-          
+
         if (updateError) {
           console.error(`Error updating profile for user ${id}:`, updateError);
           // Don't throw, just log the error
@@ -440,13 +439,13 @@ export const updateUser = async (
           ...profileUpdate,
           id: id,
           user_id: id,
-          email: user.email || data.email // Use email from user update or existing data
+          email: user.email || data.email, // Use email from user update or existing data
         };
-        
+
         const { error: insertError } = await supabaseAdmin
           .from("profiles")
           .insert(profileData);
-          
+
         if (insertError) {
           console.error(`Error creating profile for user ${id}:`, insertError);
           // Don't throw, just log the error
@@ -464,10 +463,7 @@ export const updateUser = async (
  * @returns Promise with success status
  */
 export const deleteUser = async (id: string): Promise<void> => {
-  const { error } = await (supabase as any)
-    .from("users")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("users").delete().eq("id", id);
 
   if (error) {
     console.error(`Error deleting user with ID ${id}:`, error);
@@ -483,23 +479,18 @@ export const deleteUser = async (id: string): Promise<void> => {
  */
 export const upsertProfile = async (
   userId: string,
-  profile: {
-    bio?: string | null;
-    preferences?: Record<string, any> | null;
-    avatarUrl?: string | null;
-    email?: string;
-    fullName?: string;
-    status?: string;
-    roleId?: string | number | null;
-  }
+  profileData: Partial<Profile>
 ): Promise<Profile> => {
   // First, get user email from auth.users if not provided
   let userEmail = profile.email;
   if (!userEmail) {
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const { data: authUser, error: authError } =
+      await supabaseAdmin.auth.admin.getUserById(userId);
     if (authError) {
       console.error(`Error getting auth user:`, authError);
-      throw new Error(`Cannot create profile without email: ${authError.message}`);
+      throw new Error(
+        `Cannot create profile without email: ${authError.message}`
+      );
     }
     userEmail = authUser.user?.email;
     if (!userEmail) {
@@ -512,62 +503,73 @@ export const upsertProfile = async (
     id: userId, // Use id as primary key
     user_id: userId,
     email: userEmail, // Required field
-    status: profile.status || 'active', // Required field with valid constraint value
-    full_name: profile.fullName || userEmail.split('@')[0], // Fallback to email username
-    role_id: profile.roleId ? parseInt(profile.roleId.toString()) : null // Add role to profile
+    status: profile.status || "active", // Required field with valid constraint value
+    full_name: profile.fullName || userEmail.split("@")[0], // Fallback to email username
+    role_id: profile.roleId ? parseInt(profile.roleId.toString()) : null, // Add role to profile
   };
-  
+
   // Only add avatar_url if provided (bio doesn't exist in profiles table)
   if (profile.avatarUrl !== undefined) {
     dbProfile.avatar_url = profile.avatarUrl;
   }
 
   // Check if profile already exists - check by both id and user_id since they should be the same
-  const { data: existingData, error: checkError } = await (supabaseAdmin as any)
+  const { data: existingData, error: checkError } = await supabaseAdmin
     .from("profiles")
     .select("id")
     .eq("id", userId)
     .single();
 
-  if (checkError && checkError.code !== 'PGRST116') {
-    console.error(`Error checking existing profile:`, checkError);
+  if (checkError && checkError.code !== "PGRST116") {
+    console.error("Error checking existing profile:", checkError);
     throw new Error(checkError.message);
   }
 
-  let result;
-  
+  const profilePayload = {
+    id: userId,
+    user_id: userId,
+    email: profileData.email || "",
+    full_name: profileData.full_name || "",
+    phone: profileData.phone || "",
+    avatar_url: profileData.avatar_url || "",
+    status: profileData.status || "active",
+    role_id: profileData.role_id || null,
+    updated_at: new Date().toISOString(),
+  };
+
   if (existingData) {
     // Update existing profile using admin client - remove required fields for updates
     const updateData = { ...dbProfile };
     delete updateData.id; // Don't update primary key
     delete updateData.email; // Don't update email in existing profile
-    
-    const { data, error } = await (supabaseAdmin as any)
+
+    const { data, error } = await supabaseAdmin
       .from("profiles")
-      .update(updateData)
-      .eq("id", existingData.id)
+      .update(profilePayload)
+      .eq("id", userId)
       .select()
       .single();
-      
+
     if (error) {
-      console.error(`Error updating profile:`, error);
+      console.error("Error updating profile:", error);
       throw new Error(error.message);
     }
-    
-    result = data;
+
+    console.log("✅ Profile updated successfully");
+    return data as Profile;
   } else {
     // Create new profile using admin client
-    const { data, error } = await (supabaseAdmin as any)
+    const { data, error } = await supabaseAdmin
       .from("profiles")
       .insert(dbProfile)
       .select()
       .single();
-      
+
     if (error) {
       console.error(`Error creating profile:`, error);
       throw new Error(error.message);
     }
-    
+
     result = data;
   }
 
@@ -585,9 +587,9 @@ export const updateUserStatus = async (
   status: UserStatus
 ): Promise<FrontendUser> => {
   // Convert status to is_active boolean since status column doesn't exist
-  const is_active = status === 'active';
-  
-  const { data, error } = await (supabase as any)
+  const is_active = status === "active";
+
+  const { data, error } = await supabase
     .from("users")
     .update({ is_active })
     .eq("id", id)
@@ -612,7 +614,7 @@ export const updateUserRole = async (
   id: string,
   role: UserRole
 ): Promise<FrontendUser> => {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("users")
     .update({ role })
     .eq("id", id)
@@ -638,7 +640,7 @@ export const updateUserPreferences = async (
   preferences: UserPreferences
 ): Promise<Profile> => {
   // Check if profile already exists
-  const { data: existingData, error: checkError } = await (supabase as any)
+  const { data: existingData, error: checkError } = await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", userId)
@@ -650,51 +652,48 @@ export const updateUserPreferences = async (
   }
 
   let result;
-  
+
   if (existingData && existingData.length > 0) {
     // Update existing profile preferences
     const currentPreferences = existingData[0].preferences || {};
     const updatedPreferences = { ...currentPreferences, ...preferences };
-    
-    const { data, error } = await (supabase as any)
+
+    const { data, error } = await supabase
       .from("profiles")
       .update({ preferences: updatedPreferences })
       .eq("id", existingData[0].id)
       .select()
       .single();
-      
+
     if (error) {
       console.error(`Error updating preferences:`, error);
       throw new Error(error.message);
     }
-    
+
     result = data;
   } else {
     // Create new profile with preferences
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("profiles")
       .insert({
-        user_id: userId,
-        preferences
+        ...profilePayload,
+        created_at: new Date().toISOString(),
       })
       .select()
       .single();
-      
+
     if (error) {
-      console.error(`Error creating profile with preferences:`, error);
+      console.error("Error creating profile:", error);
       throw new Error(error.message);
     }
-    
-    result = data;
-  }
 
-  return result as Profile;
+    console.log("✅ Profile created successfully");
+    return data as Profile;
+  }
 };
 
 /**
- * Log user activity
- * @param activity User activity data to log
- * @returns Promise with created activity data
+ * Update user profile
  */
 export const logUserActivity = async (
   activity: Omit<UserActivity, "id" | "timestamp">
@@ -704,10 +703,10 @@ export const logUserActivity = async (
     action: activity.action,
     details: activity.details || {},
     ip: activity.ip,
-    user_agent: activity.userAgent
+    user_agent: activity.userAgent,
   };
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("user_activities")
     .insert(dbActivity)
     .select()
@@ -719,13 +718,13 @@ export const logUserActivity = async (
   }
 
   return {
-    id: (data as any).id,
-    userId: (data as any).user_id,
-    action: (data as any).action,
-    details: (data as any).details,
-    timestamp: (data as any).created_at,
-    ip: (data as any).ip,
-    userAgent: (data as any).user_agent
+    id: data.id,
+    userId: data.user_id,
+    action: data.action,
+    details: data.details,
+    timestamp: data.created_at,
+    ip: data.ip,
+    userAgent: data.user_agent,
   };
 };
 
@@ -737,7 +736,7 @@ export const logUserActivity = async (
 export const fetchUserActivities = async (
   userId: string
 ): Promise<UserActivity[]> => {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("user_activities")
     .select("*")
     .eq("user_id", userId)
@@ -748,13 +747,13 @@ export const fetchUserActivities = async (
     throw new Error(error.message);
   }
 
-  return (data || []).map((activity: any) => ({
+  return (data || []).map((activity) => ({
     id: activity.id,
     userId: activity.user_id,
     action: activity.action,
     details: activity.details,
     timestamp: activity.created_at,
     ip: activity.ip,
-    userAgent: activity.user_agent
+    userAgent: activity.user_agent,
   }));
 };
