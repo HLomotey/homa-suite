@@ -4,4 +4,5 @@
  */
 
 export * from './useInventory';
+export * from './useInventoryCategories';
 export * from './api';

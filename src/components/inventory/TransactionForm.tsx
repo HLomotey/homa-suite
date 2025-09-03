@@ -187,7 +187,7 @@ export function TransactionForm({
 
             {selectedItem && (
               <div className="text-sm text-muted-foreground">
-                Current stock: {currentStock} {selectedItem.unit}
+                Current stock: {currentStock} units
               </div>
             )}
 
