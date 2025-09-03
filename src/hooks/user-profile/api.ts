@@ -175,6 +175,105 @@ export const upsertProfile = async (
 };
 
 /**
+ * Fetch users by role
+ */
+export const fetchUsersByRole = async (role: UserRole): Promise<FrontendUser[]> => {
+  console.log('🔍 Fetching users by role:', role);
+  
+  const { data: profilesData, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("role_id", role === 'admin' ? "1" : null)
+    .order("email", { ascending: true });
+
+  if (error) {
+    console.error("❌ Error fetching users by role:", error);
+    return [];
+  }
+
+  return profilesData?.map(profileToFrontendUser) || [];
+};
+
+/**
+ * Fetch users by department (placeholder - department not in current schema)
+ */
+export const fetchUsersByDepartment = async (department: string): Promise<FrontendUser[]> => {
+  console.log('🔍 Fetching users by department:', department);
+  // Department filtering not available in current schema
+  return fetchUsers();
+};
+
+/**
+ * Fetch users by status
+ */
+export const fetchUsersByStatus = async (status: UserStatus): Promise<FrontendUser[]> => {
+  console.log('🔍 Fetching users by status:', status);
+  
+  const { data: profilesData, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("status", status)
+    .order("email", { ascending: true });
+
+  if (error) {
+    console.error("❌ Error fetching users by status:", error);
+    return [];
+  }
+
+  return profilesData?.map(profileToFrontendUser) || [];
+};
+
+/**
+ * Create user (placeholder)
+ */
+export const createUser = async (userData: Partial<FrontendUser>): Promise<FrontendUser> => {
+  throw new Error("createUser not implemented - use Supabase Auth signup");
+};
+
+/**
+ * Delete user (placeholder)
+ */
+export const deleteUser = async (id: string): Promise<void> => {
+  throw new Error("deleteUser not implemented - use Supabase Auth admin");
+};
+
+/**
+ * Update user status
+ */
+export const updateUserStatus = async (id: string, status: UserStatus): Promise<FrontendUser> => {
+  return updateUser(id, { status });
+};
+
+/**
+ * Update user role
+ */
+export const updateUserRole = async (id: string, role: UserRole): Promise<FrontendUser> => {
+  return updateUser(id, { role });
+};
+
+/**
+ * Update user preferences (placeholder)
+ */
+export const updateUserPreferences = async (id: string, preferences: any): Promise<void> => {
+  console.log('updateUserPreferences not implemented');
+};
+
+/**
+ * Log user activity (placeholder)
+ */
+export const logUserActivity = async (userId: string, activity: any): Promise<void> => {
+  console.log('logUserActivity not implemented');
+};
+
+/**
+ * Fetch user activities (placeholder)
+ */
+export const fetchUserActivities = async (userId: string): Promise<any[]> => {
+  console.log('fetchUserActivities not implemented');
+  return [];
+};
+
+/**
  * Update user profile
  */
 export const updateUser = async (
