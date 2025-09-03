@@ -91,6 +91,7 @@ export function AgeDemographics() {
                   
                   return (
                     <div key={ageGroup} className="flex flex-col items-center">
+                      {/* eslint-disable-next-line react/forbid-dom-props -- Dynamic chart height requires inline styles */}
                       <div className="relative bg-blue-500 w-10 rounded-t-md" style={{ height: `${height}px` }}>
                         <span className="absolute -top-5 text-xs">{count}</span>
                       </div>

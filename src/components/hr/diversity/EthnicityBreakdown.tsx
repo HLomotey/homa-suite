@@ -144,8 +144,9 @@ export function EthnicityBreakdown() {
               <div className="flex flex-col space-y-2 ml-4 max-h-[180px] overflow-y-auto">
                 {chartSegments.map((segment, index) => (
                   <div key={index} className="flex items-center">
+                    {/* eslint-disable-next-line react/forbid-dom-props -- Dynamic color indicator requires inline styles */}
                     <div 
-                      className="w-3 h-3 rounded-full mr-2" 
+                      className="w-4 h-4 rounded-full" 
                       style={{ backgroundColor: segment.color }}
                     ></div>
                     <span className="text-xs">{segment.ethnicity} ({segment.percentage}%)</span>
