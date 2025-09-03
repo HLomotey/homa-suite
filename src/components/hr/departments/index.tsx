@@ -42,11 +42,20 @@ export function HRDepartments() {
     if (!statsLoading && externalStaff.length > 0) {
       setLoading(true);
       
-      // Group staff by department
+      // Filter to only active staff (no termination date)
+      const activeStaff = externalStaff.filter(staff => !staff["TERMINATION DATE"]);
+      
+      // Group active staff by department, combining all STAFF departments
       const departmentMap = new Map<string, any[]>();
       
-      externalStaff.forEach(staff => {
-        const department = staff["DEPARTMENT"] || "Unassigned";
+      activeStaff.forEach(staff => {
+        let department = staff["HOME DEPARTMENT"] || "Unassigned";
+        
+        // Group all departments containing "STAFF" under one category
+        if (department.toUpperCase().includes("STAFF")) {
+          department = "STAFF";
+        }
+        
         if (!departmentMap.has(department)) {
           departmentMap.set(department, []);
         }
@@ -61,9 +70,19 @@ export function HRDepartments() {
         // Skip departments with no staff
         if (staffList.length === 0) return;
         
-        // Calculate turnover rate (terminated staff / total staff)
-        const terminatedStaff = staffList.filter(staff => staff["TERMINATION DATE"]);
-        const turnoverRate = ((terminatedStaff.length / staffList.length) * 100).toFixed(1) + "%";
+        // Since we're only using active staff, calculate turnover based on historical data
+        // Get all staff (including terminated) for this department to calculate turnover
+        const allDepartmentStaff = externalStaff.filter(staff => {
+          let dept = staff["HOME DEPARTMENT"] || "Unassigned";
+          if (dept.toUpperCase().includes("STAFF")) {
+            dept = "STAFF";
+          }
+          return dept === departmentName;
+        });
+        
+        const terminatedStaff = allDepartmentStaff.filter(staff => staff["TERMINATION DATE"]);
+        const turnoverRate = allDepartmentStaff.length > 0 ? 
+          ((terminatedStaff.length / allDepartmentStaff.length) * 100).toFixed(1) + "%" : "0.0%";
         
         // Calculate average tenure in years
         const now = new Date();
@@ -80,9 +99,9 @@ export function HRDepartments() {
         });
         const avgTenure = (totalTenure / staffList.length).toFixed(1) + " years";
         
-        // Determine department status based on growth
+        // Determine department status based on growth (using all staff for accurate assessment)
         let status = "Stable";
-        const recentHires = staffList.filter(staff => {
+        const recentHires = allDepartmentStaff.filter(staff => {
           if (staff["HIRE DATE"]) {
             const hireDate = new Date(staff["HIRE DATE"]);
             const threeMonthsAgo = new Date();
@@ -92,9 +111,9 @@ export function HRDepartments() {
           return false;
         });
         
-        if (recentHires.length > staffList.length * 0.1) {
+        if (recentHires.length > allDepartmentStaff.length * 0.1) {
           status = "Growing";
-        } else if (terminatedStaff.length > staffList.length * 0.1) {
+        } else if (terminatedStaff.length > allDepartmentStaff.length * 0.1) {
           status = "Needs Attention";
         }
         

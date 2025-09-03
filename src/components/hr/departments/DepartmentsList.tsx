@@ -29,8 +29,7 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
   
   // Filter departments based on search query
   const filteredDepartments = departments.filter(dept => 
-    dept.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    dept.manager.toLowerCase().includes(searchQuery.toLowerCase())
+    dept.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   // Sort departments based on sort field and direction
@@ -70,28 +69,18 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
   
   // Get total metrics
   const totalHeadcount = departments.reduce((sum, dept) => sum + dept.headcount, 0);
-  const totalOpenPositions = departments.reduce((sum, dept) => sum + dept.openPositions, 0);
-  const avgTurnoverRate = (departments.reduce((sum, dept) => sum + parseFloat(dept.turnoverRate), 0) / departments.length).toFixed(1) + "%";
+  const avgTurnoverRate = departments.length > 0 ? (departments.reduce((sum, dept) => sum + parseFloat(dept.turnoverRate), 0) / departments.length).toFixed(1) + "%" : "0.0%";
   
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-background border-border">
           <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium">Total Headcount</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Active Staff</CardTitle>
           </CardHeader>
           <CardContent className="py-0">
             <div className="text-2xl font-bold">{totalHeadcount}</div>
             <p className="text-xs text-muted-foreground">Across all departments</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-background border-border">
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium">Open Positions</CardTitle>
-          </CardHeader>
-          <CardContent className="py-0">
-            <div className="text-2xl font-bold">{totalOpenPositions}</div>
-            <p className="text-xs text-muted-foreground">Currently recruiting</p>
           </CardContent>
         </Card>
         <Card className="bg-background border-border">
@@ -140,18 +129,8 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
                 className="cursor-pointer"
                 onClick={() => handleSort("headcount")}
               >
-                Headcount
+                Active Staff
                 {sortField === "headcount" && (
-                  sortDirection === "asc" ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />
-                )}
-              </TableHead>
-              <TableHead>Manager</TableHead>
-              <TableHead 
-                className="cursor-pointer"
-                onClick={() => handleSort("openPositions")}
-              >
-                Open Positions
-                {sortField === "openPositions" && (
                   sortDirection === "asc" ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />
                 )}
               </TableHead>
@@ -165,17 +144,32 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
                 )}
               </TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">View Details</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedDepartments.map((department) => (
-              <TableRow key={department.id}>
+              <TableRow 
+                key={department.id} 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => onSelectDepartment(department)}
+              >
                 <TableCell className="font-medium">{department.name}</TableCell>
-                <TableCell>{department.headcount}</TableCell>
-                <TableCell>{department.manager}</TableCell>
-                <TableCell>{department.openPositions}</TableCell>
-                <TableCell>{department.turnoverRate}</TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg font-semibold">{department.headcount}</span>
+                    <span className="text-sm text-muted-foreground">staff</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className={`font-medium ${
+                    parseFloat(department.turnoverRate) > 15 ? 'text-red-600' :
+                    parseFloat(department.turnoverRate) > 10 ? 'text-yellow-600' :
+                    'text-green-600'
+                  }`}>
+                    {department.turnoverRate}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <Badge variant={
                     department.status === "Growing" ? "default" : 
@@ -189,7 +183,10 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => onSelectDepartment(department)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectDepartment(department);
+                    }}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -198,7 +195,7 @@ export function DepartmentsList({ departments, onSelectDepartment }: Departments
             ))}
             {sortedDepartments.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
                   No departments found matching your search.
                 </TableCell>
               </TableRow>
