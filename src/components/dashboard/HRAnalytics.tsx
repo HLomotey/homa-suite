@@ -235,11 +235,11 @@ export function HRAnalytics() {
         <Card className="bg-background border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-muted-foreground">Total Staff</p>
+              <p className="text-xs font-medium text-muted-foreground">Active Staff</p>
               <Users className="h-3 w-3 text-muted-foreground" />
             </div>
-            <p className="text-lg font-semibold text-foreground">{analytics.totalStaff.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{analytics.activeStaff} active, {analytics.inactiveStaff} inactive</p>
+            <p className="text-lg font-semibold text-foreground">{analytics.activeStaff.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{Math.round((analytics.activeStaff / analytics.totalStaff) * 100)}% of total workforce</p>
           </CardContent>
         </Card>
 
@@ -268,11 +268,19 @@ export function HRAnalytics() {
         <Card className="bg-background border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-muted-foreground">Cross-State Workers</p>
-              <Globe className="h-3 w-3 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Hiring Trends</p>
+              <TrendingUp className="h-3 w-3 text-muted-foreground" />
             </div>
-            <p className="text-lg font-semibold text-foreground">{analytics.crossStateBorder}</p>
-            <p className="text-xs text-muted-foreground">{Math.round((analytics.crossStateBorder / analytics.activeStaff) * 100)}% commute across states</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-green-500">+{analytics.newHires2025}</p>
+                <p className="text-xs text-muted-foreground">New hires</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-red-500">-{analytics.inactiveStaff}</p>
+                <p className="text-xs text-muted-foreground">Terminated</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
