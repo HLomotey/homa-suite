@@ -115,8 +115,9 @@ export function RetentionRate() {
             )}
             <div className="h-8 flex items-center px-4 text-xs text-muted-foreground">
               <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
-                <span>Retention Rate</span>
+                {/* eslint-disable-next-line react/forbid-dom-props -- Dynamic chart height requires inline styles */}
+                <div className="bg-green-500 rounded-t-md" style={{ height: "20px", width: "4px" }}></div>
+                <span className="ml-2">Retention Rate</span>
               </div>
             </div>
           </div>

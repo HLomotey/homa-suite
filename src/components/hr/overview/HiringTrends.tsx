@@ -87,12 +87,10 @@ export function HiringTrends() {
                   return (
                     <div key={index} className="flex flex-col items-center">
                       <div className="flex items-end space-x-1">
+                        {/* eslint-disable-next-line react/forbid-dom-props -- Dynamic chart height requires inline styles */}
                         <div 
-                          className="bg-amber-500 w-8 rounded-t-md flex items-center justify-center text-xs text-white font-medium" 
-                          style={{ height: `${timeHeight}px` }}
-                        >
-                          {timeToHire[index]}
-                        </div>
+                          className="bg-green-500 rounded-t-md" style={{ height: `${timeHeight}px` }}></div>
+                        {/* eslint-disable-next-line react/forbid-dom-props -- Dynamic chart height requires inline styles */}
                         <div 
                           className="bg-purple-500 w-8 rounded-t-md flex items-center justify-center text-xs text-white font-medium" 
                           style={{ height: `${hireHeight}px` }}

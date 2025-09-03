@@ -39,23 +39,127 @@ export interface FinanceMetrics {
   isDataComplete: boolean; // Flag to indicate if all data was retrieved
 }
 
+// Paginated fetch function for all finance invoices
+const fetchAllInvoicesPaginated = async (
+  year?: number,
+  month?: number,
+  signal?: AbortSignal
+): Promise<{ data: any[]; totalCount: number }> => {
+  const PAGE_SIZE = 1000;
+  const MAX_RETRIES = 3;
+  
+  console.log(`fetchAllInvoicesPaginated called with year: ${year}, month: ${month}`);
+  
+  // Build base query
+  let baseQuery = supabaseAdmin.from("finance_invoices").select("*");
+  
+  if (year && month) {
+    const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
+    const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+    baseQuery = baseQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+  }
+  
+  // Get total count first
+  let countQuery = supabaseAdmin
+    .from("finance_invoices")
+    .select("id", { count: "exact", head: true });
+    
+  if (year && month) {
+    const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
+    const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+    countQuery = countQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+  }
+
+  const { count: totalCount, error: countError } = await countQuery;
+
+  if (countError) {
+    console.error("Count query error:", countError);
+    throw new Error(`Failed to get total count: ${countError.message}`);
+  }
+
+  const total = totalCount || 0;
+  console.log(`Total finance invoices count: ${total}`);
+  
+  let allRows: any[] = [];
+
+  if (total === 0) {
+    console.log("No finance invoices found, returning empty array");
+    return { data: [], totalCount: 0 };
+  }
+
+  // Fetch all pages
+  const pages = Math.ceil(total / PAGE_SIZE);
+  console.log(`Will fetch ${pages} pages with ${PAGE_SIZE} records per page`);
+  
+  for (let page = 0; page < pages; page++) {
+    if (page > 0 && page % 5 === 0) {
+      console.log(`Fetched ${allRows.length} finance records so far (${Math.round(allRows.length / total * 100)}%)`);
+    }
+    
+    const from = page * PAGE_SIZE;
+    const to = Math.min((page + 1) * PAGE_SIZE - 1, total - 1);
+
+    let attempt = 0;
+    let success = false;
+    
+    while (attempt < MAX_RETRIES && !success) {
+      try {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+        let pageQuery = supabaseAdmin
+          .from("finance_invoices")
+          .select("*")
+          .order("id", { ascending: true })
+          .range(from, to);
+
+        if (year && month) {
+          const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
+          const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+          pageQuery = pageQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+        }
+
+        const { data, error: pageErr } = await pageQuery;
+
+        if (pageErr) {
+          console.error(`Error fetching finance page ${page}:`, pageErr);
+          throw pageErr;
+        }
+        
+        if (data && data.length) {
+          allRows = allRows.concat(data);
+          success = true;
+        } else {
+          console.warn(`Finance page ${page} returned no data`);
+          success = true;
+        }
+      } catch (e) {
+        attempt++;
+        console.warn(`Attempt ${attempt} failed for finance page ${page}:`, e);
+        if (attempt >= MAX_RETRIES) throw e;
+        await new Promise((r) => setTimeout(r, 300 * attempt));
+      }
+    }
+  }
+  
+  console.log(`Successfully fetched all ${allRows.length} finance records`);
+  return { data: allRows, totalCount: total };
+};
+
 export const useFinanceAnalytics = (year?: number, month?: number) => {
   return useQuery({
     queryKey: ["finance-analytics", year, month],
     queryFn: async (): Promise<FinanceMetrics> => {
-      // Use supabaseAdmin to bypass RLS policies and data rendering limits
-      let query = supabaseAdmin.from("finance_invoices").select("*");
-
-      if (year && month) {
-        const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split("T")[0]; // Last day of month
-        query = query.gte("date_issued", startDate).lte("date_issued", endDate);
-      }
-
-      const { data: invoices, error } = await query;
-      // Explicitly type the invoices data
+      console.log("Starting finance analytics fetch with pagination...");
+      
+      // Use paginated fetch to get ALL records
+      const { data: invoices, totalCount } = await fetchAllInvoicesPaginated(year, month);
       const typedInvoices = invoices as any[] || [];
-      if (error) throw error;
+      
+      console.log(`Finance analytics processing ${typedInvoices.length} records out of ${totalCount} total`);
+      
+      if (typedInvoices.length !== totalCount) {
+        console.warn(`Warning: Expected ${totalCount} records but got ${typedInvoices.length}`);
+      }
 
       const totalInvoices = typedInvoices.length;
       
@@ -183,21 +287,17 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
   return useQuery({
     queryKey: ["revenue-metrics", year, month],
     queryFn: async () => {
-      let query = supabaseAdmin
-        .from("finance_invoices")
-        .select("line_total, date_issued, invoice_status")
-        .order("date_issued", { ascending: true });
-
-      if (year && month) {
-        const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-        query = query.gte("date_issued", startDate).lte("date_issued", endDate);
-      }
-
-      const { data, error } = await query;
-      // Explicitly type the data
-      const typedData = data as any[] || [];
-      if (error) throw error;
+      console.log("Starting revenue metrics fetch with pagination...");
+      
+      // Use paginated fetch to get ALL records for accurate revenue calculations
+      const { data: allData, totalCount } = await fetchAllInvoicesPaginated(year, month);
+      const typedData = allData.map(invoice => ({
+        line_total: invoice.line_total,
+        date_issued: invoice.date_issued,
+        invoice_status: invoice.invoice_status
+      }));
+      
+      console.log(`Revenue metrics processing ${typedData.length} records out of ${totalCount} total`);
 
       // Use filtered period or current month if no filter
       const targetMonth = month ? month - 1 : new Date().getMonth(); // month - 1 because JS months are 0-indexed
