@@ -28,6 +28,7 @@ import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
 import { FinanceAnalyticsTab } from "@/components/finance/FinanceAnalyticsTab";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
+import { FinanceDrillThroughDashboard } from "@/components/finance/drill-through/FinanceDrillThroughDashboard";
 
 export default function Finance() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -142,6 +143,7 @@ export default function Finance() {
         <TabsList className="bg-background border-border">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="detailed-analysis">Detailed Analysis</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="budgeting">Budgeting</TabsTrigger>
@@ -153,6 +155,14 @@ export default function Finance() {
 
         <TabsContent value="analytics" className="space-y-4">
           <FinanceAnalyticsTab year={selectedYear} month={selectedMonth} />
+        </TabsContent>
+
+        <TabsContent value="detailed-analysis" className="space-y-4">
+          <FinanceDrillThroughDashboard
+            onBack={() => setActiveTab("analytics")}
+            year={selectedYear}
+            month={selectedMonth}
+          />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">

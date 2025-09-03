@@ -1,24 +1,34 @@
-import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
+import { useFinanceAnalytics, useRevenueMetrics, type FinanceMetrics } from "@/hooks/finance/useFinanceAnalytics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, ArrowDownRight, DollarSign, FileText, CheckCircle, Clock, AlertCircle, Send, RefreshCw, BarChart3, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { FinanceDrillThroughDashboard } from "@/components/finance/drill-through/FinanceDrillThroughDashboard";
 
 export function FinanceAnalytics() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [showDrillThrough, setShowDrillThrough] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
   const { data: financeData, isLoading, error, isError, refetch } = useFinanceAnalytics(selectedYear, selectedMonth);
   const { data: revenueData, isLoading: isRevenueLoading, refetch: refetchRevenue } = useRevenueMetrics(selectedYear, selectedMonth);
   
-  // Calculate derived metrics
+  // Calculate derived metrics with proper type safety
   const revenueGrowth = revenueData?.growthRate || 0;
-  const paidPercentage = financeData?.totalInvoices > 0 ? (financeData.paidInvoices / financeData.totalInvoices) * 100 : 0;
+  const paidPercentage = (financeData?.totalInvoices && financeData.totalInvoices > 0) 
+    ? (financeData.paidInvoices / financeData.totalInvoices) * 100 
+    : 0;
   
   const handleRefresh = () => {
+    // Clear all finance-related cache before refetching
+    queryClient.invalidateQueries({ queryKey: ["finance-analytics"] });
+    queryClient.invalidateQueries({ queryKey: ["revenue-metrics"] });
+    queryClient.removeQueries({ queryKey: ["finance-analytics"] });
+    queryClient.removeQueries({ queryKey: ["revenue-metrics"] });
+    
     refetch();
     refetchRevenue();
   };
@@ -33,6 +43,17 @@ export function FinanceAnalytics() {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  // Show drill-through dashboard if requested
+  if (showDrillThrough) {
+    return (
+      <FinanceDrillThroughDashboard
+        onBack={() => setShowDrillThrough(false)}
+        year={selectedYear}
+        month={selectedMonth}
+      />
+    );
+  }
 
   // Loading state
   if (isLoading || isRevenueLoading) {

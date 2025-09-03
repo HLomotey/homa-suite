@@ -44,6 +44,7 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
     queryKey: ["finance-analytics", year, month],
     queryFn: async (): Promise<FinanceMetrics> => {
       // Use supabaseAdmin to bypass RLS policies and data rendering limits
+      // Remove any limits to ensure all data is loaded
       let query = supabaseAdmin.from("finance_invoices").select("*");
 
       if (year && month) {
@@ -52,12 +53,107 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         query = query.gte("date_issued", startDate).lte("date_issued", endDate);
       }
 
-      const { data: invoices, error } = await query;
-      // Explicitly type the invoices data
-      const typedInvoices = invoices as any[] || [];
-      if (error) throw error;
+      // Use the same robust pagination approach as external staff
+      const PAGE_SIZE = 1000;
+      const MAX_RETRIES = 3;
+
+      // Get total count first with proper filtering
+      let countQuery = supabaseAdmin
+        .from("finance_invoices")
+        .select("id", { count: "exact", head: true });
+
+      // Apply date filters for accurate count
+      if (year && month) {
+        const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
+        const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+        countQuery = countQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+      }
+
+      const { count: totalCount, error: countError } = await countQuery;
+
+      if (countError) {
+        console.error("Count query error:", countError);
+        throw new Error(`Failed to get total count: ${countError.message}`);
+      }
+
+      const total = totalCount || 0;
+      console.log(`Total finance records for query: ${total}`);
+      
+      let allInvoices: any[] = [];
+
+      // If no records, return early
+      if (total === 0) {
+        console.log("No finance records found, returning empty array");
+        const typedInvoices = allInvoices;
+      } else {
+        // Fetch all pages with progress logging
+        const pages = Math.ceil(total / PAGE_SIZE);
+        console.log(`Will fetch ${pages} pages with ${PAGE_SIZE} records per page`);
+        
+        for (let page = 0; page < pages; page++) {
+          if (page > 0 && page % 5 === 0) {
+            console.log(`Fetched ${allInvoices.length} finance records so far (${Math.round(allInvoices.length / total * 100)}%)`);
+          }
+          
+          const from = page * PAGE_SIZE;
+          const to = Math.min((page + 1) * PAGE_SIZE - 1, total - 1);
+
+          let attempt = 0;
+          let success = false;
+          
+          while (attempt < MAX_RETRIES && !success) {
+            try {
+              let pageQuery = supabaseAdmin
+                .from("finance_invoices")
+                .select("*")
+                .order("id", { ascending: true })
+                .range(from, to);
+
+              // Apply same date filtering to each page
+              if (year && month) {
+                const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
+                const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+                pageQuery = pageQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+              }
+
+              const { data, error: pageErr } = await pageQuery;
+
+              if (pageErr) {
+                console.error(`Error fetching finance page ${page}:`, pageErr);
+                throw pageErr;
+              }
+              
+              if (data && data.length) {
+                allInvoices = allInvoices.concat(data as any[]);
+                success = true;
+              } else {
+                console.warn(`Finance page ${page} returned no data`);
+                success = true; // Consider empty result as success to avoid retries
+              }
+            } catch (e) {
+              attempt++;
+              console.warn(`Attempt ${attempt} failed for finance page ${page}:`, e);
+              if (attempt >= MAX_RETRIES) throw e;
+              await new Promise((r) => setTimeout(r, 300 * attempt));
+            }
+          }
+        }
+        
+        console.log(`Successfully fetched all ${allInvoices.length} finance records`);
+      }
+
+      const typedInvoices = allInvoices;
 
       const totalInvoices = typedInvoices.length;
+      
+      // Log the actual number of invoices fetched for debugging
+      console.log(`Finance Analytics: Fetched ${totalInvoices} invoices from database`);
+      console.log(`Query executed: SELECT * FROM finance_invoices${year && month ? ` WHERE date_issued >= '${year}-${month.toString().padStart(2, "0")}-01' AND date_issued <= '${new Date(year, month, 0).toISOString().split("T")[0]}'` : ''}`);
+      
+      // Check if we hit Supabase's default limit
+      if (totalInvoices === 1000) {
+        console.warn('⚠️ WARNING: Exactly 1000 records returned - this may indicate a default limit is being applied');
+      }
       
       // Calculate total revenue directly from the fetched invoices
       // This ensures we have accurate data even with large datasets
@@ -173,8 +269,9 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         isDataComplete: true, // Using supabaseAdmin ensures we get all data
       };
     },
-    staleTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Force fresh data fetch
+    refetchOnWindowFocus: true,
+    gcTime: 0, // Don't cache the results (gcTime replaces cacheTime in newer versions)
   });
 };
 
