@@ -11,13 +11,15 @@ import {
   InventorySupplier,
   InventoryPurchaseOrder,
   InventoryPurchaseOrderItem,
+  InventoryCategory,
   FrontendInventoryItem,
   FrontendInventoryStock,
   FrontendInventoryTransaction,
   FrontendInventorySupplier,
   FrontendInventoryPurchaseOrder,
   FrontendInventoryPurchaseOrderItem,
-  mapDatabaseInventoryItemToFrontend,
+  FrontendInventoryCategory,
+  mapInventoryItemToFrontend,
   mapDatabaseInventoryStockToFrontend,
   mapDatabaseInventoryTransactionToFrontend,
   mapDatabaseInventorySupplierToFrontend,
@@ -26,6 +28,9 @@ import {
   InventoryTransactionType,
   PurchaseOrderStatus
 } from "../../integration/supabase/types/inventory";
+
+// Type assertion helper to work around Supabase type generation issues
+const db = supabase as any;
 
 // ==================== Inventory Items API ====================
 
@@ -54,7 +59,7 @@ export const fetchInventoryItems = async (): Promise<FrontendInventoryItem[]> =>
       return [];
     }
 
-    const mappedData = (data as InventoryItem[]).map(mapDatabaseInventoryItemToFrontend);
+    const mappedData = (data as InventoryItem[]).map(mapInventoryItemToFrontend);
     console.log("Mapped inventory items data:", mappedData);
     
     return mappedData;
@@ -83,7 +88,7 @@ export const fetchInventoryItemById = async (
     throw new Error(error.message);
   }
 
-  return mapDatabaseInventoryItemToFrontend(data as InventoryItem);
+  return mapInventoryItemToFrontend(data as InventoryItem);
 };
 
 /**
@@ -98,12 +103,11 @@ export const createInventoryItem = async (
   const dbItem = {
     name: item.name,
     description: item.description,
-    category: item.category,
-    unit: item.unit,
-    min_stock_level: item.minStockLevel
+    category_id: item.categoryId,
+    minimum_stock_level: item.minimumStockLevel
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("inventory_items")
     .insert(dbItem)
     .select()
@@ -114,7 +118,7 @@ export const createInventoryItem = async (
     throw new Error(error.message);
   }
 
-  return mapDatabaseInventoryItemToFrontend(data as InventoryItem);
+  return mapInventoryItemToFrontend(data as InventoryItem);
 };
 
 /**
@@ -132,11 +136,10 @@ export const updateInventoryItem = async (
 
   if (item.name !== undefined) dbItem.name = item.name;
   if (item.description !== undefined) dbItem.description = item.description;
-  if (item.category !== undefined) dbItem.category = item.category;
-  if (item.unit !== undefined) dbItem.unit = item.unit;
-  if (item.minStockLevel !== undefined) dbItem.min_stock_level = item.minStockLevel;
+  if (item.categoryId !== undefined) dbItem.category_id = item.categoryId;
+  if (item.minimumStockLevel !== undefined) dbItem.minimum_stock_level = item.minimumStockLevel;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("inventory_items")
     .update(dbItem)
     .eq("id", id)
@@ -148,7 +151,7 @@ export const updateInventoryItem = async (
     throw new Error(error.message);
   }
 
-  return mapDatabaseInventoryItemToFrontend(data as InventoryItem);
+  return mapInventoryItemToFrontend(data as InventoryItem);
 };
 
 /**
@@ -185,7 +188,7 @@ export const fetchInventoryStockByProperty = async (
         inventory_items (*)
       `)
       .eq("property_id", propertyId)
-      .order("last_updated", { ascending: false });
+      .order("updated_at", { ascending: false });
 
     if (error) {
       console.error(`Error fetching inventory stock for property ${propertyId}:`, error);
@@ -201,7 +204,7 @@ export const fetchInventoryStockByProperty = async (
     const mappedData = data.map((item: any) => {
       const stockItem = mapDatabaseInventoryStockToFrontend(item);
       if (item.inventory_items) {
-        stockItem.item = mapDatabaseInventoryItemToFrontend(item.inventory_items);
+        stockItem.item = mapInventoryItemToFrontend(item.inventory_items);
       }
       return stockItem;
     });
@@ -262,11 +265,11 @@ export const updateInventoryStock = async (
 
   if (existingStock) {
     // Update existing stock
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("inventory_stock")
       .update({
         quantity: quantity,
-        last_updated: new Date().toISOString()
+        updated_at: new Date().toISOString()
       })
       .eq("property_id", propertyId)
       .eq("item_id", itemId)
@@ -281,13 +284,13 @@ export const updateInventoryStock = async (
     return mapDatabaseInventoryStockToFrontend(data as InventoryStock);
   } else {
     // Create new stock entry
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("inventory_stock")
       .insert({
         property_id: propertyId,
         item_id: itemId,
         quantity: quantity,
-        last_updated: new Date().toISOString()
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -329,7 +332,7 @@ export const fetchInventoryTransactionsByProperty = async (
   const mappedData = data.map((transaction: any) => {
     const frontendTransaction = mapDatabaseInventoryTransactionToFrontend(transaction);
     if (transaction.inventory_items) {
-      frontendTransaction.item = mapDatabaseInventoryItemToFrontend(transaction.inventory_items);
+      frontendTransaction.item = mapInventoryItemToFrontend(transaction.inventory_items);
     }
     return frontendTransaction;
   });
@@ -346,7 +349,7 @@ export const createInventoryTransaction = async (
   transaction: Omit<FrontendInventoryTransaction, "id" | "previousQuantity" | "newQuantity" | "transactionDate">
 ): Promise<FrontendInventoryTransaction> => {
   // First get the current stock level
-  const { data: stockData, error: stockError } = await supabase
+  const { data: stockData, error: stockError } = await db
     .from("inventory_stock")
     .select("quantity")
     .eq("property_id", transaction.propertyId)
@@ -381,7 +384,7 @@ export const createInventoryTransaction = async (
   let transactionId: string | undefined;
   
   try {
-    const { data, error } = await supabase.rpc('create_inventory_transaction', {
+    const { data, error } = await db.rpc('create_inventory_transaction', {
       p_property_id: transaction.propertyId,
       p_item_id: transaction.itemId,
       p_transaction_type: transaction.transactionType,
@@ -396,12 +399,12 @@ export const createInventoryTransaction = async (
       throw error;
     }
     
-    transactionId = data.id;
+    transactionId = data?.id;
   } catch (rpcError) {
     console.warn("RPC function not available, falling back to direct table insertion", rpcError);
     
     // Fallback: Insert directly into the table
-    const { data: insertData, error: insertError } = await supabase
+    const { data: insertData, error: insertError } = await db
       .from("inventory_transactions")
       .insert({
         property_id: transaction.propertyId,
@@ -478,7 +481,7 @@ export const createInventorySupplier = async (
     address: supplier.address
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("inventory_suppliers")
     .insert(dbSupplier)
     .select()
@@ -510,7 +513,7 @@ export const updateInventorySupplier = async (
   if (supplier.phone !== undefined) dbSupplier.phone = supplier.phone;
   if (supplier.address !== undefined) dbSupplier.address = supplier.address;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("inventory_suppliers")
     .update(dbSupplier)
     .eq("id", id)
@@ -613,16 +616,16 @@ export const fetchPurchaseOrderById = async (
   }
 
   // Map the data
-  const frontendOrder = mapDatabaseInventoryPurchaseOrderToFrontend(orderData);
-  if (orderData.inventory_suppliers) {
-    frontendOrder.supplier = mapDatabaseInventorySupplierToFrontend(orderData.inventory_suppliers);
+  const frontendOrder = mapDatabaseInventoryPurchaseOrderToFrontend(orderData as any);
+  if ((orderData as any).inventory_suppliers) {
+    frontendOrder.supplier = mapDatabaseInventorySupplierToFrontend((orderData as any).inventory_suppliers);
   }
 
   // Map the items
   frontendOrder.items = itemsData.map((item: any) => {
     const frontendItem = mapDatabaseInventoryPurchaseOrderItemToFrontend(item);
     if (item.inventory_items) {
-      frontendItem.item = mapDatabaseInventoryItemToFrontend(item.inventory_items);
+      frontendItem.item = mapInventoryItemToFrontend(item.inventory_items);
     }
     return frontendItem;
   });
@@ -643,39 +646,40 @@ export const createPurchaseOrder = async (
   // Calculate total amount
   const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
-  // Create the purchase order
-  const dbOrder = {
-    supplier_id: order.supplierId,
-    property_id: order.propertyId,
-    order_date: new Date().toISOString(),
-    expected_delivery_date: order.expectedDeliveryDate,
-    status: order.status,
-    total_amount: totalAmount,
-    notes: order.notes,
-    created_by: order.createdBy
-  };
-
-  const { data: createdOrder, error: orderError } = await supabase
+  const { data: orderData, error } = await db
     .from("inventory_purchase_orders")
-    .insert(dbOrder)
+    .insert({
+      supplier_id: order.supplierId,
+      property_id: order.propertyId,
+      order_date: new Date().toISOString(),
+      expected_delivery_date: order.expectedDeliveryDate,
+      status: order.status,
+      total_amount: totalAmount,
+      notes: order.notes,
+      created_by: order.createdBy
+    })
     .select()
     .single();
 
-  if (orderError) {
-    console.error("Error creating purchase order:", orderError);
-    throw new Error(orderError.message);
+  if (error) {
+    console.error("Error creating purchase order:", error);
+    throw new Error(error.message);
+  }
+
+  if (!orderData) {
+    throw new Error("Failed to create purchase order - no data returned");
   }
 
   // Create the purchase order items
   const dbItems = items.map(item => ({
-    purchase_order_id: createdOrder.id,
+    purchase_order_id: orderData.id,
     item_id: item.itemId,
     quantity: item.quantity,
     unit_price: item.unitPrice,
     received_quantity: item.receivedQuantity || 0
   }));
 
-  const { data: createdItems, error: itemsError } = await supabase
+  const { data: createdItems, error: itemsError } = await db
     .from("inventory_purchase_order_items")
     .insert(dbItems)
     .select();
@@ -683,12 +687,12 @@ export const createPurchaseOrder = async (
   if (itemsError) {
     console.error("Error creating purchase order items:", itemsError);
     // Rollback the purchase order
-    await supabase.from("inventory_purchase_orders").delete().eq("id", createdOrder.id);
+    await supabase.from("inventory_purchase_orders").delete().eq("id", orderData.id);
     throw new Error(itemsError.message);
   }
 
   // Return the created purchase order with items
-  const frontendOrder = mapDatabaseInventoryPurchaseOrderToFrontend(createdOrder as InventoryPurchaseOrder);
+  const frontendOrder = mapDatabaseInventoryPurchaseOrderToFrontend(orderData as InventoryPurchaseOrder);
   frontendOrder.items = (createdItems as InventoryPurchaseOrderItem[]).map(mapDatabaseInventoryPurchaseOrderItemToFrontend);
 
   return frontendOrder;
@@ -704,7 +708,7 @@ export const updatePurchaseOrderStatus = async (
   id: string,
   status: PurchaseOrderStatus
 ): Promise<FrontendInventoryPurchaseOrder> => {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("inventory_purchase_orders")
     .update({ status })
     .eq("id", id)
@@ -717,6 +721,174 @@ export const updatePurchaseOrderStatus = async (
   }
 
   return mapDatabaseInventoryPurchaseOrderToFrontend(data as InventoryPurchaseOrder);
+};
+
+// ===== CATEGORY MANAGEMENT API FUNCTIONS =====
+
+/**
+ * Create a new inventory category
+ * @param category Category data to create
+ * @returns Promise with created category data
+ */
+export const createInventoryCategory = async (
+  category: Omit<FrontendInventoryCategory, "id">
+): Promise<FrontendInventoryCategory> => {
+  const { data, error } = await db
+    .from("inventory_categories")
+    .insert({
+      name: category.name,
+      description: category.description,
+      parent_category_id: category.parentCategoryId,
+      color_code: category.colorCode,
+      icon_name: category.iconName,
+      is_active: category.isActive,
+      sort_order: category.sortOrder,
+      created_by: null
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating inventory category:", error);
+    throw new Error(error.message);
+  }
+
+  return mapDatabaseInventoryCategoryToFrontend(data as InventoryCategory);
+};
+
+/**
+ * Update an existing inventory category
+ * @param id Category ID
+ * @param category Updated category data
+ * @returns Promise with updated category data
+ */
+export const updateInventoryCategory = async (
+  id: string,
+  category: Partial<Omit<FrontendInventoryCategory, "id">>
+): Promise<FrontendInventoryCategory> => {
+  const updateData: any = {};
+  
+  if (category.name !== undefined) updateData.name = category.name;
+  if (category.description !== undefined) updateData.description = category.description;
+  if (category.parentCategoryId !== undefined) updateData.parent_category_id = category.parentCategoryId;
+  if (category.colorCode !== undefined) updateData.color_code = category.colorCode;
+  if (category.iconName !== undefined) updateData.icon_name = category.iconName;
+  if (category.isActive !== undefined) updateData.is_active = category.isActive;
+  if (category.sortOrder !== undefined) updateData.sort_order = category.sortOrder;
+
+  const { data, error } = await db
+    .from("inventory_categories")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error(`Error updating inventory category ${id}:`, error);
+    throw new Error(error.message);
+  }
+
+  return mapDatabaseInventoryCategoryToFrontend(data as InventoryCategory);
+};
+
+/**
+ * Delete an inventory category
+ * @param id Category ID
+ * @returns Promise that resolves when category is deleted
+ */
+export const deleteInventoryCategory = async (id: string): Promise<void> => {
+  const { error } = await db
+    .from("inventory_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(`Error deleting inventory category ${id}:`, error);
+    throw new Error(error.message);
+  }
+};
+
+/**
+ * Get all inventory categories
+ * @returns Promise with array of categories
+ */
+export const getInventoryCategories = async (): Promise<FrontendInventoryCategory[]> => {
+  const { data, error } = await db
+    .from("inventory_categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching inventory categories:", error);
+    throw new Error(error.message);
+  }
+
+  return (data as InventoryCategory[]).map(mapDatabaseInventoryCategoryToFrontend);
+};
+
+/**
+ * Get a single inventory category by ID
+ * @param id Category ID
+ * @returns Promise with category data
+ */
+export const getInventoryCategory = async (id: string): Promise<FrontendInventoryCategory> => {
+  const { data, error } = await db
+    .from("inventory_categories")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error(`Error fetching inventory category ${id}:`, error);
+    throw new Error(error.message);
+  }
+
+  return mapDatabaseInventoryCategoryToFrontend(data as InventoryCategory);
+};
+
+/**
+ * Get categories with hierarchical structure (parent-child relationships)
+ * @returns Promise with hierarchical category data
+ */
+export const getInventoryCategoriesHierarchy = async (): Promise<FrontendInventoryCategory[]> => {
+  const { data, error } = await db
+    .from("inventory_categories")
+    .select(`
+      *,
+      parent_category:inventory_categories!parent_category_id(*)
+    `)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching inventory categories hierarchy:", error);
+    throw new Error(error.message);
+  }
+
+  return (data as any[]).map((item) => {
+    const category = mapDatabaseInventoryCategoryToFrontend(item as InventoryCategory);
+    if (item.parent_category) {
+      category.parentCategory = mapDatabaseInventoryCategoryToFrontend(item.parent_category);
+    }
+    return category;
+  });
+};
+
+/**
+ * Map database inventory category to frontend format
+ */
+const mapDatabaseInventoryCategoryToFrontend = (dbCategory: InventoryCategory): FrontendInventoryCategory => {
+  return {
+    id: dbCategory.id,
+    name: dbCategory.name,
+    description: dbCategory.description,
+    parentCategoryId: dbCategory.parent_category_id,
+    colorCode: dbCategory.color_code,
+    iconName: dbCategory.icon_name,
+    isActive: dbCategory.is_active,
+    sortOrder: dbCategory.sort_order,
+  };
 };
 
 /**
@@ -762,22 +934,24 @@ export const receivePurchaseOrderItems = async (
     }
 
     // Update the received quantity
-    const newReceivedQuantity = poItem.received_quantity + receivedItem.quantity;
+    const newReceivedQuantity = (poItem as any).received_quantity + receivedItem.quantity;
     
     // Update the purchase order item
-    const { error: updateError } = await supabase
+    const { data: updatedItem, error: updateError } = await db
       .from("inventory_purchase_order_items")
       .update({ received_quantity: newReceivedQuantity })
-      .eq("id", poItem.id);
+      .eq("id", (poItem as any).id)
+      .select()
+      .single();
 
     if (updateError) {
-      console.error(`Error updating received quantity for item ${poItem.id}:`, updateError);
+      console.error(`Error updating received quantity for item ${(poItem as any).id}:`, updateError);
       throw new Error(updateError.message);
     }
 
     // Create an inventory transaction for the received items
     await createInventoryTransaction({
-      propertyId: orderData.property_id,
+      propertyId: (orderData as any).property_id,
       itemId: receivedItem.itemId,
       transactionType: 'received',
       quantity: receivedItem.quantity,
@@ -802,10 +976,10 @@ export const receivePurchaseOrderItems = async (
   let anyItemReceived = false;
 
   for (const item of updatedItems) {
-    if (item.received_quantity < item.quantity) {
+    if ((item as any).received_quantity < (item as any).quantity) {
       allItemsReceived = false;
     }
-    if (item.received_quantity > 0) {
+    if ((item as any).received_quantity > 0) {
       anyItemReceived = true;
     }
   }

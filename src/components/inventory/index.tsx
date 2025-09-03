@@ -10,8 +10,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "../ui/tabs";
-import { InventoryList } from "./InventoryList";
-import { InventoryItemForm } from "./InventoryItemForm";
+import { EnhancedInventoryList } from "./EnhancedInventoryList";
+import { EnhancedInventoryItemForm } from "./EnhancedInventoryItemForm";
+import { CategoryList } from "./CategoryList";
+import { CategoryForm } from "./CategoryForm";
+import { ItemModule } from "./ItemModule";
+import { ItemIssuanceForm } from "./ItemIssuanceForm";
+import { PropertyIssuanceView } from "./PropertyIssuanceView";
+import { StockReports } from "./StockReports";
 import { InventoryTransactions } from "./InventoryTransactions";
 import { TransactionForm } from "./TransactionForm";
 import { PurchaseOrders } from "./PurchaseOrders";
@@ -27,27 +33,22 @@ import { Loader2 } from "lucide-react";
 import SearchableSelect, { SearchableSelectOption } from "../ui/searchable-select";
 
 interface InventoryProps {
-  propertyId?: string; // Make propertyId optional
+  // Remove property dependency - global inventory system
 }
 
-export function Inventory({ propertyId: initialPropertyId }: InventoryProps) {
-  // State for properties
+export function Inventory({}: InventoryProps) {
+  // State for properties (only for issuance selection)
   const [properties, setProperties] = useState<FrontendProperty[]>([]);
   const [loadingProperties, setLoadingProperties] = useState<boolean>(true);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | undefined>(initialPropertyId);
+  const [selectedPropertyForView, setSelectedPropertyForView] = useState<string | undefined>();
   
-  // Fetch properties
+  // Fetch properties for issuance and viewing
   useEffect(() => {
     const getProperties = async () => {
       setLoadingProperties(true);
       try {
         const data = await fetchProperties();
         setProperties(data);
-        
-        // If no property is selected and we have properties, select the first one
-        if (!selectedPropertyId && data.length > 0) {
-          setSelectedPropertyId(data[0].id);
-        }
       } catch (error) {
         console.error("Error fetching properties:", error);
         toast({
@@ -62,32 +63,41 @@ export function Inventory({ propertyId: initialPropertyId }: InventoryProps) {
     
     getProperties();
   }, []);
-  
-  // Update selectedPropertyId if initialPropertyId changes
-  useEffect(() => {
-    if (initialPropertyId) {
-      setSelectedPropertyId(initialPropertyId);
-    }
-  }, [initialPropertyId]);
   const { toast } = useToast();
   const { deleteItem, loading: deleteItemLoading } = useDeleteInventoryItem();
   const { deleteSupplier, loading: deleteSupplierLoading } = useDeleteInventorySupplier();
 
   // State for dialogs
   const [isItemFormOpen, setIsItemFormOpen] = useState(false);
+  const [isIssuanceFormOpen, setIsIssuanceFormOpen] = useState(false);
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false);
   const [isSupplierFormOpen, setIsSupplierFormOpen] = useState(false);
   const [isPurchaseOrderFormOpen, setIsPurchaseOrderFormOpen] = useState(false);
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
   const [isDeleteItemDialogOpen, setIsDeleteItemDialogOpen] = useState(false);
   const [isDeleteSupplierDialogOpen, setIsDeleteSupplierDialogOpen] = useState(false);
   
   // Selected item/supplier/order state
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | undefined>();
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
+  const [selectedTransactionType, setSelectedTransactionType] = useState<'in' | 'out' | undefined>();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState("items");
+  const [activeTab, setActiveTab] = useState<string>("item-module");
+
+  // Handle item issuance
+  const handleIssueItem = (itemId?: string) => {
+    setSelectedItemId(itemId);
+    setIsIssuanceFormOpen(true);
+  };
+
+  // Handle issuance form success
+  const handleIssuanceFormSuccess = () => {
+    // Refresh data if needed
+    setActiveTab("items");
+  };
 
   // Handle add item
   const handleAddItem = () => {
@@ -219,95 +229,79 @@ export function Inventory({ propertyId: initialPropertyId }: InventoryProps) {
     setActiveTab("transactions");
   };
 
-  // Handle property change
+  // Handle category form success
+  const handleCategoryFormSuccess = () => {
+    // Refresh data if needed
+    setActiveTab("categories");
+  };
+
+  // Handle category actions
+  const handleAddCategory = () => {
+    setSelectedCategoryId(undefined);
+    setIsCategoryFormOpen(true);
+  };
+
+  const handleEditCategory = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    setIsCategoryFormOpen(true);
+  };
+
+
+  // Handle property change for viewing issued items
   const handlePropertyChange = (value: string) => {
-    setSelectedPropertyId(value);
+    setSelectedPropertyForView(value);
   };
   
   return (
     <div className="space-y-4">
-      {/* Property Selector */}
-      <div className="bg-black/20 p-4 rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold mb-2">Property</h2>
-            {loadingProperties ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading properties...</span>
-              </div>
-            ) : properties.length === 0 ? (
-              <div className="text-amber-400">No properties found. Please add a property first.</div>
-            ) : (
-              <SearchableSelect
-                value={selectedPropertyId}
-                onValueChange={handlePropertyChange}
-                options={properties.map((property) => ({
-                  value: property.id,
-                  label: property.title,
-                  searchText: `${property.title} ${property.address || ''} ${property.type || ''} ${property.status || ''}`
-                }))}
-                placeholder="Search for a property..."
-                emptyMessage="No properties found"
-                className="w-full md:w-[300px]"
-              />
-            )}
-          </div>
-        </div>
-      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-[500px]">
-          <TabsTrigger value="items">Items</TabsTrigger>
+        <TabsList className="grid grid-cols-7 w-[840px]">
+          <TabsTrigger value="item-module">Items Module</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="issuances">Property Items</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="purchase-orders">Purchase Orders</TabsTrigger>
           <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="items" className="mt-6">
-          {selectedPropertyId ? (
-            <InventoryList
-              propertyId={selectedPropertyId}
-              onAddItem={handleAddItem}
-              onEditItem={handleEditItem}
-              onDeleteItem={handleDeleteItem}
-              onAddTransaction={handleAddTransaction}
-            />
-          ) : (
-            <div className="p-4 bg-black/40 backdrop-blur-md rounded-lg">
-              <h2 className="text-xl font-semibold mb-4">Inventory Items</h2>
-              <p className="text-white/60 mb-4">Please select a property to manage its inventory items.</p>
-            </div>
-          )}
+        
+        <TabsContent value="item-module" className="mt-6">
+          <ItemModule />
+        </TabsContent>
+        
+        <TabsContent value="categories" className="mt-6">
+          <CategoryList
+            onAddCategory={handleAddCategory}
+            onEditCategory={handleEditCategory}
+          />
+        </TabsContent>
+        
+        <TabsContent value="issuances" className="mt-6">
+          <PropertyIssuanceView
+            selectedPropertyId={selectedPropertyForView}
+            onPropertyChange={handlePropertyChange}
+          />
+        </TabsContent>
+        
+        <TabsContent value="reports" className="mt-6">
+          <StockReports />
         </TabsContent>
         
         <TabsContent value="transactions" className="mt-6">
-          {selectedPropertyId ? (
-            <InventoryTransactions
-              propertyId={selectedPropertyId}
-              onAddTransaction={() => handleAddTransaction()}
-            />
-          ) : (
-            <div className="p-4 bg-black/40 backdrop-blur-md rounded-lg">
-              <h2 className="text-xl font-semibold mb-4">Inventory Transactions</h2>
-              <p className="text-white/60 mb-4">Please select a property to manage its inventory transactions.</p>
-            </div>
-          )}
+          <InventoryTransactions
+            propertyId={selectedPropertyForView || ""}
+            onAddTransaction={() => handleAddTransaction()}
+          />
         </TabsContent>
         
         <TabsContent value="purchase-orders" className="mt-6">
-          {selectedPropertyId ? (
-            <PurchaseOrders
-              propertyId={selectedPropertyId}
-              onAddPurchaseOrder={handleAddPurchaseOrder}
-              onViewPurchaseOrder={handleViewPurchaseOrder}
-              onReceivePurchaseOrder={handleReceivePurchaseOrder}
-            />
-          ) : (
-            <div className="p-4 bg-black/40 backdrop-blur-md rounded-lg">
-              <h2 className="text-xl font-semibold mb-4">Purchase Orders</h2>
-              <p className="text-white/60 mb-4">Please select a property to manage its purchase orders.</p>
-            </div>
-          )}
+          <PurchaseOrders
+            propertyId={selectedPropertyForView || ""}
+            onAddPurchaseOrder={handleAddPurchaseOrder}
+            onViewPurchaseOrder={handleViewPurchaseOrder}
+            onReceivePurchaseOrder={handleReceivePurchaseOrder}
+          />
         </TabsContent>
         
         <TabsContent value="suppliers" className="mt-6">
@@ -320,7 +314,7 @@ export function Inventory({ propertyId: initialPropertyId }: InventoryProps) {
       </Tabs>
 
       {/* Item Form */}
-      <InventoryItemForm
+      <EnhancedInventoryItemForm
         isOpen={isItemFormOpen}
         onClose={() => setIsItemFormOpen(false)}
         itemId={selectedItemId}
@@ -331,7 +325,7 @@ export function Inventory({ propertyId: initialPropertyId }: InventoryProps) {
       <TransactionForm
         isOpen={isTransactionFormOpen}
         onClose={() => setIsTransactionFormOpen(false)}
-        propertyId={selectedPropertyId || ""}
+        propertyId={selectedPropertyForView || ""}
         initialItemId={selectedItemId}
         onSuccess={handleTransactionFormSuccess}
       />
@@ -348,9 +342,25 @@ export function Inventory({ propertyId: initialPropertyId }: InventoryProps) {
       <PurchaseOrderForm
         isOpen={isPurchaseOrderFormOpen}
         onClose={() => setIsPurchaseOrderFormOpen(false)}
-        propertyId={selectedPropertyId || ""}
+        propertyId={selectedPropertyForView || ""}
         orderId={selectedOrderId}
         onSuccess={handlePurchaseOrderFormSuccess}
+      />
+
+      {/* Item Issuance Form */}
+      <ItemIssuanceForm
+        isOpen={isIssuanceFormOpen}
+        onClose={() => setIsIssuanceFormOpen(false)}
+        onSuccess={handleIssuanceFormSuccess}
+        preSelectedItemId={selectedItemId}
+      />
+
+      {/* Category Form */}
+      <CategoryForm
+        isOpen={isCategoryFormOpen}
+        onClose={() => setIsCategoryFormOpen(false)}
+        categoryId={selectedCategoryId}
+        onSuccess={handleCategoryFormSuccess}
       />
 
       {/* Delete Item Confirmation Dialog */}

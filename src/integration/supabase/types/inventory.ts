@@ -1,41 +1,232 @@
 /**
- * Inventory types for Supabase integration
- * These types define the inventory management structure and related interfaces
+ * Enhanced Inventory types for Supabase integration
+ * These types define the comprehensive inventory management structure and related interfaces
  */
 
 import { Json } from './database';
 
 /**
- * Inventory item interface representing the inventory_items table in Supabase
+ * Inventory category interface for dynamic categories
+ */
+export interface InventoryCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  parent_category_id: string | null;
+  color_code: string | null;
+  icon_name: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string | null;
+  created_by: string | null;
+}
+
+/**
+ * Frontend inventory category type
+ */
+export interface FrontendInventoryCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  parentCategoryId: string | null;
+  colorCode: string | null;
+  iconName: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  parentCategory?: FrontendInventoryCategory; // For joined queries
+  subCategories?: FrontendInventoryCategory[]; // For hierarchical display
+}
+
+/**
+ * Inventory condition enum
+ */
+export type InventoryCondition = 
+  | 'New'
+  | 'Excellent'
+  | 'Good'
+  | 'Fair'
+  | 'Poor'
+  | 'Needs_Repair'
+  | 'Damaged';
+
+/**
+ * Inventory status enum
+ */
+export type InventoryStatus = 
+  | 'Available'
+  | 'Issued'
+  | 'Reserved'
+  | 'Under_Repair'
+  | 'Disposed'
+  | 'Lost'
+  | 'Stolen';
+
+/**
+ * Issuance status enum
+ */
+export type IssuanceStatus = 
+  | 'Issued'
+  | 'Returned'
+  | 'Partially_Returned'
+  | 'Lost'
+  | 'Damaged';
+
+/**
+ * Global inventory item interface representing the inventory_items table in Supabase
  */
 export interface InventoryItem {
   id: string;
   name: string;
   description: string | null;
-  category: string;
-  unit: string;
-  min_stock_level: number;
+  category_id: string | null;
+  sku: string | null;
+  barcode: string | null;
+  brand: string | null;
+  model: string | null;
+  serial_number: string | null;
+  
+  // Stock Management
+  total_quantity: number;
+  available_quantity: number;
+  issued_quantity: number;
+  reserved_quantity: number;
+  minimum_stock_level: number;
+  reorder_point: number;
+  
+  // Pricing
+  unit_cost: number | null;
+  unit_price: number | null;
+  currency: string;
+  
+  // Physical Properties
+  weight: number | null;
+  dimensions_length: number | null;
+  dimensions_width: number | null;
+  dimensions_height: number | null;
+  dimension_unit: string;
+  
+  // Condition and Status
+  condition: InventoryCondition;
+  status: InventoryStatus;
+  
+  // Purchase Information
+  supplier_id: string | null;
+  purchase_date: string | null;
+  warranty_expiry_date: string | null;
+  
+  // Additional Information
+  location: string | null; // Storage location
+  tags: string[] | null;
+  notes: string | null;
+  image_urls: string[] | null;
+  
+  // Metadata
+  is_active: boolean;
   created_at: string;
   updated_at: string | null;
+  created_by: string | null;
 }
 
 /**
- * Inventory stock interface representing the inventory_stock table in Supabase
+ * Property item issuance interface representing the inventory_property_issuances table
+ */
+export interface InventoryPropertyIssuance {
+  id: string;
+  item_id: string;
+  property_id: string;
+  
+  // Issuance Details
+  quantity_issued: number;
+  quantity_returned: number;
+  quantity_outstanding: number;
+  
+  // Status and Dates
+  status: IssuanceStatus;
+  issued_date: string;
+  expected_return_date: string | null;
+  actual_return_date: string | null;
+  
+  // Personnel
+  issued_by: string | null;
+  issued_to_person: string | null;
+  returned_by: string | null;
+  
+  // Condition tracking
+  condition_at_issuance: InventoryCondition;
+  condition_at_return: InventoryCondition | null;
+  
+  // Additional Information
+  purpose: string | null;
+  location_at_property: string | null;
+  notes: string | null;
+  
+  // Metadata
+  created_at: string;
+  updated_at: string | null;
+  created_by: string | null;
+}
+
+/**
+ * Frontend property item issuance type
+ */
+export interface FrontendInventoryPropertyIssuance {
+  id: string;
+  itemId: string;
+  propertyId: string;
+  
+  // Issuance Details
+  quantityIssued: number;
+  quantityReturned: number;
+  quantityOutstanding: number;
+  
+  // Status and Dates
+  status: IssuanceStatus;
+  issuedDate: string;
+  expectedReturnDate: string | null;
+  actualReturnDate: string | null;
+  
+  // Personnel
+  issuedBy: string | null;
+  issuedToPerson: string | null;
+  returnedBy: string | null;
+  
+  // Condition tracking
+  conditionAtIssuance: InventoryCondition;
+  conditionAtReturn: InventoryCondition | null;
+  
+  // Additional Information
+  purpose: string | null;
+  locationAtProperty: string | null;
+  notes: string | null;
+  
+  // Related data for joined queries
+  item?: FrontendInventoryItem;
+  property?: any; // Property type from properties module
+}
+
+/**
+ * Enhanced inventory stock interface representing the inventory_stock table in Supabase
  */
 export interface InventoryStock {
   id: string;
   property_id: string;
   item_id: string;
+  room_location: string | null;
   quantity: number;
-  last_updated: string;
+  reserved_quantity: number;
+  available_quantity: number;
+  last_counted_date: string | null;
+  last_counted_by: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string | null;
 }
 
 /**
- * Inventory transaction type enum
+ * Enhanced inventory transaction type enum
  */
-export type InventoryTransactionType = 'received' | 'issued' | 'adjusted';
+export type InventoryTransactionType = 'received' | 'issued' | 'adjusted' | 'transferred' | 'returned' | 'disposed';
 
 /**
  * Inventory transaction interface representing the inventory_transactions table in Supabase
@@ -106,25 +297,76 @@ export interface InventoryPurchaseOrderItem {
 }
 
 /**
- * Frontend inventory item type
+ * Frontend inventory item type with camelCase properties
  */
 export interface FrontendInventoryItem {
   id: string;
   name: string;
   description: string | null;
-  category: string;
-  unit: string;
-  minStockLevel: number;
+  categoryId: string | null;
+  sku: string | null;
+  barcode: string | null;
+  brand: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  
+  // Stock Management
+  totalQuantity: number;
+  availableQuantity: number;
+  issuedQuantity: number;
+  reservedQuantity: number;
+  minimumStockLevel: number;
+  reorderPoint: number;
+  
+  // Pricing
+  unitCost: number | null;
+  unitPrice: number | null;
+  currency: string;
+  
+  // Physical Properties
+  weight: number | null;
+  dimensionsLength: number | null;
+  dimensionsWidth: number | null;
+  dimensionsHeight: number | null;
+  dimensionUnit: string;
+  
+  // Condition and Status
+  condition: InventoryCondition;
+  status: InventoryStatus;
+  
+  // Purchase Information
+  supplierId: string | null;
+  purchaseDate: string | null;
+  warrantyExpiryDate: string | null;
+  
+  // Additional Information
+  location: string | null;
+  tags: string[] | null;
+  notes: string | null;
+  imageUrls: string[] | null;
+  
+  // Metadata
+  isActive: boolean;
+  
+  // Related data for joined queries
+  category?: FrontendInventoryCategory;
+  supplier?: FrontendInventorySupplier;
 }
 
 /**
- * Frontend inventory stock type
+ * Enhanced frontend inventory stock type
  */
 export interface FrontendInventoryStock {
   id: string;
   propertyId: string;
   itemId: string;
+  roomLocation: string | null;
   quantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+  lastCountedDate: string | null;
+  lastCountedBy: string | null;
+  notes: string | null;
   lastUpdated: string;
   item?: FrontendInventoryItem; // For joined queries
 }
@@ -191,15 +433,72 @@ export interface FrontendInventoryPurchaseOrderItem {
 /**
  * Maps a database inventory item to the frontend format
  */
-export const mapDatabaseInventoryItemToFrontend = (dbItem: InventoryItem): FrontendInventoryItem => {
-  return {
-    id: dbItem.id,
-    name: dbItem.name,
-    description: dbItem.description,
-    category: dbItem.category,
-    unit: dbItem.unit,
-    minStockLevel: dbItem.min_stock_level
+export const mapInventoryItemToFrontend = (item: any): FrontendInventoryItem => {
+  const mappedItem: FrontendInventoryItem = {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    categoryId: item.category_id,
+    sku: item.sku,
+    barcode: item.barcode,
+    brand: item.brand,
+    model: item.model,
+    serialNumber: item.serial_number,
+    
+    // Stock Management - handle both old and new schema
+    totalQuantity: item.total_quantity || item.max_stock_level || 0,
+    availableQuantity: item.available_quantity || item.max_stock_level || 0,
+    issuedQuantity: item.issued_quantity || 0,
+    reservedQuantity: item.reserved_quantity || 0,
+    minimumStockLevel: item.minimum_stock_level || item.min_stock_level || 0,
+    reorderPoint: item.reorder_point || item.min_stock_level || 0,
+    
+    // Pricing - handle both old and new schema
+    unitCost: item.unit_cost || item.current_value || 0,
+    unitPrice: item.unit_price || item.current_value || 0,
+    currency: item.currency || 'USD',
+    
+    // Physical Properties
+    weight: item.weight || null,
+    dimensionsLength: item.dimensions_length || null,
+    dimensionsWidth: item.dimensions_width || null,
+    dimensionsHeight: item.dimensions_height || null,
+    dimensionUnit: item.dimension_unit || 'cm',
+    
+    // Condition and Status
+    condition: item.condition || 'New',
+    status: item.status || 'Available',
+    
+    // Purchase Information
+    supplierId: item.supplier_id || null,
+    purchaseDate: item.purchase_date || null,
+    warrantyExpiryDate: item.warranty_expiry_date || item.warranty_expiry || null,
+    
+    // Additional Information
+    location: item.location || item.location_notes || null,
+    tags: item.tags || null,
+    notes: item.notes || null,
+    imageUrls: item.image_urls || item.images || null,
+    
+    // Metadata
+    isActive: item.is_active !== false, // Default to true if not specified
   };
+
+  // Add category information if available from join
+  if (item.inventory_categories) {
+    mappedItem.category = {
+      id: item.inventory_categories.id,
+      name: item.inventory_categories.name,
+      description: null,
+      parentCategoryId: null,
+      colorCode: item.inventory_categories.color_code,
+      iconName: item.inventory_categories.icon_name,
+      isActive: true,
+      sortOrder: 0
+    };
+  }
+
+  return mappedItem;
 };
 
 /**
@@ -210,8 +509,14 @@ export const mapDatabaseInventoryStockToFrontend = (dbStock: InventoryStock): Fr
     id: dbStock.id,
     propertyId: dbStock.property_id,
     itemId: dbStock.item_id,
+    roomLocation: dbStock.room_location,
     quantity: dbStock.quantity,
-    lastUpdated: dbStock.last_updated
+    reservedQuantity: dbStock.reserved_quantity,
+    availableQuantity: dbStock.available_quantity,
+    lastCountedDate: dbStock.last_counted_date,
+    lastCountedBy: dbStock.last_counted_by,
+    notes: dbStock.notes,
+    lastUpdated: dbStock.updated_at || dbStock.created_at
   };
 };
 

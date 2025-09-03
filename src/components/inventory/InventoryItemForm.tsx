@@ -1,6 +1,10 @@
 /**
  * InventoryItemForm component
  * Form for creating and editing inventory items
+ * 
+ * NOTE: This component has been superseded by ItemModule.tsx which includes
+ * the dashboard functionality and centralized item management.
+ * This file is kept for reference but should not be used in new implementations.
  */
 
 import { useState, useEffect } from "react";
@@ -82,9 +86,8 @@ export function InventoryItemForm({
       form.reset({
         name: item.name,
         description: item.description || "",
-        category: item.category || "",
-        unit: item.unit,
-        minStockLevel: item.minStockLevel,
+        category: item.categoryId || "",
+        minStockLevel: item.minimumStockLevel,
       });
     }
   }, [form, isEditing, item]);
@@ -92,14 +95,46 @@ export function InventoryItemForm({
   // Form submission handler
   const onSubmit = async (values: InventoryItemFormValues) => {
     try {
-      // Ensure all required fields are present for the API
-      const itemData = {
-        ...values,
-        name: values.name || "", // Ensure name is not undefined
-        description: values.description || null, // Ensure description is null if undefined
-        category: values.category || "", // Ensure category is not undefined
-        unit: values.unit || "", // Ensure unit is not undefined
-        minStockLevel: values.minStockLevel ?? 0, // Ensure minStockLevel is not undefined
+      // Create a complete inventory item object with all required fields
+      const itemData: Omit<FrontendInventoryItem, "id"> = {
+        name: values.name || "",
+        description: values.description || null,
+        categoryId: values.category || "",
+        brand: null,
+        model: null,
+        sku: null,
+        barcode: null,
+        serialNumber: null,
+        
+        // Stock Management
+        totalQuantity: 0,
+        availableQuantity: 0,
+        issuedQuantity: 0,
+        reservedQuantity: 0,
+        minimumStockLevel: values.minStockLevel ?? 0,
+        reorderPoint: null,
+        unitCost: null,
+        unitPrice: null,
+        currency: "USD",
+        
+        // Physical Properties
+        weight: null,
+        dimensionsLength: null,
+        dimensionsWidth: null,
+        dimensionsHeight: null,
+        dimensionUnit: "cm",
+        purchaseDate: null,
+        warrantyExpiryDate: null,
+        supplierId: null,
+        location: null,
+        tags: null,
+        notes: null,
+        imageUrls: null,
+        
+        // Metadata
+        isActive: true,
+        status: 'Available',
+        condition: 'New',
       };
       
       if (isEditing && itemId) {
