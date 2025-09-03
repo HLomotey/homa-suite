@@ -35,7 +35,7 @@ export const useComplaints = (
   }
 ) => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   
   // Create a stable query key based on filters
   const queryKey = useCallback(() => {
@@ -63,7 +63,7 @@ export const useComplaints = (
     queryKey: queryKey(),
     queryFn: () => getComplaints(filters),
     select: (result) => result.data || [],
-    enabled: !!user
+    enabled: !!currentUser
   });
 
   // Create complaint mutation
@@ -240,7 +240,7 @@ export const useComplaints = (
 // Hook for fetching a single complaint by ID
 export const useComplaint = (id?: string) => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   
   const {
     data: complaint,
@@ -252,7 +252,7 @@ export const useComplaint = (id?: string) => {
     queryKey: ["complaint", id],
     queryFn: () => getComplaintById(id!),
     select: (result) => result.data,
-    enabled: !!id && !!user
+    enabled: !!id && !!currentUser
   });
 
   // Update complaint mutation
