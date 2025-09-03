@@ -229,7 +229,7 @@ export const createUser = async (
   let userRole = 'staff'; // default fallback
   
   // Check if the role exists in roles table and map to valid enum
-  const { data: roleData } = await supabaseAdmin
+  const { data: roleData } = await (supabaseAdmin as any)
     .from('roles')
     .select('name')
     .eq('name', user.role)
@@ -254,7 +254,7 @@ export const createUser = async (
   };
 
   // Check if user already exists in users table
-  const { data: existingUser, error: userCheckError } = await supabaseAdmin
+  const { data: existingUser, error: userCheckError } = await (supabaseAdmin as any)
     .from("users")
     .select("*")
     .eq("id", user.id)
@@ -267,7 +267,7 @@ export const createUser = async (
 
   if (!existingUser) {
     // Create the user record in public.users using admin client
-    const { data: newUser, error } = await supabaseAdmin
+    const { data: newUser, error } = await (supabaseAdmin as any)
       .from("users")
       .insert(dbUser)
       .select()
@@ -281,7 +281,7 @@ export const createUser = async (
   } else {
     console.log("User already exists in users table:", user.id);
     // Update the existing user with new data
-    const { data: updatedUser, error: updateError } = await supabaseAdmin
+    const { data: updatedUser, error: updateError } = await (supabaseAdmin as any)
       .from("users")
       .update({
         email: dbUser.email,
@@ -302,10 +302,10 @@ export const createUser = async (
   }
   
   // Check if profile already exists before creating
-  const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+  const { data: existingProfile, error: profileCheckError } = await (supabaseAdmin as any)
     .from("profiles")
     .select("id")
-    .eq("id", data.id)
+    .eq("id", data?.id || user.id)
     .single();
 
   if (profileCheckError && profileCheckError.code !== 'PGRST116') {
@@ -314,14 +314,14 @@ export const createUser = async (
 
   if (!existingProfile) {
     // Create the profile record in public.profiles using admin client
-    const { error: profileError } = await supabaseAdmin
+    const { error: profileError } = await (supabaseAdmin as any)
       .from("profiles")
       .insert({
-        id: data.id, // Use id as primary key that references auth.users(id)
+        id: data?.id || user.id, // Use id as primary key that references auth.users(id)
         email: user.email, // Required field
         full_name: user.name || user.email.split('@')[0], // Fallback to email username
         status: user.status === 'active' ? 'active' : user.status === 'inactive' ? 'inactive' : 'active', // Ensure valid status
-        user_id: data.id // Add user_id field
+        user_id: data?.id || user.id // Add user_id field
       });
       
     if (profileError) {
@@ -332,7 +332,7 @@ export const createUser = async (
   } else {
     console.log("Profile already exists for user:", data.id);
     // Optionally update the existing profile with new data
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await (supabaseAdmin as any)
       .from("profiles")
       .update({
         full_name: user.name || user.email.split('@')[0],
@@ -340,7 +340,7 @@ export const createUser = async (
         role_id: userRole ? parseInt(userRole.toString()) : null, // Update role in profile
         updated_at: new Date().toISOString()
       })
-      .eq("id", data.id);
+      .eq("id", data?.id || user.id);
       
     if (updateError) {
       console.error("Error updating existing profile:", updateError);
@@ -349,7 +349,7 @@ export const createUser = async (
 
   // Role is now stored directly in users table, no need for separate assignment
 
-  return mapDatabaseUserToFrontend(data as User);
+  return mapDatabaseUserToFrontend((data || { id: user.id, email: user.email, name: user.name }) as User);
 };
 
 /**
@@ -398,7 +398,7 @@ export const updateUser = async (
   if (user.status !== undefined) profileUpdates.status = user.status;
   profileUpdates.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await (supabaseAdmin as any)
     .from("profiles")
     .update(profileUpdates)
     .eq("id", id)
@@ -425,7 +425,7 @@ export const updateUser = async (
     } else {
       if (profileData && profileData.length > 0) {
         // Update existing profile
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (supabaseAdmin as any)
           .from("profiles")
           .update(profileUpdate)
           .eq("user_id", id);
@@ -464,7 +464,7 @@ export const updateUser = async (
  * @returns Promise with success status
  */
 export const deleteUser = async (id: string): Promise<void> => {
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("users")
     .delete()
     .eq("id", id);
@@ -523,7 +523,7 @@ export const upsertProfile = async (
   }
 
   // Check if profile already exists - check by both id and user_id since they should be the same
-  const { data: existingData, error: checkError } = await supabaseAdmin
+  const { data: existingData, error: checkError } = await (supabaseAdmin as any)
     .from("profiles")
     .select("id")
     .eq("id", userId)
@@ -542,7 +542,7 @@ export const upsertProfile = async (
     delete updateData.id; // Don't update primary key
     delete updateData.email; // Don't update email in existing profile
     
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (supabaseAdmin as any)
       .from("profiles")
       .update(updateData)
       .eq("id", existingData.id)
@@ -557,7 +557,7 @@ export const upsertProfile = async (
     result = data;
   } else {
     // Create new profile using admin client
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (supabaseAdmin as any)
       .from("profiles")
       .insert(dbProfile)
       .select()
@@ -587,7 +587,7 @@ export const updateUserStatus = async (
   // Convert status to is_active boolean since status column doesn't exist
   const is_active = status === 'active';
   
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("users")
     .update({ is_active })
     .eq("id", id)
@@ -612,7 +612,7 @@ export const updateUserRole = async (
   id: string,
   role: UserRole
 ): Promise<FrontendUser> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("users")
     .update({ role })
     .eq("id", id)
@@ -638,7 +638,7 @@ export const updateUserPreferences = async (
   preferences: UserPreferences
 ): Promise<Profile> => {
   // Check if profile already exists
-  const { data: existingData, error: checkError } = await supabase
+  const { data: existingData, error: checkError } = await (supabase as any)
     .from("profiles")
     .select("*")
     .eq("user_id", userId)
@@ -656,7 +656,7 @@ export const updateUserPreferences = async (
     const currentPreferences = existingData[0].preferences || {};
     const updatedPreferences = { ...currentPreferences, ...preferences };
     
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("profiles")
       .update({ preferences: updatedPreferences })
       .eq("id", existingData[0].id)
@@ -671,7 +671,7 @@ export const updateUserPreferences = async (
     result = data;
   } else {
     // Create new profile with preferences
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("profiles")
       .insert({
         user_id: userId,
@@ -707,7 +707,7 @@ export const logUserActivity = async (
     user_agent: activity.userAgent
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("user_activities")
     .insert(dbActivity)
     .select()
@@ -719,13 +719,13 @@ export const logUserActivity = async (
   }
 
   return {
-    id: data.id,
-    userId: data.user_id,
-    action: data.action,
-    details: data.details,
-    timestamp: data.created_at,
-    ip: data.ip,
-    userAgent: data.user_agent
+    id: (data as any).id,
+    userId: (data as any).user_id,
+    action: (data as any).action,
+    details: (data as any).details,
+    timestamp: (data as any).created_at,
+    ip: (data as any).ip,
+    userAgent: (data as any).user_agent
   };
 };
 
@@ -737,7 +737,7 @@ export const logUserActivity = async (
 export const fetchUserActivities = async (
   userId: string
 ): Promise<UserActivity[]> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("user_activities")
     .select("*")
     .eq("user_id", userId)
@@ -748,7 +748,7 @@ export const fetchUserActivities = async (
     throw new Error(error.message);
   }
 
-  return (data || []).map(activity => ({
+  return (data || []).map((activity: any) => ({
     id: activity.id,
     userId: activity.user_id,
     action: activity.action,
