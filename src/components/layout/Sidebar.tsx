@@ -166,6 +166,12 @@ const navigationItems = [
     href: "/staff-benefits",
     module: "onboarding",
   },
+  {
+    label: "Job Orders",
+    icon: ClipboardList,
+    href: "/job-orders",
+    module: "job-orders",
+  },
 ];
 
 interface SidebarProps {

@@ -104,6 +104,14 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     description: 'Staff onboarding and benefits management',
     icon: 'UserPlus',
     routes: ['/onboarding', '/onboarding/*', '/staff-benefits']
+  },
+  {
+    id: 'job-orders',
+    name: 'job-orders',
+    displayName: 'Job Orders',
+    description: 'Job order tracking and management',
+    icon: 'ClipboardList',
+    routes: ['/job-orders', '/job-orders/*']
   }
 ];
 

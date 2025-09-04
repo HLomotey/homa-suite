@@ -40,6 +40,7 @@ const ActivityLogPage = lazy(() => import("@/pages/ActivityLogPage"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const StaffBenefits = lazy(() => import("@/pages/StaffBenefits"));
+const JobOrders = lazy(() => import("@/pages/JobOrders"));
 const Login = lazy(() => import("@/pages/Login"));
 
 // Lazy load HR components
@@ -743,6 +744,16 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <ModuleRouteGuard module="onboarding">
               <StaffBenefits />
+            </ModuleRouteGuard>
+          </LazyWrapper>
+        ),
+      },
+      {
+        path: "job-orders",
+        element: (
+          <LazyWrapper>
+            <ModuleRouteGuard module="job-orders">
+              <JobOrders />
             </ModuleRouteGuard>
           </LazyWrapper>
         ),
