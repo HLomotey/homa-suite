@@ -9,11 +9,14 @@ import {
   UserWithProfile,
   UserStatus,
   UserRole,
-  UserPreferences,
   UserActivity,
   Profile
 } from "../../integration/supabase/types";
-import * as userProfileApi from "./api";
+// Import from modular files
+import * as userApi from "./user-api";
+import * as profileApi from "./profile-api";
+import * as activityApi from "./activity-api";
+import { profileToFrontendUser, UserPreferences } from "./utils";
 import { adminUserService } from "../../integration/supabase/admin-client";
 
 /**
@@ -29,7 +32,7 @@ export const useUsers = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUsers();
+      const data = await userApi.fetchUsers();
       setUsers(data);
     } catch (err) {
       setError(
@@ -63,7 +66,7 @@ export const useUser = (id: string) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUserById(id);
+      const data = await userApi.fetchUserById(id);
       setUser(data);
     } catch (err) {
       setError(
@@ -97,7 +100,7 @@ export const useUserWithProfile = (id: string) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUserWithProfile(id);
+      const data = await profileApi.fetchUserWithProfile(id);
       setUserWithProfile(data);
     } catch (err) {
       setError(
@@ -129,7 +132,7 @@ export const useUsersByRole = (role: UserRole) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUsersByRole(role);
+      const data = await userApi.fetchUsersByRole(role);
       setUsers(data);
     } catch (err) {
       setError(
@@ -163,7 +166,7 @@ export const useUsersByDepartment = (department: string) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUsersByDepartment(department);
+      const data = await userApi.fetchUsersByDepartment(department);
       setUsers(data);
     } catch (err) {
       setError(
@@ -195,7 +198,7 @@ export const useUsersByStatus = (status: UserStatus) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUsersByStatus(status);
+      const data = await userApi.fetchUsersByStatus(status);
       setUsers(data);
     } catch (err) {
       setError(
@@ -227,7 +230,7 @@ export const useCreateUser = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.createUser(userData);
+        const data = await userApi.createUser(userData);
         setCreatedUser(data);
         return data;
       } catch (err) {
@@ -262,7 +265,7 @@ export const useUpdateUser = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.updateUser(id, userData);
+        const data = await userApi.updateUser(id, userData);
         setUpdatedUser(data);
         return data;
       } catch (err) {
@@ -295,7 +298,7 @@ export const useDeleteUser = () => {
       setError(null);
       
       // First delete from database tables
-      await userProfileApi.deleteUser(id);
+      await userApi.deleteUser(id);
       
       // Then delete the auth user using admin privileges
       const authDeleteResult = await adminUserService.deleteAuthUser(id);
@@ -334,7 +337,7 @@ export const useUpdateUserStatus = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.updateUserStatus(id, status);
+        const data = await userApi.updateUserStatus(id, status);
         setUpdatedUser(data);
         return data;
       } catch (err) {
@@ -366,7 +369,7 @@ export const useUpdateUserRole = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.updateUserRole(id, role);
+        const data = await userApi.updateUserRole(id, role);
         setUpdatedUser(data);
         return data;
       } catch (err) {
@@ -396,16 +399,12 @@ export const useUpsertProfile = () => {
   const upsert = useCallback(
     async (
       userId: string,
-      profileData: {
-        bio?: string | null;
-        preferences?: Record<string, any> | null;
-        avatarUrl?: string | null;
-      }
+      profileData: Partial<Profile>
     ) => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.upsertProfile(userId, profileData);
+        const data = await profileApi.upsertProfile(userId, profileData);
         setProfile(data);
         return data;
       } catch (err) {
@@ -437,7 +436,7 @@ export const useUpdateUserPreferences = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.updateUserPreferences(userId, preferences);
+        const data = await profileApi.updateUserPreferences(userId, preferences);
         setProfile(data);
         return data;
       } catch (err) {
@@ -469,7 +468,7 @@ export const useLogUserActivity = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await userProfileApi.logUserActivity(activityData);
+        const data = await activityApi.logUserActivity(activityData);
         setActivity(data);
         return data;
       } catch (err) {
@@ -503,7 +502,7 @@ export const useUserActivities = (userId: string) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await userProfileApi.fetchUserActivities(userId);
+      const data = await activityApi.fetchUserActivities(userId);
       setActivities(data);
     } catch (err) {
       setError(

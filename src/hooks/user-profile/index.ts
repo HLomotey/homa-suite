@@ -3,24 +3,36 @@
  * Exports all user profile-related API functions and hooks
  */
 
-// Re-export API functions
+// Re-export User API functions
 export {
   fetchUsers,
   fetchUserById,
-  fetchUserWithProfile,
   fetchUsersByRole,
   fetchUsersByDepartment,
   fetchUsersByStatus,
   createUser,
   updateUser,
   deleteUser,
-  upsertProfile,
   updateUserStatus,
-  updateUserRole,
-  updateUserPreferences,
+  updateUserRole
+} from './user-api';
+
+// Re-export Profile API functions
+export {
+  fetchUserWithProfile,
+  upsertProfile,
+  updateUserPreferences
+} from './profile-api';
+
+// Re-export Activity API functions
+export {
   logUserActivity,
   fetchUserActivities
-} from './api';
+} from './activity-api';
+
+// Re-export types and utilities
+export type { UserActivity, UserPreferences } from './utils';
+export { profileToFrontendUser } from './utils';
 
 // Re-export hooks
 export {

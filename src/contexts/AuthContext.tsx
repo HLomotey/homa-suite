@@ -40,7 +40,7 @@ interface Role {
 
 interface Permission {
   id: string;
-  name: string;
+  permission_key: string;
   display_name: string;
   description: string;
 }
@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: allPermissions, error: permError } = await supabaseAdmin
           .from("permissions")
           .select(
-            "id, name, display_name, description"
+            "id, permission_key, display_name, description"
           )
           .eq("is_active", true);
 
@@ -441,7 +441,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Management users check permissions
     if (currentUser.userType === "management") {
       return currentUser.permissions.some(
-        (p) => p.name === permissionKey
+        (p) => p.permission_key === permissionKey
       );
     }
 
