@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FrontendMonthEndReport, ReportStatus } from "@/integration/supabase/types/month-end-reports";
-import { MonthEndReportForm } from "./MonthEndReportForm";
+import MonthEndReports from "./MonthEndReportForm";
 import { MonthEndReportFormData } from "./schemas/monthEndReportSchema";
 import { 
   MoreHorizontal, 
@@ -222,7 +222,7 @@ export const MonthEndReportTable: React.FC<MonthEndReportTableProps> = ({
           <SheetHeader className="mb-4">
             <SheetTitle>{isCreateMode ? "Create Report" : "Edit Report"}</SheetTitle>
           </SheetHeader>
-          <MonthEndReportForm
+          <MonthEndReports
             report={selectedReport || undefined}
             onSave={handleSaveReport}
             onSubmit={onSubmit}

@@ -64,12 +64,6 @@ const navigationItems = [
     href: "/operations/month-end-reports",
     module: "operations",
   },
-  {
-    label: "Housing",
-    icon: Building2,
-    href: ROUTES.PROPERTIES,
-    module: "properties",
-  },
   // {
   //   label: "Billing",
   //   icon: Calculator,

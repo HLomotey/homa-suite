@@ -3,7 +3,11 @@
  * Uses supabaseAdmin client to bypass RLS policies and data rendering limits
  */
 
-import { useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import { supabase, supabaseAdmin } from "@/integration/supabase/client";
 
 // Function to invalidate finance analytics cache after batch uploads
@@ -47,27 +51,33 @@ const fetchAllInvoicesPaginated = async (
 ): Promise<{ data: any[]; totalCount: number }> => {
   const PAGE_SIZE = 1000;
   const MAX_RETRIES = 3;
-  
-  console.log(`fetchAllInvoicesPaginated called with year: ${year}, month: ${month}`);
-  
+
+  console.log(
+    `fetchAllInvoicesPaginated called with year: ${year}, month: ${month}`
+  );
+
   // Build base query
   let baseQuery = supabaseAdmin.from("finance_invoices").select("*");
-  
+
   if (year && month) {
     const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
     const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-    baseQuery = baseQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+    baseQuery = baseQuery
+      .gte("date_issued", startDate)
+      .lte("date_issued", endDate);
   }
-  
+
   // Get total count first
   let countQuery = supabaseAdmin
     .from("finance_invoices")
     .select("id", { count: "exact", head: true });
-    
+
   if (year && month) {
     const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
     const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-    countQuery = countQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+    countQuery = countQuery
+      .gte("date_issued", startDate)
+      .lte("date_issued", endDate);
   }
 
   const { count: totalCount, error: countError } = await countQuery;
@@ -79,7 +89,7 @@ const fetchAllInvoicesPaginated = async (
 
   const total = totalCount || 0;
   console.log(`Total finance invoices count: ${total}`);
-  
+
   let allRows: any[] = [];
 
   if (total === 0) {
@@ -90,18 +100,22 @@ const fetchAllInvoicesPaginated = async (
   // Fetch all pages
   const pages = Math.ceil(total / PAGE_SIZE);
   console.log(`Will fetch ${pages} pages with ${PAGE_SIZE} records per page`);
-  
+
   for (let page = 0; page < pages; page++) {
     if (page > 0 && page % 5 === 0) {
-      console.log(`Fetched ${allRows.length} finance records so far (${Math.round(allRows.length / total * 100)}%)`);
+      console.log(
+        `Fetched ${allRows.length} finance records so far (${Math.round(
+          (allRows.length / total) * 100
+        )}%)`
+      );
     }
-    
+
     const from = page * PAGE_SIZE;
     const to = Math.min((page + 1) * PAGE_SIZE - 1, total - 1);
 
     let attempt = 0;
     let success = false;
-    
+
     while (attempt < MAX_RETRIES && !success) {
       try {
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -115,7 +129,9 @@ const fetchAllInvoicesPaginated = async (
         if (year && month) {
           const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
           const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-          pageQuery = pageQuery.gte("date_issued", startDate).lte("date_issued", endDate);
+          pageQuery = pageQuery
+            .gte("date_issued", startDate)
+            .lte("date_issued", endDate);
         }
 
         const { data, error: pageErr } = await pageQuery;
@@ -124,7 +140,7 @@ const fetchAllInvoicesPaginated = async (
           console.error(`Error fetching finance page ${page}:`, pageErr);
           throw pageErr;
         }
-        
+
         if (data && data.length) {
           allRows = allRows.concat(data);
           success = true;
@@ -140,7 +156,7 @@ const fetchAllInvoicesPaginated = async (
       }
     }
   }
-  
+
   console.log(`Successfully fetched all ${allRows.length} finance records`);
   return { data: allRows, totalCount: total };
 };
@@ -150,48 +166,78 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
     queryKey: ["finance-analytics", year, month],
     queryFn: async (): Promise<FinanceMetrics> => {
       console.log("Starting finance analytics fetch with pagination...");
-      
+
       // Use paginated fetch to get ALL records
-      const { data: invoices, totalCount } = await fetchAllInvoicesPaginated(year, month);
-      const typedInvoices = invoices as any[] || [];
-      
-      console.log(`Finance analytics processing ${typedInvoices.length} records out of ${totalCount} total`);
-      
+      const { data: invoices, totalCount } = await fetchAllInvoicesPaginated(
+        year,
+        month
+      );
+      const typedInvoices = (invoices as any[]) || [];
+
+      console.log(
+        `Finance analytics processing ${typedInvoices.length} records out of ${totalCount} total`
+      );
+
       if (typedInvoices.length !== totalCount) {
-        console.warn(`Warning: Expected ${totalCount} records but got ${typedInvoices.length}`);
+        console.warn(
+          `Warning: Expected ${totalCount} records but got ${typedInvoices.length}`
+        );
       }
 
       const totalInvoices = typedInvoices.length;
-      
+
+      // Log the actual number of invoices fetched for debugging
+      console.log(
+        `Finance Analytics: Fetched ${totalInvoices} invoices from database`
+      );
+      console.log(
+        `Query executed: SELECT * FROM finance_invoices${
+          year && month
+            ? ` WHERE date_issued >= '${year}-${month
+                .toString()
+                .padStart(2, "0")}-01' AND date_issued <= '${
+                new Date(year, month, 0).toISOString().split("T")[0]
+              }'`
+            : ""
+        }`
+      );
+
+      // Check if we hit Supabase's default limit
+      if (totalInvoices === 1000) {
+        console.warn(
+          "⚠️ WARNING: Exactly 1000 records returned - this may indicate a default limit is being applied"
+        );
+      }
+
       // Calculate total revenue directly from the fetched invoices
       // This ensures we have accurate data even with large datasets
       let totalRevenue = typedInvoices.reduce((sum, invoice) => {
         const lineTotal = parseFloat(invoice.line_total);
         return sum + (isNaN(lineTotal) ? 0 : lineTotal);
       }, 0);
-      
+
       // Use the SQL function to get the sum directly
-      const { data: totalRevenueData, error: totalRevenueError } = await supabaseAdmin
-        .rpc('sum_invoice_totals');
-        
+      const { data: totalRevenueData, error: totalRevenueError } =
+        await supabaseAdmin.rpc("sum_invoice_totals");
+
       if (totalRevenueError) {
-        console.error('Error fetching total revenue:', totalRevenueError);
+        console.error("Error fetching total revenue:", totalRevenueError);
         // We'll use the calculated total from invoices array if the query fails
       } else if (totalRevenueData) {
-        console.log('Total revenue response:', totalRevenueData);
-        
+        console.log("Total revenue response:", totalRevenueData);
+
         try {
           // Parse the sum from the response
           const responseData = totalRevenueData as any;
           if (responseData.sum !== null) {
-            if (typeof responseData.sum === 'string') {
+            if (typeof responseData.sum === "string") {
               totalRevenue = parseFloat(responseData.sum) || 0;
-            } else if (typeof responseData.sum === 'number') {
+            } else if (typeof responseData.sum === "number") {
               totalRevenue = responseData.sum;
             }
           }
         } catch (err) {
-          console.error('Error parsing total revenue:', err);
+          console.error("Error parsing total revenue:", err);
           // Keep the calculated total if parsing fails
         }
       }
@@ -270,15 +316,17 @@ export const useFinanceAnalytics = (year?: number, month?: number) => {
         pendingInvoices: statusCounts.pending || 0,
         overdueInvoices: statusCounts.overdue || 0,
         sentInvoices: statusCounts.sent || 0,
-        averageInvoiceValue: totalInvoices > 0 ? totalRevenue / totalInvoices : 0,
+        averageInvoiceValue:
+          totalInvoices > 0 ? totalRevenue / totalInvoices : 0,
         monthlyRevenue,
         statusDistribution,
         topClients,
         isDataComplete: true, // Using supabaseAdmin ensures we get all data
       };
     },
-    staleTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Force fresh data fetch
+    refetchOnWindowFocus: true,
+    gcTime: 0, // Don't cache the results (gcTime replaces cacheTime in newer versions)
   });
 };
 
@@ -288,16 +336,21 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
     queryKey: ["revenue-metrics", year, month],
     queryFn: async () => {
       console.log("Starting revenue metrics fetch with pagination...");
-      
+
       // Use paginated fetch to get ALL records for accurate revenue calculations
-      const { data: allData, totalCount } = await fetchAllInvoicesPaginated(year, month);
-      const typedData = allData.map(invoice => ({
+      const { data: allData, totalCount } = await fetchAllInvoicesPaginated(
+        year,
+        month
+      );
+      const typedData = allData.map((invoice) => ({
         line_total: invoice.line_total,
         date_issued: invoice.date_issued,
-        invoice_status: invoice.invoice_status
+        invoice_status: invoice.invoice_status,
       }));
-      
-      console.log(`Revenue metrics processing ${typedData.length} records out of ${totalCount} total`);
+
+      console.log(
+        `Revenue metrics processing ${typedData.length} records out of ${totalCount} total`
+      );
 
       // Use filtered period or current month if no filter
       const targetMonth = month ? month - 1 : new Date().getMonth(); // month - 1 because JS months are 0-indexed
@@ -342,23 +395,29 @@ export const useRevenueMetrics = (year?: number, month?: number) => {
         const lineTotal = parseFloat(invoice.line_total);
         return sum + (isNaN(lineTotal) ? 0 : lineTotal);
       }, 0);
-      
+
       // Use the SQL function to get the sum directly
-      const { data: totalRevenueData, error: totalRevenueError } = await supabaseAdmin
-        .rpc('sum_invoice_totals');
-      
+      const { data: totalRevenueData, error: totalRevenueError } =
+        await supabaseAdmin.rpc("sum_invoice_totals");
+
       // Log the response for debugging
       if (totalRevenueError) {
-        console.error('Error fetching total revenue in useRevenueMetrics:', totalRevenueError);
+        console.error(
+          "Error fetching total revenue in useRevenueMetrics:",
+          totalRevenueError
+        );
       } else if (totalRevenueData) {
-        console.log('Total revenue response in useRevenueMetrics:', totalRevenueData);
+        console.log(
+          "Total revenue response in useRevenueMetrics:",
+          totalRevenueData
+        );
       }
 
       return {
         thisMonthRevenue,
         lastMonthRevenue,
         growthRate,
-        totalRevenue
+        totalRevenue,
       };
     },
     staleTime: 30 * 1000, // 30 seconds
