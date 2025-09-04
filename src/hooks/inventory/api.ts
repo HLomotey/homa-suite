@@ -552,30 +552,73 @@ export const deleteInventorySupplier = async (id: string): Promise<void> => {
 export const fetchPurchaseOrdersByProperty = async (
   propertyId: string
 ): Promise<FrontendInventoryPurchaseOrder[]> => {
-  const { data, error } = await supabase
-    .from("inventory_purchase_orders")
-    .select(`
-      *,
-      inventory_suppliers (*)
-    `)
-    .eq("property_id", propertyId)
-    .order("order_date", { ascending: false });
-
-  if (error) {
-    console.error(`Error fetching purchase orders for property ${propertyId}:`, error);
-    throw new Error(error.message);
+  console.log(`Fetching purchase orders for property: ${propertyId}`);
+  
+  // Validate propertyId parameter
+  if (!propertyId || propertyId.trim() === '') {
+    console.warn("Empty or invalid propertyId provided, returning empty array");
+    return [];
   }
 
-  // Map the joined data
-  const mappedData = data.map((order: any) => {
-    const frontendOrder = mapDatabaseInventoryPurchaseOrderToFrontend(order);
-    if (order.inventory_suppliers) {
-      frontendOrder.supplier = mapDatabaseInventorySupplierToFrontend(order.inventory_suppliers);
-    }
-    return frontendOrder;
-  });
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(propertyId)) {
+    console.warn(`Invalid UUID format for propertyId: ${propertyId}, returning empty array`);
+    return [];
+  }
+  
+  try {
+    // First check if the table exists by doing a simple count query
+    const { count, error: countError } = await supabase
+      .from("inventory_purchase_orders")
+      .select("*", { count: 'exact', head: true });
 
-  return mappedData;
+    if (countError) {
+      console.error("Table access error:", countError);
+      // If the table doesn't exist or we can't access it, return empty array
+      if (countError.code === '42P01' || countError.message.includes('does not exist')) {
+        console.warn("inventory_purchase_orders table does not exist, returning empty array");
+        return [];
+      }
+      throw new Error(`Database access error: ${countError.message}`);
+    }
+
+    console.log(`Table exists with ${count} total records`);
+
+    const { data, error } = await supabase
+      .from("inventory_purchase_orders")
+      .select(`
+        *,
+        inventory_suppliers (*)
+      `)
+      .eq("property_id", propertyId)
+      .order("order_date", { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching purchase orders for property ${propertyId}:`, error);
+      throw new Error(error.message);
+    }
+
+    console.log(`Found ${data?.length || 0} purchase orders for property ${propertyId}`);
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Map the joined data
+    const mappedData = data.map((order: any) => {
+      const frontendOrder = mapDatabaseInventoryPurchaseOrderToFrontend(order);
+      if (order.inventory_suppliers) {
+        frontendOrder.supplier = mapDatabaseInventorySupplierToFrontend(order.inventory_suppliers);
+      }
+      return frontendOrder;
+    });
+
+    return mappedData;
+  } catch (err) {
+    console.error("Exception in fetchPurchaseOrdersByProperty:", err);
+    throw err;
+  }
 };
 
 /**
