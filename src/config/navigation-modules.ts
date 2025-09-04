@@ -112,6 +112,14 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     description: 'Job order tracking and management',
     icon: 'ClipboardList',
     routes: ['/job-orders', '/job-orders/*']
+  },
+  {
+    id: 'analytics',
+    name: 'analytics',
+    displayName: 'Text Analytics',
+    description: 'Sentiment analysis and text insights',
+    icon: 'Brain',
+    routes: ['/analytics-demo', '/text-analytics']
   }
 ];
 
