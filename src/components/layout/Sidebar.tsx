@@ -137,10 +137,10 @@ const navigationItems = [
     module: "settings",
   },
   {
-    label: "Analytics",
+    label: "Text Analytics",
     icon: BarChart3,
     href: "/analytics",
-    module: "operations",
+    module: "analytics",
   },
   {
     label: "Reports",
