@@ -19,7 +19,7 @@ import { Property } from './property';
 import { Room } from './room';
 import { Assignment } from './assignment';
 import { 
-  JobOrder, 
+  JobOrder as OperationsJobOrder, 
   RegionPerformance, 
   TopPerformer, 
   ClientSatisfaction, 
@@ -27,6 +27,13 @@ import {
   TimeToFillTrend, 
   JobType as OperationsJobType 
 } from './operations';
+import { 
+  JobOrder,
+  JobOrderPosition,
+  JobOrderPlacement,
+  JobOrderAuditLog,
+  JobOrderNotification
+} from '@/types/job-order';
 import {
   Bill,
   BillingStaff,
@@ -124,6 +131,31 @@ export interface Database {
         Row: JobOrder;
         Insert: Omit<JobOrder, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<JobOrder, "id" | "created_at">>;
+      };
+      job_order_positions: {
+        Row: JobOrderPosition;
+        Insert: Omit<JobOrderPosition, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<JobOrderPosition, "id" | "created_at">>;
+      };
+      job_order_placements: {
+        Row: JobOrderPlacement;
+        Insert: Omit<JobOrderPlacement, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<JobOrderPlacement, "id" | "created_at">>;
+      };
+      job_order_audit_logs: {
+        Row: JobOrderAuditLog;
+        Insert: Omit<JobOrderAuditLog, "id">;
+        Update: Partial<Omit<JobOrderAuditLog, "id">>;
+      };
+      job_order_notifications: {
+        Row: JobOrderNotification;
+        Insert: Omit<JobOrderNotification, "id" | "created_at">;
+        Update: Partial<Omit<JobOrderNotification, "id" | "created_at">>;
+      };
+      operations_job_orders: {
+        Row: OperationsJobOrder;
+        Insert: Omit<OperationsJobOrder, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<OperationsJobOrder, "id" | "created_at">>;
       };
       region_performance: {
         Row: RegionPerformance;
@@ -549,7 +581,48 @@ export interface Database {
       };
     };
     Views: {
-      [_ in never]: never;
+      job_orders_with_details: {
+        Row: {
+          id: string;
+          job_order_number: string;
+          title: string;
+          description?: string;
+          organization_id: string;
+          organization_name?: string;
+          organization_location?: string;
+          site_location?: string;
+          seats_requested: number;
+          seats_filled: number;
+          requested_at: string;
+          requested_start_date?: string;
+          due_date?: string;
+          fill_by_date?: string;
+          completed_at?: string;
+          closed_at?: string;
+          status: string;
+          priority: string;
+          requestor_id?: string;
+          requestor_name?: string;
+          hr_coordinator_id?: string;
+          coordinator_name?: string;
+          approver_id?: string;
+          approver_name?: string;
+          owner_id?: string;
+          owner_name?: string;
+          notes?: string;
+          approval_notes?: string;
+          rejection_reason?: string;
+          completion_notes?: string;
+          created_at: string;
+          updated_at: string;
+          created_by?: string;
+          updated_by?: string;
+          fill_percentage: number;
+          is_overdue: boolean;
+        };
+        Insert: never;
+        Update: never;
+      };
     };
     Functions: {
       [_ in never]: never;
@@ -563,7 +636,9 @@ export interface Database {
       room_type: "Single" | "Double" | "Suite" | "Studio";
       assignment_status: "Active" | "Pending" | "Expired" | "Terminated";
       payment_status: "Paid" | "Pending" | "Overdue" | "Partial";
-      job_order_status: "filled" | "pending";
+      job_order_status: "DRAFT" | "SUBMITTED" | "APPROVAL_PENDING" | "APPROVED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "CLOSED" | "CANCELLED" | "REJECTED";
+      placement_status: "TENTATIVE" | "CONFIRMED" | "STARTED" | "ENDED";
+      priority_level: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
       bill_status: "paid" | "pending" | "overdue";
       bill_type: "rent" | "utilities" | "transport" | "maintenance";
       vehicle_status: "active" | "maintenance" | "repair" | "retired";
