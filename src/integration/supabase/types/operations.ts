@@ -10,14 +10,52 @@ import { Json } from './database';
  */
 export interface JobOrder {
   id: string;
-  job_order_id: string;
-  client: string;
-  position: string;
-  status: string;
-  date_created: string;
-  time_to_fill: number | null;
+  job_order_number: string;
+  title: string;
+  description?: string;
+  
+  // Organization & Location
+  organization_id: string;
+  organization_name?: string;
+  site_location?: string;
+  
+  // Request Details
+  seats_requested: number;
+  seats_filled: number;
+  fill_percentage: number;
+  
+  // Dates
+  requested_at: string;
+  requested_start_date?: string;
+  due_date?: string;
+  fill_by_date?: string;
+  completed_at?: string;
+  closed_at?: string;
+  
+  // Status & Priority
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVAL_PENDING' | 'APPROVED' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETED' | 'CLOSED' | 'CANCELLED' | 'REJECTED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  
+  // Computed fields
+  is_overdue: boolean;
+  
+  // People
+  requestor_id?: string;
+  hr_coordinator_id?: string;
+  approver_id?: string;
+  owner_id?: string;
+  
+  // Additional Information
+  notes?: string;
+  approval_notes?: string;
+  rejection_reason?: string;
+  completion_notes?: string;
+  
+  // Metadata
   created_at: string;
   updated_at: string | null;
+  created_by?: string;
+  updated_by?: string;
 }
 
 /**
@@ -174,12 +212,14 @@ export interface FrontendJobType {
 export const mapDatabaseJobOrderToFrontend = (dbJobOrder: JobOrder): FrontendJobOrder => {
   return {
     id: dbJobOrder.id,
-    jobOrderId: dbJobOrder.job_order_id,
-    client: dbJobOrder.client,
-    position: dbJobOrder.position,
+    jobOrderId: dbJobOrder.job_order_number,
+    client: dbJobOrder.organization_name || dbJobOrder.organization_id,
+    position: dbJobOrder.title,
     status: dbJobOrder.status as JobOrderStatus,
-    date: dbJobOrder.date_created,
-    timeToFill: dbJobOrder.time_to_fill
+    date: dbJobOrder.created_at,
+    timeToFill: dbJobOrder.completed_at && dbJobOrder.requested_at ? 
+      Math.floor((new Date(dbJobOrder.completed_at).getTime() - new Date(dbJobOrder.requested_at).getTime()) / (1000 * 60 * 60 * 24)) : 
+      null
   };
 };
 

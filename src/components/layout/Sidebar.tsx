@@ -53,6 +53,12 @@ const navigationItems = [
     module: "finance",
   },
   {
+    label: "Housing",
+    icon: Home,
+    href: ROUTES.PROPERTIES,
+    module: "properties",
+  },
+  {
     label: "Operations",
     icon: ClipboardList,
     href: ROUTES.OPERATIONS,

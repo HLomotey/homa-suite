@@ -97,7 +97,7 @@ export default function Properties() {
         <TabsList className="mb-6">
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="inventory" disabled={!selectedPropertyId}>Inventory</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
         </TabsList>
         
         <TabsContent value="properties" className="space-y-6">
@@ -125,13 +125,7 @@ export default function Properties() {
         </TabsContent>
 
         <TabsContent value="inventory">
-          {selectedPropertyId ? (
-            <Inventory propertyId={selectedPropertyId} />
-          ) : (
-            <div className="flex justify-center items-center h-64">
-              <p className="text-muted-foreground">Please select a property first</p>
-            </div>
-          )}
+          <Inventory />
         </TabsContent>
       </Tabs>
 
