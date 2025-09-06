@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calculator, X, Save, Plus, Trash2 } from 'lucide-react';
 import { CreateProjectionRequest, ProjectionStatus, ProjectionPriority, ProjectionWithDetails } from '@/types/projection';
 import useStaffLocation from '@/hooks/transport/useStaffLocation';
+import { useBillingPeriods } from '@/hooks/billing/useBillingPeriods';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +39,7 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
   readOnly = false
 }) => {
   const { staffLocations } = useStaffLocation();
+  const { billingPeriods } = useBillingPeriods();
 
   // Base form data
   const [baseFormData, setBaseFormData] = React.useState({
@@ -155,6 +157,19 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
     }
   };
 
+  // Function to find billing period for a given month/year
+  const findBillingPeriodForMonth = (month: number, year: number): string => {
+    const monthDate = new Date(year, month, 15); // Use middle of month for comparison
+    
+    const matchingPeriod = billingPeriods?.find(period => {
+      const startDate = new Date(period.start_date);
+      const endDate = new Date(period.end_date);
+      return monthDate >= startDate && monthDate <= endDate;
+    });
+    
+    return matchingPeriod?.id || '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -162,19 +177,22 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
 
     const selectedProjections = monthlyProjections
       .filter(month => month.selected && (month.expected_hours > 0 || month.expected_revenue > 0))
-      .map(month => ({
-        title: `${baseFormData.title} - ${month.monthName} ${month.year}`,
-        description: baseFormData.description,
-        location_id: baseFormData.location_id,
-        billing_period_id: '', // Will need to be handled based on month
-        expected_hours: month.expected_hours,
-        expected_revenue: month.expected_revenue,
-        status: baseFormData.status,
-        priority: baseFormData.priority,
-        projection_date: format(new Date(month.year, month.month, 1), 'yyyy-MM-dd'),
-        estimator_percentage: globalEstimator.percentage,
-        notes: baseFormData.description
-      }));
+      .map(month => {
+        const billing_period_id = findBillingPeriodForMonth(month.month, month.year);
+        return {
+          title: `${baseFormData.title} - ${month.monthName} ${month.year}`,
+          description: baseFormData.description,
+          location_id: baseFormData.location_id,
+          billing_period_id,
+          expected_hours: month.expected_hours,
+          expected_revenue: month.expected_revenue,
+          status: baseFormData.status,
+          priority: baseFormData.priority,
+          projection_date: format(new Date(month.year, month.month, 1), 'yyyy-MM-dd'),
+          estimator_percentage: globalEstimator.percentage,
+          notes: baseFormData.description
+        };
+      });
 
     if (selectedProjections.length === 0) {
       return;
@@ -243,6 +261,7 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
                     </Select>
                   </div>
                 </div>
+
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">

@@ -26,6 +26,7 @@ export const useProjections = () => {
             end_date
           )
         `)
+        .order('billing_periods(start_date)', { ascending: true })
         .order('created_at', { ascending: false }) as { data: any[] | null; error: any };
 
       if (error) {
@@ -34,7 +35,7 @@ export const useProjections = () => {
 
       const projectionsWithDetails: ProjectionWithDetails[] = data?.map((projection: any) => ({
         ...projection,
-        location_description: projection.staff_locations?.location_description,
+        location_description: projection.staff_locations?.location_description || projection.location_description,
         billing_period_start_date: projection.billing_periods?.start_date,
         billing_period_end_date: projection.billing_periods?.end_date,
       })) || [];
@@ -187,7 +188,7 @@ export const useProjections = () => {
 
       return {
         ...data,
-        location_description: data?.staff_locations?.location_description,
+        location_description: data?.staff_locations?.location_description || data?.location_description,
         billing_period_start_date: data?.billing_periods?.start_date,
         billing_period_end_date: data?.billing_periods?.end_date,
       };
