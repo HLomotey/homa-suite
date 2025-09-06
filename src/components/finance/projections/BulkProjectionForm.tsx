@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
+import { EmailNotificationPanel } from '@/components/shared/EmailNotificationPanel';
+import { EmailNotificationConfig } from '@/types/notification';
 
 interface MonthlyProjection {
   month: number;
@@ -58,6 +60,19 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
   const [globalEstimator, setGlobalEstimator] = React.useState({
     percentage: 0,
     applyToAll: false
+  });
+
+  // Email notification configuration
+  const [emailConfig, setEmailConfig] = React.useState<EmailNotificationConfig>({
+    enabled: false,
+    recipients: [],
+    groups: [],
+    subject: '',
+    message: '',
+    includeFormData: true,
+    sendOnSubmit: true,
+    sendOnUpdate: false,
+    sendOnDelete: false
   });
 
   const [activeTab, setActiveTab] = React.useState('projections');
@@ -225,9 +240,10 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="projections">Monthly Projections</TabsTrigger>
             <TabsTrigger value="estimator">Estimator Tools</TabsTrigger>
+            <TabsTrigger value="notifications">Email Notifications</TabsTrigger>
           </TabsList>
 
           <TabsContent value="projections" className="space-y-6">
@@ -502,6 +518,15 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-6">
+            <EmailNotificationPanel
+              formType="bulk-projection"
+              formData={monthlyProjections.filter(m => m.selected)}
+              onSend={(config) => setEmailConfig(config)}
+              className="w-full"
+            />
           </TabsContent>
           </Tabs>
         </div>

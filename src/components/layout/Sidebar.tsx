@@ -29,6 +29,7 @@ import {
   UserCheck,
   UserPlus,
   LineChart,
+  Mail,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -159,6 +160,12 @@ const navigationItems = [
     icon: Activity,
     href: ROUTES.ACTIVITY_LOG,
     module: "activity_log",
+  },
+  {
+    label: "Notifications",
+    icon: Mail,
+    href: "/notifications",
+    module: "notifications",
   },
   // {
   //   label: "Onboarding",
