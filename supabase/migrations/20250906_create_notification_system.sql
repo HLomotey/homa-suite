@@ -221,62 +221,105 @@ Please review these projections in the system.',
 ARRAY['count', 'created_at', 'projection_list', 'custom_message'],
 'Default template for bulk projection creation notifications');
 
--- Insert notifications module into modules table for RBAC
-INSERT INTO modules (name, description, path, is_active) VALUES
-('notifications', 'Email Notification Management', '/notifications', true)
-ON CONFLICT (name) DO NOTHING;
+-- Add RBAC permissions for notifications module
+INSERT INTO modules (name, display_name, description, is_active) VALUES 
+('notifications', 'Notifications', 'Email notifications and templates management', true)
+ON CONFLICT (name) DO UPDATE SET 
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  is_active = EXCLUDED.is_active;
 
--- Insert permissions for notifications module
-INSERT INTO permissions (module_id, name, description) 
-SELECT m.id, 'view', 'View notifications and history'
-FROM modules m WHERE m.name = 'notifications'
-ON CONFLICT (module_id, name) DO NOTHING;
+-- Create actions for notifications module
+INSERT INTO actions (name, display_name, description) VALUES
+('notify.view', 'View Notifications', 'View notification history and analytics'),
+('notify.send', 'Send Notifications', 'Send individual and bulk notifications'),
+('notify.tpl.view', 'View Templates', 'View email templates'),
+('notify.tpl.create', 'Create Templates', 'Create new email templates'),
+('notify.tpl.edit', 'Edit Templates', 'Edit existing email templates'),
+('notify.tpl.delete', 'Delete Templates', 'Delete email templates'),
+('notify.grp.view', 'View Groups', 'View notification groups'),
+('notify.grp.create', 'Create Groups', 'Create notification groups'),
+('notify.grp.edit', 'Edit Groups', 'Edit notification groups'),
+('notify.grp.delete', 'Delete Groups', 'Delete notification groups'),
+('notify.set.view', 'View Settings', 'View notification settings'),
+('notify.set.edit', 'Edit Settings', 'Edit notification settings and SMTP configuration'),
+('notify.analytics', 'View Analytics', 'View email analytics and reports'),
+('notify.schedule', 'Schedule Emails', 'Schedule emails for future delivery')
+ON CONFLICT (name) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description;
 
-INSERT INTO permissions (module_id, name, description) 
-SELECT m.id, 'create', 'Create and send notifications'
-FROM modules m WHERE m.name = 'notifications'
-ON CONFLICT (module_id, name) DO NOTHING;
+-- Create permissions for notifications module
+DO $$
+DECLARE
+    notifications_module_id UUID;
+    action_record RECORD;
+BEGIN
+    SELECT id INTO notifications_module_id FROM modules WHERE name = 'notifications';
+    
+    -- Insert permissions for each action
+    FOR action_record IN 
+        SELECT id, name, display_name, description FROM actions WHERE name LIKE 'notify.%'
+    LOOP
+        INSERT INTO permissions (module_id, action_id, permission_key, display_name, description)
+        VALUES (
+            notifications_module_id, 
+            action_record.id, 
+            action_record.name,
+            action_record.display_name,
+            action_record.description
+        )
+        ON CONFLICT (permission_key) DO UPDATE SET
+            module_id = EXCLUDED.module_id,
+            action_id = EXCLUDED.action_id,
+            display_name = EXCLUDED.display_name,
+            description = EXCLUDED.description;
+    END LOOP;
+END $$;
 
-INSERT INTO permissions (module_id, name, description) 
-SELECT m.id, 'edit', 'Edit notification templates and groups'
-FROM modules m WHERE m.name = 'notifications'
-ON CONFLICT (module_id, name) DO NOTHING;
+-- Assign notifications permissions to roles using direct queries
+-- Admin gets all permissions
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name IN ('Admin', 'Administrator')
+AND p.permission_key LIKE 'notify.%'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
 
-INSERT INTO permissions (module_id, name, description) 
-SELECT m.id, 'delete', 'Delete notification history and templates'
-FROM modules m WHERE m.name = 'notifications'
-ON CONFLICT (module_id, name) DO NOTHING;
+-- Manager gets most permissions (except settings management)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name IN ('Manager', 'Properties Manager')
+AND p.permission_key LIKE 'notify.%'
+AND p.permission_key NOT IN ('notify.set.edit')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
 
-INSERT INTO permissions (module_id, name, description) 
-SELECT m.id, 'manage', 'Manage notification system settings'
-FROM modules m WHERE m.name = 'notifications'
-ON CONFLICT (module_id, name) DO NOTHING;
+-- HR Officer gets view and send permissions
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name IN ('HR Officer', 'HR Manager')
+AND p.permission_key IN (
+    'notify.view',
+    'notify.send',
+    'notify.tpl.view',
+    'notify.grp.view',
+    'notify.analytics'
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Assign notifications module to roles
 INSERT INTO role_modules (role_id, module_id)
 SELECT r.id, m.id
 FROM roles r, modules m
-WHERE r.name IN ('Admin', 'Manager', 'HR Officer') 
+WHERE r.name IN ('Admin', 'Administrator', 'Manager', 'Properties Manager', 'HR Officer', 'HR Manager') 
 AND m.name = 'notifications'
 ON CONFLICT (role_id, module_id) DO NOTHING;
 
--- Assign permissions to roles for notifications module
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM roles r, permissions p, modules m
-WHERE r.name = 'Admin' 
-AND p.module_id = m.id 
-AND m.name = 'notifications'
-ON CONFLICT (role_id, permission_id) DO NOTHING;
-
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM roles r, permissions p, modules m
-WHERE r.name IN ('Manager', 'HR Officer') 
-AND p.module_id = m.id 
-AND m.name = 'notifications'
-AND p.name IN ('view', 'create', 'edit')
-ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Insert default notification groups
 INSERT INTO notification_groups (name, description, form_types) VALUES

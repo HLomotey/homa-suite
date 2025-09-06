@@ -43,19 +43,7 @@ export const NotificationTemplates: React.FC = () => {
         name: 'Projection Created',
         form_type: 'projection',
         subject_template: 'New Projection: {{title}}',
-        body_template: `A new projection has been created.
-
-Details:
-- Title: {{title}}
-- Location: {{location_description}}
-- Expected Revenue: ${{expected_revenue}}
-- Expected Hours: {{expected_hours}}
-- Status: {{status}}
-- Created: {{created_at}}
-
-{{custom_message}}
-
-Please review this projection in the system.`,
+        body_template: 'A new projection has been created.\n\nDetails:\n- Title: {{title}}\n- Location: {{location_description}}\n- Expected Revenue: ${{expected_revenue}}\n- Expected Hours: {{expected_hours}}\n- Status: {{status}}\n- Created: {{created_at}}\n\n{{custom_message}}\n\nPlease review this projection in the system.',
         variables: ['title', 'location_description', 'expected_revenue', 'expected_hours', 'status', 'created_at', 'custom_message'],
         description: 'Default template for single projection creation notifications',
         is_active: true,
@@ -66,17 +54,7 @@ Please review this projection in the system.`,
         name: 'Bulk Projections Created',
         form_type: 'bulk-projection',
         subject_template: 'Bulk Projections: {{count}} projections created',
-        body_template: `{{count}} new projections have been created.
-
-Summary:
-- Number of Projections: {{count}}
-- Created: {{created_at}}
-
-{{projection_list}}
-
-{{custom_message}}
-
-Please review these projections in the system.`,
+        body_template: '{{count}} new projections have been created.\n\nSummary:\n- Number of Projections: {{count}}\n- Created: {{created_at}}\n\n{{projection_list}}\n\n{{custom_message}}\n\nPlease review these projections in the system.',
         variables: ['count', 'created_at', 'projection_list', 'custom_message'],
         description: 'Default template for bulk projection creation notifications',
         is_active: true,
