@@ -93,7 +93,7 @@ const ProjectionDashboard = () => {
       </div>
 
       {/* Additional Metrics */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
+      <div className="grid gap-4 md:grid-cols-4 mb-8">
         <Card className="bg-black/40 backdrop-blur-md border border-white/10">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-white">Average Variance</CardTitle>
@@ -102,6 +102,20 @@ const ProjectionDashboard = () => {
             <div className="text-2xl font-bold text-white">{metrics.avgVariancePercentage.toFixed(1)}%</div>
             <p className="text-xs text-white/60">
               Average variance between expected and actual
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/40 backdrop-blur-md border border-white/10">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-white">Total Expected Hours</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {metrics.totalExpectedHours.toLocaleString('en-US')} hrs
+            </div>
+            <p className="text-xs text-white/60">
+              Combined expected hours across all projections
             </p>
           </CardContent>
         </Card>

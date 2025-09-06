@@ -245,6 +245,7 @@ const ProjectionModule = () => {
                       <TableHead>Title</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Billing Period</TableHead>
+                      <TableHead>Expected Hours</TableHead>
                       <TableHead>Expected Revenue</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Priority</TableHead>
@@ -255,7 +256,7 @@ const ProjectionModule = () => {
                   <TableBody>
                     {filteredProjections.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
+                        <TableCell colSpan={9} className="text-center py-8">
                           <div className="flex flex-col items-center gap-2">
                             <TrendingUp className="h-8 w-8 text-gray-400" />
                             <p className="text-gray-500">No projections found</p>
@@ -273,6 +274,9 @@ const ProjectionModule = () => {
                           </TableCell>
                           <TableCell>{projection.location_description}</TableCell>
                           <TableCell>{projection.billing_period_name}</TableCell>
+                          <TableCell>
+                            {projection.expected_hours.toLocaleString('en-US')} hrs
+                          </TableCell>
                           <TableCell>
                             ${projection.expected_revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </TableCell>
