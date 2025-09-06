@@ -24,11 +24,12 @@ import {
 import { FinanceOverview } from "@/components/finance/FinanceOverview";
 import { FinanceReports } from "@/components/finance/FinanceReports";
 import { FinanceTransactions } from "@/components/finance/FinanceTransactions";
-import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
 import { FinanceAnalyticsTab } from "@/components/finance/FinanceAnalyticsTab";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 import { FinanceDrillThroughDashboard } from "@/components/finance/drill-through/FinanceDrillThroughDashboard";
+import ProjectionModule from '@/components/finance/projections/ProjectionModule';
+import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
 
 export default function Finance() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -144,6 +145,7 @@ export default function Finance() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="detailed-analysis">Detailed Analysis</TabsTrigger>
+          <TabsTrigger value="projections">Projections</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="budgeting">Budgeting</TabsTrigger>
@@ -163,6 +165,10 @@ export default function Finance() {
             year={selectedYear}
             month={selectedMonth}
           />
+        </TabsContent>
+
+        <TabsContent value="projections" className="space-y-4">
+          <ProjectionModule />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
