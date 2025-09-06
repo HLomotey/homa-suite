@@ -158,7 +158,7 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
   };
 
   // Function to find billing period for a given month/year
-  const findBillingPeriodForMonth = (month: number, year: number): string => {
+  const findBillingPeriodForMonth = (month: number, year: number): string | null => {
     const monthDate = new Date(year, month, 15); // Use middle of month for comparison
     
     const matchingPeriod = billingPeriods?.find(period => {
@@ -167,7 +167,7 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
       return monthDate >= startDate && monthDate <= endDate;
     });
     
-    return matchingPeriod?.id || '';
+    return matchingPeriod?.id || null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,6 +179,13 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
       .filter(month => month.selected && (month.expected_hours > 0 || month.expected_revenue > 0))
       .map(month => {
         const billing_period_id = findBillingPeriodForMonth(month.month, month.year);
+        
+        // Skip months without valid billing periods
+        if (!billing_period_id) {
+          console.warn(`No billing period found for ${month.monthName} ${month.year}, skipping projection`);
+          return null;
+        }
+        
         return {
           title: `${baseFormData.title} - ${month.monthName} ${month.year}`,
           description: baseFormData.description,
@@ -192,7 +199,8 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
           estimator_percentage: globalEstimator.percentage,
           notes: baseFormData.description
         };
-      });
+      })
+      .filter(projection => projection !== null); // Remove null entries
 
     if (selectedProjections.length === 0) {
       return;

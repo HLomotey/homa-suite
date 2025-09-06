@@ -132,6 +132,12 @@ const fetchAllInvoicesPaginated = async (
   let allData: any[] = [];
   let totalCount = 0;
 
+  // Ensure dateRanges is iterable
+  if (!Array.isArray(dateRanges)) {
+    console.error('dateRanges is not an array:', dateRanges);
+    throw new Error('dateRanges must be an array');
+  }
+
   for (const range of dateRanges) {
     const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
     const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
