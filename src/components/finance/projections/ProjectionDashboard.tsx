@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Users, CheckCircle, Clock, DollarSign, Target, BarChart3, PieChart, Loader2, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, Users, CheckCircle, Clock, DollarSign, Target, BarChart3, PieChart, Loader2, AlertTriangle, ArrowUp, ArrowDown, Percent, TrendingDown } from 'lucide-react';
 import { useProjectionStats } from '@/hooks/projection/useProjectionStats';
 import StatusDistributionChart from './charts/StatusDistributionChart';
 import PriorityDistributionChart from './charts/PriorityDistributionChart';
@@ -63,85 +63,89 @@ const ProjectionDashboard = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard 
-          title="Total Projections" 
-          value={metrics.totalProjections.toLocaleString()} 
-          trend={metrics.totalTrend}
-          icon={<TrendingUp className="h-5 w-5" />}
+          title="Expected Revenue" 
+          value={`$${(metrics.totalExpectedRevenue / 1000000).toFixed(1)}M`} 
+          trend={metrics.revenueTrend}
+          icon={<DollarSign className="h-5 w-5" />}
           color="blue"
         />
         <StatsCard 
-          title="Active Projections" 
-          value={metrics.activeProjections.toLocaleString()} 
-          trend={metrics.activeTrend}
-          icon={<Users className="h-5 w-5" />}
+          title="Profit Margin" 
+          value={`${metrics.totalActualRevenue > 0 ? (((metrics.totalActualRevenue - (metrics.totalExpectedHours * 50)) / metrics.totalActualRevenue * 100).toFixed(1)) : '0.0'}%`} 
+          trend={metrics.revenueTrend}
+          icon={<Percent className="h-5 w-5" />}
           color="green"
         />
         <StatsCard 
-          title="Approved Projections" 
-          value={metrics.approvedProjections.toLocaleString()} 
-          trend={metrics.approvedTrend}
-          icon={<CheckCircle className="h-5 w-5" />}
+          title="Revenue per Hour" 
+          value={`$${metrics.totalExpectedHours > 0 ? (metrics.totalActualRevenue / metrics.totalExpectedHours).toFixed(0) : '0'}`} 
+          trend={metrics.activeTrend}
+          icon={<Target className="h-5 w-5" />}
           color="amber"
         />
         <StatsCard 
-          title="Under Review" 
-          value={metrics.underReviewProjections.toLocaleString()} 
-          trend={metrics.revenueTrend}
-          icon={<Clock className="h-5 w-5" />}
+          title="Variance Impact" 
+          value={`${metrics.avgVariancePercentage.toFixed(1)}%`} 
+          trend={metrics.totalTrend}
+          icon={<TrendingDown className="h-5 w-5" />}
           color="purple"
         />
       </div>
 
-      {/* Additional Metrics */}
+      {/* Financial Metrics */}
       <div className="grid gap-4 md:grid-cols-4 mb-8">
         <Card className="bg-black/40 backdrop-blur-md border border-white/10">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-white">Average Variance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{metrics.avgVariancePercentage.toFixed(1)}%</div>
-            <p className="text-xs text-white/60">
-              Average variance between expected and actual
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/40 backdrop-blur-md border border-white/10">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-white">Total Expected Hours</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">Gross Revenue</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {metrics.totalExpectedHours.toLocaleString('en-US')} hrs
+              ${metrics.totalActualRevenue.toLocaleString('en-US', { minimumFractionDigits: 0 })}
             </div>
             <p className="text-xs text-white/60">
-              Combined expected hours across all projections
+              Total projected revenue across all locations
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-black/40 backdrop-blur-md border border-white/10">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-white">Total Expected Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">Operating Costs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              ${metrics.totalExpectedRevenue.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+              ${(metrics.totalExpectedHours * 50).toLocaleString('en-US')}
             </div>
             <p className="text-xs text-white/60">
-              Combined expected revenue across all projections
+              Estimated operational costs at $50/hour
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-black/40 backdrop-blur-md border border-white/10">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-white">Estimator Impact</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">Net Profit</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{metrics.avgEstimatorImpact.toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-white">
+              ${(metrics.totalActualRevenue - (metrics.totalExpectedHours * 50)).toLocaleString('en-US')}
+            </div>
             <p className="text-xs text-white/60">
-              Average estimator adjustment percentage
+              Projected net profit after operational costs
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/40 backdrop-blur-md border border-white/10">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-white">ROI Forecast</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {metrics.totalExpectedHours > 0 ? (((metrics.totalActualRevenue - (metrics.totalExpectedHours * 50)) / (metrics.totalExpectedHours * 50)) * 100).toFixed(1) : '0.0'}%
+            </div>
+            <p className="text-xs text-white/60">
+              Return on investment percentage
             </p>
           </CardContent>
         </Card>
@@ -150,18 +154,18 @@ const ProjectionDashboard = () => {
       {/* Tabs for different views */}
       <Tabs defaultValue="status-distribution" className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="status-distribution">Status Distribution</TabsTrigger>
-          <TabsTrigger value="priority-distribution">Priority Distribution</TabsTrigger>
-          <TabsTrigger value="variance-trends">Variance Trends</TabsTrigger>
-          <TabsTrigger value="location-analysis">Location Analysis</TabsTrigger>
+          <TabsTrigger value="status-distribution">Revenue Analysis</TabsTrigger>
+          <TabsTrigger value="priority-distribution">Profit Margins</TabsTrigger>
+          <TabsTrigger value="variance-trends">Financial Trends</TabsTrigger>
+          <TabsTrigger value="location-analysis">Location Profitability</TabsTrigger>
         </TabsList>
         
         <TabsContent value="status-distribution" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="bg-black/40 backdrop-blur-md border border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium text-white">Status Distribution</CardTitle>
-                <p className="text-sm text-white/60">Projection status breakdown</p>
+                <CardTitle className="text-lg font-medium text-white">Revenue by Status</CardTitle>
+                <p className="text-sm text-white/60">Revenue distribution across projection statuses</p>
               </CardHeader>
               <CardContent className="h-80">
                 <StatusDistributionChart data={chartData.statusDistribution} />
@@ -170,24 +174,27 @@ const ProjectionDashboard = () => {
             
             <Card className="bg-black/40 backdrop-blur-md border border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium text-white">Revenue Comparison</CardTitle>
-                <p className="text-sm text-white/60">Expected vs Actual Revenue</p>
+                <CardTitle className="text-lg font-medium text-white">Profit Margin Analysis</CardTitle>
+                <p className="text-sm text-white/60">Profit margins by location</p>
               </CardHeader>
               <CardContent className="h-80">
                 <div className="space-y-4">
-                  {chartData.revenueComparison.slice(0, 6).map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-sm text-white/80 truncate flex-1">{item.name}</span>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-blue-400">
-                          ${item.expected.toLocaleString()}
-                        </span>
-                        <span className="text-green-400">
-                          ${item.actual.toLocaleString()}
-                        </span>
+                  {chartData.revenueComparison.slice(0, 6).map((item, index) => {
+                    const profitMargin = ((item.expected - (item.expected * 0.6)) / item.expected * 100);
+                    return (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-white/80 truncate flex-1">{item.name}</span>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-blue-400">
+                            ${item.expected.toLocaleString()}
+                          </span>
+                          <span className={profitMargin > 35 ? "text-green-400" : profitMargin > 25 ? "text-yellow-400" : "text-red-400"}>
+                            {profitMargin.toFixed(1)}%
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -197,8 +204,8 @@ const ProjectionDashboard = () => {
         <TabsContent value="priority-distribution">
           <Card className="bg-black/40 backdrop-blur-md border border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium text-white">Priority Distribution</CardTitle>
-              <p className="text-sm text-white/60">Projection priority breakdown</p>
+              <CardTitle className="text-lg font-medium text-white">Profit Margin Distribution</CardTitle>
+              <p className="text-sm text-white/60">Profit margins by priority level</p>
             </CardHeader>
             <CardContent className="h-96">
               <PriorityDistributionChart data={chartData.priorityDistribution} />
@@ -209,8 +216,8 @@ const ProjectionDashboard = () => {
         <TabsContent value="variance-trends">
           <Card className="bg-black/40 backdrop-blur-md border border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium text-white">Variance Trends</CardTitle>
-              <p className="text-sm text-white/60">Projection variance trends over time</p>
+              <CardTitle className="text-lg font-medium text-white">Financial Performance Trends</CardTitle>
+              <p className="text-sm text-white/60">Revenue and profit trends over time</p>
             </CardHeader>
             <CardContent className="h-96">
               <VarianceTrendChart data={chartData.varianceTrend} />
@@ -221,8 +228,8 @@ const ProjectionDashboard = () => {
         <TabsContent value="location-analysis">
           <Card className="bg-black/40 backdrop-blur-md border border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium text-white">Location Analysis</CardTitle>
-              <p className="text-sm text-white/60">Projection distribution by location</p>
+              <CardTitle className="text-lg font-medium text-white">Location Profitability Analysis</CardTitle>
+              <p className="text-sm text-white/60">Revenue and profit performance by location</p>
             </CardHeader>
             <CardContent className="h-96">
               <LocationDistributionChart data={chartData.locationDistribution} />

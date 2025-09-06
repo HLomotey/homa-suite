@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Sheet, SheetContent } from '@/components/ui/custom-ui';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/custom-ui';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
@@ -335,6 +335,11 @@ const ProjectionModule = () => {
       {/* Form Sheet */}
       <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedProjection ? 'Edit Projection' : 'Create New Projection'}
+            </SheetTitle>
+          </SheetHeader>
           <BulkProjectionForm
             projection={selectedProjection}
             onSubmit={handleFormSubmit}
@@ -346,6 +351,9 @@ const ProjectionModule = () => {
       {/* View Sheet */}
       <Sheet open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>View Projection</SheetTitle>
+          </SheetHeader>
           {selectedProjection && (
             <BulkProjectionForm
               projection={selectedProjection}
