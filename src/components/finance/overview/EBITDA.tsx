@@ -3,13 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Loader2, Receipt } from "lucide-react";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 
-interface EBITDAProps {
-  year?: number;
-  month?: number;
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
 }
 
-export function EBITDA({ year, month }: EBITDAProps) {
-  const { data: analytics, isLoading, error } = useFinanceAnalytics(year, month);
+interface EBITDAProps {
+  dateRanges?: DateRange[];
+}
+
+export function EBITDA({ dateRanges }: EBITDAProps) {
+  const { data: analytics, isLoading, error } = useFinanceAnalytics(dateRanges);
 
   const formatCurrency = (value: number): string => {
     if (value >= 1000000) {

@@ -3,13 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Loader2, DollarSign } from "lucide-react";
 import { useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
 
-interface MonthlyRevenueProps {
-  year?: number;
-  month?: number;
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
 }
 
-export function MonthlyRevenue({ year, month }: MonthlyRevenueProps) {
-  const { data: revenue, isLoading, error } = useRevenueMetrics(year, month);
+interface MonthlyRevenueProps {
+  dateRanges?: DateRange[];
+}
+
+export function MonthlyRevenue({ dateRanges }: MonthlyRevenueProps) {
+  const { data: revenue, isLoading, error } = useRevenueMetrics(dateRanges);
 
   const formatCurrency = (value: number): string => {
     if (value >= 1000000) {

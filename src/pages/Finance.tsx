@@ -25,21 +25,25 @@ import { FinanceOverview } from "@/components/finance/FinanceOverview";
 import { FinanceReports } from "@/components/finance/FinanceReports";
 import { FinanceTransactions } from "@/components/finance/FinanceTransactions";
 import { FinanceAnalyticsTab } from "@/components/finance/FinanceAnalyticsTab";
-import { DateFilter } from "@/components/ui/date-filter";
+import { InvoiceDateFilter } from "@/components/ui/invoice-date-filter";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 import { FinanceDrillThroughDashboard } from "@/components/finance/drill-through/FinanceDrillThroughDashboard";
 import ProjectionModule from '@/components/finance/projections/ProjectionModule';
 import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
 
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
+}
+
 export default function Finance() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedYear, setSelectedYear] = useState<number>();
-  const [selectedMonth, setSelectedMonth] = useState<number>();
-  const { data: financeData, isLoading } = useFinanceAnalytics(selectedYear, selectedMonth);
+  const [selectedDateRanges, setSelectedDateRanges] = useState<DateRange[]>([]);
+  const { data: financeData, isLoading } = useFinanceAnalytics(selectedDateRanges);
 
-  const handleDateChange = (year: number | undefined, month: number | undefined) => {
-    setSelectedYear(year);
-    setSelectedMonth(month);
+  const handleDateRangeChange = (dateRanges: DateRange[]) => {
+    setSelectedDateRanges(dateRanges);
   };
   
   // Format currency values
@@ -58,7 +62,7 @@ export default function Finance() {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Finance Dashboard</h2>
         <div className="flex items-center space-x-2">
-          <DateFilter onDateChange={handleDateChange} />
+          <InvoiceDateFilter onDateRangeChange={handleDateRangeChange} />
           <Button variant="outline">
             <Filter className="h-4 w-4 mr-2" />
             Filter
@@ -94,9 +98,16 @@ export default function Finance() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{isLoading ? "..." : financeData?.totalInvoices}</div>
-            <p className="text-xs text-muted-foreground">
-              {isLoading ? "..." : `${formatCurrency(financeData?.averageInvoiceValue)} average value`}
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                {isLoading ? "..." : `${formatCurrency(financeData?.averageInvoiceValue)} average value`}
+              </p>
+              {!isLoading && financeData && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div>Paid: {financeData.paidInvoices} • Sent: {financeData.sentInvoices} • Overdue: {financeData.overdueInvoices}</div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -124,13 +135,20 @@ export default function Finance() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : (financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0)}
+              {isLoading ? "..." : (financeData?.sentInvoices || 0) + (financeData?.overdueInvoices || 0)}
             </div>
-            <p className="text-xs text-amber-500">
-              {isLoading ? "..." : financeData && financeData.totalInvoices > 0
-                ? `${(((financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0)) / financeData.totalInvoices * 100).toFixed(0)}% of total`
-                : "0% of total"}
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-amber-500">
+                {isLoading ? "..." : financeData && financeData.totalInvoices > 0
+                  ? `${(((financeData?.sentInvoices || 0) + (financeData?.overdueInvoices || 0)) / financeData.totalInvoices * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
+                  : "0% of total"}
+              </p>
+              {!isLoading && financeData && (
+                <div className="text-xs text-muted-foreground">
+                  <div>Sent: {financeData.sentInvoices} • Overdue: {financeData.overdueInvoices}</div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -152,18 +170,17 @@ export default function Finance() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <FinanceOverview year={selectedYear} month={selectedMonth} />
+          <FinanceOverview dateRanges={selectedDateRanges} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
-          <FinanceAnalyticsTab year={selectedYear} month={selectedMonth} />
+          <FinanceAnalyticsTab dateRanges={selectedDateRanges} />
         </TabsContent>
 
         <TabsContent value="detailed-analysis" className="space-y-4">
           <FinanceDrillThroughDashboard
             onBack={() => setActiveTab("analytics")}
-            year={selectedYear}
-            month={selectedMonth}
+            dateRanges={selectedDateRanges}
           />
         </TabsContent>
 

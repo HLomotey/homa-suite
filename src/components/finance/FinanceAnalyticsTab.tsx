@@ -1,17 +1,22 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingDown, TrendingUp, FileText, CheckCircle, Clock } from "lucide-react";
+import { DollarSign, TrendingDown, TrendingUp, FileText, CheckCircle, Clock, AlertTriangle, XCircle } from "lucide-react";
 import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
 
-export interface FinanceMetricsProps {
-  year?: number;
-  month?: number;
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
 }
 
-export function FinanceAnalyticsTab({ year, month }: FinanceMetricsProps) {
-  const { data: financeData, isLoading } = useFinanceAnalytics(year, month);
-  const { data: revenueData, isLoading: isRevenueLoading } = useRevenueMetrics(year, month);
+export interface FinanceMetricsProps {
+  dateRanges?: DateRange[];
+}
+
+export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
+  const { data: financeData, isLoading } = useFinanceAnalytics(dateRanges);
+  const { data: revenueData, isLoading: isRevenueLoading } = useRevenueMetrics(dateRanges);
   
   // Format currency values
   const formatCurrency = (value: number | undefined) => {
@@ -33,7 +38,7 @@ export function FinanceAnalyticsTab({ year, month }: FinanceMetricsProps) {
         <p className="text-sm text-muted-foreground ml-auto">Revenue and financial performance metrics</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {/* Total Revenue Card */}
         <Card className="bg-gradient-to-br from-green-900/40 to-green-800/20 border-green-800/30">
           <CardHeader className="pb-2">
@@ -65,53 +70,147 @@ export function FinanceAnalyticsTab({ year, month }: FinanceMetricsProps) {
             <div className="text-2xl font-bold text-white">
               {isLoading ? "Loading..." : financeData?.totalInvoices || 0}
             </div>
-            <div className="flex items-center mt-1">
+            <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-blue-300">
                 {isLoading ? "Calculating..." : `${formatCurrency(financeData?.averageInvoiceValue)} average value`}
               </p>
+              {!isLoading && financeData && (
+                <div className="text-xs text-blue-200 space-y-0.5">
+                  <div>Paid: {financeData.paidInvoices}</div>
+                  <div>Sent: {financeData.sentInvoices}</div>
+                  <div>Overdue: {financeData.overdueInvoices}</div>
+                  {financeData.pendingInvoices > 0 && <div>Pending: {financeData.pendingInvoices}</div>}
+                  {financeData.cancelledInvoices > 0 && <div>Cancelled: {financeData.cancelledInvoices}</div>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Average Invoice Value Card */}
+        <Card className="bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-800/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-violet-100">Avg Invoice Value</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {isLoading ? "Loading..." : formatCurrency(financeData?.averageInvoiceValue)}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Invoice Status Breakdown */}
+      <div className="grid grid-cols-3 gap-4">
         {/* Paid Invoices Card */}
         <Card className="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border-emerald-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-100">Paid Invoices</CardTitle>
+            <CardTitle className="text-sm font-medium text-emerald-100 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Paid Invoices
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
               {isLoading ? "Loading..." : financeData?.paidInvoices || 0}
             </div>
-            <div className="flex items-center mt-1">
+            <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-emerald-300">
                 {isLoading ? "Calculating..." : financeData && financeData.totalInvoices > 0
-                  ? `${((financeData.paidInvoices / financeData.totalInvoices) * 100).toFixed(0)}% of total`
+                  ? `${((financeData.paidInvoices / financeData.totalInvoices) * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
                   : "0% of total"}
               </p>
+              {!isLoading && financeData && financeData.paidInvoices > 0 && (
+                <p className="text-xs text-emerald-200">
+                  Revenue: {formatCurrency((financeData.paidInvoices / financeData.totalInvoices) * financeData.totalRevenue)}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Outstanding Invoices Card */}
-        <Card className="bg-gradient-to-br from-amber-900/40 to-amber-800/20 border-amber-800/30">
+        {/* Sent Invoices Card */}
+        <Card className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/20 border-yellow-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-amber-100">Outstanding Invoices</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-100 flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Sent Invoices
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : (financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0)}
+              {isLoading ? "Loading..." : financeData?.sentInvoices || 0}
             </div>
-            <div className="flex items-center mt-1">
-              <p className="text-xs text-amber-300">
-                {isLoading ? "Calculating..." : formatCurrency(
-                  financeData?.averageInvoiceValue && financeData?.averageInvoiceValue > 0
-                    ? financeData.averageInvoiceValue * ((financeData?.pendingInvoices || 0) + (financeData?.overdueInvoices || 0))
-                    : 0
-                )}
+            <div className="flex flex-col gap-1 mt-1">
+              <p className="text-xs text-yellow-300">
+                {isLoading ? "Calculating..." : financeData && financeData.totalInvoices > 0
+                  ? `${(((financeData.sentInvoices || 0) / financeData.totalInvoices) * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
+                  : "0% of total"}
               </p>
+              {!isLoading && financeData && financeData.sentInvoices > 0 && (
+                <p className="text-xs text-yellow-200">
+                  Awaiting Payment: {formatCurrency(((financeData.sentInvoices || 0) / financeData.totalInvoices) * financeData.totalRevenue)}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Overdue Invoices Card */}
+        <Card className="bg-gradient-to-br from-red-900/40 to-red-800/20 border-red-800/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-red-100 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Overdue Invoices
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {isLoading ? "Loading..." : financeData?.overdueInvoices || 0}
+            </div>
+            <div className="flex flex-col gap-1 mt-1">
+              <p className="text-xs text-red-300">
+                {isLoading ? "Calculating..." : financeData && financeData.totalInvoices > 0
+                  ? `${(((financeData.overdueInvoices || 0) / financeData.totalInvoices) * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
+                  : "0% of total"}
+              </p>
+              {!isLoading && financeData && financeData.overdueInvoices > 0 && (
+                <p className="text-xs text-red-200">
+                  Outstanding: {formatCurrency(((financeData.overdueInvoices || 0) / financeData.totalInvoices) * financeData.totalRevenue)}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Status Card - Shows pending/cancelled if they exist */}
+        {!isLoading && financeData && (financeData.pendingInvoices > 0 || financeData.cancelledInvoices > 0) && (
+          <Card className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border-gray-800/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-100 flex items-center gap-2">
+                <XCircle className="h-4 w-4" />
+                Other Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">
+                {(financeData?.pendingInvoices || 0) + (financeData?.cancelledInvoices || 0)}
+              </div>
+              <div className="flex flex-col gap-1 mt-1">
+                {financeData.pendingInvoices > 0 && (
+                  <p className="text-xs text-gray-300">
+                    Pending: {financeData.pendingInvoices}
+                  </p>
+                )}
+                {financeData.cancelledInvoices > 0 && (
+                  <p className="text-xs text-gray-300">
+                    Cancelled: {financeData.cancelledInvoices}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -132,14 +231,19 @@ export function FinanceAnalyticsTab({ year, month }: FinanceMetricsProps) {
           </CardContent>
         </Card>
 
-        {/* Average Invoice Value Card */}
-        <Card className="bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-800/30">
+        {/* Collection Rate Card */}
+        <Card className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-800/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-violet-100">Avg Invoice Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-100">Collection Rate</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : formatCurrency(financeData?.averageInvoiceValue)}
+              {isLoading ? "Loading..." : `${financeData?.collectionRate?.toFixed(1) || 0}%`}
+            </div>
+            <div className="flex items-center mt-1">
+              <p className="text-xs text-purple-300">
+                {isLoading ? "Calculating..." : "Payment success rate"}
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -38,6 +38,8 @@ export interface FinanceMetrics {
   overdueChange: number;
   pending: number;
   pendingChange: number;
+  cancelledInvoices: number;
+  cancelledInvoicesChange: number;
   collectionRate: number;
   collectionRateChange: number;
   averageInvoiceValue: number;
@@ -100,6 +102,8 @@ export function useFinanceAnalytics(year: number, month: number) {
       overdueChange: 0,
       pending: 0,
       pendingChange: 0,
+      cancelledInvoices: 0,
+      cancelledInvoicesChange: 0,
       collectionRate: 0,
       collectionRateChange: 0,
       averageInvoiceValue: 0,
@@ -140,6 +144,7 @@ export function useFinanceAnalytics(year: number, month: number) {
     const paidInvoices = records.filter(r => r.invoice_status === 'paid').length;
     const pendingInvoices = records.filter(r => r.invoice_status === 'pending').length;
     const overdueInvoices = records.filter(r => r.invoice_status === 'overdue').length;
+    const cancelledInvoices = records.filter(r => r.invoice_status === 'cancelled').length;
     const outstanding = records.filter(r => r.invoice_status !== 'paid').reduce((sum, r) => sum + r.line_total, 0);
     const collectionRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
     const averageInvoiceValue = totalInvoices > 0 ? totalRevenue / totalInvoices : 0;
@@ -150,6 +155,7 @@ export function useFinanceAnalytics(year: number, month: number) {
     const prevPaidInvoices = previousRecords.filter(r => r.invoice_status === 'paid').length;
     const prevPendingInvoices = previousRecords.filter(r => r.invoice_status === 'pending').length;
     const prevOverdueInvoices = previousRecords.filter(r => r.invoice_status === 'overdue').length;
+    const prevCancelledInvoices = previousRecords.filter(r => r.invoice_status === 'cancelled').length;
     const prevOutstanding = previousRecords.filter(r => r.invoice_status !== 'paid').reduce((sum, r) => sum + r.line_total, 0);
     const prevCollectionRate = prevTotalInvoices > 0 ? (prevPaidInvoices / prevTotalInvoices) * 100 : 0;
 
@@ -172,6 +178,8 @@ export function useFinanceAnalytics(year: number, month: number) {
       overdueChange: calculateChange(overdueInvoices, prevOverdueInvoices),
       pending: pendingInvoices,
       pendingChange: calculateChange(pendingInvoices, prevPendingInvoices),
+      cancelledInvoices,
+      cancelledInvoicesChange: calculateChange(cancelledInvoices, prevCancelledInvoices),
       collectionRate,
       collectionRateChange: calculateChange(collectionRate, prevCollectionRate),
       averageInvoiceValue,

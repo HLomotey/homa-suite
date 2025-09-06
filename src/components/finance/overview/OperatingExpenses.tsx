@@ -3,13 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Loader2, AlertCircle } from "lucide-react";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 
-interface OperatingExpensesProps {
-  year?: number;
-  month?: number;
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
 }
 
-export function OperatingExpenses({ year, month }: OperatingExpensesProps) {
-  const { data: analytics, isLoading, error } = useFinanceAnalytics(year, month);
+interface OperatingExpensesProps {
+  dateRanges?: DateRange[];
+}
+
+export function OperatingExpenses({ dateRanges }: OperatingExpensesProps) {
+  const { data: analytics, isLoading, error } = useFinanceAnalytics(dateRanges);
 
   // Mock data based on dashboard screenshot
   const mockData = {
@@ -23,11 +28,13 @@ export function OperatingExpenses({ year, month }: OperatingExpensesProps) {
   };
 
   const outstandingData = analytics ? {
-    outstanding: (analytics.pendingInvoices || 0) + (analytics.overdueInvoices || 0) + (analytics.sentInvoices || 0) || mockData.outstanding,
+    outstanding: (analytics.pendingInvoices || 0) + (analytics.overdueInvoices || 0),
     previousOutstanding: mockData.previousOutstanding,
-    overdueCount: analytics.overdueInvoices || mockData.overdueCount,
-    sentCount: analytics.sentInvoices || mockData.sentCount,
-    totalValue: mockData.totalValue,
+    overdueCount: analytics.overdueInvoices || 0,
+    sentCount: analytics.pendingInvoices || 0,
+    totalValue: analytics.averageInvoiceValue ? 
+      ((analytics.pendingInvoices || 0) + (analytics.overdueInvoices || 0)) * analytics.averageInvoiceValue : 
+      mockData.totalValue,
     changePercent: mockData.changePercent,
     riskLevel: mockData.riskLevel
   } : mockData;

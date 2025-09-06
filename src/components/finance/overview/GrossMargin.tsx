@@ -3,13 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Loader2, Percent } from "lucide-react";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 
-interface GrossMarginProps {
-  year?: number;
-  month?: number;
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
 }
 
-export function GrossMargin({ year, month }: GrossMarginProps) {
-  const { data: analytics, isLoading, error } = useFinanceAnalytics(year, month);
+interface GrossMarginProps {
+  dateRanges?: DateRange[];
+}
+
+export function GrossMargin({ dateRanges }: GrossMarginProps) {
+  const { data: analytics, isLoading, error } = useFinanceAnalytics(dateRanges);
 
   // Mock data based on dashboard screenshot
   const mockData = {
