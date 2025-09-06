@@ -120,6 +120,14 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     description: 'Sentiment analysis and text insights',
     icon: 'Brain',
     routes: ['/analytics-demo', '/text-analytics']
+  },
+  {
+    id: 'notifications',
+    name: 'notifications',
+    displayName: 'Notifications',
+    description: 'Email notifications and templates management',
+    icon: 'Mail',
+    routes: ['/notifications', '/notifications/*']
   }
 ];
 
