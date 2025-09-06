@@ -8,10 +8,15 @@ import { InvoiceDetailsList } from "./InvoiceDetailsList";
 import { PaymentTrendsAnalysis } from "./PaymentTrendsAnalysis";
 import { ArrowLeft, BarChart3, FileText, TrendingUp, Calendar, AlertTriangle } from "lucide-react";
 
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
+}
+
 interface FinanceDrillThroughDashboardProps {
   onBack: () => void;
-  year?: number;
-  month?: number;
+  dateRanges?: DateRange[];
 }
 
 interface Invoice {
@@ -28,13 +33,12 @@ interface Invoice {
 
 export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboardProps> = ({
   onBack,
-  year,
-  month
+  dateRanges
 }) => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [activeTab, setActiveTab] = useState('aging');
   
-  const { data: financeData, isLoading } = useFinanceAnalytics(year, month);
+  const { data: financeData, isLoading } = useFinanceAnalytics(dateRanges);
 
   // Transform finance data to invoice format for drill-through components
   const invoices: Invoice[] = React.useMemo(() => {
@@ -46,12 +50,27 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
     const mockInvoices: Invoice[] = [];
     
     // This would normally come from a separate hook that fetches individual invoice records
-    // For demonstration, we'll create representative data
-    const statuses = ['paid', 'pending', 'overdue', 'sent'];
+    // For demonstration, we'll create representative data based on actual data distribution
+    const statuses = ['paid', 'sent', 'overdue'];
+    const statusWeights = {
+      'paid': financeData.paidInvoices || 1325,
+      'sent': financeData.sentInvoices || 112, 
+      'overdue': financeData.overdueInvoices || 74
+    };
+    const totalWeight = statusWeights.paid + statusWeights.sent + statusWeights.overdue;
     const clients = ['Acme Corp', 'TechStart Inc', 'Global Solutions', 'Innovation Labs', 'Future Systems'];
     
     for (let i = 0; i < Math.min(financeData.totalInvoices, 100); i++) {
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+      // Weighted random selection based on actual data distribution
+      const rand = Math.random() * totalWeight;
+      let randomStatus = 'paid';
+      if (rand < statusWeights.paid) {
+        randomStatus = 'paid';
+      } else if (rand < statusWeights.paid + statusWeights.sent) {
+        randomStatus = 'sent';
+      } else {
+        randomStatus = 'overdue';
+      }
       const randomClient = clients[Math.floor(Math.random() * clients.length)];
       const randomAmount = Math.floor(Math.random() * 10000) + 1000;
       const randomDaysAgo = Math.floor(Math.random() * 180);
@@ -107,9 +126,9 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
         <h2 className="text-2xl font-bold text-white flex items-center">
           <BarChart3 className="h-6 w-6 mr-2 text-blue-300" />
           Finance Drill-Through Analysis
-          {year && month && (
+          {dateRanges && dateRanges.length > 0 && (
             <span className="ml-2 text-blue-300 text-lg">
-              - {new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              - {dateRanges.length === 1 ? dateRanges[0].label : `${dateRanges.length} periods selected`}
             </span>
           )}
         </h2>
@@ -154,9 +173,9 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-yellow-400 mr-3" />
               <div>
-                <p className="text-sm text-yellow-300">Pending</p>
+                <p className="text-sm text-yellow-300">Sent</p>
                 <p className="text-2xl font-bold text-white">
-                  {financeData?.pendingInvoices || 0}
+                  {financeData?.sentInvoices || 0}
                 </p>
               </div>
             </div>

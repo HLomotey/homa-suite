@@ -6,6 +6,7 @@ import { RevenueProfitTrend } from "./overview/RevenueProfitTrend";
 import { RevenueByClient } from "./overview/RevenueByClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -17,12 +18,27 @@ import {
   Users
 } from "lucide-react";
 
-interface FinanceOverviewProps {
-  year?: number;
-  month?: number;
+interface DateRange {
+  year: number;
+  month: number;
+  label: string;
 }
 
-export function FinanceOverview({ year, month }: FinanceOverviewProps) {
+interface FinanceOverviewProps {
+  dateRanges?: DateRange[];
+}
+
+export function FinanceOverview({ dateRanges }: FinanceOverviewProps) {
+  const { data: financeData, isLoading } = useFinanceAnalytics(dateRanges);
+  
+  // Calculate outstanding invoices consistently
+  const outstandingInvoices = financeData ? 
+    (financeData.pendingInvoices || 0) + (financeData.overdueInvoices || 0) : 0;
+  
+  // Calculate outstanding value (using average invoice value as approximation)
+  const outstandingValue = financeData && financeData.averageInvoiceValue ? 
+    outstandingInvoices * financeData.averageInvoiceValue : 0;
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -33,10 +49,10 @@ export function FinanceOverview({ year, month }: FinanceOverviewProps) {
       
       {/* Key Metrics Row - Enhanced */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MonthlyRevenue year={year} month={month} />
-        <GrossMargin year={year} month={month} />
-        <EBITDA year={year} month={month} />
-        <OperatingExpenses year={year} month={month} />
+        <MonthlyRevenue dateRanges={dateRanges} />
+        <GrossMargin dateRanges={dateRanges} />
+        <EBITDA dateRanges={dateRanges} />
+        <OperatingExpenses dateRanges={dateRanges} />
       </div>
 
       {/* Financial Health Indicators */}
@@ -58,8 +74,12 @@ export function FinanceOverview({ year, month }: FinanceOverviewProps) {
               <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
               <AlertCircle className="h-3 w-3 text-orange-500" />
             </div>
-            <p className="text-lg font-semibold text-foreground">$570K</p>
-            <p className="text-xs text-orange-600">95 invoices pending</p>
+            <p className="text-lg font-semibold text-foreground">
+              {isLoading ? "Loading..." : `$${(outstandingValue / 1000).toFixed(0)}K`}
+            </p>
+            <p className="text-xs text-orange-600">
+              {isLoading ? "Loading..." : `${outstandingInvoices} invoices pending`}
+            </p>
           </CardContent>
         </Card>
 
