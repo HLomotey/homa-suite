@@ -41,7 +41,7 @@ export function ReportsList() {
                 </div>
               </div>
               <Button variant="ghost" size="icon" asChild>
-                <a href={report.downloadUrl} download>
+                <a href={report.downloadUrl} download title={`Download ${report.name}`}>
                   <Download className="h-4 w-4" />
                 </a>
               </Button>

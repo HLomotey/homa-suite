@@ -122,10 +122,10 @@ export function UserDetail() {
   const loadUserRoles = async (userId: string) => {
     try {
       // Get user role from the profiles table (simplified role system)
-      const { data: profileData, error } = await supabase
+      const { data: profileData, error } = await (supabase as any)
         .from('profiles')
         .select('role_id')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
         
       if (error) throw error;

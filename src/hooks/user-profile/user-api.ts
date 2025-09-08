@@ -5,7 +5,7 @@
 // @ts-nocheck
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../../integration/supabase/types/database';
-import { User, FrontendUser, UserRole, UserStatus } from '../../integration/supabase/types';
+import { User, FrontendUser, UserRole, UserStatus, mapDatabaseUserToFrontend } from '../../integration/supabase/types';
 import { supabaseAdmin } from '../../integration/supabase/admin-client';
 import { profileToFrontendUser } from "./utils";
 import { typedSupabaseQuery, safeTypeCast } from "./supabase-helpers";
