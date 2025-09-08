@@ -298,6 +298,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   };
 
+  // Enhanced user validation function
+  const validateUserAccess = async (email: string): Promise<{
+    isValid: boolean;
+    userType: 'external_staff' | 'management' | 'auth_only';
+    details: string;
+  }> => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check external_staff table first (with active status requirement)
+    const externalStaff = await validateExternalStaffEmail(normalizedEmail);
+    if (externalStaff) {
+      return {
+        isValid: true,
+        userType: 'external_staff',
+        details: `Active staff member: ${externalStaff.full_name}`
+      };
+    }
+
+    // Check if user exists in profiles table (management users)
+    try {
+      const { data: profile, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, email, status")
+        .eq("email", normalizedEmail)
+        .single();
+
+      if (!error && profile) {
+        return {
+          isValid: true,
+          userType: 'management',
+          details: `Management user: ${(profile as any).full_name || (profile as any).email}`
+        };
+      }
+    } catch (error) {
+      console.log("No profile found for email:", normalizedEmail);
+    }
+
+    // Check if user exists in auth.users (fallback for admin-created users)
+    try {
+      const { data: authUsers, error } = await supabaseAdmin.auth.admin.listUsers();
+      if (!error && authUsers.users) {
+        const authUser = authUsers.users.find((u: any) => u.email === normalizedEmail);
+        if (authUser) {
+          return {
+            isValid: true,
+            userType: 'auth_only',
+            details: `Authenticated user: ${authUser.user_metadata?.name || authUser.email}`
+          };
+        }
+      }
+    } catch (error) {
+      console.log("Error checking auth users:", error);
+    }
+
+    return {
+      isValid: false,
+      userType: 'external_staff',
+      details: 'User not found in any authorized user directory'
+    };
+  };
+
   // Sign in function
   const signIn = async (
     email: string,
@@ -308,44 +369,98 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const normalizedEmail = email.trim().toLowerCase();
 
-      // First validate that the email exists in external staff
-      const externalStaff = await validateExternalStaffEmail(normalizedEmail);
-      if (!externalStaff) {
+      // Validate user access using enhanced logic
+      const validation = await validateUserAccess(normalizedEmail);
+      
+      if (!validation.isValid) {
         return {
           success: false,
-          error:
-            "Email address not found in our staff directory. Please contact HR to verify your email address.",
+          error: `Access denied: ${validation.details}. Please contact HR to verify your account status.`,
         };
       }
 
-      // Attempt to sign in
+      console.log(`Login validation passed: ${validation.details}`);
+
+      // Attempt to sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
       });
 
       if (error) {
+        // Provide specific error messages based on error type
+        let errorMessage = error.message;
+        
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = "Please check your email and click the confirmation link before signing in.";
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = "Too many login attempts. Please wait a few minutes before trying again.";
+        } else if (error.message.includes('User not found')) {
+          errorMessage = "Account not found. Please contact HR if you believe this is an error.";
+        }
+
         return {
           success: false,
-          error: error.message,
+          error: errorMessage,
         };
       }
 
       if (data.user && data.session) {
-        const authUser = await buildAuthUser(data.user, data.session);
-        setCurrentUser(authUser);
-        return { success: true };
+        console.log(`Login successful for ${validation.userType}: ${validation.details}`);
+        
+        // Extract staff name from validation details
+        const staffName = validation.details.includes(':') 
+          ? validation.details.split(':')[1].trim() 
+          : data.user.user_metadata?.name || data.user.email;
+        
+        // Set minimal user immediately to allow navigation
+        const minimalUser = {
+          user: data.user,
+          session: data.session,
+          externalStaff: validation.userType === 'external_staff' ? {
+            id: data.user.id,
+            email: data.user.email!,
+            full_name: staffName,
+            position_status: 'A - Active',
+            is_active: true
+          } : null,
+          profile: null,
+          role: null,
+          permissions: [],
+          modules: validation.userType === 'external_staff' ? ['dashboard', 'properties', 'complaints', 'profile'] : ['dashboard'],
+          userType: validation.userType === 'external_staff' ? 'general_staff' as const : 'management' as const
+        };
+        
+        setCurrentUser(minimalUser);
+        setLoading(false);
+        
+        // Build full auth user in background without blocking
+        setTimeout(() => {
+          buildAuthUser(data.user, data.session).then(authUser => {
+            setCurrentUser(authUser);
+          }).catch(error => {
+            console.error("Error building full auth user:", error);
+            // Keep minimal user if full build fails
+          });
+        }, 100);
+        
+        return { 
+          success: true,
+          error: `Welcome back, ${staffName}!`
+        };
       }
 
       return {
         success: false,
-        error: "Sign in failed. Please try again.",
+        error: "Authentication failed. Please try again or contact support if the problem persists.",
       };
     } catch (error: any) {
       console.error("Sign in error:", error);
       return {
         success: false,
-        error: "An unexpected error occurred. Please try again.",
+        error: "An unexpected error occurred during login. Please try again or contact support.",
       };
     } finally {
       setLoading(false);
@@ -515,13 +630,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (mounted) {
+        console.log('Auth state change event:', event);
+        
         if (session?.user) {
+          // Skip SIGNED_IN events - these are handled directly in signIn function
+          if (event === 'SIGNED_IN') {
+            console.log('Skipping SIGNED_IN event - handled by signIn function');
+            return;
+          }
+          
+          // For other events (TOKEN_REFRESHED, etc.), build auth user normally
           const authUser = await buildAuthUser(session.user, session);
           setCurrentUser(authUser);
+          setLoading(false);
         } else {
           setCurrentUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     });
 

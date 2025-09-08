@@ -13,14 +13,27 @@ if (!supabaseServiceRoleKey) {
   console.warn('Supabase Service Role Key is missing. Using anon key as fallback - some admin operations may fail due to RLS.');
 }
 
-// Create Supabase admin client with service role key (or anon key as fallback)
-// This client has full admin privileges and bypasses RLS policies when using service role key
-// Use a unique storage key to avoid conflicts with the main client
-export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    storageKey: 'supabase-admin-auth-token' // Unique storage key
+// Singleton pattern for admin client to avoid multiple instances
+let _supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
+
+const getSupabaseAdminClient = () => {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        storageKey: 'supabase-admin-auth-token' // Unique storage key
+      }
+    });
+  }
+  return _supabaseAdmin;
+};
+
+// Lazy-loaded admin client instance - only created when first accessed
+export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient<Database>>, {
+  get(target, prop) {
+    const client = getSupabaseAdminClient();
+    return (client as any)[prop];
   }
 });
 
@@ -123,7 +136,7 @@ export const adminUserService = {
             .from('auth.users')
             .select('id')
             .eq('email', email)
-            .limit(1);
+            .limit(1) as { data: { id: string }[] | null, error: any };
           
           if (queryError) {
             console.error('Error querying auth user by email:', queryError);

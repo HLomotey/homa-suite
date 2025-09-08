@@ -63,23 +63,38 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
       }
     };
 
-    checkAccess();
+    // Add delay to prevent flash of permission error during login
+    const timeoutId = setTimeout(() => {
+      checkAccess();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [currentUser, location.pathname, module]);
 
-  // Show loading state while checking access
-  if (loading) {
+  // Show loading state while checking access - but only if user is authenticated
+  if (loading && currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center gap-2 text-white">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Checking access permissions...</span>
+          <span>Loading...</span>
         </div>
       </div>
     );
   }
 
+  // If no user or still loading, don't show error - let auth handle it
+  if (!currentUser) {
+    return null;
+  }
+
   // If user doesn't have access
   if (!hasAccess) {
+    // For dashboard route, redirect silently without showing error
+    if (location.pathname === '/' || location.pathname === '/dashboard') {
+      return <Navigate to="/profile" replace />;
+    }
+    
     if (showError) {
       const moduleInfo = getModuleByRoute(location.pathname);
       const moduleName = typeof moduleInfo === 'string' ? moduleInfo : moduleInfo?.displayName;

@@ -95,6 +95,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     const result = await signIn(email, password);
     
     if (result.success) {
+      // Show success message if provided
+      if (result.error) { // Using error field for success message
+        toast({
+          title: "Login Successful",
+          description: result.error,
+          variant: "default",
+        });
+      }
       onLoginSuccess();
     } else {
       setError(result.error || "Sign in failed. Please try again.");
