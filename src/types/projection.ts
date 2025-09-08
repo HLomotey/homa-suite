@@ -22,6 +22,17 @@ export interface Projection {
   estimated_revenue?: number;
   variance_percentage?: number;
   notes?: string;
+  // Expenditure fields (computed based on expected_revenue)
+  readonly monthly_gross_wages_salaries?: number; // 68% of expected_revenue
+  readonly monthly_gross_income?: number; // 32% of expected_revenue
+  readonly payroll_taxes?: number; // 8% of monthly_gross_wages_salaries
+  readonly admin_cost?: number; // 10% of monthly_gross_wages_salaries
+  readonly management_payroll_expenses?: number; // 3% of monthly_gross_wages_salaries
+  estimated_other?: number; // Manual input
+  readonly employee_engagement?: number; // 2% of monthly_gross_wages_salaries
+  readonly health_insurance_benefits?: number; // 6% of monthly_gross_wages_salaries
+  readonly travel?: number; // 1.5% of monthly_gross_wages_salaries
+  readonly other_benefits?: number; // 2% of monthly_gross_wages_salaries
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -40,6 +51,10 @@ export interface CreateProjectionRequest {
   review_date?: string;
   estimator_percentage?: number;
   notes?: string;
+  // Expenditure fields - only manual input fields for create/update requests
+  monthly_gross_wages_salaries?: number; // Manual input - base for calculations
+  monthly_gross_income?: number; // Manual input
+  estimated_other?: number; // Manual input
 }
 
 export interface UpdateProjectionRequest extends Partial<CreateProjectionRequest> {

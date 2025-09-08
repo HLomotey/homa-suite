@@ -23,6 +23,8 @@ interface MonthlyProjection {
   expected_hours: number;
   expected_revenue: number;
   selected: boolean;
+  // Only manual expenditure field (others are computed from expected_revenue)
+  estimated_other: number;
 }
 
 interface BulkProjectionFormProps {
@@ -40,6 +42,8 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
   loading = false,
   readOnly = false
 }) => {
+  // Debug log to check readOnly prop
+  console.log('BulkProjectionForm readOnly prop:', readOnly);
   const { staffLocations } = useStaffLocation();
   const { billingPeriods } = useBillingPeriods();
 
@@ -91,7 +95,9 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
         monthName,
         expected_hours: 0,
         expected_revenue: 0,
-        selected: false
+        selected: false,
+        // Initialize expenditure fields (only manual field)
+        estimated_other: 0
       }));
       setMonthlyProjections(initialMonths);
     }
@@ -116,7 +122,9 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
         monthName,
         expected_hours: index === projectionMonth ? projection.expected_hours : 0,
         expected_revenue: index === projectionMonth ? projection.expected_revenue : 0,
-        selected: index === projectionMonth
+        selected: index === projectionMonth,
+        // Initialize expenditure fields from projection or default to 0 (only manual field)
+        estimated_other: index === projectionMonth ? (projection.estimated_other || 0) : 0
       }));
       setMonthlyProjections(updatedMonths);
     }
@@ -212,7 +220,9 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
           priority: baseFormData.priority,
           projection_date: format(new Date(month.year, month.month, 1), 'yyyy-MM-dd'),
           estimator_percentage: globalEstimator.percentage,
-          notes: baseFormData.description
+          notes: baseFormData.description,
+          // Include expenditure fields (only estimated_other is manually set, others are computed)
+          estimated_other: month.estimated_other
         };
       })
       .filter(projection => projection !== null); // Remove null entries
@@ -441,6 +451,49 @@ const BulkProjectionForm: React.FC<BulkProjectionFormProps> = ({
                           />
                         </div>
                       </div>
+
+                      {/* Estimated Other Input */}
+                      <div className="flex-1 min-w-0">
+                        <Label className="text-xs font-medium text-muted-foreground mb-1 block">Estimated Other</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={month.estimated_other || ''}
+                            onChange={(e) => handleMonthlyProjectionChange(index, 'estimated_other', parseFloat(e.target.value) || 0)}
+                            disabled={readOnly}
+                            className="h-9 pl-7"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Computed Expenditures Display */}
+                      {month.selected && month.expected_revenue > 0 && (
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-xs font-medium text-muted-foreground mb-1 block">Computed Expenditures</Label>
+                          <div className="text-xs space-y-1 bg-muted/50 p-2 rounded border">
+                            <div className="flex justify-between">
+                              <span>Wages/Salaries (68%):</span>
+                              <span>${(month.expected_revenue * 0.68).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Gross Income (32%):</span>
+                              <span>${(month.expected_revenue * 0.32).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Payroll Taxes (8%):</span>
+                              <span>${(month.expected_revenue * 0.68 * 0.08).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Admin Cost (10%):</span>
+                              <span>${(month.expected_revenue * 0.68 * 0.10).toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

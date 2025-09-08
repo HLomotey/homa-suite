@@ -43,7 +43,7 @@ export function ClientRevenueDetail() {
       filterMonth = undefined;
   }
   
-  const { data: financeData, isLoading, error } = useFinanceAnalytics(filterYear, filterMonth);
+  const { data: financeData, isLoading, error } = useFinanceAnalytics(filterMonth ? [{ year: filterYear, month: filterMonth }] : [{ year: filterYear, month: 1 }, { year: filterYear, month: 2 }, { year: filterYear, month: 3 }, { year: filterYear, month: 4 }, { year: filterYear, month: 5 }, { year: filterYear, month: 6 }, { year: filterYear, month: 7 }, { year: filterYear, month: 8 }, { year: filterYear, month: 9 }, { year: filterYear, month: 10 }, { year: filterYear, month: 11 }, { year: filterYear, month: 12 }]);
   
   // Calculate growth rates for each client (comparing current period vs previous period)
   const calculateGrowthRate = (clientName: string) => {

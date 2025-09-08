@@ -69,28 +69,23 @@ export default function useStaffLocation() {
       setLoading(true);
       setError(null);
 
-      const { data: newLocation, error } = await supabase
+      const { data: newLocation, error } = await (supabase as any)
         .from("staff_locations")
         .insert({
           company_location_id: data.companyLocationId,
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
-          external_staff_id: data.externalStaffId,
-          manager_id: data.managerId
+          external_staff_id: data.externalStaffId || null,
+          manager_id: data.managerId || null
         })
         .select(`
           *,
           company_locations (
             name
-          ),
-          manager:external_staff (
-            id,
-            "PAYROLL FIRST NAME",
-            "PAYROLL LAST NAME"
           )
         `)
-        .single() as { data: any | null; error: any };
+        .single();
       
       if (error) throw error;
       if (!newLocation) throw new Error("No data returned from insert");
@@ -103,8 +98,9 @@ export default function useStaffLocation() {
         locationDescription: newLocation.location_description,
         isActive: newLocation.is_active,
         externalStaffId: newLocation.external_staff_id,
+        externalStaffName: data.externalStaffName,
         managerId: newLocation.manager_id,
-        managerName: newLocation.manager ? `${newLocation.manager["PAYROLL FIRST NAME"]} ${newLocation.manager["PAYROLL LAST NAME"]}` : undefined,
+        managerName: data.managerName,
       };
 
       setStaffLocations(prev => [...prev, frontendLocation]);
@@ -123,15 +119,15 @@ export default function useStaffLocation() {
       setLoading(true);
       setError(null);
 
-      const { data: updatedLocation, error } = await supabase
+      const { data: updatedLocation, error } = await (supabase as any)
         .from("staff_locations")
         .update({
           company_location_id: data.companyLocationId,
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
-          external_staff_id: data.externalStaffId,
-          manager_id: data.managerId,
+          external_staff_id: data.externalStaffId || null,
+          manager_id: data.managerId || null,
           updated_at: new Date().toISOString()
         })
         .eq("id", id)
@@ -139,14 +135,9 @@ export default function useStaffLocation() {
           *,
           company_locations (
             name
-          ),
-          manager:external_staff (
-            id,
-            "PAYROLL FIRST NAME",
-            "PAYROLL LAST NAME"
           )
         `)
-        .single() as { data: any | null; error: any };
+        .single();
       
       if (error) throw error;
       if (!updatedLocation) throw new Error("No data returned from update");
@@ -159,8 +150,9 @@ export default function useStaffLocation() {
         locationDescription: updatedLocation.location_description,
         isActive: updatedLocation.is_active,
         externalStaffId: updatedLocation.external_staff_id,
+        externalStaffName: data.externalStaffName,
         managerId: updatedLocation.manager_id,
-        managerName: updatedLocation.manager ? `${updatedLocation.manager["PAYROLL FIRST NAME"]} ${updatedLocation.manager["PAYROLL LAST NAME"]}` : undefined,
+        managerName: data.managerName,
       };
 
       setStaffLocations(prev => 
