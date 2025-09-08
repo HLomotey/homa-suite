@@ -31,8 +31,6 @@ export function MaintenanceHeader() {
             value={
               path.includes("/maintenance/requests")
                 ? "requests"
-                : path.includes("/maintenance/admin")
-                ? "admin"
                 : "dashboard"
             }
             className="w-full md:w-auto"
@@ -44,16 +42,12 @@ export function MaintenanceHeader() {
                 case "requests":
                   navigate("/maintenance/requests");
                   break;
-                case "admin":
-                  navigate("/maintenance/admin");
-                  break;
               }
             }}
           >
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="requests">My Requests</TabsTrigger>
-              <TabsTrigger value="admin">Admin</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

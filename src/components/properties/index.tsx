@@ -3,6 +3,7 @@ import { OccupancyDashboard } from "./Dashboard";
 import { PropertiesList } from "./PropertiesList";
 import { PropertyForm } from "./PropertyForm";
 import { AddPropertyDialog } from "./AddPropertyDialog";
+import { MaintenanceAdmin } from "./MaintenanceAdmin";
 import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty } from "../../hooks/property";
 import { FrontendProperty } from "../../integration/supabase/types";
 import { useToast } from "@/components/ui/use-toast";
@@ -98,6 +99,7 @@ export default function Properties() {
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="admin">Maintenance Admin</TabsTrigger>
         </TabsList>
         
         <TabsContent value="properties" className="space-y-6">
@@ -126,6 +128,10 @@ export default function Properties() {
 
         <TabsContent value="inventory">
           <Inventory />
+        </TabsContent>
+
+        <TabsContent value="admin">
+          <MaintenanceAdmin />
         </TabsContent>
       </Tabs>
 

@@ -12,6 +12,7 @@ import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
 import { Inventory } from "@/components/inventory";
 import { UtilitiesDashboard } from "@/components/utilities/UtilitiesDashboard";
+import { MaintenanceAdmin } from "@/components/properties/MaintenanceAdmin";
 import { FrontendProperty } from "@/integration/supabase/types";
 import { FrontendTenant } from "@/integration/supabase/types/tenant";
 import {
@@ -127,6 +128,7 @@ const HousingPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="utilities">Utilities</TabsTrigger>
+          <TabsTrigger value="maintenance-admin">Maintenance Admin</TabsTrigger>
           {/* <TabsTrigger value="tenants">Tenant Profiles</TabsTrigger> */}
         </TabsList>
 
@@ -174,11 +176,15 @@ const HousingPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="inventory">
-          <Inventory propertyId={selectedPropertyId} />
+          <Inventory />
         </TabsContent>
 
         <TabsContent value="utilities">
           <UtilitiesDashboard />
+        </TabsContent>
+
+        <TabsContent value="maintenance-admin">
+          <MaintenanceAdmin />
         </TabsContent>
 
         <TabsContent value="tenants">
