@@ -31,7 +31,9 @@ import { toast } from 'sonner';
 import { useProjections } from '@/hooks/projection/useProjections';
 import { ProjectionWithDetails, ProjectionStatus, ProjectionPriority } from '@/types/projection';
 import BulkProjectionForm from './BulkProjectionForm';
+import ProjectionEditForm from './ProjectionEditForm';
 import ProjectionDashboard from './ProjectionDashboard';
+import ProjectionSummary from './ProjectionSummary';
 
 const ProjectionModule = () => {
   const { projections, loading, error, createProjection, updateProjection, deleteProjection } = useProjections();
@@ -169,7 +171,7 @@ const ProjectionModule = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -177,6 +179,10 @@ const ProjectionModule = () => {
           <TabsTrigger value="projections" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Projections
+          </TabsTrigger>
+          <TabsTrigger value="summary" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Summary
           </TabsTrigger>
         </TabsList>
 
@@ -330,6 +336,10 @@ const ProjectionModule = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="summary" className="space-y-4">
+          <ProjectionSummary />
+        </TabsContent>
       </Tabs>
 
       {/* Form Sheet */}
@@ -340,11 +350,24 @@ const ProjectionModule = () => {
               {selectedProjection ? 'Edit Projection' : 'Create New Projection'}
             </SheetTitle>
           </SheetHeader>
-          <BulkProjectionForm
-            projection={selectedProjection}
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
-          />
+          {selectedProjection ? (
+            <ProjectionEditForm
+              projection={selectedProjection}
+              onSubmit={async (data) => {
+                await updateProjection(selectedProjection.id, data);
+                toast.success('Projection updated successfully');
+                setIsFormOpen(false);
+                setSelectedProjection(null);
+              }}
+              onCancel={handleFormCancel}
+              loading={loading}
+            />
+          ) : (
+            <BulkProjectionForm
+              onSubmit={handleFormSubmit}
+              onCancel={handleFormCancel}
+            />
+          )}
         </SheetContent>
       </Sheet>
 
@@ -352,7 +375,7 @@ const ProjectionModule = () => {
       <Sheet open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           <SheetHeader>
-            <SheetTitle>View Projection</SheetTitle>
+            <SheetTitle>View Projection (Read Only)</SheetTitle>
           </SheetHeader>
           {selectedProjection && (
             <BulkProjectionForm

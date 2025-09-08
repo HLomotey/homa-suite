@@ -11,7 +11,7 @@ export function RevenueByClient() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
-  const { data: financeData, isLoading, error } = useFinanceAnalytics(currentYear, currentMonth);
+  const { data: financeData, isLoading, error } = useFinanceAnalytics([{ year: currentYear, month: currentMonth }]);
 
   // Process real client data from finance analytics
   const clientData = useMemo(() => {

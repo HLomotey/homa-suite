@@ -27,24 +27,28 @@ function Login() {
     return (
         <form onSubmit={handleLogin}>
             <div>
-                <label>Email:</label>
+                <label htmlFor="email">Email:</label>
                 <input
+                    id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
                     required
                 />
             </div>
             <div>
-                <label>Password:</label>
+                <label htmlFor="password">Password:</label>
                 <input
+                    id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
                     required
                 />
             </div>
-            {error && <div style={{ color: 'red' }}>{error}</div>}
+            {error && <div className="error-message">{error}</div>}
             <button type="submit">Login</button>
         </form>
     );
