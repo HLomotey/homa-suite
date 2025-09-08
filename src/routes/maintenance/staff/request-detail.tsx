@@ -17,12 +17,12 @@ import { toast } from "@/components/ui/use-toast";
 export default function StaffRequestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [status, setStatus] = useState<MaintenanceStatus | "">("");
   const [notes, setNotes] = useState("");
   
   // Get rooms assigned to the current staff member
-  const { rooms, loading: roomsLoading } = useStaffRooms(user?.id || "");
+  const { rooms, loading: roomsLoading } = useStaffRooms(currentUser?.user?.id || "");
   const staffRoomIds = rooms.map(room => room.roomId);
   
   // Fetch the maintenance request

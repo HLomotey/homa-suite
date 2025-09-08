@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMaintenanceRequests } from "@/hooks/maintenance";
-import { useAuth } from "@/components/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MaintenanceStatus, FrontendMaintenanceRequest } from "@/integration/supabase/types/maintenance";
 import { Link } from "react-router-dom";
 import { Loader2, Plus, Search, AlertTriangle, Filter } from "lucide-react";
+import { MaintenanceRequestSheet } from "@/components/maintenance/MaintenanceRequestSheet";
 
 export default function MaintenanceRequests() {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   const { data: requests, isLoading } = useMaintenanceRequests({
-    tenantId: user?.id, // Filter by current user as tenant
+    tenantId: currentUser?.user?.id, // Filter by current user as tenant
   });
   
   // Filter requests based on search query and status filter
@@ -101,11 +103,9 @@ export default function MaintenanceRequests() {
             </SelectContent>
           </Select>
           
-          <Button asChild>
-            <Link to="/maintenance/report">
-              <Plus className="mr-2 h-4 w-4" />
-              New Request
-            </Link>
+          <Button onClick={() => setIsSheetOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Request
           </Button>
         </div>
       </div>
@@ -204,17 +204,20 @@ export default function MaintenanceRequests() {
                     ? "Try adjusting your search or filter criteria."
                     : "You haven't submitted any maintenance requests yet."}
                 </p>
-                <Button asChild>
-                  <Link to="/maintenance/report">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Report New Issue
-                  </Link>
+                <Button onClick={() => setIsSheetOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Report New Issue
                 </Button>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+      
+      <MaintenanceRequestSheet 
+        open={isSheetOpen} 
+        onOpenChange={setIsSheetOpen} 
+      />
     </div>
   );
 }

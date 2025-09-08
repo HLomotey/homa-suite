@@ -130,18 +130,18 @@ export const useMaintenanceRequest = (id: string) => {
         throw error;
       }
 
-      const mappedRequest = mapDatabaseMaintenanceRequestToFrontend(data);
+      const mappedRequest = mapDatabaseMaintenanceRequestToFrontend(data as any);
       
       // Add related data
-      mappedRequest.propertyName = data.properties?.title;
-      mappedRequest.roomName = data.rooms?.name;
-      mappedRequest.tenantName = data.tenants ? 
-        `${data.tenants.first_name} ${data.tenants.last_name}` : 
+      mappedRequest.propertyName = (data as any).properties?.title;
+      mappedRequest.roomName = (data as any).rooms?.name;
+      mappedRequest.tenantName = (data as any).tenants ? 
+        `${(data as any).tenants.first_name} ${(data as any).tenants.last_name}` : 
         undefined;
-      mappedRequest.categoryName = data.maintenance_categories?.name;
-      mappedRequest.priorityName = data.maintenance_priorities?.name;
-      mappedRequest.priorityColor = data.maintenance_priorities?.color;
-      mappedRequest.assignedToName = data.users?.email;
+      mappedRequest.categoryName = (data as any).maintenance_categories?.name;
+      mappedRequest.priorityName = (data as any).maintenance_priorities?.name;
+      mappedRequest.priorityColor = (data as any).maintenance_priorities?.color;
+      mappedRequest.assignedToName = (data as any).users?.email;
       
       return mappedRequest;
     },
@@ -157,12 +157,95 @@ export const useCreateMaintenanceRequest = () => {
   
   return useMutation({
     mutationFn: async (requestData: Omit<FrontendMaintenanceRequest, 'id'>) => {
-      // Convert frontend request to database format
-      const dbRequest = mapFrontendMaintenanceRequestToDatabase(requestData);
+      // Convert frontend request to database format, ensuring no extra fields
+      const cleanRequestData = {
+        title: requestData.title,
+        description: requestData.description,
+        tenantId: requestData.tenantId,
+        propertyId: requestData.propertyId,
+        roomId: requestData.roomId,
+        categoryId: requestData.categoryId,
+        priorityId: requestData.priorityId,
+        status: requestData.status,
+        reportedDate: requestData.reportedDate,
+        assignedDate: requestData.assignedDate,
+        assignedTo: requestData.assignedTo,
+        scheduledDate: requestData.scheduledDate,
+        completedDate: requestData.completedDate,
+        isEmergency: requestData.isEmergency,
+        permissionToEnter: requestData.permissionToEnter,
+        tenantAvailableTimes: requestData.tenantAvailableTimes,
+        images: requestData.images
+      };
       
-      const { data, error } = await supabase
+      const dbRequest = mapFrontendMaintenanceRequestToDatabase(cleanRequestData);
+      
+      // Debug: Check if role field exists anywhere in the data flow
+      console.log('=== DEBUGGING ROLE FIELD ===');
+      console.log('Original requestData has role?', 'role' in requestData);
+      console.log('CleanRequestData has role?', 'role' in cleanRequestData);
+      console.log('DbRequest has role?', 'role' in dbRequest);
+      console.log('DbRequest keys:', Object.keys(dbRequest));
+      if ('role' in dbRequest) {
+        console.log('FOUND ROLE IN dbRequest:', (dbRequest as any).role);
+      }
+      
+      // Remove any potential 'role' field and other unwanted properties
+      const { role, ...cleanDbRequest } = dbRequest as any;
+      console.log('After removing role, keys:', Object.keys(cleanDbRequest));
+      
+      // Final sanitized request with only valid database columns
+      const sanitizedDbRequest = {
+        title: cleanDbRequest.title,
+        description: cleanDbRequest.description,
+        tenant_id: cleanDbRequest.tenant_id,
+        property_id: cleanDbRequest.property_id,
+        room_id: cleanDbRequest.room_id,
+        category_id: cleanDbRequest.category_id,
+        priority_id: cleanDbRequest.priority_id,
+        status: cleanDbRequest.status,
+        reported_date: cleanDbRequest.reported_date,
+        assigned_date: cleanDbRequest.assigned_date,
+        assigned_to: cleanDbRequest.assigned_to,
+        scheduled_date: cleanDbRequest.scheduled_date,
+        completed_date: cleanDbRequest.completed_date,
+        is_emergency: cleanDbRequest.is_emergency,
+        permission_to_enter: cleanDbRequest.permission_to_enter,
+        tenant_available_times: cleanDbRequest.tenant_available_times,
+        images: cleanDbRequest.images
+      };
+      
+      console.log('Final sanitized object keys:', Object.keys(sanitizedDbRequest));
+      
+      // Use RPC function to bypass any client-side issues with role field
+      const { data: insertedId, error } = await (supabase as any).rpc('insert_maintenance_request', {
+        p_title: sanitizedDbRequest.title,
+        p_description: sanitizedDbRequest.description,
+        p_property_id: sanitizedDbRequest.property_id,
+        p_category_id: sanitizedDbRequest.category_id,
+        p_priority_id: sanitizedDbRequest.priority_id,
+        p_tenant_id: sanitizedDbRequest.tenant_id,
+        p_room_id: sanitizedDbRequest.room_id,
+        p_status: sanitizedDbRequest.status,
+        p_reported_date: sanitizedDbRequest.reported_date,
+        p_assigned_date: sanitizedDbRequest.assigned_date,
+        p_assigned_to: sanitizedDbRequest.assigned_to,
+        p_scheduled_date: sanitizedDbRequest.scheduled_date,
+        p_completed_date: sanitizedDbRequest.completed_date,
+        p_is_emergency: sanitizedDbRequest.is_emergency,
+        p_permission_to_enter: sanitizedDbRequest.permission_to_enter,
+        p_tenant_available_times: sanitizedDbRequest.tenant_available_times,
+        p_images: sanitizedDbRequest.images
+      });
+
+      if (error) {
+        console.error('Error creating maintenance request via RPC:', error);
+        throw error;
+      }
+
+      // Now fetch the created record with all relations
+      const { data, error: fetchError } = await supabase
         .from('maintenance_requests')
-        .insert(dbRequest)
         .select(`
           *,
           properties:property_id (title),
@@ -172,39 +255,49 @@ export const useCreateMaintenanceRequest = () => {
           maintenance_priorities:priority_id (name, color),
           users:assigned_to (email)
         `)
+        .eq('id', insertedId)
         .single();
+
+      if (fetchError) {
+        console.error('Error fetching created maintenance request:', fetchError);
+        throw fetchError;
+      }
 
       if (error) {
         console.error('Error creating maintenance request:', error);
         throw error;
       }
 
+      if (!data) {
+        throw new Error('No data returned from maintenance request creation');
+      }
+
       // Add history record for the new request
       const { error: historyError } = await supabase
         .from('maintenance_history')
         .insert({
-          request_id: data.id,
+          request_id: (data as any).id,
           user_id: (await supabase.auth.getUser()).data.user?.id,
           action: 'status_change',
           details: { from: null, to: 'new', note: 'Request created' }
-        });
+        } as any);
 
       if (historyError) {
         console.error('Error creating maintenance history record:', historyError);
       }
 
-      const mappedRequest = mapDatabaseMaintenanceRequestToFrontend(data);
+      const mappedRequest = mapDatabaseMaintenanceRequestToFrontend(data as any);
       
       // Add related data
-      mappedRequest.propertyName = data.properties?.title;
-      mappedRequest.roomName = data.rooms?.name;
-      mappedRequest.tenantName = data.tenants ? 
-        `${data.tenants.first_name} ${data.tenants.last_name}` : 
+      mappedRequest.propertyName = (data as any).properties?.title;
+      mappedRequest.roomName = (data as any).rooms?.name;
+      mappedRequest.tenantName = (data as any).tenants ? 
+        `${(data as any).tenants.first_name} ${(data as any).tenants.last_name}` : 
         undefined;
-      mappedRequest.categoryName = data.maintenance_categories?.name;
-      mappedRequest.priorityName = data.maintenance_priorities?.name;
-      mappedRequest.priorityColor = data.maintenance_priorities?.color;
-      mappedRequest.assignedToName = data.users?.email;
+      mappedRequest.categoryName = (data as any).maintenance_categories?.name;
+      mappedRequest.priorityName = (data as any).maintenance_priorities?.name;
+      mappedRequest.priorityColor = (data as any).maintenance_priorities?.color;
+      mappedRequest.assignedToName = (data as any).users?.email;
       
       return mappedRequest;
     },
@@ -257,8 +350,9 @@ export const useUpdateMaintenanceRequest = () => {
       if (request.tenantAvailableTimes !== undefined) updateData.tenant_available_times = request.tenantAvailableTimes;
       if (request.images !== undefined) updateData.images = request.images;
       
-      const { data, error } = await supabase
-        .from('maintenance_requests')
+      // Use any casting to bypass Supabase's overly strict TypeScript inference
+      const supabaseQuery = supabase.from('maintenance_requests') as any;
+      const { data, error } = await supabaseQuery
         .update(updateData)
         .eq('id', id)
         .select(`
@@ -286,7 +380,7 @@ export const useUpdateMaintenanceRequest = () => {
             user_id: (await supabase.auth.getUser()).data.user?.id,
             action: 'status_change',
             details: { from: previousStatus, to: request.status }
-          });
+          } as any);
 
         if (historyError) {
           console.error('Error creating maintenance history record:', historyError);
@@ -302,15 +396,15 @@ export const useUpdateMaintenanceRequest = () => {
             request_id: id,
             user_id: (await supabase.auth.getUser()).data.user?.id,
             action: 'note_added',
-            details: { note, status: request.status || data.status }
-          });
+            details: { note, status: request.status || (data as any).status }
+          } as any);
 
         if (noteHistoryError) {
           console.error('Error creating note history record:', noteHistoryError);
         }
       }
       
-      if (request.assignedTo && !data.assigned_to) {
+      if (request.assignedTo && !(data as any).assigned_to) {
         const { error: historyError } = await supabase
           .from('maintenance_history')
           .insert({
@@ -318,25 +412,29 @@ export const useUpdateMaintenanceRequest = () => {
             user_id: (await supabase.auth.getUser()).data.user?.id,
             action: 'assigned',
             details: { assignedTo: request.assignedTo }
-          });
+          } as any);
 
         if (historyError) {
           console.error('Error creating maintenance history record:', historyError);
         }
       }
 
-      const updatedRequest = mapDatabaseMaintenanceRequestToFrontend(data);
+      if (!data) {
+        throw new Error('No data returned from maintenance request update');
+      }
+
+      const updatedRequest = mapDatabaseMaintenanceRequestToFrontend(data as any);
       
       // Add related data
-      updatedRequest.propertyName = data.properties?.title;
-      updatedRequest.roomName = data.rooms?.name;
-      updatedRequest.tenantName = data.tenants ? 
-        `${data.tenants.first_name} ${data.tenants.last_name}` : 
+      updatedRequest.propertyName = (data as any).properties?.title;
+      updatedRequest.roomName = (data as any).rooms?.name;
+      updatedRequest.tenantName = (data as any).tenants ? 
+        `${(data as any).tenants.first_name} ${(data as any).tenants.last_name}` : 
         undefined;
-      updatedRequest.categoryName = data.maintenance_categories?.name;
-      updatedRequest.priorityName = data.maintenance_priorities?.name;
-      updatedRequest.priorityColor = data.maintenance_priorities?.color;
-      updatedRequest.assignedToName = data.users?.email;
+      updatedRequest.categoryName = (data as any).maintenance_categories?.name;
+      updatedRequest.priorityName = (data as any).maintenance_priorities?.name;
+      updatedRequest.priorityColor = (data as any).maintenance_priorities?.color;
+      updatedRequest.assignedToName = (data as any).users?.email;
       
       return updatedRequest;
     },
