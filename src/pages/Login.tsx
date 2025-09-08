@@ -6,7 +6,11 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLoginSuccess = () => {
-    navigate("/");
+    console.log("Login success callback triggered, navigating to home...");
+    // Add small delay to ensure auth state has propagated
+    setTimeout(() => {
+      navigate("/");
+    }, 50);
   };
 
   return <LoginForm onLoginSuccess={handleLoginSuccess} />;

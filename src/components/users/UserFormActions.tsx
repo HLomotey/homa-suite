@@ -59,18 +59,6 @@ export const UserFormActions: React.FC<UserFormActionsProps> = ({
           </Button>
         )}
         
-        {!isNewUser && canDelete && onDelete && (
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={onDelete}
-            disabled={isSubmitting || isResettingPassword}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete User
-          </Button>
-        )}
         
         <Button
           type="submit"

@@ -26,7 +26,7 @@ interface PermissionsContextType {
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
 
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [roles, setRoles] = useState<Role[]>([]);
   const [primaryRole, setPrimaryRole] = useState<Role | undefined>(undefined);
@@ -36,7 +36,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const fetchPermissions = async () => {
     try {
-      if (!user?.id) {
+      if (!currentUser?.user?.id) {
         setPermissions({});
         return;
       }
@@ -44,7 +44,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       try {
         const { data, error } = await supabase.rpc(
           'get_user_effective_permissions',
-          { p_user_id: user.id }
+          { p_user_id: currentUser.user.id }
         );
 
         if (error) {
@@ -89,7 +89,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   useEffect(() => {
     fetchPermissions();
-  }, [user?.id]);
+  }, [currentUser?.user?.id]);
 
   const hasPermission = (permission: string): boolean => {
     // TEMPORARY: Grant access to all permissions

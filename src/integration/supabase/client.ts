@@ -28,10 +28,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Create Supabase admin client with service role key for admin operations
-export const supabaseAdmin = supabaseServiceKey 
-  ? createClient<Database>(supabaseUrl, supabaseServiceKey)
-  : supabase; // Fallback to regular client if service key is not available
+// Import admin client from dedicated admin-client file to avoid duplicate creation
+export { supabaseAdmin } from './admin-client';
 
 // Helper function to get user session
 export const getSession = async () => {

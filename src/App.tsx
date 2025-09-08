@@ -31,10 +31,8 @@ const App = () => {
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <ProtectedRoute>
-                <GlobalClickTracker />
-                <RouterProvider router={router} />
-              </ProtectedRoute>
+              <GlobalClickTracker />
+              <RouterProvider router={router} />
             </TooltipProvider>
           </PermissionsProvider>
         </AuthProvider>

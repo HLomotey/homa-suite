@@ -9,6 +9,9 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { currentUser, loading } = useAuth();
 
+  console.log("ProtectedRoute render - loading:", loading, "currentUser:", !!currentUser);
+
+  // Show loading state while authentication is being processed
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -20,9 +23,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!currentUser) {
+  // Check if user exists and has a valid session
+  if (!currentUser || !currentUser.user || !currentUser.session) {
+    console.log("No valid user found, showing login form");
     return <LoginForm onLoginSuccess={() => {}} />;
   }
 
+  console.log("User authenticated, rendering protected content");
   return <>{children}</>;
 };

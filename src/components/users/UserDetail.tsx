@@ -428,6 +428,28 @@ export function UserDetail() {
           // Let's verify the profile was created with the correct user_id
           console.log('Verifying profile creation for user ID:', createdUser.id);
           
+          // Add user to external_staff table to enable login
+          try {
+            const { error: staffError } = await supabase
+              .from('external_staff')
+              .upsert({
+                'EMPLOYEE ID': `EMP_${Date.now()}`, // Generate unique ID
+                'PERSONAL E-MAIL': user.email.toLowerCase(),
+                'FULL NAME': user.name,
+                'POSITION STATUS': 'A - Active'
+              }, {
+                onConflict: 'PERSONAL E-MAIL'
+              });
+              
+            if (staffError) {
+              console.error('Error adding user to external_staff:', staffError);
+            } else {
+              console.log('User added to external_staff table for login access');
+            }
+          } catch (staffInsertError) {
+            console.error('Failed to add user to external_staff:', staffInsertError);
+          }
+          
           // Add additional profile data if needed
           await upsert(createdUser.id, {
             bio: '',
