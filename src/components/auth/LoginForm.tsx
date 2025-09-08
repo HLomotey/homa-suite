@@ -249,8 +249,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     resetCooldownEnd !== null && Date.now() < resetCooldownEnd;
 
   return (
-    <div className="min-h-screen p-4 pt-32 pb-8 relative bg-cover bg-center bg-no-repeat" 
-         style={{ backgroundImage: 'url("/lissete-laverde-7jOeRc0dOWs-unsplash-1.jpg")' }}>
+    <div className="min-h-screen p-4 pt-32 pb-8 relative bg-cover bg-center bg-no-repeat bg-[url('/lissete-laverde-7jOeRc0dOWs-unsplash-1.jpg')]">
       {/* Dark overlay for better readability */}
       <div className="absolute inset-0 bg-black/40"></div>
       <div className="w-full max-w-md mx-auto relative z-10">
