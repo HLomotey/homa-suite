@@ -1,36 +1,39 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/components/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hasPermission } from "@/components/permissions/utils";
 import { User as AppUser } from "@/integration/supabase/types/user-profile";
-import { User as AuthUser } from "@supabase/supabase-js";
 
 // Helper function to adapt AuthUser to AppUser for permission checks
-const adaptUserForPermissions = (authUser: AuthUser | null): AppUser | null => {
-  if (!authUser) return null;
+const adaptUserForPermissions = (currentUser: any): AppUser | null => {
+  if (!currentUser?.user) return null;
   
   return {
-    id: authUser.id,
-    name: authUser.user_metadata?.name || authUser.email || '',
-    email: authUser.email || '',
-    role: authUser.user_metadata?.role || 'guest',
-    department: authUser.user_metadata?.department || '',
-    status: 'active',
-    last_active: null,
-    permissions: authUser.user_metadata?.permissions || null,
-    created_at: authUser.created_at || '',
+    id: currentUser.user.id,
+    name: currentUser.user.user_metadata?.name || currentUser.user.email || '',
+    email: currentUser.user.email || '',
+    role: currentUser.user.user_metadata?.role || 'guest',
+    department: currentUser.user.user_metadata?.department || '',
+    is_active: true,
+    permissions: currentUser.user.user_metadata?.permissions || null,
+    created_at: currentUser.user.created_at || '',
     updated_at: null,
-    avatar_url: authUser.user_metadata?.avatar_url || null
+    last_login: null,
+    email_verified: true,
+    password_changed_at: null,
+    two_factor_enabled: false,
+    login_attempts: 0,
+    locked_until: null
   };
 };
 
 export function MaintenanceNav() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   
   // Adapt the auth user to the app user format for permission checks
-  const appUser = adaptUserForPermissions(user);
+  const appUser = adaptUserForPermissions(currentUser);
   
   const isStaff = appUser && hasPermission(appUser, "maintenance", "staff");
   const isAdmin = appUser && hasPermission(appUser, "maintenance", "admin");

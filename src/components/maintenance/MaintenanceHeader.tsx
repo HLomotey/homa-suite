@@ -1,5 +1,8 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, useLocation } from "react-router-dom";
+import { MaintenanceRequestSheet } from "./MaintenanceRequestSheet";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export function MaintenanceHeader() {
   const navigate = useNavigate();
@@ -15,41 +18,45 @@ export function MaintenanceHeader() {
             Manage maintenance requests and track their progress
           </p>
         </div>
-        <Tabs
-          value={
-            path.includes("/maintenance/requests")
-              ? "requests"
-              : path.includes("/maintenance/report")
-              ? "report"
-              : path.includes("/maintenance/admin")
-              ? "admin"
-              : "dashboard"
-          }
-          className="w-full md:w-auto"
-          onValueChange={(value) => {
-            switch (value) {
-              case "dashboard":
-                navigate("/maintenance");
-                break;
-              case "requests":
-                navigate("/maintenance/requests");
-                break;
-              case "report":
-                navigate("/maintenance/report");
-                break;
-              case "admin":
-                navigate("/maintenance/admin");
-                break;
+        
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <MaintenanceRequestSheet>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Request
+            </Button>
+          </MaintenanceRequestSheet>
+          
+          <Tabs
+            value={
+              path.includes("/maintenance/requests")
+                ? "requests"
+                : path.includes("/maintenance/admin")
+                ? "admin"
+                : "dashboard"
             }
-          }}
-        >
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="requests">My Requests</TabsTrigger>
-            <TabsTrigger value="report">Report Issue</TabsTrigger>
-            <TabsTrigger value="admin">Admin</TabsTrigger>
-          </TabsList>
-        </Tabs>
+            className="w-full md:w-auto"
+            onValueChange={(value) => {
+              switch (value) {
+                case "dashboard":
+                  navigate("/maintenance");
+                  break;
+                case "requests":
+                  navigate("/maintenance/requests");
+                  break;
+                case "admin":
+                  navigate("/maintenance/admin");
+                  break;
+              }
+            }}
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="requests">My Requests</TabsTrigger>
+              <TabsTrigger value="admin">Admin</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
     </div>
   );

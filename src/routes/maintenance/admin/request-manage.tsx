@@ -275,14 +275,14 @@ export default function ManageMaintenanceRequest() {
                     Assign To
                   </label>
                   <Select 
-                    value={assignedTo || ""} 
-                    onValueChange={(value) => setAssignedTo(value || null)}
+                    value={assignedTo || "unassigned"} 
+                    onValueChange={(value) => setAssignedTo(value === "unassigned" ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select staff member" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {staffMembers.map((staff) => (
                         <SelectItem key={staff.id} value={staff.id}>
                           {staff.name}
