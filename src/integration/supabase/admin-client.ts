@@ -13,27 +13,12 @@ if (!supabaseServiceRoleKey) {
   console.warn('Supabase Service Role Key is missing. Using anon key as fallback - some admin operations may fail due to RLS.');
 }
 
-// Singleton pattern for admin client to avoid multiple instances
-let _supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
-
-const getSupabaseAdminClient = () => {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        storageKey: 'supabase-admin-auth-token' // Unique storage key
-      }
-    });
-  }
-  return _supabaseAdmin;
-};
-
-// Lazy-loaded admin client instance - only created when first accessed
-export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient<Database>>, {
-  get(target, prop) {
-    const client = getSupabaseAdminClient();
-    return (client as any)[prop];
+// Direct admin client creation - no proxy to avoid multiple instance issues
+export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    storageKey: 'supabase-admin-auth-token' // Unique storage key
   }
 });
 

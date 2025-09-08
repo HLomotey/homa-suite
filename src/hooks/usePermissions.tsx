@@ -48,15 +48,27 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         );
 
         if (error) {
-          // Handle RPC function not existing yet
-          if (error.code === "PGRST301" || error.message?.includes("function") || error.code === "400") {
-            console.warn("Permission function may not exist yet:", error.message);
-            // Set default permissions for development
+          // Handle RPC function not existing yet or column errors
+          if (error.code === "PGRST301" || error.message?.includes("function") || error.code === "400" || error.message?.includes("column") || error.message?.includes("does not exist")) {
+            console.warn("Permission function may not exist or has schema issues:", error.message);
+            // Set default permissions for development - grant all access
             setPermissions({
               dashboard: ["view"],
+              properties: ["view", "manage"],
               users: ["view", "manage"],
               reports: ["view", "create"],
-              transport: ["view", "manage"]
+              transport: ["view", "manage"],
+              hr: ["view", "manage"],
+              finance: ["view", "manage"],
+              billing: ["view", "manage"],
+              operations: ["view", "manage"],
+              complaints: ["view", "manage"],
+              settings: ["view", "manage"],
+              activity_log: ["view"],
+              onboarding: ["view", "manage"],
+              "job-orders": ["view", "manage"],
+              analytics: ["view", "manage"],
+              notifications: ["view", "manage"]
             });
             return;
           }
