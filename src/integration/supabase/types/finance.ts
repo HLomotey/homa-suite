@@ -28,6 +28,7 @@ export interface Invoice {
   tax_2_amount: number;
   line_total: number;
   currency: string;
+  company_account_id: number | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -36,6 +37,16 @@ export interface Invoice {
  * InvoiceStatus enum
  */
 export type InvoiceStatus = 'paid' | 'pending' | 'overdue' | 'cancelled';
+
+/**
+ * CompanyAccount interface representing the company_accounts table in Supabase
+ */
+export interface CompanyAccount {
+  id: number;
+  name: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
 /**
  * Transaction interface representing the finance_transactions table in Supabase
@@ -183,6 +194,8 @@ export interface FrontendInvoice {
   tax2Amount: number;
   lineTotal: number;
   currency: string;
+  companyAccountId: number | null;
+  companyAccountName?: string;
 }
 
 /**
@@ -221,6 +234,7 @@ export interface FinanceTransaction {
   tax_2_amount?: number;
   amount: number; // Line Total
   currency?: string;
+  company_account_name?: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -246,6 +260,7 @@ export interface FrontendFinanceTransaction {
   tax2Amount?: number;
   amount: number; // Line Total
   currency?: string;
+  companyAccountName?: string;
 }
 
 /**
@@ -347,7 +362,8 @@ export const mapDatabaseInvoiceToFrontend = (dbInvoice: Invoice): FrontendInvoic
     tax2Type: dbInvoice.tax_2_type,
     tax2Amount: dbInvoice.tax_2_amount,
     lineTotal: dbInvoice.line_total,
-    currency: dbInvoice.currency
+    currency: dbInvoice.currency,
+    companyAccountId: dbInvoice.company_account_id
   };
 };
 
@@ -495,6 +511,7 @@ export const mapDatabaseFinanceTransactionToFrontend = (
     tax1Amount: dbFinanceTransaction.tax_1_amount,
     tax2Type: dbFinanceTransaction.tax_2_type,
     tax2Amount: dbFinanceTransaction.tax_2_amount,
-    currency: dbFinanceTransaction.currency || "USD"
+    currency: dbFinanceTransaction.currency || "USD",
+    companyAccountName: dbFinanceTransaction.company_account_name
   };
 };

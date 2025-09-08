@@ -27,6 +27,12 @@ export const FINANCE_COLUMN_MAPPINGS: FinanceColumnMapping[] = [
     transformer: (value) => value?.trim() || "",
   },
   {
+    excelColumn: "Company Account",
+    fieldName: "companyAccountName",
+    required: false,
+    transformer: (value) => value?.trim() || "",
+  },
+  {
     excelColumn: "Invoice #",
     fieldName: "invoiceId",
     required: true,
@@ -438,6 +444,7 @@ export async function generateFinanceTemplate(): Promise<Blob> {
     // Create sample data rows
     const sampleData1 = [
       "ABC Corporation", // Client Name
+      "Main Account", // Company Account
       "INV-2023-001", // Invoice #
       new Date().toISOString().split("T")[0], // Date
       "Pending", // Invoice Status
@@ -457,6 +464,7 @@ export async function generateFinanceTemplate(): Promise<Blob> {
 
     const sampleData2 = [
       "XYZ Ltd", // Client Name
+      "Secondary Account", // Company Account
       "INV-2023-002", // Invoice #
       new Date().toISOString().split("T")[0], // Date
       "Paid", // Invoice Status

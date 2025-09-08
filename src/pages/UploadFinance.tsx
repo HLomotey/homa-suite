@@ -166,6 +166,7 @@ export default function UploadFinance() {
 
   const expectedColumns = [
     "Client Name",
+    "Company Account",
     "Invoice #",
     "Date",
     "Invoice Status",

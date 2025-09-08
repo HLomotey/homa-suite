@@ -395,6 +395,28 @@ export const useUploadFinanceTransactions = () => {
       console.log(`${result.data.length} new records ready for upload`);
       setProgress(50);
       
+      // Get company accounts for mapping
+      console.log('Fetching company accounts for mapping');
+      const { data: companyAccounts, error: companyAccountsError } = await supabase
+        .from("company_accounts")
+        .select("id, name");
+        
+      if (companyAccountsError) {
+        console.error('Error fetching company accounts:', companyAccountsError);
+        // Continue without company account mapping
+      }
+      
+      // Create a map of company account names to IDs
+      const companyAccountMap = new Map<string, number>();
+      if (companyAccounts && Array.isArray(companyAccounts)) {
+        companyAccounts.forEach((account: any) => {
+          if (account.name && account.id) {
+            companyAccountMap.set(account.name.toLowerCase().trim(), account.id);
+          }
+        });
+        console.log(`Loaded ${companyAccounts.length} company accounts for mapping`);
+      }
+      
       // Validate total transaction size
       if (result.data.length > 500) {
         console.warn(`⚠️ Large dataset detected: ${result.data.length} records. This may cause performance issues.`);
@@ -471,25 +493,37 @@ export const useUploadFinanceTransactions = () => {
         }, 10000); // Check network status after 10 seconds
         
         // Convert batch data to match finance_invoices table schema
-        const invoiceBatch = batch.map(transaction => ({
-          client_name: transaction.client,
-          invoice_number: transaction.invoiceId,
-          date_issued: transaction.date,
-          invoice_status: transaction.status,
-          date_paid: transaction.datePaid || null,
-          item_name: transaction.description || 'Service',
-          item_description: transaction.description,
-          rate: transaction.rate,
-          quantity: transaction.quantity,
-          discount_percentage: transaction.discountPercentage || 0,
-          line_subtotal: transaction.lineSubtotal || (transaction.rate * transaction.quantity),
-          tax_1_type: transaction.tax1Type || null,
-          tax_1_amount: transaction.tax1Amount || 0,
-          tax_2_type: transaction.tax2Type || null,
-          tax_2_amount: transaction.tax2Amount || 0,
-          line_total: transaction.amount,
-          currency: transaction.currency || 'USD'
-        }));
+        const invoiceBatch = batch.map(transaction => {
+          // Look up company account ID by name
+          let companyAccountId = null;
+          if (transaction.companyAccountName && companyAccountMap.has(transaction.companyAccountName.toLowerCase().trim())) {
+            companyAccountId = companyAccountMap.get(transaction.companyAccountName.toLowerCase().trim()) || null;
+            console.log(`Mapped company account "${transaction.companyAccountName}" to ID ${companyAccountId}`);
+          } else if (transaction.companyAccountName) {
+            console.warn(`Company account "${transaction.companyAccountName}" not found in database`);
+          }
+
+          return {
+            client_name: transaction.client,
+            invoice_number: transaction.invoiceId,
+            date_issued: transaction.date,
+            invoice_status: transaction.status,
+            date_paid: transaction.datePaid || null,
+            item_name: transaction.description || 'Service',
+            item_description: transaction.description,
+            rate: transaction.rate,
+            quantity: transaction.quantity,
+            discount_percentage: transaction.discountPercentage || 0,
+            line_subtotal: transaction.lineSubtotal || (transaction.rate * transaction.quantity),
+            tax_1_type: transaction.tax1Type || null,
+            tax_1_amount: transaction.tax1Amount || 0,
+            tax_2_type: transaction.tax2Type || null,
+            tax_2_amount: transaction.tax2Amount || 0,
+            line_total: transaction.amount,
+            currency: transaction.currency || 'USD',
+            company_account_id: companyAccountId
+          };
+        });
 
         // Create the transactions in the database with connection error handling
         let insertedData;

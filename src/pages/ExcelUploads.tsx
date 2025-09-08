@@ -22,6 +22,7 @@ export default function ExcelUploads() {
     badgeText: "Finance",
     expectedColumns: [
       "Client Name",
+      "Company Account",
       "Invoice #",
       "Date",
       "Invoice Status",
