@@ -61,7 +61,7 @@ export function FinanceAnalytics() {
   const [insights, setInsights] = useState<FinancialInsights | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { data: financeData, isLoading, error, isError } = useFinanceAnalytics(selectedYear, selectedMonth);
+  const { data: financeData, isLoading, error, isError } = useFinanceAnalytics([{ year: selectedYear, month: selectedMonth }]);
   
   useEffect(() => {
     // Always set insights with mock data to prevent null reference errors
