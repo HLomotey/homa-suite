@@ -19,7 +19,8 @@ export const invalidateFinanceCache = () => {
 };
 
 export interface FinanceMetrics {
-  totalRevenue: number;
+  totalRevenue: number; // Cash basis - actual revenue from paid invoices
+  expectedRevenue: number; // Accrual basis - all invoices regardless of payment status
   totalInvoices: number;
   paidInvoices: number;
   pendingInvoices: number;
@@ -30,7 +31,7 @@ export interface FinanceMetrics {
   collectionRate: number;
   monthlyRevenue: Array<{
     month: string;
-    revenue: number;
+    revenue: number; // Cash basis - based on payment_date
     invoices: number;
   }>;
   statusDistribution: Array<{
@@ -40,7 +41,7 @@ export interface FinanceMetrics {
   }>;
   topClients: Array<{
     client_name: string;
-    total_revenue: number;
+    total_revenue: number; // Cash basis - only paid invoices
     invoice_count: number;
   }>;
   isDataComplete: boolean; // Flag to indicate if all data was retrieved
@@ -145,11 +146,14 @@ const fetchAllInvoicesPaginated = async (
     console.log(`Fetching data for ${range.year}-${range.month} (${startDate} to ${endDate})`);
     
     // Get count for this range - try view first, fallback to table
+    // For cash basis accounting, filter by payment date for paid invoices
     let rangeQuery = supabaseAdmin
       .from("finance_analytics_view")
       .select("id", { count: "exact", head: true })
-      .gte("date_issued", startDate)
-      .lte("date_issued", endDate);
+      .eq("invoice_status", "paid")
+      .not("date_paid", "is", null)
+      .gte("date_paid", startDate)
+      .lte("date_paid", endDate);
     
     let { count: rangeCount, error: countError } = await rangeQuery;
     
@@ -159,8 +163,10 @@ const fetchAllInvoicesPaginated = async (
       rangeQuery = supabaseAdmin
         .from("finance_invoices")
         .select("id", { count: "exact", head: true })
-        .gte("date_issued", startDate)
-        .lte("date_issued", endDate);
+        .eq("invoice_status", "paid")
+        .not("date_paid", "is", null)
+        .gte("date_paid", startDate)
+        .lte("date_paid", endDate);
       const fallbackResult = await rangeQuery;
       rangeCount = fallbackResult.count;
       countError = fallbackResult.error;
@@ -186,8 +192,10 @@ const fetchAllInvoicesPaginated = async (
       let rangePageQuery = supabaseAdmin
         .from("finance_analytics_view")
         .select("*")
-        .gte("date_issued", startDate)
-        .lte("date_issued", endDate)
+        .eq("invoice_status", "paid")
+        .not("date_paid", "is", null)
+        .gte("date_paid", startDate)
+        .lte("date_paid", endDate)
         .order("id", { ascending: true })
         .range(from, to);
       
@@ -198,8 +206,10 @@ const fetchAllInvoicesPaginated = async (
         rangePageQuery = supabaseAdmin
           .from("finance_invoices")
           .select("*")
-          .gte("date_issued", startDate)
-          .lte("date_issued", endDate)
+          .eq("invoice_status", "paid")
+          .not("date_paid", "is", null)
+          .gte("date_paid", startDate)
+          .lte("date_paid", endDate)
           .order("id", { ascending: true })
           .range(from, to);
         const fallbackResult = await rangePageQuery;
@@ -276,8 +286,22 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         );
       }
 
-      // Calculate total revenue directly from the fetched invoices
-      const totalRevenue = typedInvoices.reduce(
+      // Calculate actual revenue (cash basis) - only from paid invoices with date_paid
+      const actualRevenue = typedInvoices.reduce(
+        (sum, invoice) => {
+          // Only count revenue if invoice is paid AND has a payment date
+          if (invoice.invoice_status !== 'paid' || !invoice.date_paid) return sum;
+          
+          const lineTotal = invoice.line_total;
+          if (lineTotal === null || lineTotal === undefined) return sum;
+          const numericValue = typeof lineTotal === 'number' ? lineTotal : parseFloat(lineTotal);
+          return sum + (isNaN(numericValue) ? 0 : numericValue);
+        },
+        0
+      );
+
+      // Calculate expected revenue (accrual basis) - all invoices regardless of payment status
+      const expectedRevenue = typedInvoices.reduce(
         (sum, invoice) => {
           const lineTotal = invoice.line_total;
           if (lineTotal === null || lineTotal === undefined) return sum;
@@ -286,6 +310,9 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         },
         0
       );
+
+      // Use actual revenue as the primary totalRevenue for cash basis accounting
+      const totalRevenue = actualRevenue;
 
       // Calculate invoice status counts
       const statusCounts = typedInvoices.reduce((acc, inv) => {
@@ -300,8 +327,11 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
       const cancelledInvoices = statusCounts.cancelled || 0;
       const collectionRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
 
-      // Client revenue aggregation
+      // Client revenue aggregation - cash basis (only paid invoices with payment dates)
       const clientData = typedInvoices.reduce((acc, inv) => {
+        // Only include paid invoices with payment dates for cash basis accounting
+        if (inv.invoice_status !== 'paid' || !inv.date_paid) return acc;
+        
         const clientName = inv.client_name || "Unknown Client";
         if (!acc[clientName]) {
           acc[clientName] = { total_revenue: 0, invoice_count: 0 };
@@ -325,9 +355,12 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
       const averageInvoiceValue =
         totalInvoices > 0 ? totalRevenue / totalInvoices : 0;
 
-      // Monthly revenue aggregation
+      // Monthly revenue aggregation - cash basis (use payment date for paid invoices)
       const monthlyData = typedInvoices.reduce((acc, inv) => {
-        const month = new Date(inv.date_issued).toLocaleDateString("en-US", {
+        // For cash basis accounting, use payment date for paid invoices, skip unpaid ones
+        if (inv.invoice_status !== 'paid' || !inv.date_paid) return acc;
+        
+        const month = new Date(inv.date_paid).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
         });
@@ -364,6 +397,7 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
 
       return {
         totalRevenue: isNaN(totalRevenue) ? 0 : totalRevenue,
+        expectedRevenue: isNaN(expectedRevenue) ? 0 : expectedRevenue,
         totalInvoices: totalInvoices || 0,
         paidInvoices: paidInvoices || 0,
         pendingInvoices: pendingInvoices || 0,
@@ -382,6 +416,7 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         // Return safe default values to prevent crashes
         return {
           totalRevenue: 0,
+          expectedRevenue: 0,
           totalInvoices: 0,
           paidInvoices: 0,
           pendingInvoices: 0,

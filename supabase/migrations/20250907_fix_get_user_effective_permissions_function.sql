@@ -12,8 +12,8 @@ BEGIN
     -- Return permissions based on user's role assignments
     RETURN QUERY
     SELECT 
-        SPLIT_PART(p.name, ':', 1) as resource,
-        SPLIT_PART(p.name, ':', 2) as action,
+        p.resource as resource,
+        p.action as action,
         p.name as permission_key
     FROM permissions p
     INNER JOIN role_permissions rp ON p.id = rp.permission_id
