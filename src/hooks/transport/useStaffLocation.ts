@@ -76,7 +76,6 @@ export default function useStaffLocation() {
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
-          external_staff_id: data.externalStaffId || null,
           manager_id: data.managerId || null
         })
         .select(`
@@ -98,7 +97,6 @@ export default function useStaffLocation() {
         locationDescription: newLocation.location_description,
         isActive: newLocation.is_active,
         externalStaffId: newLocation.external_staff_id,
-        externalStaffName: data.externalStaffName,
         managerId: newLocation.manager_id,
         managerName: data.managerName,
       };
@@ -126,7 +124,6 @@ export default function useStaffLocation() {
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
-          external_staff_id: data.externalStaffId || null,
           manager_id: data.managerId || null,
           updated_at: new Date().toISOString()
         })
@@ -150,7 +147,6 @@ export default function useStaffLocation() {
         locationDescription: updatedLocation.location_description,
         isActive: updatedLocation.is_active,
         externalStaffId: updatedLocation.external_staff_id,
-        externalStaffName: data.externalStaffName,
         managerId: updatedLocation.manager_id,
         managerName: data.managerName,
       };

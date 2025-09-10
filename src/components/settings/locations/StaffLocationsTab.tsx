@@ -151,8 +151,6 @@ export function StaffLocationsTab() {
     locationCode: "",
     locationDescription: "",
     isActive: true,
-    externalStaffId: "",
-    externalStaffName: "",
     managerId: "",
     managerName: "",
   });
@@ -193,8 +191,6 @@ export function StaffLocationsTab() {
       locationCode: "",
       locationDescription: "",
       isActive: true,
-      externalStaffId: "",
-      externalStaffName: "",
       managerId: "",
       managerName: "",
     });
@@ -214,8 +210,6 @@ export function StaffLocationsTab() {
       locationCode: staffLocation.locationCode,
       locationDescription: staffLocation.locationDescription,
       isActive: staffLocation.isActive,
-      externalStaffId: staffLocation.externalStaffId || "",
-      externalStaffName: staffLocation.externalStaffName || "",
       managerId: staffLocation.managerId || "",
       managerName: staffLocation.managerName || "",
     });
@@ -234,8 +228,6 @@ export function StaffLocationsTab() {
         locationCode: formData.locationCode,
         locationDescription: formData.locationDescription,
         isActive: formData.isActive,
-        externalStaffId: formData.externalStaffId,
-        externalStaffName: formData.externalStaffName,
         managerId: formData.managerId,
         managerName: formData.managerName,
       };
@@ -293,7 +285,6 @@ export function StaffLocationsTab() {
               <TableHead>Company Location</TableHead>
               <TableHead>Location Code</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>External Staff</TableHead>
               <TableHead>Manager</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -307,18 +298,6 @@ export function StaffLocationsTab() {
                 </TableCell>
                 <TableCell>{location.locationCode}</TableCell>
                 <TableCell>{location.locationDescription}</TableCell>
-                <TableCell>
-                  {location.externalStaffName ? (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{location.externalStaffName}</span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">
-                      Not assigned
-                    </span>
-                  )}
-                </TableCell>
                 <TableCell>
                   {location.managerName ? (
                     <div className="flex items-center gap-2">
@@ -401,64 +380,6 @@ export function StaffLocationsTab() {
               </Select>
             </div>
 
-            {/* External Staff Searchable Input */}
-            <div className="space-y-2">
-              <Label htmlFor="externalStaff">External Staff</Label>
-              {loadingExternalStaff ? (
-                <div className="flex items-center space-x-2 mt-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Loading external staff...</span>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <SearchableSelect
-                    options={externalStaff.map(
-                      (staff): SearchableSelectOption => {
-                        const firstName = staff["PAYROLL FIRST NAME"] || "";
-                        const lastName = staff["PAYROLL LAST NAME"] || "";
-                        const jobTitle = staff["JOB TITLE"] || "";
-                        const email = staff["WORK E-MAIL"] || "";
-                        const department = staff["HOME DEPARTMENT"] || "";
-
-                        // Create variations of the name for better search matching
-                        const fullName = `${firstName} ${lastName}`.trim();
-                        const reverseName = `${lastName} ${firstName}`.trim();
-                        const firstInitialLastName = firstName
-                          ? `${firstName[0]}. ${lastName}`.trim()
-                          : "";
-
-                        // Additional variations to improve search matching
-                        const firstNameOnly = firstName.trim();
-                        const lastNameOnly = lastName.trim();
-
-                        return {
-                          value: staff.id,
-                          label: `${firstName} ${lastName} - ${jobTitle}`,
-                          searchText: `${firstName} ${lastName} ${reverseName} ${firstInitialLastName} ${firstNameOnly} ${lastNameOnly} ${jobTitle} ${email} ${department}`,
-                        };
-                      }
-                    )}
-                    value={formData.externalStaffId}
-                    placeholder="Search and select external staff member..."
-                    emptyMessage="No external staff found."
-                    onValueChange={(value) => {
-                      const selectedStaff = externalStaff.find(
-                        (s) => s.id === value
-                      );
-                      setFormData({
-                        ...formData,
-                        externalStaffId: value,
-                        externalStaffName: selectedStaff
-                          ? `${selectedStaff["PAYROLL FIRST NAME"] || ""} ${
-                              selectedStaff["PAYROLL LAST NAME"] || ""
-                            }`.trim()
-                          : "",
-                      });
-                    }}
-                  />
-                </div>
-              )}
-            </div>
 
             {/* Manager Searchable Input */}
             <div className="space-y-2">

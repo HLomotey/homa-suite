@@ -6,10 +6,9 @@ import { supabase } from "@/integration/supabase/client";
 // Function to fetch the total line amount from the database
 async function fetchTotalLineAmount(): Promise<number> {
   try {
+    // Use RPC function or aggregate query instead of malformed sum syntax
     const { data, error } = await supabase
-      .from('finance_invoices')
-      .select('sum(line_total)')
-      .single();
+      .rpc('get_finance_invoices_total');
 
     if (error) {
       console.error('Error fetching total line amount:', error);
@@ -19,43 +18,21 @@ async function fetchTotalLineAmount(): Promise<number> {
     // Log the response to help debug
     console.log('Total line amount response:', data);
     
-    // Handle different response formats
-    if (!data) return 0;
+    // RPC function returns a simple numeric value
+    if (data === null || data === undefined) return 0;
     
-    // Cast to unknown first to avoid TypeScript errors
-    const rawData = data as unknown;
+    // Convert to number if it's a string
+    if (typeof data === 'string') {
+      return parseFloat(data) || 0;
+    }
     
-    // Check all possible response formats
-    if (typeof rawData === 'object') {
-      // Format 1: { sum: "123.45" } or { sum: 123.45 }
-      if ('sum' in rawData && rawData.sum !== null) {
-        if (typeof rawData.sum === 'string') {
-          return parseFloat(rawData.sum) || 0;
-        } else if (typeof rawData.sum === 'number') {
-          return rawData.sum;
-        }
-      }
-      
-      // Format 2: Nested object with sum property
-      const anyData = rawData as any;
-      if (anyData.sum && typeof anyData.sum === 'object') {
-        // Try to access common properties that might contain the sum
-        const possibleProps = ['line_total', 'value', 'total'];
-        for (const prop of possibleProps) {
-          if (prop in anyData.sum) {
-            const value = anyData.sum[prop];
-            if (typeof value === 'string') {
-              return parseFloat(value) || 0;
-            } else if (typeof value === 'number') {
-              return value;
-            }
-          }
-        }
-      }
+    // Return as number if it's already a number
+    if (typeof data === 'number') {
+      return data;
     }
     
     // If we get here, log the unexpected format and return 0
-    console.warn('Unexpected response format from sum query:', data);
+    console.warn('Unexpected response format from RPC function:', data);
     return 0;
   } catch (err) {
     console.error('Exception in fetchTotalLineAmount:', err);

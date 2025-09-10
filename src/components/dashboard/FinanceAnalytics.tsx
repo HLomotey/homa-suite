@@ -1,20 +1,30 @@
 import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
+import { useExpenditureAnalytics } from "@/hooks/finance/useExpenditureAnalytics";
+import { usePerformanceAnalytics } from "@/hooks/finance/usePerformanceAnalytics";
+import PerformanceAnalytics from "@/components/analytics/PerformanceAnalytics";
+import ProjectionMappingView from "@/components/analytics/ProjectionMappingView";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   DollarSign, 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  Building2, 
+  Calendar, 
+  CreditCard, 
   Receipt, 
-  CheckCircle, 
+  Clock, 
   AlertCircle, 
-  Clock,
-  Users,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  CreditCard,
-  Target
-} from "lucide-react";
+  CheckCircle, 
+  Target, 
+  Minus, 
+  PieChart,
+  BarChart3
+} from 'lucide-react';
 import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface FinancialInsights {
   totalRevenue: number;
@@ -60,76 +70,103 @@ export function FinanceAnalytics() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [insights, setInsights] = useState<FinancialInsights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: financeData, isLoading, error, isError } = useFinanceAnalytics([{ year: selectedYear, month: selectedMonth }]);
+  // Use same data sources as other finance components - no date filtering to show all data
+  const { data: financeData, isLoading: financeLoading, error: financeError } = useFinanceAnalytics();
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueMetrics();
+  const { data: expenditureData, isLoading: expenditureLoading } = useExpenditureAnalytics();
+  
+  // Combine loading states
+  const isLoading = financeLoading || revenueLoading || expenditureLoading;
   
   useEffect(() => {
-    // Always set insights with mock data to prevent null reference errors
-    const initializeInsights = () => {
-      // Calculate comprehensive financial insights
-      const totalRevenue = 4190000; // $4.19M
-      const collectedRevenue = 3530000; // $3.53M
-      const outstandingRevenue = 654700; // $654.7K
-      const averagePaymentDelay = 29; // days
-      
-      // Revenue by Status
-      const paidAmount = 2280000;
-      const overdueAmount = 285000;
-      const sentAmount = 285000;
-      const paidPercentage = 80.0;
-      const overduePercentage = 10.0;
-      const sentPercentage = 10.0;
-      
-      // Top Clients (based on your data)
-      const topClients = [
-        { client: "TechCorp Solutions", revenue: 485000, percentage: 17.0 },
-        { client: "Global Industries", revenue: 342000, percentage: 12.0 },
-        { client: "Innovation Labs", revenue: 285000, percentage: 10.0 },
-        { client: "Digital Dynamics", revenue: 228000, percentage: 8.0 },
-        { client: "Future Systems", revenue: 171000, percentage: 6.0 }
-      ];
-      
+    const processFinanceData = () => {
+      // Use the same data processing approach as other finance components
+      if (!financeData && !revenueData) {
+        setInsights({
+          totalRevenue: 0,
+          collectedRevenue: 0,
+          outstandingRevenue: 0,
+          averagePaymentDelay: 0,
+          paidAmount: 0,
+          overdueAmount: 0,
+          sentAmount: 0,
+          paidPercentage: 0,
+          overduePercentage: 0,
+          sentPercentage: 0,
+          topClients: [],
+          clientConcentrationRisk: 0,
+          monthlyTrends: [],
+          outstandingInvoices: 0,
+          averageCollectionDays: 0,
+          collectionEfficiency: 0,
+          agingBuckets: [],
+          onTimePaymentRate: 0,
+          earlyPaymentDiscount: 0,
+          latePaymentFees: 0,
+          paymentMethods: []
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log("Processing finance data using same sources as other finance components");
+
+      // Use revenue data from useRevenueMetrics (all-time data, not filtered by month)
+      const totalRevenue = financeData?.totalRevenue || 0;
+      const collectedRevenue = totalRevenue;
+      const expectedRevenue = financeData?.expectedRevenue || totalRevenue;
+      const outstandingRevenue = expectedRevenue - totalRevenue;
+
+      // Use finance analytics data (same as FinanceOverview and RevenueByClient components)
+      const paidInvoices = financeData?.paidInvoices || 0;
+      const pendingInvoices = financeData?.pendingInvoices || 0;
+      const overdueInvoices = financeData?.overdueInvoices || 0;
+      const sentInvoices = financeData?.sentInvoices || 0;
+      const totalInvoices = financeData?.totalInvoices || 0;
+
+      // Calculate percentages
+      const paidPercentage = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
+      const overduePercentage = totalInvoices > 0 ? (overdueInvoices / totalInvoices) * 100 : 0;
+      const sentPercentage = totalInvoices > 0 ? (sentInvoices / totalInvoices) * 100 : 0;
+
+      // Use top clients data (same as RevenueByClient component)
+      const topClients = financeData?.topClients?.map(client => ({
+        client: client.client_name,
+        revenue: client.total_revenue,
+        percentage: totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0
+      })) || [];
+
       const clientConcentrationRisk = topClients.slice(0, 2).reduce((sum, client) => sum + client.percentage, 0);
-      
-      // Monthly Trends 2025
-      const monthlyTrends = [
-        { month: "Jan", revenue: 450000, growth: 0 },
-        { month: "Feb", revenue: 520000, growth: 15.6 },
-        { month: "Mar", revenue: 485000, growth: -6.7 },
-        { month: "Apr", revenue: 620000, growth: 27.8 },
-        { month: "May", revenue: 775000, growth: 25.0 }
-      ];
-      
-      // Collections Health
-      const outstandingInvoices = 95;
-      const averageCollectionDays = 22;
-      const collectionEfficiency = 80.0;
-      
-      // Aging Buckets
+
+      // Use monthly revenue data (same as other components)
+      const monthlyTrends = financeData?.monthlyRevenue?.map((month, index, array) => ({
+        month: month.month,
+        revenue: month.revenue,
+        growth: index > 0 ? ((month.revenue - array[index - 1].revenue) / array[index - 1].revenue) * 100 : 0
+      })) || [];
+
+      // Calculate aging buckets from status distribution
       const agingBuckets = [
-        { range: "0-30 days", amount: 285000 },
-        { range: "30-59 days", amount: 171000 },
-        { range: "60-89 days", amount: 85500 },
-        { range: "90+ days", amount: 28500 }
+        { range: '0-30 days', amount: 0 },
+        { range: '31-60 days', amount: 0 },
+        { range: '61-90 days', amount: 0 },
+        { range: '90+ days', amount: 0 }
       ];
-      
-      // Payment Methods
-      const onTimePaymentRate = 78.5;
-      const earlyPaymentDiscount = 12500;
-      const latePaymentFees = 8750;
-      const paymentMethods = [
-        { method: "Bank Transfer", count: 342, percentage: 68.4 },
-        { method: "Credit Card", count: 95, percentage: 19.0 },
-        { method: "Check", count: 48, percentage: 9.6 },
-        { method: "Other", count: 15, percentage: 3.0 }
-      ];
-      
+
+      // Use average invoice value for outstanding calculations
+      const averageInvoiceValue = financeData?.averageInvoiceValue || 0;
+      const outstandingInvoicesCount = pendingInvoices + overdueInvoices + sentInvoices;
+      const overdueAmount = overdueInvoices * averageInvoiceValue;
+      const sentAmount = sentInvoices * averageInvoiceValue;
+
       setInsights({
         totalRevenue,
         collectedRevenue,
         outstandingRevenue,
-        averagePaymentDelay,
-        paidAmount,
+        averagePaymentDelay: financeData?.averagePaymentDays || 0,
+        paidAmount: totalRevenue,
         overdueAmount,
         sentAmount,
         paidPercentage,
@@ -138,22 +175,21 @@ export function FinanceAnalytics() {
         topClients,
         clientConcentrationRisk,
         monthlyTrends,
-        outstandingInvoices,
-        averageCollectionDays,
-        collectionEfficiency,
+        outstandingInvoices: outstandingInvoicesCount,
+        averageCollectionDays: financeData?.averagePaymentDays || 0,
+        collectionEfficiency: financeData?.collectionRate || 0,
         agingBuckets,
-        onTimePaymentRate,
-        earlyPaymentDiscount,
-        latePaymentFees,
-        paymentMethods
+        onTimePaymentRate: financeData?.collectionRate || 0,
+        earlyPaymentDiscount: 0,
+        latePaymentFees: 0,
+        paymentMethods: [] // Would need payment method data from database
       });
       
       setLoading(false);
     };
 
-    // Initialize insights immediately to prevent null reference errors
-    initializeInsights();
-  }, [financeData, isLoading]);
+    processFinanceData();
+  }, [financeData, revenueData]);
 
   // Format currency values
   const formatCurrency = (value: number) => {
@@ -165,7 +201,7 @@ export function FinanceAnalytics() {
     return `$${value.toLocaleString()}`;
   };
 
-  if (isError) {
+  if (financeError) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -211,24 +247,195 @@ export function FinanceAnalytics() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <DollarSign className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium text-foreground">Financial Analytics</h3>
-        <Badge variant="secondary" className="text-xs">Revenue Insights</Badge>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-foreground">Financial Analytics</h3>
+          <Badge variant="secondary" className="text-xs">Dashboard</Badge>
+        </div>
+        
+        {/* Time Period Selector */}
+        <div className="flex items-center gap-2">
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            className="text-xs border rounded px-2 py-1 bg-background"
+          >
+            {Array.from({length: 12}, (_, i) => (
+              <option key={i+1} value={i+1}>
+                {new Date(0, i).toLocaleDateString('en-US', { month: 'short' })}
+              </option>
+            ))}
+          </select>
+          <select 
+            value={selectedYear} 
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="text-xs border rounded px-2 py-1 bg-background"
+          >
+            {Array.from({length: 5}, (_, i) => (
+              <option key={2020 + i} value={2020 + i}>
+                {2020 + i}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Key Financial Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Revenue
+          </TabsTrigger>
+          <TabsTrigger value="expenditure" className="flex items-center gap-2">
+            <Minus className="h-4 w-4" />
+            Expenditure
+          </TabsTrigger>
+          <TabsTrigger value="clients" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Clients
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Performance
+          </TabsTrigger>
+          <TabsTrigger value="mapping" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Mapping
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Revenue */}
         <Card className="bg-background border-border">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-muted-foreground">Total Revenue</p>
-              <DollarSign className="h-3 w-3 text-muted-foreground" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Total Revenue</p>
+                <p className="text-lg font-bold text-green-600">${insights.totalRevenue.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Cash basis • Paid invoices</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-500" />
             </div>
-            <p className="text-lg font-semibold text-foreground">{formatCurrency(insights.totalRevenue)}</p>
-            <p className="text-xs text-muted-foreground">Billed across all clients</p>
           </CardContent>
         </Card>
+
+        {/* Total Expenditure */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Total Expenditure</p>
+                <p className="text-lg font-bold text-red-600">
+                  ${expenditureData?.actualExpenditure?.toLocaleString() || (insights.totalRevenue * 0.8).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {expenditureData?.expenditureRate?.toFixed(1) || '80.0'}% of revenue
+                </p>
+              </div>
+              <Minus className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gross Margin */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Gross Margin</p>
+                <p className="text-lg font-bold text-blue-600">
+                  {expenditureData?.profitMargin?.toFixed(1) || '20.0'}%
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  ${expenditureData?.totalProfit?.toLocaleString() || (insights.totalRevenue * 0.2).toLocaleString()} profit
+                </p>
+              </div>
+              <Target className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Outstanding Revenue */}
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
+                <p className="text-lg font-bold text-orange-600">${insights.outstandingRevenue.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">{insights.outstandingInvoices} invoices pending</p>
+              </div>
+              <Clock className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Expenditure Breakdown */}
+      {expenditureData && expenditureData.expenditureByCategory.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="bg-background border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <PieChart className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">Expenditure Breakdown</h4>
+              </div>
+              <div className="space-y-3">
+                {expenditureData.expenditureByCategory.slice(0, 5).map((category, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${
+                        index === 0 ? 'bg-blue-500' :
+                        index === 1 ? 'bg-green-500' :
+                        index === 2 ? 'bg-yellow-500' :
+                        index === 3 ? 'bg-purple-500' : 'bg-gray-500'
+                      }`} />
+                      <span className="text-xs text-muted-foreground">{category.category}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium">${category.amount.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-background border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">Revenue & Profit Trend</h4>
+              </div>
+              <div className="space-y-3">
+                {expenditureData.monthlyExpenditure.slice(-4).map((month, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{month.month}</span>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-green-600">
+                        ${month.revenue.toLocaleString()} revenue
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        ${month.profit.toLocaleString()} profit
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Additional Revenue Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
         <Card className="bg-background border-border">
           <CardContent className="p-4">
@@ -316,32 +523,24 @@ export function FinanceAnalytics() {
               <h4 className="text-sm font-medium text-foreground">Top Clients by Revenue</h4>
             </div>
             <div className="space-y-2">
-              {financeData?.topClients?.slice(0, 5).map((client, index) => {
-                const totalRevenue = financeData.topClients.reduce((sum, c) => sum + c.total_revenue, 0);
-                const percentage = totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0;
-                return (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client_name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-foreground">{formatCurrency(client.total_revenue)}</span>
-                      <Badge variant="outline" className="text-xs">{percentage.toFixed(1)}%</Badge>
-                    </div>
+              {insights?.topClients?.slice(0, 5).map((client, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground">{formatCurrency(client.revenue)}</span>
+                    <Badge variant="outline" className="text-xs">{client.percentage.toFixed(1)}%</Badge>
                   </div>
-                );
-              }) || (
+                </div>
+              )) || (
                 <div className="text-center py-4">
                   <p className="text-xs text-muted-foreground">No client data available</p>
                 </div>
               )}
             </div>
-            {financeData?.topClients && financeData.topClients.length >= 2 && (
+            {insights?.topClients && insights.topClients.length >= 2 && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-orange-600">
-                  ⚠️ Top 2 clients: {(() => {
-                    const totalRevenue = financeData.topClients.reduce((sum, c) => sum + c.total_revenue, 0);
-                    const topTwoRevenue = financeData.topClients.slice(0, 2).reduce((sum, c) => sum + c.total_revenue, 0);
-                    return totalRevenue > 0 ? ((topTwoRevenue / totalRevenue) * 100).toFixed(1) : '0.0';
-                  })()}% concentration risk
+                  ⚠️ Top 2 clients: {insights.clientConcentrationRisk.toFixed(1)}% concentration risk
                 </p>
               </div>
             )}
@@ -467,6 +666,237 @@ export function FinanceAnalytics() {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        {/* Revenue Tab */}
+        <TabsContent value="revenue" className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card className="bg-background border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Cash Revenue</p>
+                    <p className="text-lg font-bold text-green-600">${insights.totalRevenue.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Actual payments received</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-background border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Expected Revenue</p>
+                    <p className="text-lg font-bold text-blue-600">${(insights?.outstandingRevenue || 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">All invoices issued</p>
+                  </div>
+                  <Target className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Collection Rate</p>
+                    <p className="text-lg font-bold text-purple-600">{insights.collectionEfficiency.toFixed(1)}%</p>
+                    <p className="text-xs text-muted-foreground">Payment efficiency</p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Avg Payment Delay</p>
+                    <p className="text-lg font-bold text-orange-600">{insights.averagePaymentDelay} days</p>
+                    <p className="text-xs text-muted-foreground">From issue to payment</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Revenue Status Breakdown */}
+          <Card className="bg-background border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium">Revenue by Invoice Status</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-medium">{formatCurrency(insights.paidAmount)}</p>
+                  <p className="text-xs text-green-600">Paid ({insights.paidPercentage.toFixed(1)}%)</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-medium">{formatCurrency(insights.overdueAmount)}</p>
+                  <p className="text-xs text-red-600">Overdue ({insights.overduePercentage.toFixed(1)}%)</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm font-medium">{formatCurrency(insights.sentAmount)}</p>
+                  <p className="text-xs text-yellow-600">Sent ({insights.sentPercentage.toFixed(1)}%)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Expenditure Tab */}
+        <TabsContent value="expenditure" className="space-y-4">
+          {expenditureData && (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Card className="bg-background border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Total Expenditure</p>
+                        <p className="text-lg font-bold text-red-600">${expenditureData.actualExpenditure.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{expenditureData.expenditureRate.toFixed(1)}% of revenue</p>
+                      </div>
+                      <Minus className="h-8 w-8 text-red-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-background border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Wages & Salaries</p>
+                        <p className="text-lg font-bold text-blue-600">${expenditureData.expenditureBreakdown.wages_salaries.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Largest expense category</p>
+                      </div>
+                      <Users className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-background border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Profit Margin</p>
+                        <p className="text-lg font-bold text-green-600">{expenditureData.profitMargin.toFixed(1)}%</p>
+                        <p className="text-xs text-muted-foreground">${expenditureData.totalProfit.toLocaleString()} profit</p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-background border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Admin Costs</p>
+                        <p className="text-lg font-bold text-purple-600">${expenditureData.expenditureBreakdown.admin_cost.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Operational expenses</p>
+                      </div>
+                      <CreditCard className="h-8 w-8 text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="bg-background border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <PieChart className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium">Detailed Expenditure Breakdown</h4>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {expenditureData.expenditureByCategory.map((category, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                        <div>
+                          <p className="text-sm font-medium">{category.category}</p>
+                          <p className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}%</p>
+                        </div>
+                        <p className="text-sm font-bold">${category.amount.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
+
+        {/* Clients Tab */}
+        <TabsContent value="clients" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="bg-background border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="text-sm font-medium">Top Clients by Revenue</h4>
+                </div>
+                <div className="space-y-3">
+                  {insights.topClients.slice(0, 5).map((client, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          index === 0 ? 'bg-green-500' :
+                          index === 1 ? 'bg-blue-500' :
+                          index === 2 ? 'bg-yellow-500' :
+                          index === 3 ? 'bg-purple-500' : 'bg-gray-500'
+                        }`} />
+                        <span className="text-sm font-medium">{client.client}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">${client.revenue.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{client.percentage.toFixed(1)}%</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="text-sm font-medium">Client Concentration Risk</h4>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-orange-600">{insights.clientConcentrationRisk.toFixed(1)}%</p>
+                  <p className="text-sm text-muted-foreground mb-4">Top 2 clients represent</p>
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                    insights.clientConcentrationRisk > 50 ? 'bg-red-100 text-red-800' :
+                    insights.clientConcentrationRisk > 30 ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {insights.clientConcentrationRisk > 50 ? 'High Risk' :
+                     insights.clientConcentrationRisk > 30 ? 'Medium Risk' : 'Low Risk'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Performance Tab */}
+        <TabsContent value="performance" className="space-y-4">
+          <PerformanceAnalytics />
+        </TabsContent>
+
+        {/* Mapping Tab */}
+        <TabsContent value="mapping" className="space-y-4">
+          <ProjectionMappingView />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -1,28 +1,42 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integration/supabase/client';
 
-// Define the finance invoice record interface to match the database schema
-interface FinanceInvoiceRecord {
+// Database view interfaces
+interface FinanceMonthlySummary {
+  year: number;
+  month: number;
+  month_start: string;
+  total_invoices: number;
+  paid_invoices: number;
+  sent_invoices: number;
+  overdue_invoices: number;
+  cancelled_invoices: number;
+  total_invoiced: number;
+  total_revenue: number;
+  outstanding_revenue: number;
+  average_invoice_value: number;
+  average_paid_invoice: number;
+  collection_rate: number;
+  unique_clients: number;
+}
+
+interface FinanceAnalyticsRecord {
   id: string;
   client_name: string;
   invoice_number: string;
   date_issued: string;
   invoice_status: 'paid' | 'pending' | 'overdue' | 'cancelled';
   date_paid: string | null;
-  item_name: string;
-  item_description: string;
-  rate: number;
-  quantity: number;
-  discount_percentage: number;
-  line_subtotal: number;
-  tax_1_type: string | null;
-  tax_1_amount: number;
-  tax_2_type: string | null;
-  tax_2_amount: number;
   line_total: number;
   currency: string;
-  created_at: string;
-  updated_at: string | null;
+  issue_year: number;
+  issue_month: number;
+  days_to_payment: number | null;
+  days_overdue: number | null;
+  status_category: string;
+  recognized_revenue: number;
+  outstanding_amount: number;
+  age_bucket: string;
 }
 
 export interface FinanceMetrics {
@@ -85,244 +99,171 @@ export interface FinanceAnalyticsData {
   invoices: InvoiceData[];
 }
 
-const TABLE_NAME = 'finance_invoices';
-
 export function useFinanceAnalytics(year: number, month: number) {
-  const [data, setData] = useState<FinanceAnalyticsData>({
-    metrics: {
-      totalRevenue: 0,
-      totalRevenueChange: 0,
-      totalInvoices: 0,
-      totalInvoicesChange: 0,
-      paidInvoices: 0,
-      paidInvoicesChange: 0,
-      outstanding: 0,
-      outstandingChange: 0,
-      overdue: 0,
-      overdueChange: 0,
-      pending: 0,
-      pendingChange: 0,
-      cancelledInvoices: 0,
-      cancelledInvoicesChange: 0,
-      collectionRate: 0,
-      collectionRateChange: 0,
-      averageInvoiceValue: 0,
+  return useQuery({
+    queryKey: ['finance-analytics', year, month],
+    queryFn: async (): Promise<FinanceAnalyticsData> => {
+      try {
+        // Fetch current month summary
+        const { data: currentSummary, error: currentError } = await supabase
+          .from('finance_monthly_summary')
+          .select('*')
+          .eq('year', year)
+          .eq('month', month)
+          .single();
+
+        if (currentError && currentError.code !== 'PGRST116') {
+          throw currentError;
+        }
+
+        // Fetch previous month for comparison
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        
+        const { data: prevSummary, error: prevError } = await supabase
+          .from('finance_monthly_summary')
+          .select('*')
+          .eq('year', prevYear)
+          .eq('month', prevMonth)
+          .single();
+
+        if (prevError && prevError.code !== 'PGRST116') {
+          throw prevError;
+        }
+
+        // Fetch last 6 months for trends
+        const { data: trendData, error: trendError } = await supabase
+          .from('finance_monthly_summary')
+          .select('*')
+          .gte('month_start', new Date(year, month - 7, 1).toISOString())
+          .lte('month_start', new Date(year, month, 0).toISOString())
+          .order('year', { ascending: true })
+          .order('month', { ascending: true });
+
+        if (trendError) throw trendError;
+
+        // Fetch current month invoices for detailed data
+        const { data: invoicesData, error: invoicesError } = await supabase
+          .from('finance_analytics_view')
+          .select('*')
+          .eq('issue_year', year)
+          .eq('issue_month', month)
+          .order('date_issued', { ascending: false });
+
+        if (invoicesError) throw invoicesError;
+
+        // Calculate metrics with comparison
+        const current = currentSummary as FinanceMonthlySummary | null;
+        const previous = prevSummary as FinanceMonthlySummary | null;
+
+        const calculateChange = (current: number, previous: number): number => {
+          if (!previous || previous === 0) return current > 0 ? 100 : 0;
+          return ((current - previous) / previous) * 100;
+        };
+
+        const metrics: FinanceMetrics = {
+          totalRevenue: current?.total_revenue || 0,
+          totalRevenueChange: calculateChange(
+            current?.total_revenue || 0,
+            previous?.total_revenue || 0
+          ),
+          totalInvoices: current?.total_invoices || 0,
+          totalInvoicesChange: calculateChange(
+            current?.total_invoices || 0,
+            previous?.total_invoices || 0
+          ),
+          paidInvoices: current?.paid_invoices || 0,
+          paidInvoicesChange: calculateChange(
+            current?.paid_invoices || 0,
+            previous?.paid_invoices || 0
+          ),
+          outstanding: current?.outstanding_revenue || 0,
+          outstandingChange: calculateChange(
+            current?.outstanding_revenue || 0,
+            previous?.outstanding_revenue || 0
+          ),
+          overdue: current?.overdue_invoices || 0,
+          overdueChange: calculateChange(
+            current?.overdue_invoices || 0,
+            previous?.overdue_invoices || 0
+          ),
+          pending: current?.sent_invoices || 0,
+          pendingChange: calculateChange(
+            current?.sent_invoices || 0,
+            previous?.sent_invoices || 0
+          ),
+          cancelledInvoices: current?.cancelled_invoices || 0,
+          cancelledInvoicesChange: calculateChange(
+            current?.cancelled_invoices || 0,
+            previous?.cancelled_invoices || 0
+          ),
+          collectionRate: current?.collection_rate || 0,
+          collectionRateChange: calculateChange(
+            current?.collection_rate || 0,
+            previous?.collection_rate || 0
+          ),
+          averageInvoiceValue: current?.average_invoice_value || 0,
+        };
+
+        // Generate trend data
+        const trends: TrendData[] = (trendData as FinanceMonthlySummary[] || []).map(item => ({
+          month: `${item.year}-${String(item.month).padStart(2, '0')}`,
+          revenue: item.total_revenue,
+          invoices: item.total_invoices,
+          paidInvoices: item.paid_invoices,
+        }));
+
+        // Generate top clients from current month invoices
+        const clientMap = new Map<string, { revenue: number; invoices: number }>();
+        (invoicesData as FinanceAnalyticsRecord[] || []).forEach(invoice => {
+          const existing = clientMap.get(invoice.client_name) || { revenue: 0, invoices: 0 };
+          clientMap.set(invoice.client_name, {
+            revenue: existing.revenue + invoice.line_total,
+            invoices: existing.invoices + 1,
+          });
+        });
+
+        const topClients: TopClientData[] = Array.from(clientMap.entries())
+          .map(([client_name, data]) => ({ client_name, ...data }))
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 5);
+
+        // Generate recent payments
+        const recentPayments: RecentPaymentData[] = (invoicesData as FinanceAnalyticsRecord[] || [])
+          .filter(invoice => invoice.invoice_status === 'paid' && invoice.date_paid)
+          .sort((a, b) => new Date(b.date_paid!).getTime() - new Date(a.date_paid!).getTime())
+          .slice(0, 10)
+          .map(invoice => ({
+            id: invoice.id,
+            client_name: invoice.client_name,
+            invoice_number: invoice.invoice_number,
+            amount: invoice.line_total,
+            date_paid: invoice.date_paid!,
+          }));
+
+        // Convert to invoice format
+        const invoices: InvoiceData[] = (invoicesData as FinanceAnalyticsRecord[] || []).map(record => ({
+          id: record.id,
+          client_name: record.client_name,
+          invoice_number: record.invoice_number,
+          amount: record.line_total,
+          status: record.invoice_status,
+          date_issued: record.date_issued,
+          date_paid: record.date_paid,
+          item_name: '', // Not available in analytics view
+        }));
+
+        return {
+          metrics,
+          trends,
+          topClients,
+          recentPayments,
+          invoices,
+        };
+      } catch (error) {
+        console.error('Error fetching finance analytics:', error);
+        throw new Error('Failed to fetch finance analytics');
+      }
     },
-    trends: [],
-    topClients: [],
-    recentPayments: [],
-    invoices: [],
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-
-  const fetchInvoices = useCallback(async (
-    startDate: string,
-    endDate: string,
-    signal?: AbortSignal
-  ): Promise<FinanceInvoiceRecord[]> => {
-    try {
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .select('*')
-        .gte('date_issued', startDate)
-        .lte('date_issued', endDate)
-        .order('date_issued', { ascending: false });
-
-      if (error) throw error;
-      return data as FinanceInvoiceRecord[] || [];
-    } catch (error) {
-      console.error('Error fetching invoices:', error);
-      throw error;
-    }
-  }, []);
-
-  const calculateMetrics = useCallback((records: FinanceInvoiceRecord[], previousRecords: FinanceInvoiceRecord[]): FinanceMetrics => {
-    // Current period metrics
-    const totalRevenue = records.reduce((sum, record) => sum + record.line_total, 0);
-    const totalInvoices = records.length;
-    const paidInvoices = records.filter(r => r.invoice_status === 'paid').length;
-    const pendingInvoices = records.filter(r => r.invoice_status === 'pending').length;
-    const overdueInvoices = records.filter(r => r.invoice_status === 'overdue').length;
-    const cancelledInvoices = records.filter(r => r.invoice_status === 'cancelled').length;
-    const outstanding = records.filter(r => r.invoice_status !== 'paid').reduce((sum, r) => sum + r.line_total, 0);
-    const collectionRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
-    const averageInvoiceValue = totalInvoices > 0 ? totalRevenue / totalInvoices : 0;
-
-    // Previous period metrics for comparison
-    const prevTotalRevenue = previousRecords.reduce((sum, record) => sum + record.line_total, 0);
-    const prevTotalInvoices = previousRecords.length;
-    const prevPaidInvoices = previousRecords.filter(r => r.invoice_status === 'paid').length;
-    const prevPendingInvoices = previousRecords.filter(r => r.invoice_status === 'pending').length;
-    const prevOverdueInvoices = previousRecords.filter(r => r.invoice_status === 'overdue').length;
-    const prevCancelledInvoices = previousRecords.filter(r => r.invoice_status === 'cancelled').length;
-    const prevOutstanding = previousRecords.filter(r => r.invoice_status !== 'paid').reduce((sum, r) => sum + r.line_total, 0);
-    const prevCollectionRate = prevTotalInvoices > 0 ? (prevPaidInvoices / prevTotalInvoices) * 100 : 0;
-
-    // Calculate percentage changes
-    const calculateChange = (current: number, previous: number): number => {
-      if (previous === 0) return current > 0 ? 100 : 0;
-      return ((current - previous) / previous) * 100;
-    };
-
-    return {
-      totalRevenue,
-      totalRevenueChange: calculateChange(totalRevenue, prevTotalRevenue),
-      totalInvoices,
-      totalInvoicesChange: calculateChange(totalInvoices, prevTotalInvoices),
-      paidInvoices,
-      paidInvoicesChange: calculateChange(paidInvoices, prevPaidInvoices),
-      outstanding,
-      outstandingChange: calculateChange(outstanding, prevOutstanding),
-      overdue: overdueInvoices,
-      overdueChange: calculateChange(overdueInvoices, prevOverdueInvoices),
-      pending: pendingInvoices,
-      pendingChange: calculateChange(pendingInvoices, prevPendingInvoices),
-      cancelledInvoices,
-      cancelledInvoicesChange: calculateChange(cancelledInvoices, prevCancelledInvoices),
-      collectionRate,
-      collectionRateChange: calculateChange(collectionRate, prevCollectionRate),
-      averageInvoiceValue,
-    };
-  }, []);
-
-  const generateTrendData = useCallback((records: FinanceInvoiceRecord[]): TrendData[] => {
-    const monthlyData = new Map<string, { revenue: number; invoices: number; paidInvoices: number }>();
-
-    records.forEach(record => {
-      const date = new Date(record.date_issued);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (!monthlyData.has(monthKey)) {
-        monthlyData.set(monthKey, { revenue: 0, invoices: 0, paidInvoices: 0 });
-      }
-      
-      const data = monthlyData.get(monthKey)!;
-      data.revenue += record.line_total;
-      data.invoices += 1;
-      if (record.invoice_status === 'paid') {
-        data.paidInvoices += 1;
-      }
-    });
-
-    return Array.from(monthlyData.entries())
-      .map(([month, data]) => ({
-        month,
-        ...data
-      }))
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6); // Last 6 months
-  }, []);
-
-  const generateTopClients = useCallback((records: FinanceInvoiceRecord[]): TopClientData[] => {
-    const clientData = new Map<string, { revenue: number; invoices: number }>();
-
-    records.forEach(record => {
-      const clientName = record.client_name;
-      
-      if (!clientData.has(clientName)) {
-        clientData.set(clientName, { revenue: 0, invoices: 0 });
-      }
-      
-      const data = clientData.get(clientName)!;
-      data.revenue += record.line_total;
-      data.invoices += 1;
-    });
-
-    return Array.from(clientData.entries())
-      .map(([client_name, data]) => ({
-        client_name,
-        ...data
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5); // Top 5 clients
-  }, []);
-
-  const generateRecentPayments = useCallback((records: FinanceInvoiceRecord[]): RecentPaymentData[] => {
-    return records
-      .filter(record => record.invoice_status === 'paid' && record.date_paid)
-      .sort((a, b) => new Date(b.date_paid!).getTime() - new Date(a.date_paid!).getTime())
-      .slice(0, 10)
-      .map(record => ({
-        id: record.id,
-        client_name: record.client_name,
-        invoice_number: record.invoice_number,
-        amount: record.line_total,
-        date_paid: record.date_paid!
-      }));
-  }, []);
-
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const controller = new AbortController();
-      const signal = controller.signal;
-
-      // Current period filter
-      const currentStartDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-      const currentEndDate = new Date(year, month, 0).toISOString().split('T')[0];
-      
-      // Previous period filter
-      const prevMonth = month === 1 ? 12 : month - 1;
-      const prevYear = month === 1 ? year - 1 : year;
-      const prevStartDate = new Date(prevYear, prevMonth - 1, 1).toISOString().split('T')[0];
-      const prevEndDate = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0];
-
-      // Fetch current period data
-      const currentRecords = await fetchInvoices(currentStartDate, currentEndDate, signal);
-
-      // Fetch previous period data for comparison
-      const previousRecords = await fetchInvoices(prevStartDate, prevEndDate, signal);
-
-      // Fetch last 6 months for trends
-      const sixMonthsAgo = new Date(year, month - 7, 1).toISOString().split('T')[0];
-      const currentDate = new Date(year, month, 0).toISOString().split('T')[0];
-      const trendRecords = await fetchInvoices(sixMonthsAgo, currentDate, signal);
-
-      // Calculate all analytics
-      const metrics = calculateMetrics(currentRecords, previousRecords);
-      const trends = generateTrendData(trendRecords);
-      const topClients = generateTopClients(currentRecords);
-      const recentPayments = generateRecentPayments(currentRecords);
-
-      // Convert records to invoice format
-      const invoices: InvoiceData[] = currentRecords.map(record => ({
-        id: record.id,
-        client_name: record.client_name,
-        invoice_number: record.invoice_number,
-        amount: record.line_total,
-        status: record.invoice_status,
-        date_issued: record.date_issued,
-        date_paid: record.date_paid,
-        item_name: record.item_name
-      }));
-
-      setData({
-        metrics,
-        trends,
-        topClients,
-        recentPayments,
-        invoices
-      });
-
-    } catch (err) {
-      console.error('Error fetching finance analytics:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch finance analytics');
-    } finally {
-      setLoading(false);
-    }
-  }, [year, month, fetchInvoices, calculateMetrics, generateTrendData, generateTopClients, generateRecentPayments]);
-
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
-
-  return {
-    data,
-    loading,
-    error,
-    refetch
-  };
 }

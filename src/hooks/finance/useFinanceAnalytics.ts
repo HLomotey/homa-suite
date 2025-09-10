@@ -16,10 +16,27 @@ export const invalidateFinanceCache = () => {
   const queryClient = useQueryClient();
   queryClient.invalidateQueries({ queryKey: ["finance-analytics"] });
   queryClient.invalidateQueries({ queryKey: ["revenue-metrics"] });
+  queryClient.invalidateQueries({ queryKey: ["finance-view-analytics"] });
+};
+
+// Function to refresh materialized view
+export const refreshFinanceSummary = async () => {
+  try {
+    const { error } = await supabaseAdmin.rpc('refresh_finance_monthly_summary');
+    if (error) {
+      console.error('Error refreshing finance summary:', error);
+    } else {
+      console.log('Finance summary refreshed successfully');
+      invalidateFinanceCache();
+    }
+  } catch (error) {
+    console.error('Error calling refresh function:', error);
+  }
 };
 
 export interface FinanceMetrics {
-  totalRevenue: number;
+  totalRevenue: number; // Cash basis - actual revenue from paid invoices
+  expectedRevenue: number; // Accrual basis - all invoices regardless of payment status
   totalInvoices: number;
   paidInvoices: number;
   pendingInvoices: number;
@@ -30,7 +47,7 @@ export interface FinanceMetrics {
   collectionRate: number;
   monthlyRevenue: Array<{
     month: string;
-    revenue: number;
+    revenue: number; // Cash basis - based on payment_date
     invoices: number;
   }>;
   statusDistribution: Array<{
@@ -40,9 +57,15 @@ export interface FinanceMetrics {
   }>;
   topClients: Array<{
     client_name: string;
-    total_revenue: number;
+    total_revenue: number; // Cash basis - only paid invoices
     invoice_count: number;
   }>;
+  agingBuckets: Array<{
+    range: string;
+    amount: number;
+    count: number;
+  }>;
+  averagePaymentDays: number;
   isDataComplete: boolean; // Flag to indicate if all data was retrieved
 }
 
@@ -145,11 +168,14 @@ const fetchAllInvoicesPaginated = async (
     console.log(`Fetching data for ${range.year}-${range.month} (${startDate} to ${endDate})`);
     
     // Get count for this range - try view first, fallback to table
+    // For cash basis accounting, filter by payment date for paid invoices
     let rangeQuery = supabaseAdmin
       .from("finance_analytics_view")
       .select("id", { count: "exact", head: true })
-      .gte("date_issued", startDate)
-      .lte("date_issued", endDate);
+      .eq("invoice_status", "paid")
+      .not("date_paid", "is", null)
+      .gte("date_paid", startDate)
+      .lte("date_paid", endDate);
     
     let { count: rangeCount, error: countError } = await rangeQuery;
     
@@ -159,8 +185,10 @@ const fetchAllInvoicesPaginated = async (
       rangeQuery = supabaseAdmin
         .from("finance_invoices")
         .select("id", { count: "exact", head: true })
-        .gte("date_issued", startDate)
-        .lte("date_issued", endDate);
+        .eq("invoice_status", "paid")
+        .not("date_paid", "is", null)
+        .gte("date_paid", startDate)
+        .lte("date_paid", endDate);
       const fallbackResult = await rangeQuery;
       rangeCount = fallbackResult.count;
       countError = fallbackResult.error;
@@ -186,8 +214,10 @@ const fetchAllInvoicesPaginated = async (
       let rangePageQuery = supabaseAdmin
         .from("finance_analytics_view")
         .select("*")
-        .gte("date_issued", startDate)
-        .lte("date_issued", endDate)
+        .eq("invoice_status", "paid")
+        .not("date_paid", "is", null)
+        .gte("date_paid", startDate)
+        .lte("date_paid", endDate)
         .order("id", { ascending: true })
         .range(from, to);
       
@@ -198,8 +228,10 @@ const fetchAllInvoicesPaginated = async (
         rangePageQuery = supabaseAdmin
           .from("finance_invoices")
           .select("*")
-          .gte("date_issued", startDate)
-          .lte("date_issued", endDate)
+          .eq("invoice_status", "paid")
+          .not("date_paid", "is", null)
+          .gte("date_paid", startDate)
+          .lte("date_paid", endDate)
           .order("id", { ascending: true })
           .range(from, to);
         const fallbackResult = await rangePageQuery;
@@ -276,8 +308,22 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         );
       }
 
-      // Calculate total revenue directly from the fetched invoices
-      const totalRevenue = typedInvoices.reduce(
+      // Calculate actual revenue (cash basis) - only from paid invoices with date_paid
+      const actualRevenue = typedInvoices.reduce(
+        (sum, invoice) => {
+          // Only count revenue if invoice is paid AND has a payment date
+          if (invoice.invoice_status !== 'paid' || !invoice.date_paid) return sum;
+          
+          const lineTotal = invoice.line_total;
+          if (lineTotal === null || lineTotal === undefined) return sum;
+          const numericValue = typeof lineTotal === 'number' ? lineTotal : parseFloat(lineTotal);
+          return sum + (isNaN(numericValue) ? 0 : numericValue);
+        },
+        0
+      );
+
+      // Calculate expected revenue (accrual basis) - all invoices regardless of payment status
+      const expectedRevenue = typedInvoices.reduce(
         (sum, invoice) => {
           const lineTotal = invoice.line_total;
           if (lineTotal === null || lineTotal === undefined) return sum;
@@ -286,6 +332,9 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         },
         0
       );
+
+      // Use actual revenue as the primary totalRevenue for cash basis accounting
+      const totalRevenue = actualRevenue;
 
       // Calculate invoice status counts
       const statusCounts = typedInvoices.reduce((acc, inv) => {
@@ -300,8 +349,11 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
       const cancelledInvoices = statusCounts.cancelled || 0;
       const collectionRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
 
-      // Client revenue aggregation
+      // Client revenue aggregation - cash basis (only paid invoices with payment dates)
       const clientData = typedInvoices.reduce((acc, inv) => {
+        // Only include paid invoices with payment dates for cash basis accounting
+        if (inv.invoice_status !== 'paid' || !inv.date_paid) return acc;
+        
         const clientName = inv.client_name || "Unknown Client";
         if (!acc[clientName]) {
           acc[clientName] = { total_revenue: 0, invoice_count: 0 };
@@ -325,9 +377,12 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
       const averageInvoiceValue =
         totalInvoices > 0 ? totalRevenue / totalInvoices : 0;
 
-      // Monthly revenue aggregation
+      // Monthly revenue aggregation - cash basis (use payment date for paid invoices)
       const monthlyData = typedInvoices.reduce((acc, inv) => {
-        const month = new Date(inv.date_issued).toLocaleDateString("en-US", {
+        // For cash basis accounting, use payment date for paid invoices, skip unpaid ones
+        if (inv.invoice_status !== 'paid' || !inv.date_paid) return acc;
+        
+        const month = new Date(inv.date_paid).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
         });
@@ -362,8 +417,57 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         })
       );
 
+      // Calculate aging buckets from the data
+      const agingBuckets = [
+        { range: '0-30 days', amount: 0, count: 0 },
+        { range: '31-60 days', amount: 0, count: 0 },
+        { range: '61-90 days', amount: 0, count: 0 },
+        { range: '90+ days', amount: 0, count: 0 }
+      ];
+
+      // Calculate average payment days
+      const paidInvoicesWithDates = typedInvoices.filter(inv => 
+        inv.invoice_status === 'paid' && inv.date_paid && inv.date_issued
+      );
+      
+      const totalPaymentDays = paidInvoicesWithDates.reduce((sum, inv) => {
+        const paymentDate = new Date(inv.date_paid);
+        const issueDate = new Date(inv.date_issued);
+        const daysDiff = Math.floor((paymentDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+        return sum + daysDiff;
+      }, 0);
+      
+      const averagePaymentDays = paidInvoicesWithDates.length > 0 
+        ? totalPaymentDays / paidInvoicesWithDates.length 
+        : 0;
+
+      // Populate aging buckets for outstanding invoices
+      typedInvoices.forEach(inv => {
+        if (inv.invoice_status !== 'paid') {
+          const issueDate = new Date(inv.date_issued);
+          const currentDate = new Date();
+          const daysSinceIssue = Math.floor((currentDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+          const amount = parseFloat(inv.line_total) || 0;
+          
+          if (daysSinceIssue <= 30) {
+            agingBuckets[0].amount += amount;
+            agingBuckets[0].count += 1;
+          } else if (daysSinceIssue <= 60) {
+            agingBuckets[1].amount += amount;
+            agingBuckets[1].count += 1;
+          } else if (daysSinceIssue <= 90) {
+            agingBuckets[2].amount += amount;
+            agingBuckets[2].count += 1;
+          } else {
+            agingBuckets[3].amount += amount;
+            agingBuckets[3].count += 1;
+          }
+        }
+      });
+
       return {
         totalRevenue: isNaN(totalRevenue) ? 0 : totalRevenue,
+        expectedRevenue: isNaN(expectedRevenue) ? 0 : expectedRevenue,
         totalInvoices: totalInvoices || 0,
         paidInvoices: paidInvoices || 0,
         pendingInvoices: pendingInvoices || 0,
@@ -375,6 +479,8 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         topClients: topClients || [],
         monthlyRevenue: monthlyRevenue || [],
         statusDistribution: statusDistribution || [],
+        agingBuckets: agingBuckets,
+        averagePaymentDays: isNaN(averagePaymentDays) ? 0 : averagePaymentDays,
         isDataComplete: totalInvoices === totalCount,
       };
       } catch (error) {
@@ -382,6 +488,7 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
         // Return safe default values to prevent crashes
         return {
           totalRevenue: 0,
+          expectedRevenue: 0,
           totalInvoices: 0,
           paidInvoices: 0,
           pendingInvoices: 0,
@@ -393,11 +500,330 @@ export function useFinanceAnalytics(dateRanges?: DateRange[]) {
           topClients: [],
           monthlyRevenue: [],
           statusDistribution: [],
+          agingBuckets: [],
+          averagePaymentDays: 0,
           isDataComplete: false,
         };
       }
     },
     staleTime: 30 * 1000, // 30 seconds
+    retry: 3,
+    retryDelay: 1000,
+  });
+}
+
+// New hook that uses the database views for better performance
+export function useFinanceViewAnalytics(dateRanges?: DateRange[]) {
+  return useQuery({
+    queryKey: ["finance-view-analytics", dateRanges],
+    queryFn: async (): Promise<FinanceMetrics> => {
+      try {
+        console.log("Fetching finance analytics from database views...");
+
+        // First try to get data from the monthly summary materialized view
+        let monthlyData: any[] = [];
+        try {
+          const { data: monthlySummary, error: monthlyError } = await supabaseAdmin
+            .from("finance_monthly_summary")
+            .select("*")
+            .order("year", { ascending: true })
+            .order("month", { ascending: true });
+
+          if (monthlyError) {
+            console.warn("Monthly summary view not available:", monthlyError.message);
+          } else {
+            monthlyData = monthlySummary || [];
+          }
+        } catch (error) {
+          console.warn("Error fetching monthly summary:", error);
+        }
+
+        // Get detailed data from analytics view for current period
+        let detailedData: any[] = [];
+        let query = supabaseAdmin.from("finance_analytics_view").select("*");
+
+        // Apply date filters if specified - use date_paid for revenue recognition
+        if (dateRanges && dateRanges.length > 0) {
+          if (dateRanges.length === 1) {
+            // Single date range - use date_paid for revenue recognition
+            const range = dateRanges[0];
+            const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
+            const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
+            query = query.gte('date_paid', startDate).lte('date_paid', endDate).not('date_paid', 'is', null);
+          } else {
+            // Multiple date ranges - use OR conditions on date_paid
+            const orConditions = dateRanges.map(range => {
+              const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
+              const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
+              return `and(date_paid.gte.${startDate},date_paid.lte.${endDate},not.date_paid.is.null)`;
+            }).join(",");
+            query = query.or(orConditions);
+          }
+        }
+
+        const { data: viewData, error: viewError } = await query;
+
+        if (viewError) {
+          console.warn("Analytics view not available, falling back to original hook:", viewError.message);
+          // Fallback to the original implementation
+          const fallbackResult = await fetchAllInvoicesPaginated(dateRanges);
+          return processInvoiceData(fallbackResult.data, fallbackResult.totalCount);
+        }
+
+        detailedData = viewData || [];
+        console.log(`Fetched ${detailedData.length} records from finance_analytics_view`);
+
+        return processInvoiceData(detailedData, detailedData.length);
+      } catch (error) {
+        console.error('Error in useFinanceViewAnalytics:', error);
+        // Return safe defaults
+        return {
+          totalRevenue: 0,
+          expectedRevenue: 0,
+          totalInvoices: 0,
+          paidInvoices: 0,
+          pendingInvoices: 0,
+          overdueInvoices: 0,
+          sentInvoices: 0,
+          cancelledInvoices: 0,
+          averageInvoiceValue: 0,
+          collectionRate: 0,
+          topClients: [],
+          monthlyRevenue: [],
+          statusDistribution: [],
+          agingBuckets: [],
+          averagePaymentDays: 0,
+          isDataComplete: false,
+        };
+      }
+    },
+    staleTime: 30 * 1000,
+    retry: 3,
+    retryDelay: 1000,
+  });
+}
+
+// Helper function to process invoice data consistently
+function processInvoiceData(invoices: any[], totalCount: number): FinanceMetrics {
+  const typedInvoices = invoices || [];
+  const totalInvoices = typedInvoices.length;
+
+  // Calculate revenue metrics
+  const actualRevenue = typedInvoices.reduce((sum, invoice) => {
+    if (invoice.invoice_status !== 'paid' || !invoice.date_paid) return sum;
+    const lineTotal = parseFloat(invoice.line_total) || 0;
+    return sum + lineTotal;
+  }, 0);
+
+  const expectedRevenue = typedInvoices.reduce((sum, invoice) => {
+    const lineTotal = parseFloat(invoice.line_total) || 0;
+    return sum + lineTotal;
+  }, 0);
+
+  // Status counts
+  const statusCounts = typedInvoices.reduce((acc, inv) => {
+    acc[inv.invoice_status] = (acc[inv.invoice_status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const paidInvoices = statusCounts.paid || 0;
+  const pendingInvoices = statusCounts.pending || 0;
+  const overdueInvoices = statusCounts.overdue || 0;
+  const sentInvoices = statusCounts.sent || 0;
+  const cancelledInvoices = statusCounts.cancelled || 0;
+  const collectionRate = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
+
+  // Client aggregation
+  const clientData = typedInvoices.reduce((acc, inv) => {
+    if (inv.invoice_status !== 'paid' || !inv.date_paid) return acc;
+    const clientName = inv.client_name || "Unknown Client";
+    if (!acc[clientName]) {
+      acc[clientName] = { total_revenue: 0, invoice_count: 0 };
+    }
+    const lineTotal = parseFloat(inv.line_total) || 0;
+    acc[clientName].total_revenue += lineTotal;
+    acc[clientName].invoice_count += 1;
+    return acc;
+  }, {} as Record<string, { total_revenue: number; invoice_count: number }>);
+
+  const topClients = Object.entries(clientData)
+    .map(([client_name, data]) => ({
+      client_name,
+      total_revenue: (data as { total_revenue: number; invoice_count: number }).total_revenue,
+      invoice_count: (data as { total_revenue: number; invoice_count: number }).invoice_count,
+    }))
+    .sort((a, b) => b.total_revenue - a.total_revenue)
+    .slice(0, 10);
+
+  // Monthly revenue
+  const monthlyData = typedInvoices.reduce((acc, inv) => {
+    if (inv.invoice_status !== 'paid' || !inv.date_paid) return acc;
+    const month = new Date(inv.date_paid).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+    });
+    if (!acc[month]) {
+      acc[month] = { revenue: 0, invoices: 0 };
+    }
+    const lineTotal = parseFloat(inv.line_total) || 0;
+    acc[month].revenue += lineTotal;
+    acc[month].invoices += 1;
+    return acc;
+  }, {} as Record<string, { revenue: number; invoices: number }>);
+
+  const monthlyRevenue = Object.entries(monthlyData)
+    .map(([month, data]) => ({
+      month,
+      revenue: (data as { revenue: number; invoices: number }).revenue,
+      invoices: (data as { revenue: number; invoices: number }).invoices,
+    }))
+    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+
+  // Status distribution
+  const statusDistribution = Object.entries(statusCounts).map(
+    ([status, count]) => ({
+      status,
+      count: count as number,
+      percentage: ((count as number) / totalInvoices) * 100,
+    })
+  );
+
+  // Aging buckets
+  const agingBuckets = [
+    { range: '0-30 days', amount: 0, count: 0 },
+    { range: '31-60 days', amount: 0, count: 0 },
+    { range: '61-90 days', amount: 0, count: 0 },
+    { range: '90+ days', amount: 0, count: 0 }
+  ];
+
+  typedInvoices.forEach(inv => {
+    if (inv.invoice_status !== 'paid') {
+      const issueDate = new Date(inv.date_issued);
+      const currentDate = new Date();
+      const daysSinceIssue = Math.floor((currentDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+      const amount = parseFloat(inv.line_total) || 0;
+      
+      if (daysSinceIssue <= 30) {
+        agingBuckets[0].amount += amount;
+        agingBuckets[0].count += 1;
+      } else if (daysSinceIssue <= 60) {
+        agingBuckets[1].amount += amount;
+        agingBuckets[1].count += 1;
+      } else if (daysSinceIssue <= 90) {
+        agingBuckets[2].amount += amount;
+        agingBuckets[2].count += 1;
+      } else {
+        agingBuckets[3].amount += amount;
+        agingBuckets[3].count += 1;
+      }
+    }
+  });
+
+  // Average payment days
+  const paidInvoicesWithDates = typedInvoices.filter(inv => 
+    inv.invoice_status === 'paid' && inv.date_paid && inv.date_issued
+  );
+  
+  const totalPaymentDays = paidInvoicesWithDates.reduce((sum, inv) => {
+    const paymentDate = new Date(inv.date_paid);
+    const issueDate = new Date(inv.date_issued);
+    const daysDiff = Math.floor((paymentDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+    return sum + daysDiff;
+  }, 0);
+  
+  const averagePaymentDays = paidInvoicesWithDates.length > 0 
+    ? totalPaymentDays / paidInvoicesWithDates.length 
+    : 0;
+
+  return {
+    totalRevenue: actualRevenue,
+    expectedRevenue: expectedRevenue,
+    totalInvoices: totalInvoices,
+    paidInvoices: paidInvoices,
+    pendingInvoices: pendingInvoices,
+    overdueInvoices: overdueInvoices,
+    sentInvoices: sentInvoices,
+    cancelledInvoices: cancelledInvoices,
+    averageInvoiceValue: totalInvoices > 0 ? actualRevenue / totalInvoices : 0,
+    collectionRate: collectionRate,
+    topClients: topClients,
+    monthlyRevenue: monthlyRevenue,
+    statusDistribution: statusDistribution,
+    agingBuckets: agingBuckets,
+    averagePaymentDays: averagePaymentDays,
+    isDataComplete: totalInvoices === totalCount,
+  };
+}
+
+// Interface for raw invoice data
+interface RawInvoice {
+  id: string;
+  client_name: string;
+  invoice_number: string;
+  date_issued: string;
+  date_paid: string | null;
+  invoice_status: string;
+  line_total: string | number;
+  currency: string;
+  payment_method?: string | null;
+}
+
+// Hook that fetches raw invoice data for client-side aggregation
+export function useRawFinanceData(dateRanges?: DateRange[]) {
+  return useQuery({
+    queryKey: ["raw-finance-data", dateRanges],
+    queryFn: async (): Promise<RawInvoice[]> => {
+      try {
+        console.log("Fetching raw finance data for client-side aggregation...");
+        
+        // Fetch all raw invoice data
+        let query = supabaseAdmin
+          .from("finance_invoices")
+          .select(`
+            id,
+            client_name,
+            invoice_number,
+            date_issued,
+            date_paid,
+            invoice_status,
+            line_total,
+            currency
+          `);
+
+        // Apply date filters if specified - use date_paid for revenue recognition
+        if (dateRanges && dateRanges.length > 0) {
+          if (dateRanges.length === 1) {
+            // Single date range - use date_paid for revenue recognition
+            const range = dateRanges[0];
+            const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
+            const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
+            query = query.gte('date_paid', startDate).lte('date_paid', endDate).not('date_paid', 'is', null);
+          } else {
+            // Multiple date ranges - use OR conditions on date_paid
+            const orConditions = dateRanges.map(range => {
+              const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
+              const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
+              return `and(date_paid.gte.${startDate},date_paid.lte.${endDate},not.date_paid.is.null)`;
+            }).join(",");
+            query = query.or(orConditions);
+          }
+        }
+
+        const { data, error } = await query.order('date_paid', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching raw finance data:', error);
+          throw error;
+        }
+
+        console.log(`Fetched ${data?.length || 0} raw invoice records`);
+        return data || [];
+      } catch (error) {
+        console.error('Error in useRawFinanceData:', error);
+        throw error;
+      }
+    },
+    staleTime: 30 * 1000,
     retry: 3,
     retryDelay: 1000,
   });

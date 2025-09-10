@@ -15,35 +15,51 @@ export function ClientRevenueDetail() {
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth() + 1;
   
-  // Calculate year and month based on time range
-  let filterYear: number | undefined;
-  let filterMonth: number | undefined;
+  // Calculate date range based on time range selection
+  const getDateRange = () => {
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    switch (timeRange) {
+      case "1m":
+        startDate.setMonth(endDate.getMonth() - 1);
+        break;
+      case "3m":
+        startDate.setMonth(endDate.getMonth() - 3);
+        break;
+      case "6m":
+        startDate.setMonth(endDate.getMonth() - 6);
+        break;
+      case "1y":
+        startDate.setFullYear(endDate.getFullYear() - 1);
+        break;
+      default:
+        startDate.setMonth(endDate.getMonth() - 6);
+    }
+    
+    return { startDate, endDate };
+  };
   
-  switch (timeRange) {
-    case "1m":
-      filterYear = currentYear;
-      filterMonth = currentMonth;
-      break;
-    case "3m":
-      // Get data from 3 months ago to now (we'll filter in component)
-      filterYear = undefined;
-      filterMonth = undefined;
-      break;
-    case "6m":
-      // Get data from 6 months ago to now (we'll filter in component)
-      filterYear = undefined;
-      filterMonth = undefined;
-      break;
-    case "1y":
-      filterYear = currentYear;
-      filterMonth = undefined;
-      break;
-    default:
-      filterYear = undefined;
-      filterMonth = undefined;
-  }
+  const { startDate, endDate } = getDateRange();
   
-  const { data: financeData, isLoading, error } = useFinanceAnalytics(filterMonth ? [{ year: filterYear, month: filterMonth }] : [{ year: filterYear, month: 1 }, { year: filterYear, month: 2 }, { year: filterYear, month: 3 }, { year: filterYear, month: 4 }, { year: filterYear, month: 5 }, { year: filterYear, month: 6 }, { year: filterYear, month: 7 }, { year: filterYear, month: 8 }, { year: filterYear, month: 9 }, { year: filterYear, month: 10 }, { year: filterYear, month: 11 }, { year: filterYear, month: 12 }]);
+  // Generate month periods for the selected range
+  const generateMonthPeriods = () => {
+    const periods = [];
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      periods.push({
+        year: current.getFullYear(),
+        month: current.getMonth() + 1
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    return periods;
+  };
+  
+  const periods = generateMonthPeriods();
+  const { data: financeData, isLoading, error } = useFinanceAnalytics(periods);
   
   // Calculate growth rates for each client (comparing current period vs previous period)
   const calculateGrowthRate = (clientName: string) => {

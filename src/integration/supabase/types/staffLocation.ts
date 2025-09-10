@@ -28,8 +28,6 @@ export interface StaffLocationFormData {
   locationCode: string;
   locationDescription: string;
   isActive: boolean;
-  externalStaffId?: string;
-  externalStaffName?: string;
   managerId?: string;
   managerName?: string;
 }

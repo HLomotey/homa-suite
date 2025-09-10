@@ -415,36 +415,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           ? validation.details.split(':')[1].trim() 
           : data.user.user_metadata?.name || data.user.email;
         
-        // Set minimal user immediately to allow navigation
-        const minimalUser = {
-          user: data.user,
-          session: data.session,
-          externalStaff: validation.userType === 'external_staff' ? {
-            id: data.user.id,
-            email: data.user.email!,
-            full_name: staffName,
-            position_status: 'A - Active',
-            is_active: true
-          } : null,
-          profile: null,
-          role: null,
-          permissions: [],
-          modules: validation.userType === 'external_staff' ? ['dashboard', 'properties', 'complaints', 'profile'] : ['dashboard'],
-          userType: validation.userType === 'external_staff' ? 'general_staff' as const : 'management' as const
-        };
-        
-        setCurrentUser(minimalUser);
+        // Build full auth user before setting state to prevent empty dashboard
+        console.log('Building full auth user data...');
+        const authUser = await buildAuthUser(data.user, data.session);
+        setCurrentUser(authUser);
         setLoading(false);
         
-        // Build full auth user in background without blocking
-        setTimeout(() => {
-          buildAuthUser(data.user, data.session).then(authUser => {
-            setCurrentUser(authUser);
-          }).catch(error => {
-            console.error("Error building full auth user:", error);
-            // Keep minimal user if full build fails
-          });
-        }, 100);
+        console.log('Auth user fully loaded with modules:', authUser.modules);
         
         return { 
           success: true,
@@ -633,17 +610,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Auth state change event:', event);
         
         if (session?.user) {
-          // Skip SIGNED_IN events - these are handled directly in signIn function
+          // Only handle TOKEN_REFRESHED and other non-login events
           if (event === 'SIGNED_IN') {
             console.log('Skipping SIGNED_IN event - handled by signIn function');
             return;
           }
           
           // For other events (TOKEN_REFRESHED, etc.), build auth user normally
+          console.log(`Auth state change: ${event} - rebuilding user data`);
           const authUser = await buildAuthUser(session.user, session);
           setCurrentUser(authUser);
           setLoading(false);
         } else {
+          console.log(`Auth state change: ${event} - clearing user data`);
           setCurrentUser(null);
           setLoading(false);
         }

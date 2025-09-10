@@ -2,44 +2,65 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, Users, CheckCircle, Clock, Target, TrendingUp, TrendingDown, Loader2, Briefcase } from "lucide-react";
+import { useOperationsAnalytics } from '@/hooks/analytics/useOperationsAnalytics';
 
 export function OperationsAnalytics() {
+  const { data: analyticsData, isLoading, error } = useOperationsAnalytics();
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Operations Analytics</h3>
+            <p className="text-sm text-muted-foreground">Job orders and placement metrics</p>
+          </div>
+        </div>
+        <Card className="bg-background/50 border-border/50">
+          <CardContent className="p-4">
+            <p className="text-sm text-red-600">Failed to load operations analytics</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const metrics = [
     {
       title: "Total Job Orders",
-      value: "342",
-      change: "-3.8%",
-      changeType: "decrease" as const,
+      value: isLoading ? "..." : analyticsData?.metrics.totalJobOrders.toString() || "0",
+      change: isLoading ? "..." : `${analyticsData?.metrics.totalJobOrdersChange >= 0 ? '+' : ''}${analyticsData?.metrics.totalJobOrdersChange.toFixed(1)}%`,
+      changeType: (analyticsData?.metrics.totalJobOrdersChange || 0) >= 0 ? "increase" as const : "decrease" as const,
       icon: Briefcase,
       color: "text-orange-600",
-      loading: false
+      loading: isLoading
     },
     {
       title: "Fill Rate", 
-      value: "87%",
-      change: "+2.3%",
-      changeType: "increase" as const,
+      value: isLoading ? "..." : `${analyticsData?.metrics.fillRate.toFixed(1)}%` || "0%",
+      change: isLoading ? "..." : `${analyticsData?.metrics.fillRateChange >= 0 ? '+' : ''}${analyticsData?.metrics.fillRateChange.toFixed(1)}%`,
+      changeType: (analyticsData?.metrics.fillRateChange || 0) >= 0 ? "increase" as const : "decrease" as const,
       icon: Target,
       color: "text-green-600",
-      loading: false
+      loading: isLoading
     },
     {
       title: "Avg Time to Fill",
-      value: "12 days",
-      change: "-5.8%",
-      changeType: "decrease" as const,
+      value: isLoading ? "..." : `${analyticsData?.metrics.avgTimeToFill.toFixed(0)} days` || "0 days",
+      change: isLoading ? "..." : `${analyticsData?.metrics.avgTimeToFillChange >= 0 ? '+' : ''}${analyticsData?.metrics.avgTimeToFillChange.toFixed(1)}%`,
+      changeType: (analyticsData?.metrics.avgTimeToFillChange || 0) <= 0 ? "increase" as const : "decrease" as const, // Lower time is better
       icon: Clock,
       color: "text-blue-600",
-      loading: false
+      loading: isLoading
     },
     {
       title: "Placement Rate",
-      value: "91%",
-      change: "+1.8%",
-      changeType: "increase" as const,
+      value: isLoading ? "..." : `${analyticsData?.metrics.placementRate.toFixed(1)}%` || "0%",
+      change: isLoading ? "..." : `${analyticsData?.metrics.placementRateChange >= 0 ? '+' : ''}${analyticsData?.metrics.placementRateChange.toFixed(1)}%`,
+      changeType: (analyticsData?.metrics.placementRateChange || 0) >= 0 ? "increase" as const : "decrease" as const,
       icon: CheckCircle,
       color: "text-purple-600",
-      loading: false
+      loading: isLoading
     }
   ];
 

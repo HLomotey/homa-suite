@@ -7,10 +7,8 @@ const Login: React.FC = () => {
 
   const handleLoginSuccess = () => {
     console.log("Login success callback triggered, navigating to home...");
-    // Add small delay to ensure auth state has propagated
-    setTimeout(() => {
-      navigate("/");
-    }, 50);
+    // Navigate immediately since auth user is now fully built before callback
+    navigate("/");
   };
 
   return <LoginForm onLoginSuccess={handleLoginSuccess} />;
