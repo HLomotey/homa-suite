@@ -63,12 +63,8 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({
       }
     };
 
-    // Add delay to prevent flash of permission error during login
-    const timeoutId = setTimeout(() => {
-      checkAccess();
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
+    // Check access immediately since AuthContext now provides complete user data
+    checkAccess();
   }, [currentUser, location.pathname, module]);
 
   // Show loading state while checking access - but only if user is authenticated

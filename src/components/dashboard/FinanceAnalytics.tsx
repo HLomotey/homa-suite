@@ -72,93 +72,18 @@ export function FinanceAnalytics() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: financeData, isLoading, error, isError } = useFinanceAnalytics([{ year: selectedYear, month: selectedMonth }]);
-  const { data: expenditureData, isLoading: expenditureLoading } = useExpenditureAnalytics([{ year: selectedYear, month: selectedMonth }]);
+  // Use same data sources as other finance components - no date filtering to show all data
+  const { data: financeData, isLoading: financeLoading, error: financeError } = useFinanceAnalytics();
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueMetrics();
+  const { data: expenditureData, isLoading: expenditureLoading } = useExpenditureAnalytics();
+  
+  // Combine loading states
+  const isLoading = financeLoading || revenueLoading || expenditureLoading;
   
   useEffect(() => {
-    // Use real data from financeData if available, otherwise use fallback values
-    const initializeInsights = () => {
-      if (financeData) {
-        // Calculate real financial insights from actual data
-        const totalRevenue = financeData.totalRevenue || 0; // Cash basis - actual revenue
-        const expectedRevenue = financeData.expectedRevenue || 0; // Accrual basis - all invoices
-        const collectedRevenue = totalRevenue; // Cash basis already represents collected revenue
-        const outstandingRevenue = expectedRevenue - totalRevenue; // Expected minus actual
-        const averagePaymentDelay = 29; // This would need to be calculated from payment dates
-        
-        // Revenue by Status - use expected revenue for status distribution since it includes all invoices
-        const paidAmount = totalRevenue; // Cash basis - actual paid revenue
-        const overdueAmount = expectedRevenue * (financeData.overdueInvoices / Math.max(financeData.totalInvoices, 1));
-        const sentAmount = expectedRevenue * (financeData.sentInvoices / Math.max(financeData.totalInvoices, 1));
-        const paidPercentage = financeData.totalInvoices > 0 ? (financeData.paidInvoices / financeData.totalInvoices) * 100 : 0;
-        const overduePercentage = financeData.totalInvoices > 0 ? (financeData.overdueInvoices / financeData.totalInvoices) * 100 : 0;
-        const sentPercentage = financeData.totalInvoices > 0 ? (financeData.sentInvoices / financeData.totalInvoices) * 100 : 0;
-        
-        // Use real top clients data
-        const topClients = financeData.topClients.slice(0, 5).map(client => ({
-          client: client.client_name,
-          revenue: client.total_revenue,
-          percentage: totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0
-        }));
-      
-      const clientConcentrationRisk = topClients.slice(0, 2).reduce((sum, client) => sum + client.percentage, 0);
-      
-        // Use real monthly trends data
-        const monthlyTrends = financeData.monthlyRevenue.map((month, index) => ({
-          month: month.month,
-          revenue: month.revenue,
-          growth: index > 0 ? ((month.revenue - financeData.monthlyRevenue[index - 1].revenue) / financeData.monthlyRevenue[index - 1].revenue) * 100 : 0
-        }));
-      
-      // Collections Health - use real data where available
-      const outstandingInvoices = financeData.pendingInvoices + financeData.overdueInvoices + financeData.sentInvoices;
-      const averageCollectionDays = 22; // Would need payment date analysis
-      const collectionEfficiency = financeData.collectionRate;
-      
-      // Aging Buckets - simplified calculation based on outstanding amounts
-      const agingBuckets = [
-        { range: "0-30 days", amount: sentAmount },
-        { range: "30-59 days", amount: overdueAmount * 0.6 },
-        { range: "60-89 days", amount: overdueAmount * 0.3 },
-        { range: "90+ days", amount: overdueAmount * 0.1 }
-      ];
-      
-      // Payment Methods - use status distribution as proxy
-      const onTimePaymentRate = paidPercentage;
-      const earlyPaymentDiscount = totalRevenue * 0.003; // Estimate 0.3%
-      const latePaymentFees = totalRevenue * 0.002; // Estimate 0.2%
-      const paymentMethods = [
-        { method: "Bank Transfer", count: Math.floor(financeData.paidInvoices * 0.68), percentage: 68.4 },
-        { method: "Credit Card", count: Math.floor(financeData.paidInvoices * 0.19), percentage: 19.0 },
-        { method: "Check", count: Math.floor(financeData.paidInvoices * 0.10), percentage: 9.6 },
-        { method: "Other", count: Math.floor(financeData.paidInvoices * 0.03), percentage: 3.0 }
-      ];
-      
-        setInsights({
-          totalRevenue,
-          collectedRevenue,
-          outstandingRevenue,
-          averagePaymentDelay,
-          paidAmount,
-          overdueAmount,
-          sentAmount,
-          paidPercentage,
-          overduePercentage,
-          sentPercentage,
-          topClients,
-          clientConcentrationRisk,
-          monthlyTrends,
-          outstandingInvoices,
-          averageCollectionDays,
-          collectionEfficiency,
-          agingBuckets,
-          onTimePaymentRate,
-          earlyPaymentDiscount,
-          latePaymentFees,
-          paymentMethods
-        });
-      } else {
-        // Fallback to default values when no data is available
+    const processFinanceData = () => {
+      // Use the same data processing approach as other finance components
+      if (!financeData && !revenueData) {
         setInsights({
           totalRevenue: 0,
           collectedRevenue: 0,
@@ -182,14 +107,89 @@ export function FinanceAnalytics() {
           latePaymentFees: 0,
           paymentMethods: []
         });
+        setLoading(false);
+        return;
       }
+
+      console.log("Processing finance data using same sources as other finance components");
+
+      // Use revenue data from useRevenueMetrics (all-time data, not filtered by month)
+      const totalRevenue = financeData?.totalRevenue || 0;
+      const collectedRevenue = totalRevenue;
+      const expectedRevenue = financeData?.expectedRevenue || totalRevenue;
+      const outstandingRevenue = expectedRevenue - totalRevenue;
+
+      // Use finance analytics data (same as FinanceOverview and RevenueByClient components)
+      const paidInvoices = financeData?.paidInvoices || 0;
+      const pendingInvoices = financeData?.pendingInvoices || 0;
+      const overdueInvoices = financeData?.overdueInvoices || 0;
+      const sentInvoices = financeData?.sentInvoices || 0;
+      const totalInvoices = financeData?.totalInvoices || 0;
+
+      // Calculate percentages
+      const paidPercentage = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0;
+      const overduePercentage = totalInvoices > 0 ? (overdueInvoices / totalInvoices) * 100 : 0;
+      const sentPercentage = totalInvoices > 0 ? (sentInvoices / totalInvoices) * 100 : 0;
+
+      // Use top clients data (same as RevenueByClient component)
+      const topClients = financeData?.topClients?.map(client => ({
+        client: client.client_name,
+        revenue: client.total_revenue,
+        percentage: totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0
+      })) || [];
+
+      const clientConcentrationRisk = topClients.slice(0, 2).reduce((sum, client) => sum + client.percentage, 0);
+
+      // Use monthly revenue data (same as other components)
+      const monthlyTrends = financeData?.monthlyRevenue?.map((month, index, array) => ({
+        month: month.month,
+        revenue: month.revenue,
+        growth: index > 0 ? ((month.revenue - array[index - 1].revenue) / array[index - 1].revenue) * 100 : 0
+      })) || [];
+
+      // Calculate aging buckets from status distribution
+      const agingBuckets = [
+        { range: '0-30 days', amount: 0 },
+        { range: '31-60 days', amount: 0 },
+        { range: '61-90 days', amount: 0 },
+        { range: '90+ days', amount: 0 }
+      ];
+
+      // Use average invoice value for outstanding calculations
+      const averageInvoiceValue = financeData?.averageInvoiceValue || 0;
+      const outstandingInvoicesCount = pendingInvoices + overdueInvoices + sentInvoices;
+      const overdueAmount = overdueInvoices * averageInvoiceValue;
+      const sentAmount = sentInvoices * averageInvoiceValue;
+
+      setInsights({
+        totalRevenue,
+        collectedRevenue,
+        outstandingRevenue,
+        averagePaymentDelay: financeData?.averagePaymentDays || 0,
+        paidAmount: totalRevenue,
+        overdueAmount,
+        sentAmount,
+        paidPercentage,
+        overduePercentage,
+        sentPercentage,
+        topClients,
+        clientConcentrationRisk,
+        monthlyTrends,
+        outstandingInvoices: outstandingInvoicesCount,
+        averageCollectionDays: financeData?.averagePaymentDays || 0,
+        collectionEfficiency: financeData?.collectionRate || 0,
+        agingBuckets,
+        onTimePaymentRate: financeData?.collectionRate || 0,
+        earlyPaymentDiscount: 0,
+        latePaymentFees: 0,
+        paymentMethods: [] // Would need payment method data from database
+      });
       
       setLoading(false);
     };
 
-    // Initialize insights immediately to prevent null reference errors
-    initializeInsights();
-  }, [financeData, isLoading]);
+    processFinanceData();
+  }, [financeData, revenueData]);
 
   // Format currency values
   const formatCurrency = (value: number) => {
@@ -201,7 +201,7 @@ export function FinanceAnalytics() {
     return `$${value.toLocaleString()}`;
   };
 
-  if (isError) {
+  if (financeError) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -523,32 +523,24 @@ export function FinanceAnalytics() {
               <h4 className="text-sm font-medium text-foreground">Top Clients by Revenue</h4>
             </div>
             <div className="space-y-2">
-              {financeData?.topClients?.slice(0, 5).map((client, index) => {
-                const totalRevenue = financeData.topClients.reduce((sum, c) => sum + c.total_revenue, 0);
-                const percentage = totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0;
-                return (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client_name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-foreground">{formatCurrency(client.total_revenue)}</span>
-                      <Badge variant="outline" className="text-xs">{percentage.toFixed(1)}%</Badge>
-                    </div>
+              {insights?.topClients?.slice(0, 5).map((client, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground">{formatCurrency(client.revenue)}</span>
+                    <Badge variant="outline" className="text-xs">{client.percentage.toFixed(1)}%</Badge>
                   </div>
-                );
-              }) || (
+                </div>
+              )) || (
                 <div className="text-center py-4">
                   <p className="text-xs text-muted-foreground">No client data available</p>
                 </div>
               )}
             </div>
-            {financeData?.topClients && financeData.topClients.length >= 2 && (
+            {insights?.topClients && insights.topClients.length >= 2 && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-orange-600">
-                  ⚠️ Top 2 clients: {(() => {
-                    const totalRevenue = financeData.topClients.reduce((sum, c) => sum + c.total_revenue, 0);
-                    const topTwoRevenue = financeData.topClients.slice(0, 2).reduce((sum, c) => sum + c.total_revenue, 0);
-                    return totalRevenue > 0 ? ((topTwoRevenue / totalRevenue) * 100).toFixed(1) : '0.0';
-                  })()}% concentration risk
+                  ⚠️ Top 2 clients: {insights.clientConcentrationRisk.toFixed(1)}% concentration risk
                 </p>
               </div>
             )}
@@ -697,7 +689,7 @@ export function FinanceAnalytics() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Expected Revenue</p>
-                    <p className="text-lg font-bold text-blue-600">${(financeData?.expectedRevenue || 0).toLocaleString()}</p>
+                    <p className="text-lg font-bold text-blue-600">${(insights?.outstandingRevenue || 0).toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">All invoices issued</p>
                   </div>
                   <Target className="h-8 w-8 text-blue-500" />
