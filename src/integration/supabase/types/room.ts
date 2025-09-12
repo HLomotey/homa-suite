@@ -18,7 +18,7 @@ export interface Room {
   area: number;
   occupants: number;
   max_occupants: number;
-  price: number;
+  rent_amount: number;
   date_available: string;
   created_at: string;
   updated_at: string | null;
@@ -47,7 +47,7 @@ export interface FrontendRoom {
   area: number;
   occupants: number;
   maxOccupants: number;
-  price: number;
+  rentAmount: number;
   dateAvailable: string;
 }
 
@@ -65,7 +65,7 @@ export const mapDatabaseRoomToFrontend = (dbRoom: Room): FrontendRoom => {
     area: dbRoom.area,
     occupants: dbRoom.occupants,
     maxOccupants: dbRoom.max_occupants,
-    price: dbRoom.price,
+    rentAmount: dbRoom.rent_amount,
     dateAvailable: dbRoom.date_available
   };
 };

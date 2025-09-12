@@ -1,7 +1,7 @@
 /**
  * Housing & Transportation types for housing and Transportation Assignments */
 
-export type BenefitType = "housing" | "transportation";
+export type BenefitType = "housing" | "transportation" | "flight_agreement" | "bus_card";
 export type BenefitStatus = 'active' | 'inactive' | 'pending' | 'suspended';
 
 export interface StaffBenefitStats {
@@ -12,6 +12,8 @@ export interface StaffBenefitStats {
   suspended: number;
   housingBenefits: number;
   transportationBenefits: number;
+  flightAgreementBenefits: number;
+  busCardBenefits: number;
 }
 
 export interface StaffBenefit {

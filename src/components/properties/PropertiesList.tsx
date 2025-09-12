@@ -83,7 +83,7 @@ export const PropertiesList = ({
         'Address': property.address,
         'Location': property.location ? `${property.location.city}, ${property.location.state}` : 'Not assigned',
         'Type': property.type,
-        'Price': `$${property.price.toLocaleString()}`,
+        'Rent Amount': `$${property.rentAmount.toLocaleString()}`,
         'Status': property.status,
         'Bedrooms': property.bedrooms,
         'Bathrooms': property.bathrooms,
@@ -213,7 +213,7 @@ export const PropertiesList = ({
                 <TableHead>Address</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>Rent Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Added</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -236,7 +236,7 @@ export const PropertiesList = ({
                       <span className="text-muted-foreground italic">Not assigned</span>}
                   </TableCell>
                   <TableCell>{property.type}</TableCell>
-                  <TableCell>${property.price.toLocaleString()}</TableCell>
+                  <TableCell>${property.rentAmount.toLocaleString()}</TableCell>
                   <TableCell>
                     <StatusBadge status={property.status} />
                   </TableCell>
@@ -317,8 +317,9 @@ const PropertyCard = ({
             <span className="italic">No location assigned</span>}
         </p>
         <div className="flex justify-between mb-4">
-          <div className="text-white font-bold">
-            ${property.price.toLocaleString()}
+          <div className="text-white font-bold flex items-center">
+            <DollarSign className="h-4 w-4 mr-1" />
+            ${property.rentAmount.toLocaleString()}/month
           </div>
           <div className="flex items-center gap-3 text-white/60 text-sm">
             <span className="flex items-center">

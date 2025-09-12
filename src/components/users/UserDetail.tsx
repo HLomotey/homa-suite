@@ -430,7 +430,7 @@ export function UserDetail() {
           
           // Add user to external_staff table to enable login
           try {
-            const { error: staffError } = await supabase
+            const { error: staffError } = await (supabase as any)
               .from('external_staff')
               .upsert({
                 'EMPLOYEE ID': `EMP_${Date.now()}`, // Generate unique ID
@@ -451,10 +451,7 @@ export function UserDetail() {
           }
           
           // Add additional profile data if needed
-          await upsert(createdUser.id, {
-            bio: '',
-            preferences: {}
-          });
+          await upsert(createdUser.id, {} as any);
           
           console.log('Profile upsert completed for user ID:', createdUser.id);
           
@@ -570,10 +567,7 @@ export function UserDetail() {
             permissions: customPermissionsEnabled ? (user.permissions || []) : []
           });
           
-          await upsert(user.id, {
-            bio: '',
-            preferences: {}
-          });
+          await upsert(user.id, {} as any);
           
           // Update user roles
           console.log('Updating user roles:', userRoles);

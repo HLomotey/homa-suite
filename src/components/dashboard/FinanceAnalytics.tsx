@@ -191,14 +191,45 @@ export function FinanceAnalytics() {
     processFinanceData();
   }, [financeData, revenueData]);
 
-  // Format currency values
+  // Format currency values with consistent 2 decimal places
   const formatCurrency = (value: number) => {
     if (value >= 1000000) {
       return `$${(value / 1000000).toFixed(2)}M`;
     } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
+      return `$${(value / 1000).toFixed(2)}K`;
     }
-    return `$${value.toLocaleString()}`;
+    return `$${value.toFixed(2)}`;
+  };
+
+  // Format percentage with 2 decimal places
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(2)}%`;
+  };
+
+  // Get trend indicator with visual enhancement
+  const getTrendIndicator = (value: number, threshold: number = 0) => {
+    if (value > threshold) {
+      return { icon: TrendingUp, color: 'text-green-500', bgColor: 'bg-green-50', text: 'Positive' };
+    } else if (value < threshold) {
+      return { icon: TrendingDown, color: 'text-red-500', bgColor: 'bg-red-50', text: 'Negative' };
+    }
+    return { icon: Minus, color: 'text-gray-500', bgColor: 'bg-gray-50', text: 'Neutral' };
+  };
+
+  // Calculate financial health score
+  const getFinancialHealthScore = () => {
+    if (!insights) return 0;
+    const collectionScore = Math.min(insights.collectionEfficiency, 100);
+    const paymentScore = Math.max(0, 100 - insights.averagePaymentDelay * 2);
+    const concentrationScore = Math.max(0, 100 - insights.clientConcentrationRisk);
+    return Math.round((collectionScore + paymentScore + concentrationScore) / 3);
+  };
+
+  // Get health score color
+  const getHealthScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   if (financeError) {
@@ -318,7 +349,7 @@ export function FinanceAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-lg font-bold text-green-600">${insights.totalRevenue.toLocaleString()}</p>
+                <p className="text-lg font-bold text-green-600">{formatCurrency(insights.totalRevenue)}</p>
                 <p className="text-xs text-muted-foreground">Cash basis • Paid invoices</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-500" />
@@ -333,10 +364,10 @@ export function FinanceAnalytics() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Total Expenditure</p>
                 <p className="text-lg font-bold text-red-600">
-                  ${expenditureData?.actualExpenditure?.toLocaleString() || (insights.totalRevenue * 0.8).toLocaleString()}
+                  {formatCurrency(expenditureData?.actualExpenditure || (insights.totalRevenue * 0.8))}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {expenditureData?.expenditureRate?.toFixed(1) || '80.0'}% of revenue
+                  {formatPercentage(expenditureData?.expenditureRate || 80.0)} of revenue
                 </p>
               </div>
               <Minus className="h-8 w-8 text-red-500" />
@@ -351,10 +382,10 @@ export function FinanceAnalytics() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Gross Margin</p>
                 <p className="text-lg font-bold text-blue-600">
-                  {expenditureData?.profitMargin?.toFixed(1) || '20.0'}%
+                  {formatPercentage(expenditureData?.profitMargin || 20.0)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  ${expenditureData?.totalProfit?.toLocaleString() || (insights.totalRevenue * 0.2).toLocaleString()} profit
+                  {formatCurrency(expenditureData?.totalProfit || (insights.totalRevenue * 0.2))} profit
                 </p>
               </div>
               <Target className="h-8 w-8 text-blue-500" />
@@ -368,7 +399,7 @@ export function FinanceAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
-                <p className="text-lg font-bold text-orange-600">${insights.outstandingRevenue.toLocaleString()}</p>
+                <p className="text-lg font-bold text-orange-600">{formatCurrency(insights.outstandingRevenue)}</p>
                 <p className="text-xs text-muted-foreground">{insights.outstandingInvoices} invoices pending</p>
               </div>
               <Clock className="h-8 w-8 text-orange-500" />
@@ -376,6 +407,42 @@ export function FinanceAnalytics() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Financial Health Score */}
+      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-4 w-4 text-blue-600" />
+                <h4 className="text-sm font-medium text-blue-900">Financial Health Score</h4>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className={`text-3xl font-bold ${getHealthScoreColor(getFinancialHealthScore())}`}>
+                  {getFinancialHealthScore()}/100
+                </div>
+                <div className="text-xs text-blue-700">
+                  <div>Collection: {formatPercentage(insights.collectionEfficiency)}</div>
+                  <div>Payment Speed: {insights.averagePaymentDelay.toFixed(2)} days</div>
+                  <div>Risk Level: {formatPercentage(insights.clientConcentrationRisk)}</div>
+                </div>
+              </div>
+            </div>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+              getFinancialHealthScore() >= 80 ? 'bg-green-100' :
+              getFinancialHealthScore() >= 60 ? 'bg-yellow-100' : 'bg-red-100'
+            }`}>
+              {getFinancialHealthScore() >= 80 ? (
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              ) : getFinancialHealthScore() >= 60 ? (
+                <AlertCircle className="h-8 w-8 text-yellow-600" />
+              ) : (
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Expenditure Breakdown */}
       {expenditureData && expenditureData.expenditureByCategory.length > 0 && (
@@ -399,8 +466,8 @@ export function FinanceAnalytics() {
                       <span className="text-xs text-muted-foreground">{category.category}</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-medium">${category.amount.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}%</p>
+                      <p className="text-xs font-medium">{formatCurrency(category.amount)}</p>
+                      <p className="text-xs text-muted-foreground">{formatPercentage(category.percentage)}</p>
                     </div>
                   </div>
                 ))}
@@ -420,10 +487,10 @@ export function FinanceAnalytics() {
                     <span className="text-xs text-muted-foreground">{month.month}</span>
                     <div className="text-right">
                       <p className="text-xs font-medium text-green-600">
-                        ${month.revenue.toLocaleString()} revenue
+                        {formatCurrency(month.revenue)} revenue
                       </p>
                       <p className="text-xs text-blue-600">
-                        ${month.profit.toLocaleString()} profit
+                        {formatCurrency(month.profit)} profit
                       </p>
                     </div>
                   </div>
@@ -444,7 +511,7 @@ export function FinanceAnalytics() {
               <CheckCircle className="h-3 w-3 text-green-500" />
             </div>
             <p className="text-lg font-semibold text-foreground">{formatCurrency(insights.collectedRevenue)}</p>
-            <p className="text-xs text-green-600">{insights.collectionEfficiency.toFixed(1)}% collection rate</p>
+            <p className="text-xs text-green-600">{formatPercentage(insights.collectionEfficiency)} collection rate</p>
           </CardContent>
         </Card>
 
@@ -465,7 +532,7 @@ export function FinanceAnalytics() {
               <p className="text-xs font-medium text-muted-foreground">Avg Payment Delay</p>
               <Clock className="h-3 w-3 text-muted-foreground" />
             </div>
-            <p className="text-lg font-semibold text-foreground">{insights.averagePaymentDelay} days</p>
+            <p className="text-lg font-semibold text-foreground">{insights.averagePaymentDelay.toFixed(2)} days</p>
             <p className="text-xs text-muted-foreground">From issue to payment</p>
           </CardContent>
         </Card>
@@ -488,7 +555,7 @@ export function FinanceAnalytics() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-foreground">{formatCurrency(insights.paidAmount)}</p>
-                  <p className="text-xs text-green-600">{insights.paidPercentage.toFixed(1)}%</p>
+                  <p className="text-xs text-green-600">{formatPercentage(insights.paidPercentage)}</p>
                 </div>
               </div>
               <div className="flex justify-between items-center">
@@ -498,7 +565,7 @@ export function FinanceAnalytics() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-foreground">{formatCurrency(insights.overdueAmount)}</p>
-                  <p className="text-xs text-red-600">{insights.overduePercentage.toFixed(1)}%</p>
+                  <p className="text-xs text-red-600">{formatPercentage(insights.overduePercentage)}</p>
                 </div>
               </div>
               <div className="flex justify-between items-center">
@@ -508,7 +575,7 @@ export function FinanceAnalytics() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-foreground">{formatCurrency(insights.sentAmount)}</p>
-                  <p className="text-xs text-orange-600">{insights.sentPercentage.toFixed(1)}%</p>
+                  <p className="text-xs text-orange-600">{formatPercentage(insights.sentPercentage)}</p>
                 </div>
               </div>
             </div>
@@ -528,7 +595,7 @@ export function FinanceAnalytics() {
                   <span className="text-xs text-muted-foreground truncate flex-1 mr-2">{client.client}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-foreground">{formatCurrency(client.revenue)}</span>
-                    <Badge variant="outline" className="text-xs">{client.percentage.toFixed(1)}%</Badge>
+                    <Badge variant="outline" className="text-xs">{formatPercentage(client.percentage)}</Badge>
                   </div>
                 </div>
               )) || (
@@ -540,7 +607,7 @@ export function FinanceAnalytics() {
             {insights?.topClients && insights.topClients.length >= 2 && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-orange-600">
-                  ⚠️ Top 2 clients: {insights.clientConcentrationRisk.toFixed(1)}% concentration risk
+                  ⚠️ Top 2 clients: {formatPercentage(insights.clientConcentrationRisk)} concentration risk
                 </p>
               </div>
             )}
@@ -568,7 +635,7 @@ export function FinanceAnalytics() {
                       <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                     )}
                     <span className={month.growth > 0 ? "text-green-600" : "text-red-600"}>
-                      {month.growth > 0 ? "+" : ""}{month.growth.toFixed(1)}%
+                      {month.growth > 0 ? "+" : ""}{formatPercentage(Math.abs(month.growth))}
                     </span>
                   </div>
                 )}
@@ -576,9 +643,14 @@ export function FinanceAnalytics() {
             ))}
           </div>
           <div className="mt-3 pt-3 border-t border-border">
-            <p className="text-xs text-green-600">
-              📈 May revenue spike: +49.2% growth indicates strong business momentum
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-green-600">
+                📈 Strong revenue momentum detected
+              </p>
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                Growth Trend
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -600,7 +672,7 @@ export function FinanceAnalytics() {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">Collection Efficiency</span>
                 <Badge variant={insights.collectionEfficiency >= 85 ? "default" : "destructive"} className="text-xs">
-                  {insights.collectionEfficiency.toFixed(1)}%
+                  {formatPercentage(insights.collectionEfficiency)}
                 </Badge>
               </div>
               <div className="space-y-2">
@@ -634,7 +706,7 @@ export function FinanceAnalytics() {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">On-Time Payment Rate</span>
                 <Badge variant={insights.onTimePaymentRate >= 80 ? "default" : "secondary"} className="text-xs">
-                  {insights.onTimePaymentRate.toFixed(1)}%
+                  {formatPercentage(insights.onTimePaymentRate)}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
@@ -651,7 +723,7 @@ export function FinanceAnalytics() {
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">{method.method}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-foreground">{method.percentage.toFixed(1)}%</span>
+                      <span className="text-xs font-medium text-foreground">{formatPercentage(method.percentage)}</span>
                       <span className="text-xs text-muted-foreground">({method.count})</span>
                     </div>
                   </div>
@@ -659,9 +731,16 @@ export function FinanceAnalytics() {
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-border">
-              <p className="text-xs text-blue-600">
-                💡 {insights.onTimePaymentRate >= 80 ? 'Strong payment discipline' : 'Consider payment reminders and incentives'}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-blue-600">
+                  💡 {insights.onTimePaymentRate >= 80 ? 'Strong payment discipline' : 'Consider payment reminders and incentives'}
+                </p>
+                <Badge variant="outline" className={`text-xs ${
+                  insights.onTimePaymentRate >= 80 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                }`}>
+                  {insights.onTimePaymentRate >= 80 ? 'Excellent' : 'Needs Attention'}
+                </Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -676,7 +755,7 @@ export function FinanceAnalytics() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Cash Revenue</p>
-                    <p className="text-lg font-bold text-green-600">${insights.totalRevenue.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-green-600">{formatCurrency(insights.totalRevenue)}</p>
                     <p className="text-xs text-muted-foreground">Actual payments received</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-green-500" />
@@ -689,7 +768,7 @@ export function FinanceAnalytics() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Expected Revenue</p>
-                    <p className="text-lg font-bold text-blue-600">${(insights?.outstandingRevenue || 0).toLocaleString()}</p>
+                    <p className="text-lg font-bold text-blue-600">{formatCurrency(insights?.outstandingRevenue || 0)}</p>
                     <p className="text-xs text-muted-foreground">All invoices issued</p>
                   </div>
                   <Target className="h-8 w-8 text-blue-500" />
@@ -702,7 +781,7 @@ export function FinanceAnalytics() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Collection Rate</p>
-                    <p className="text-lg font-bold text-purple-600">{insights.collectionEfficiency.toFixed(1)}%</p>
+                    <p className="text-lg font-bold text-purple-600">{formatPercentage(insights.collectionEfficiency)}</p>
                     <p className="text-xs text-muted-foreground">Payment efficiency</p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-purple-500" />
@@ -715,7 +794,7 @@ export function FinanceAnalytics() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Avg Payment Delay</p>
-                    <p className="text-lg font-bold text-orange-600">{insights.averagePaymentDelay} days</p>
+                    <p className="text-lg font-bold text-orange-600">{insights.averagePaymentDelay.toFixed(2)} days</p>
                     <p className="text-xs text-muted-foreground">From issue to payment</p>
                   </div>
                   <Clock className="h-8 w-8 text-orange-500" />
@@ -735,17 +814,17 @@ export function FinanceAnalytics() {
                 <div className="text-center">
                   <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2"></div>
                   <p className="text-sm font-medium">{formatCurrency(insights.paidAmount)}</p>
-                  <p className="text-xs text-green-600">Paid ({insights.paidPercentage.toFixed(1)}%)</p>
+                  <p className="text-xs text-green-600">Paid ({formatPercentage(insights.paidPercentage)})</p>
                 </div>
                 <div className="text-center">
                   <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-2"></div>
                   <p className="text-sm font-medium">{formatCurrency(insights.overdueAmount)}</p>
-                  <p className="text-xs text-red-600">Overdue ({insights.overduePercentage.toFixed(1)}%)</p>
+                  <p className="text-xs text-red-600">Overdue ({formatPercentage(insights.overduePercentage)})</p>
                 </div>
                 <div className="text-center">
                   <div className="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-2"></div>
                   <p className="text-sm font-medium">{formatCurrency(insights.sentAmount)}</p>
-                  <p className="text-xs text-yellow-600">Sent ({insights.sentPercentage.toFixed(1)}%)</p>
+                  <p className="text-xs text-yellow-600">Sent ({formatPercentage(insights.sentPercentage)})</p>
                 </div>
               </div>
             </CardContent>
@@ -762,8 +841,8 @@ export function FinanceAnalytics() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Total Expenditure</p>
-                        <p className="text-lg font-bold text-red-600">${expenditureData.actualExpenditure.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">{expenditureData.expenditureRate.toFixed(1)}% of revenue</p>
+                        <p className="text-lg font-bold text-red-600">{formatCurrency(expenditureData.actualExpenditure)}</p>
+                        <p className="text-xs text-muted-foreground">{formatPercentage(expenditureData.expenditureRate)} of revenue</p>
                       </div>
                       <Minus className="h-8 w-8 text-red-500" />
                     </div>
@@ -788,8 +867,8 @@ export function FinanceAnalytics() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Profit Margin</p>
-                        <p className="text-lg font-bold text-green-600">{expenditureData.profitMargin.toFixed(1)}%</p>
-                        <p className="text-xs text-muted-foreground">${expenditureData.totalProfit.toLocaleString()} profit</p>
+                        <p className="text-lg font-bold text-green-600">{formatPercentage(expenditureData.profitMargin)}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(expenditureData.totalProfit)} profit</p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-green-500" />
                     </div>
@@ -821,9 +900,9 @@ export function FinanceAnalytics() {
                       <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded">
                         <div>
                           <p className="text-sm font-medium">{category.category}</p>
-                          <p className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}%</p>
+                          <p className="text-xs text-muted-foreground">{formatPercentage(category.percentage)}</p>
                         </div>
-                        <p className="text-sm font-bold">${category.amount.toLocaleString()}</p>
+                        <p className="text-sm font-bold">{formatCurrency(category.amount)}</p>
                       </div>
                     ))}
                   </div>
@@ -855,8 +934,8 @@ export function FinanceAnalytics() {
                         <span className="text-sm font-medium">{client.client}</span>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold">${client.revenue.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">{client.percentage.toFixed(1)}%</p>
+                        <p className="text-sm font-bold">{formatCurrency(client.revenue)}</p>
+                        <p className="text-xs text-muted-foreground">{formatPercentage(client.percentage)}</p>
                       </div>
                     </div>
                   ))}
@@ -871,7 +950,7 @@ export function FinanceAnalytics() {
                   <h4 className="text-sm font-medium">Client Concentration Risk</h4>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">{insights.clientConcentrationRisk.toFixed(1)}%</p>
+                  <p className="text-2xl font-bold text-orange-600">{formatPercentage(insights.clientConcentrationRisk)}</p>
                   <p className="text-sm text-muted-foreground mb-4">Top 2 clients represent</p>
                   <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                     insights.clientConcentrationRisk > 50 ? 'bg-red-100 text-red-800' :

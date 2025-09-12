@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Loader2, Home, Car } from "lucide-react";
+import { X, Loader2, Home, Car, Plane, CreditCard } from "lucide-react";
 import {
   FrontendStaffBenefit,
   StaffBenefitFormData,
@@ -96,6 +96,9 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
   const [housingRequired, setHousingRequired] = useState<boolean>(false);
   const [transportationRequired, setTransportationRequired] =
     useState<boolean>(false);
+  const [flightAgreementRequired, setFlightAgreementRequired] =
+    useState<boolean>(false);
+  const [busCardRequired, setBusCardRequired] = useState<boolean>(false);
 
   // Search UI state
   const [staffSearchQuery, setStaffSearchQuery] = useState<string>("");
@@ -140,6 +143,8 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
   const handleBenefitTypeChange = (type: BenefitType, checked: boolean) => {
     if (type === "housing") setHousingRequired(checked);
     if (type === "transportation") setTransportationRequired(checked);
+    if (type === "flight_agreement") setFlightAgreementRequired(checked);
+    if (type === "bus_card") setBusCardRequired(checked);
   };
 
   const handleInputChange = (
@@ -203,11 +208,11 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
       return false;
     }
 
-    if (!housingRequired && !transportationRequired) {
+    if (!housingRequired && !transportationRequired && !flightAgreementRequired && !busCardRequired) {
       toast({
         title: "Validation Error",
         description:
-          "Please select at least one allocation type (housing or transportation).",
+          "Please select at least one allocation type (housing, transportation, flight agreement, or bus card).",
         variant: "destructive",
       });
       return false;
@@ -231,14 +236,30 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
           ...formData,
           benefit_type: "transportation",
         } as StaffBenefitFormData);
+      if (flightAgreementRequired)
+        benefitsToCreate.push({
+          ...formData,
+          benefit_type: "flight_agreement",
+        } as StaffBenefitFormData);
+      if (busCardRequired)
+        benefitsToCreate.push({
+          ...formData,
+          benefit_type: "bus_card",
+        } as StaffBenefitFormData);
 
       for (const b of benefitsToCreate) {
         await onSave(b);
       }
 
+      const benefitTypes = [];
+      if (housingRequired) benefitTypes.push("housing");
+      if (transportationRequired) benefitTypes.push("transportation");
+      if (flightAgreementRequired) benefitTypes.push("flight agreement");
+      if (busCardRequired) benefitTypes.push("bus card");
+
       toast({
         title: "Success",
-        description: `Housing and transport allocation${
+        description: `${benefitTypes.join(", ")} allocation${
           benefitsToCreate.length > 1 ? "s" : ""
         } ${benefit ? "updated" : "created"} successfully`,
       });
@@ -247,7 +268,7 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
       toast({
         title: "Error",
         description:
-          "Failed to save housing and transport allocation. Please try again.",
+          "Failed to save benefit allocation. Please try again.",
         variant: "destructive",
       });
     }
@@ -418,7 +439,7 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                   <Checkbox
                     id="housing_required"
@@ -465,6 +486,54 @@ export const StaffBenefitForm: React.FC<StaffBenefitFormProps> = ({
                       </Label>
                       <p className="text-sm text-muted-foreground">
                         Staff requires transportation support
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="flight_agreement_required"
+                    checked={flightAgreementRequired}
+                    onCheckedChange={(checked) =>
+                      handleBenefitTypeChange("flight_agreement", checked as boolean)
+                    }
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Plane className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <Label
+                        htmlFor="flight_agreement_required"
+                        className="text-base font-medium cursor-pointer"
+                      >
+                        Flight Agreement
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Staff requires flight agreement benefits
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="bus_card_required"
+                    checked={busCardRequired}
+                    onCheckedChange={(checked) =>
+                      handleBenefitTypeChange("bus_card", checked as boolean)
+                    }
+                  />
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="h-5 w-5 text-orange-600" />
+                    <div>
+                      <Label
+                        htmlFor="bus_card_required"
+                        className="text-base font-medium cursor-pointer"
+                      >
+                        Bus Card Allocation
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Staff requires bus card benefits
                       </p>
                     </div>
                   </div>

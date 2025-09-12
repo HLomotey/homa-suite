@@ -177,7 +177,7 @@ export const mapProfileWithRoleToFrontendUser = (profile: ProfileWithRole, email
     department: profile.department || '',
     status: profile.status === 'active' ? 'active' : 'inactive',
     lastActive: undefined,
-    permissions: userRole?.permissions || [],
+    permissions: [],
     createdAt: profile.created_at,
     avatar: profile.avatar_url || undefined,
     bio: profile.bio || undefined

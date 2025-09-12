@@ -4,12 +4,12 @@ import { StaffBenefitForm } from "@/components/staff-benefits/StaffBenefitForm";
 import { FrontendStaffBenefit } from "@/integration/supabase/types/staff-benefits";
 import { useStaffBenefits } from "@/hooks/staff-benefits/useStaffBenefits";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ViewMode = "list" | "add" | "edit" | "view";
 
@@ -58,7 +58,7 @@ export default function StaffBenefits() {
     setSelectedBenefit(null);
   };
 
-  const isSheetOpen = viewMode === "add" || viewMode === "edit";
+  const isDialogOpen = viewMode === "add" || viewMode === "edit";
 
   return (
     <div className="space-y-6 p-6">
@@ -68,20 +68,20 @@ export default function StaffBenefits() {
         onViewBenefit={handleViewBenefit}
       />
 
-      {/* Sheet for Add/Edit Form */}
-      <Sheet open={isSheetOpen} onOpenChange={(open) => !open && handleCancel()}>
-        <SheetContent className="w-[800px] sm:max-w-[800px]">
-          <SheetHeader>
-            <SheetTitle>
+      {/* Dialog for Add/Edit Form */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
               {viewMode === "add" ? "Add New Housing and Transport Allocation" : "Edit Housing and Transport Allocation"}
-            </SheetTitle>
-            <SheetDescription>
+            </DialogTitle>
+            <DialogDescription>
               {viewMode === "add" 
                 ? "Create a new housing and transport allocation for a staff member."
                 : "Update the housing and transport allocation details."
               }
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           <div className="mt-6">
             <StaffBenefitForm
               benefit={selectedBenefit || undefined}
@@ -89,8 +89,8 @@ export default function StaffBenefits() {
               onCancel={handleCancel}
             />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {viewMode === "view" && selectedBenefit && (
         <div className="max-w-4xl mx-auto">

@@ -55,7 +55,9 @@ export function useStaffBenefits(): UseStaffBenefitsReturn {
     inactive: 0,
     suspended: 0,
     housingBenefits: 0,
-    transportationBenefits: 0
+    transportationBenefits: 0,
+    flightAgreementBenefits: 0,
+    busCardBenefits: 0
   });
   const [staffLocations, setStaffLocations] = useState<Array<{ id: string; location_code: string; location_description: string }>>([]);
 

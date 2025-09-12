@@ -204,37 +204,6 @@ export const useAssignmentsByStatus = (status: AssignmentStatus) => {
   return { assignments, loading, error, refetch: fetchData };
 };
 
-/**
- * Hook for fetching assignments by payment status
- * @param paymentStatus Payment status to filter by
- * @returns Object containing assignments data, loading state, error state, and refetch function
- */
-export const useAssignmentsByPaymentStatus = (paymentStatus: PaymentStatus) => {
-  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignmentsByPaymentStatus(paymentStatus);
-      setAssignments(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [paymentStatus]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { assignments, loading, error, refetch: fetchData };
-};
 
 /**
  * Hook for fetching assignments by tenant ID

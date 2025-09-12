@@ -309,9 +309,8 @@ export const RoomsList = () => {
               <TableHead>Property</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Area</TableHead>
               <TableHead>Occupants</TableHead>
-              <TableHead>Price</TableHead>
+              <TableHead>Rent Amount</TableHead>
               <TableHead>Available From</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -319,15 +318,15 @@ export const RoomsList = () => {
           <TableBody>
             {roomsLoading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-4">Loading rooms...</TableCell>
+                <TableCell colSpan={8} className="text-center py-4">Loading rooms...</TableCell>
               </TableRow>
             ) : roomsError ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-4 text-red-500">Error loading rooms</TableCell>
+                <TableCell colSpan={8} className="text-center py-4 text-red-500">Error loading rooms</TableCell>
               </TableRow>
             ) : filteredRooms.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-4">No rooms found</TableCell>
+                <TableCell colSpan={8} className="text-center py-4">No rooms found</TableCell>
               </TableRow>
             ) : filteredRooms.map((room) => (
               <TableRow key={room.id} className={selectedRooms.includes(room.id) ? "bg-primary/5" : ""}>
@@ -344,9 +343,8 @@ export const RoomsList = () => {
                 <TableCell>
                   <StatusBadge status={room.status} />
                 </TableCell>
-                <TableCell>{room.area} ft²</TableCell>
                 <TableCell>{room.occupants}/{room.maxOccupants}</TableCell>
-                <TableCell>${room.price}/mo</TableCell>
+                <TableCell>${room.rentAmount}/mo</TableCell>
                 <TableCell>{room.dateAvailable}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
