@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sheet, SheetContent } from "@/components/ui/custom-ui";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Plus, Search, Filter, Users, Calendar, Edit, Trash2, DoorOpen, Building2, Clock } from "lucide-react";
 import AssignmentForm from "./AssignmentForm";
 import { useToast } from "@/components/ui/use-toast";
@@ -297,8 +297,8 @@ export const AssignmentsList = () => {
       </div>
 
       {/* Assignment Form Sheet */}
-      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <AssignmentForm
             assignment={editingAssignment}
             onSave={handleSaveAssignment}
@@ -306,8 +306,8 @@ export const AssignmentsList = () => {
             properties={properties ? properties.map(p => ({ id: p.id, title: p.title, address: p.address })) : []}
             rooms={rooms ? rooms.map(r => ({ id: r.id, name: r.name, propertyId: r.propertyId })) : []}
           />
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

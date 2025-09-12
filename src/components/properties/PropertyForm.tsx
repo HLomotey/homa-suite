@@ -85,6 +85,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
     title: property?.title || "",
     address: property?.address || "",
     price: property?.price || 0,
+    rentAmount: property?.rentAmount || 0,
     bedrooms: property?.bedrooms || 1,
     bathrooms: property?.bathrooms || 1,
     area: property?.area || 0,

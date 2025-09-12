@@ -1,26 +1,31 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Loader2, ChevronDown } from "lucide-react";
+import { X, Loader2, ChevronDown, Home, Car, Plane, CreditCard, DollarSign } from "lucide-react";
 import {
   FrontendAssignment,
   AssignmentStatus,
   PaymentStatus,
-} from "@/integration/supabase/types";
+  SecurityDeposit,
+} from "@/integration/supabase/types/assignment";
 import { useToast } from "@/components/ui/use-toast";
 import {
   SearchableSelect,
   SearchableSelectOption,
 } from "@/components/ui/searchable-select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
+import { useAuth } from "@/contexts/AuthContext";
+import { FrontendRoom } from "@/integration/supabase/types/room";
 
 export interface AssignmentFormProps {
   assignment?: FrontendAssignment;
   onSave: (assignment: Omit<FrontendAssignment, "id">) => void;
   onCancel: () => void;
   properties: { id: string; title: string; address: string }[];
-  rooms: { id: string; name: string; propertyId: string }[];
+  rooms: { id: string; name: string; propertyId: string; rentAmount?: number }[];
 }
 
 export const AssignmentForm: React.FC<AssignmentFormProps> = ({
@@ -31,6 +36,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   rooms,
 }) => {
   const { toast } = useToast();
+  const { hasRole } = useAuth();
 
   // IMPORTANT: this hook now paginates until **all** rows are fetched.
   const {
@@ -55,7 +61,6 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
     endDate: assignment?.endDate || "",
     rentAmount: assignment?.rentAmount || 0,
-    paymentStatus: assignment?.paymentStatus || ("Paid" as PaymentStatus),
   });
 
   // Search field state
@@ -69,8 +74,92 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   const [isValidTenant, setIsValidTenant] = React.useState(!!assignment?.tenantId);
   const [isValidStaff, setIsValidStaff] = React.useState(!!assignment?.staffId);
 
+  // Benefit agreement states
+  const [housingAgreement, setHousingAgreement] = React.useState(false);
+  const [transportationAgreement, setTransportationAgreement] = React.useState(false);
+  const [flightAgreement, setFlightAgreement] = React.useState(false);
+  const [busCardAgreement, setBusCardAgreement] = React.useState(false);
+
+  // Rent amount override states
+  const [isRentOverrideEnabled, setIsRentOverrideEnabled] = React.useState(false);
+  const [originalRentAmount, setOriginalRentAmount] = React.useState(0);
+
+  // Security deposits state for all benefit types
+  const [securityDeposits, setSecurityDeposits] = React.useState<{
+    housing?: SecurityDeposit;
+    transportation?: SecurityDeposit;
+    flight_agreement?: SecurityDeposit;
+    bus_card?: SecurityDeposit;
+  }>({});
+
+  // Helper function to create a new security deposit
+  const createSecurityDeposit = (benefitType: 'housing' | 'transportation' | 'flight_agreement' | 'bus_card'): SecurityDeposit => ({
+    benefitType,
+    totalAmount: 0,
+    paymentMethod: 'cash',
+    paymentStatus: 'pending',
+    paidDate: "",
+    notes: "",
+    deductionSchedule: []
+  });
+
+  // Helper function to generate deduction schedule
+  const generateDeductionSchedule = (totalAmount: number, startDate: string) => {
+    if (totalAmount <= 0 || !startDate) return [];
+    
+    const deductionAmount = totalAmount / 4;
+    const start = new Date(startDate);
+    
+    return Array.from({ length: 4 }, (_, index) => {
+      const scheduledDate = new Date(start);
+      scheduledDate.setDate(scheduledDate.getDate() + (14 * (index + 1))); // Bi-weekly
+      
+      return {
+        deductionNumber: index + 1,
+        scheduledDate: scheduledDate.toISOString().split('T')[0],
+        amount: deductionAmount,
+        status: 'scheduled' as const
+      };
+    });
+  };
+
+  // Update deduction schedules when amounts or start date change
+  React.useEffect(() => {
+    if (!formData.startDate) return;
+    
+    setSecurityDeposits(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(key => {
+        const benefitType = key as keyof typeof updated;
+        const deposit = updated[benefitType];
+        if (deposit && deposit.totalAmount > 0) {
+          updated[benefitType] = {
+            ...deposit,
+            deductionSchedule: generateDeductionSchedule(deposit.totalAmount, formData.startDate)
+          };
+        }
+      });
+      return updated;
+    });
+  }, [formData.startDate]);
+
   // Rooms filtered by selected property
   const filteredRooms = rooms.filter((room) => room.propertyId === formData.propertyId);
+
+  // Initialize rent amount when component mounts or assignment changes
+  React.useEffect(() => {
+    if (assignment) {
+      // If editing existing assignment, check if rent was overridden
+      const currentRoom = rooms.find(r => r.id === assignment.roomId);
+      const roomRentAmount = currentRoom?.rentAmount || 0;
+      setOriginalRentAmount(roomRentAmount);
+      
+      // If assignment rent differs from room rent, assume it was overridden
+      if (assignment.rentAmount !== roomRentAmount && roomRentAmount > 0) {
+        setIsRentOverrideEnabled(true);
+      }
+    }
+  }, [assignment, rooms]);
 
   // === Load ALL staff on mount, without status filter ===
   React.useEffect(() => {
@@ -241,11 +330,17 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       }));
     } else if (name === "roomId") {
       const selectedRoom = rooms.find((r) => r.id === value);
+      const roomRentAmount = selectedRoom?.rentAmount || 0;
+      
       setFormData((prev) => ({
         ...prev,
         roomId: value,
         roomName: selectedRoom?.name || "",
+        rentAmount: isRentOverrideEnabled ? prev.rentAmount : roomRentAmount,
       }));
+      
+      // Store original rent amount for override functionality
+      setOriginalRentAmount(roomRentAmount);
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -257,30 +352,20 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate tenant selection
-    if (!formData.tenantName.trim()) {
+    // Validate tenant
+    if (!formData.tenantId) {
       toast({
         title: "Validation Error",
-        description: "Please select a tenant from the list",
+        description: "Please select a tenant.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!isValidTenant || !formData.tenantId) {
+    if (!formData.staffId) {
       toast({
-        title: "Validation Error",
-        description: "Please select a valid tenant from the dropdown list. Free text entry is not allowed.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate staff selection (if provided)
-    if (formData.staffName && (!isValidStaff || !formData.staffId)) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a valid staff member from the dropdown list. Free text entry is not allowed.",
+        title: "Validation Error", 
+        description: "Please select a staff member.",
         variant: "destructive",
       });
       return;
@@ -289,7 +374,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     if (!formData.propertyId) {
       toast({
         title: "Validation Error",
-        description: "Please select a property",
+        description: "Please select a property.",
         variant: "destructive",
       });
       return;
@@ -298,21 +383,64 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     if (!formData.roomId) {
       toast({
         title: "Validation Error",
-        description: "Please select a room",
+        description: "Please select a room.",
         variant: "destructive",
       });
       return;
     }
 
-    // Final validation: ensure tenant exists in external staff list
-    const tenantExists = externalStaff.some(staff => staff.id === formData.tenantId);
-    if (!tenantExists) {
+    if (!formData.startDate) {
       toast({
         title: "Validation Error",
-        description: "Selected tenant is not valid. Please select from the available list.",
+        description: "Please select a start date.",
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate that at least one benefit agreement is selected
+    if (!housingAgreement && !transportationAgreement && !flightAgreement && !busCardAgreement) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one benefit agreement.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate security deposits for selected benefit agreements
+    const benefitValidations = [
+      { agreement: housingAgreement, type: 'housing', label: 'Housing' },
+      { agreement: transportationAgreement, type: 'transportation', label: 'Transportation' },
+      { agreement: flightAgreement, type: 'flight_agreement', label: 'Flight Agreement' },
+      { agreement: busCardAgreement, type: 'bus_card', label: 'Bus Card' }
+    ];
+
+    for (const { agreement, type, label } of benefitValidations) {
+      if (agreement) {
+        const deposit = securityDeposits[type as keyof typeof securityDeposits];
+        if (!deposit || deposit.totalAmount <= 0) {
+          toast({
+            title: "Validation Error",
+            description: `Please enter a security deposit amount for the ${label} agreement.`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Validate deduction schedule totals match deposit amount
+        if (deposit.deductionSchedule.length > 0) {
+          const totalDeductions = deposit.deductionSchedule.reduce((sum, deduction) => sum + deduction.amount, 0);
+          if (Math.abs(totalDeductions - deposit.totalAmount) > 0.01) {
+            toast({
+              title: "Validation Error",
+              description: `${label} deduction schedule total must equal the security deposit amount.`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
     }
 
     // Final validation: ensure staff exists in external staff list (if provided)
@@ -328,8 +456,20 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       }
     }
 
+
     try {
-      onSave(formData);
+      // Include agreement data and security deposit in the assignment
+      const assignmentWithAgreements = {
+        ...formData,
+        agreements: {
+          housing: housingAgreement,
+          transportation: transportationAgreement,
+          flight_agreement: flightAgreement,
+          bus_card: busCardAgreement,
+        },
+        securityDeposits: Object.values(securityDeposits).filter(deposit => deposit && deposit.totalAmount > 0)
+      };
+      onSave(assignmentWithAgreements);
     } catch (error) {
       console.error("Error saving assignment:", error);
       toast({
@@ -521,11 +661,17 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   disabled={!formData.propertyId}
                   onValueChange={(value) => {
                     const selectedRoom = filteredRooms.find((r) => r.id === value);
+                    const roomRentAmount = selectedRoom?.rentAmount || 0;
+                    
                     setFormData((prev) => ({
                       ...prev,
                       roomId: value,
                       roomName: selectedRoom?.name || "",
+                      rentAmount: isRentOverrideEnabled ? prev.rentAmount : roomRentAmount,
                     }));
+                    
+                    // Store original rent amount for override functionality
+                    setOriginalRentAmount(roomRentAmount);
                   }}
                 />
               </div>
@@ -566,9 +712,37 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
             {/* Rent + Status */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="rentAmount" className="text-sm font-medium leading-none">
-                  Rent Amount ($)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="rentAmount" className="text-sm font-medium leading-none">
+                    Rent Amount ($)
+                  </label>
+                  {hasRole("Properties Manager") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (!isRentOverrideEnabled) {
+                          setIsRentOverrideEnabled(true);
+                          toast({
+                            title: "Override Enabled",
+                            description: "You can now modify the rent amount. Original amount: $" + originalRentAmount,
+                          });
+                        } else {
+                          setIsRentOverrideEnabled(false);
+                          setFormData(prev => ({ ...prev, rentAmount: originalRentAmount }));
+                          toast({
+                            title: "Override Disabled",
+                            description: "Rent amount reset to original room rate: $" + originalRentAmount,
+                          });
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      {isRentOverrideEnabled ? "Reset" : "Override"}
+                    </Button>
+                  )}
+                </div>
                 <Input
                   id="rentAmount"
                   name="rentAmount"
@@ -578,7 +752,19 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   className="mt-2"
                   min={0}
                   required
+                  readOnly={!isRentOverrideEnabled && !hasRole("Properties Manager")}
+                  disabled={!isRentOverrideEnabled && !hasRole("Properties Manager")}
                 />
+                {!hasRole("Properties Manager") && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Rent amount is automatically populated from room data. Contact Properties Manager to override.
+                  </p>
+                )}
+                {isRentOverrideEnabled && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    ⚠ Override active. Original room rate: ${originalRentAmount}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="status" className="text-sm font-medium leading-none">
@@ -599,23 +785,302 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               </div>
             </div>
 
-            {/* Payment Status */}
-            <div>
-              <label htmlFor="paymentStatus" className="text-sm font-medium leading-none">
-                Payment Status
-              </label>
-              <select
-                id="paymentStatus"
-                name="paymentStatus"
-                value={formData.paymentStatus}
-                onChange={handleChange}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
-              >
-                <option value="Paid">Paid</option>
-                <option value="Pending">Pending</option>
-                <option value="Overdue">Overdue</option>
-                <option value="Partial">Partial</option>
-              </select>
+
+            {/* Benefit Agreements Section */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+              <div>
+                <h3 className="text-sm font-medium leading-none mb-2">
+                  Benefit Agreements (Optional)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Select any benefit agreements that apply to this assignment. All agreements are optional.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="housing_agreement"
+                    checked={housingAgreement}
+                    onCheckedChange={(checked) => setHousingAgreement(checked as boolean)}
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Home className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <Label
+                        htmlFor="housing_agreement"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Housing Agreement
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Agree to housing terms and conditions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="transportation_agreement"
+                    checked={transportationAgreement}
+                    onCheckedChange={(checked) => setTransportationAgreement(checked as boolean)}
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Car className="h-4 w-4 text-green-600" />
+                    <div>
+                      <Label
+                        htmlFor="transportation_agreement"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Transportation Agreement
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Agree to transportation terms and conditions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="flight_agreement"
+                    checked={flightAgreement}
+                    onCheckedChange={(checked) => setFlightAgreement(checked as boolean)}
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Plane className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <Label
+                        htmlFor="flight_agreement"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Flight Agreement
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Agree to flight benefit terms and conditions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="bus_card_agreement"
+                    checked={busCardAgreement}
+                    onCheckedChange={(checked) => setBusCardAgreement(checked as boolean)}
+                  />
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <Label
+                        htmlFor="bus_card_agreement"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Bus Card Agreement
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Agree to bus card benefit terms and conditions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Agreement Status Indicator */}
+              {(housingAgreement || transportationAgreement || flightAgreement || busCardAgreement) && (
+                <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-xs text-green-700">
+                    ✓ Agreement confirmed for: {[
+                      housingAgreement && "Housing",
+                      transportationAgreement && "Transportation", 
+                      flightAgreement && "Flight Agreement",
+                      busCardAgreement && "Bus Card"
+                    ].filter(Boolean).join(", ")}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Benefit Charge Forms */}
+            <div className="space-y-4">
+              {[
+                { agreement: housingAgreement, type: 'housing', label: 'Housing', icon: Home, color: 'blue', isDeposit: true },
+                { agreement: transportationAgreement, type: 'transportation', label: 'Transportation', icon: Car, color: 'green', isDeposit: false },
+                { agreement: flightAgreement, type: 'flight_agreement', label: 'Flight Agreement', icon: Plane, color: 'purple', isDeposit: false },
+                { agreement: busCardAgreement, type: 'bus_card', label: 'Bus Card', icon: CreditCard, color: 'orange', isDeposit: false }
+              ].map(({ agreement, type, label, icon: Icon, color, isDeposit }) => {
+                if (!agreement) return null;
+
+                const benefitType = type as keyof typeof securityDeposits;
+                const deposit = securityDeposits[benefitType];
+
+                const updateDeposit = (updates: Partial<SecurityDeposit>) => {
+                  setSecurityDeposits(prev => ({
+                    ...prev,
+                    [benefitType]: {
+                      ...createSecurityDeposit(type as SecurityDeposit['benefitType']),
+                      ...prev[benefitType],
+                      ...updates,
+                      deductionSchedule: updates.totalAmount 
+                        ? generateDeductionSchedule(updates.totalAmount, formData.startDate)
+                        : prev[benefitType]?.deductionSchedule || []
+                    }
+                  }));
+                };
+
+                return (
+                  <div key={type} className={`p-4 border border-${color}-200 rounded-lg bg-${color}-50`}>
+                    <div className="flex items-center space-x-2">
+                      <Icon className={`h-5 w-5 text-${color}-600`} />
+                      <h3 className="text-sm font-medium leading-none">
+                        {label} {isDeposit ? 'Security Deposit' : 'Charge Amount'}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Enter the {isDeposit ? 'security deposit details' : 'charge amount details'} for the {label.toLowerCase()} agreement.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium leading-none">
+                          {isDeposit ? 'Deposit Amount ($) *' : 'Charge Amount ($) *'}
+                        </label>
+                        <Input
+                          type="number"
+                          value={deposit?.totalAmount || 0}
+                          onChange={(e) => updateDeposit({ totalAmount: Number(e.target.value) })}
+                          className="mt-2"
+                          min={0}
+                          step="0.01"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium leading-none">
+                          Payment Method
+                        </label>
+                        <select
+                          value={deposit?.paymentMethod || 'cash'}
+                          onChange={(e) => updateDeposit({ paymentMethod: e.target.value as SecurityDeposit['paymentMethod'] })}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="check">Check</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="credit_card">Credit Card</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium leading-none">
+                          Payment Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={deposit?.paidDate || ""}
+                          onChange={(e) => updateDeposit({ 
+                            paidDate: e.target.value,
+                            paymentStatus: e.target.value !== "" ? 'paid' : 'pending'
+                          })}
+                          className="mt-2"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Checkbox
+                          checked={deposit?.paymentStatus === 'paid'}
+                          onCheckedChange={(checked) => updateDeposit({
+                            paymentStatus: checked ? 'paid' : 'pending',
+                            paidDate: checked ? deposit?.paidDate || new Date().toISOString().split("T")[0] : ""
+                          })}
+                        />
+                        <Label className="text-sm font-medium cursor-pointer">
+                          {isDeposit ? 'Deposit has been paid' : 'Charge has been paid'}
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="text-sm font-medium leading-none">
+                        Notes (Optional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={deposit?.notes || ""}
+                        onChange={(e) => updateDeposit({ notes: e.target.value })}
+                        className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+                        placeholder={`Additional notes about the ${label.toLowerCase()} ${isDeposit ? 'security deposit' : 'charge'}...`}
+                      />
+                    </div>
+
+                    {/* Bi-Weekly Deduction Schedule - Only for Housing Security Deposit */}
+                    {isDeposit && deposit && deposit.totalAmount > 0 && deposit.deductionSchedule.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium leading-none mb-3">
+                          Bi-Weekly Deduction Schedule
+                        </h4>
+                        <div className="space-y-2">
+                          {deposit.deductionSchedule.map((deduction, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                              <div className="flex items-center space-x-3">
+                                <span className="text-xs font-medium text-gray-600">
+                                  Deduction #{deduction.deductionNumber}
+                                </span>
+                                <span className="text-sm">
+                                  ${deduction.amount.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500">
+                                  {deduction.scheduledDate}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  deduction.status === 'scheduled' 
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : deduction.status === 'deducted'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {deduction.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 text-xs text-gray-600">
+                          <p>• Deductions will be automatically processed bi-weekly from payroll</p>
+                          <p>• Each deduction: ${(deposit.totalAmount / 4).toFixed(2)}</p>
+                          <p>• Total recovery period: 8 weeks</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status Indicator */}
+                    {deposit && deposit.totalAmount > 0 && (
+                      <div className={`mt-3 p-2 rounded-md ${
+                        deposit.paymentStatus === 'paid' 
+                          ? "bg-green-50 border border-green-200" 
+                          : "bg-yellow-50 border border-yellow-200"
+                      }`}>
+                        <p className={`text-xs ${
+                          deposit.paymentStatus === 'paid' ? "text-green-700" : "text-yellow-700"
+                        }`}>
+                          {deposit.paymentStatus === 'paid' 
+                            ? `✓ ${label} ${isDeposit ? 'security deposit' : 'charge'} of $${deposit.totalAmount} has been paid${deposit.paidDate ? ` on ${deposit.paidDate}` : ""} via ${deposit.paymentMethod}`
+                            : `⚠ ${label} ${isDeposit ? 'security deposit' : 'charge'} of $${deposit.totalAmount} is pending payment via ${deposit.paymentMethod}`
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </form>

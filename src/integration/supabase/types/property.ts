@@ -15,6 +15,7 @@ export interface Property {
   title: string;
   address: string;
   price: number;
+  rent_amount: number;
   bedrooms: number;
   bathrooms: number;
   area: number;
@@ -47,6 +48,7 @@ export interface FrontendProperty {
   title: string;
   address: string;
   price: number;
+  rentAmount: number;
   bedrooms: number;
   bathrooms: number;
   area: number;
@@ -94,6 +96,7 @@ export const mapDatabasePropertyToFrontend = (dbProperty: any): FrontendProperty
     title: dbProperty.title,
     address: dbProperty.address,
     price: dbProperty.price,
+    rentAmount: dbProperty.rent_amount || 0,
     bedrooms: dbProperty.bedrooms,
     bathrooms: dbProperty.bathrooms,
     area: dbProperty.area,
@@ -118,6 +121,7 @@ export const mapFrontendPropertyToDatabase = (frontendProperty: FrontendProperty
     title: frontendProperty.title,
     address: frontendProperty.address,
     price: frontendProperty.price,
+    rent_amount: frontendProperty.rentAmount,
     bedrooms: frontendProperty.bedrooms,
     bathrooms: frontendProperty.bathrooms,
     area: frontendProperty.area,

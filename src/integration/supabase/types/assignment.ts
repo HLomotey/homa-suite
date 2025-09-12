@@ -23,6 +23,10 @@ export interface Assignment {
   end_date: string | null;
   rent_amount: number;
   payment_status: string;
+  housing_agreement: boolean;
+  transportation_agreement: boolean;
+  flight_agreement: boolean;
+  bus_card_agreement: boolean;
   created_at: string;
   updated_at: string | null;
 }
@@ -36,6 +40,34 @@ export type AssignmentStatus = 'Active' | 'Pending' | 'Expired' | 'Terminated';
  * Payment status enum
  */
 export type PaymentStatus = 'Paid' | 'Pending' | 'Overdue' | 'Partial';
+
+/**
+ * Deduction schedule item for security deposits
+ */
+export interface DeductionScheduleItem {
+  id?: string;
+  deductionNumber: number;
+  scheduledDate: string;
+  amount: number;
+  status: 'scheduled' | 'deducted' | 'waived' | 'adjusted';
+  actualDeductionDate?: string;
+  actualAmount?: number;
+  reason?: string;
+  notes?: string;
+}
+
+/**
+ * Security deposit information for housing agreements
+ */
+export interface SecurityDeposit {
+  benefitType: 'housing' | 'transportation' | 'flight_agreement' | 'bus_card';
+  totalAmount: number;
+  paymentMethod: 'cash' | 'check' | 'bank_transfer' | 'credit_card' | 'other';
+  paymentStatus: 'pending' | 'paid' | 'refunded';
+  paidDate: string;
+  notes?: string;
+  deductionSchedule: DeductionScheduleItem[];
+}
 
 /**
  * Frontend assignment type that matches the structure in AssignmentForm.tsx
@@ -54,7 +86,13 @@ export interface FrontendAssignment {
   startDate: string;
   endDate: string;
   rentAmount: number;
-  paymentStatus: PaymentStatus;
+  agreements?: {
+    housing?: boolean;
+    transportation?: boolean;
+    flight_agreement?: boolean;
+    bus_card?: boolean;
+  };
+  securityDeposits?: SecurityDeposit[] | null;
 }
 
 /**
@@ -75,6 +113,11 @@ export const mapDatabaseAssignmentToFrontend = (dbAssignment: Assignment): Front
     startDate: dbAssignment.start_date,
     endDate: dbAssignment.end_date || '',
     rentAmount: dbAssignment.rent_amount,
-    paymentStatus: dbAssignment.payment_status as PaymentStatus
+    agreements: {
+      housing: dbAssignment.housing_agreement,
+      transportation: dbAssignment.transportation_agreement,
+      flight_agreement: dbAssignment.flight_agreement,
+      bus_card: dbAssignment.bus_card_agreement
+    }
   };
 };

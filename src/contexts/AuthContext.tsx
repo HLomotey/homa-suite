@@ -9,6 +9,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase, supabaseAdmin } from "@/integration/supabase/client";
 import { getUserModules } from "@/hooks/role/modules-api";
 import { NAVIGATION_MODULES } from "@/config/navigation-modules";
+import { useInactivityTimer } from "@/hooks/auth/useInactivityTimer";
 
 // Types for our authentication system
 export interface ExternalStaffMember {
@@ -100,6 +101,32 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Sign out function
+  const signOut = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
+
+  // Inactivity timer configuration (5 minutes = 300,000 milliseconds)
+  const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
+
+  // Handle automatic logout due to inactivity
+  const handleInactivityLogout = async () => {
+    console.log('User inactive for 5 minutes, logging out...');
+    await signOut();
+  };
+
+  // Initialize inactivity timer
+  const { resetTimer } = useInactivityTimer({
+    timeout: INACTIVITY_TIMEOUT,
+    onTimeout: handleInactivityLogout,
+    isActive: !!currentUser // Only active when user is logged in
+  });
 
   // Validate if email exists in external staff and is active
   const validateExternalStaffEmail = async (
@@ -494,16 +521,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Sign out function
-  const signOut = async (): Promise<void> => {
-    try {
-      await supabase.auth.signOut();
-      setCurrentUser(null);
-    } catch (error) {
-      console.error("Sign out error:", error);
     }
   };
 
