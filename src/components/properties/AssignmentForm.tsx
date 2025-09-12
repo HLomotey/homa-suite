@@ -930,27 +930,32 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                 };
 
                 return (
-                  <div key={type} className={`p-4 border border-${color}-200 rounded-lg bg-${color}-50`}>
+                  <div key={type} className="p-4 border border-gray-600 rounded-lg bg-gray-800 text-white">
                     <div className="flex items-center space-x-2">
-                      <Icon className={`h-5 w-5 text-${color}-600`} />
-                      <h3 className="text-sm font-medium leading-none">
+                      <Icon className={`h-5 w-5 ${
+                        color === 'blue' ? 'text-blue-400' :
+                        color === 'green' ? 'text-green-400' :
+                        color === 'purple' ? 'text-purple-400' :
+                        'text-orange-400'
+                      }`} />
+                      <h3 className="text-sm font-medium leading-none text-white">
                         {label} {isDeposit ? 'Security Deposit' : 'Charge Amount'}
                       </h3>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-4">
+                    <p className="text-xs text-gray-300 mb-4">
                       Enter the {isDeposit ? 'security deposit details' : 'charge amount details'} for the {label.toLowerCase()} agreement.
                     </p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="text-sm font-medium leading-none">
+                        <label className="text-sm font-medium leading-none text-white">
                           {isDeposit ? 'Deposit Amount ($) *' : 'Charge Amount ($) *'}
                         </label>
                         <Input
                           type="number"
                           value={deposit?.totalAmount || 0}
                           onChange={(e) => updateDeposit({ totalAmount: Number(e.target.value) })}
-                          className="mt-2"
+                          className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                           min={0}
                           step="0.01"
                           placeholder="0.00"
@@ -959,13 +964,13 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                       </div>
                       
                       <div>
-                        <label className="text-sm font-medium leading-none">
+                        <label className="text-sm font-medium leading-none text-white">
                           Payment Method
                         </label>
                         <select
                           value={deposit?.paymentMethod || 'cash'}
                           onChange={(e) => updateDeposit({ paymentMethod: e.target.value as SecurityDeposit['paymentMethod'] })}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+                          className="flex h-10 w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm mt-2 text-white"
                         >
                           <option value="cash">Cash</option>
                           <option value="check">Check</option>
@@ -976,7 +981,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                       </div>
                       
                       <div>
-                        <label className="text-sm font-medium leading-none">
+                        <label className="text-sm font-medium leading-none text-white">
                           Payment Date
                         </label>
                         <Input
@@ -986,7 +991,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                             paidDate: e.target.value,
                             paymentStatus: e.target.value !== "" ? 'paid' : 'pending'
                           })}
-                          className="mt-2"
+                          className="mt-2 bg-gray-700 border-gray-600 text-white"
                         />
                       </div>
                     </div>
@@ -1000,21 +1005,21 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                             paidDate: checked ? deposit?.paidDate || new Date().toISOString().split("T")[0] : ""
                           })}
                         />
-                        <Label className="text-sm font-medium cursor-pointer">
+                        <Label className="text-sm font-medium cursor-pointer text-white">
                           {isDeposit ? 'Deposit has been paid' : 'Charge has been paid'}
                         </Label>
                       </div>
                     </div>
 
                     <div className="mt-4">
-                      <label className="text-sm font-medium leading-none">
+                      <label className="text-sm font-medium leading-none text-white">
                         Notes (Optional)
                       </label>
                       <textarea
                         rows={2}
                         value={deposit?.notes || ""}
                         onChange={(e) => updateDeposit({ notes: e.target.value })}
-                        className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+                        className="flex min-h-[60px] w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm mt-2 text-white placeholder-gray-400"
                         placeholder={`Additional notes about the ${label.toLowerCase()} ${isDeposit ? 'security deposit' : 'charge'}...`}
                       />
                     </div>
@@ -1022,30 +1027,30 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     {/* Bi-Weekly Deduction Schedule - Only for Housing Security Deposit */}
                     {isDeposit && deposit && deposit.totalAmount > 0 && deposit.deductionSchedule.length > 0 && (
                       <div className="mt-4">
-                        <h4 className="text-sm font-medium leading-none mb-3">
+                        <h4 className="text-sm font-medium leading-none mb-3 text-white">
                           Bi-Weekly Deduction Schedule
                         </h4>
                         <div className="space-y-2">
                           {deposit.deductionSchedule.map((deduction, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-700 rounded border border-gray-600">
                               <div className="flex items-center space-x-3">
-                                <span className="text-xs font-medium text-gray-600">
+                                <span className="text-xs font-medium text-gray-300">
                                   Deduction #{deduction.deductionNumber}
                                 </span>
-                                <span className="text-sm">
+                                <span className="text-sm text-white">
                                   ${deduction.amount.toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-400">
                                   {deduction.scheduledDate}
                                 </span>
                                 <span className={`text-xs px-2 py-1 rounded ${
                                   deduction.status === 'scheduled' 
-                                    ? 'bg-blue-100 text-blue-700'
+                                    ? 'bg-blue-600 text-blue-100'
                                     : deduction.status === 'deducted'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-gray-100 text-gray-700'
+                                    ? 'bg-green-600 text-green-100'
+                                    : 'bg-gray-600 text-gray-100'
                                 }`}>
                                   {deduction.status}
                                 </span>
@@ -1053,7 +1058,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                             </div>
                           ))}
                         </div>
-                        <div className="mt-2 text-xs text-gray-600">
+                        <div className="mt-2 text-xs text-gray-300">
                           <p>• Deductions will be automatically processed bi-weekly from payroll</p>
                           <p>• Each deduction: ${(deposit.totalAmount / 4).toFixed(2)}</p>
                           <p>• Total recovery period: 8 weeks</p>
@@ -1065,11 +1070,11 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     {deposit && deposit.totalAmount > 0 && (
                       <div className={`mt-3 p-2 rounded-md ${
                         deposit.paymentStatus === 'paid' 
-                          ? "bg-green-50 border border-green-200" 
-                          : "bg-yellow-50 border border-yellow-200"
+                          ? "bg-green-800 border border-green-600" 
+                          : "bg-yellow-800 border border-yellow-600"
                       }`}>
                         <p className={`text-xs ${
-                          deposit.paymentStatus === 'paid' ? "text-green-700" : "text-yellow-700"
+                          deposit.paymentStatus === 'paid' ? "text-green-200" : "text-yellow-200"
                         }`}>
                           {deposit.paymentStatus === 'paid' 
                             ? `✓ ${label} ${isDeposit ? 'security deposit' : 'charge'} of $${deposit.totalAmount} has been paid${deposit.paidDate ? ` on ${deposit.paidDate}` : ""} via ${deposit.paymentMethod}`
