@@ -30,6 +30,7 @@ import {
   Loader2,
   Plus,
   Search,
+  Building2,
 } from "lucide-react";
 import {
   SearchableSelect,
@@ -40,6 +41,7 @@ import { useDebounce } from "../../../hooks/useDebounce";
 import { useLocation } from "@/hooks/transport/useLocation";
 import useStaffLocation from "@/hooks/transport/useStaffLocation";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { useCompanyAccounts } from "@/hooks/companyAccount/useCompanyAccounts";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 import {
   FrontendStaffLocation,
@@ -78,6 +80,10 @@ export function StaffLocationsTab() {
     fetchExternalStaff,
     setStatus,
   } = useExternalStaff();
+  const {
+    companyAccounts,
+    loading: loadingCompanyAccounts,
+  } = useCompanyAccounts();
 
   // External staff search state
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,6 +159,7 @@ export function StaffLocationsTab() {
     isActive: true,
     managerId: "",
     managerName: "",
+    companyAccountId: "",
   });
 
   // Set external staff status to active and fetch on component mount
@@ -193,6 +200,7 @@ export function StaffLocationsTab() {
       isActive: true,
       managerId: "",
       managerName: "",
+      companyAccountId: "none",
     });
   };
 
@@ -212,6 +220,7 @@ export function StaffLocationsTab() {
       isActive: staffLocation.isActive,
       managerId: staffLocation.managerId || "",
       managerName: staffLocation.managerName || "",
+      companyAccountId: staffLocation.companyAccountId?.toString() || "none",
     });
     setIsSheetOpen(true);
   };
@@ -230,6 +239,7 @@ export function StaffLocationsTab() {
         isActive: formData.isActive,
         managerId: formData.managerId,
         managerName: formData.managerName,
+        companyAccountId: formData.companyAccountId && formData.companyAccountId !== "none" ? parseInt(formData.companyAccountId) : undefined,
       };
 
       if (formData.mode === "add") {
@@ -283,6 +293,7 @@ export function StaffLocationsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Company Location</TableHead>
+              <TableHead>Company Account</TableHead>
               <TableHead>Location Code</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Manager</TableHead>
@@ -295,6 +306,15 @@ export function StaffLocationsTab() {
               <TableRow key={location.id}>
                 <TableCell className="font-medium">
                   {location.companyLocationName}
+                </TableCell>
+                <TableCell>
+                  {location.companyAccountName ? (
+                    <span>{location.companyAccountName}</span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">
+                      No account assigned
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell>{location.locationCode}</TableCell>
                 <TableCell>{location.locationDescription}</TableCell>
@@ -378,6 +398,38 @@ export function StaffLocationsTab() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="companyAccountId">Company Account</Label>
+              {loadingCompanyAccounts ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading accounts...</span>
+                </div>
+              ) : (
+                <Select
+                  value={formData.companyAccountId}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, companyAccountId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a company account (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No account assigned</SelectItem>
+                    {companyAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            #{account.id}
+                          </span>
+                          <span>{account.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
 

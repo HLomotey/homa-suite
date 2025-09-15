@@ -25,6 +25,10 @@ export default function useStaffLocation() {
             id,
             "PAYROLL FIRST NAME",
             "PAYROLL LAST NAME"
+          ),
+          company_accounts (
+            id,
+            name
           )
         `)
         .order('location_code') as { data: any[] | null; error: any };
@@ -47,6 +51,8 @@ export default function useStaffLocation() {
             externalStaffId: item.external_staff_id,
             managerId: item.manager_id,
             managerName: item.manager ? `${item.manager["PAYROLL FIRST NAME"]} ${item.manager["PAYROLL LAST NAME"]}` : undefined,
+            companyAccountId: item.company_account_id || undefined,
+            companyAccountName: item.company_accounts?.name
           }))
         : [];
         
@@ -76,7 +82,8 @@ export default function useStaffLocation() {
           location_code: data.locationCode,
           location_description: data.locationDescription,
           is_active: data.isActive,
-          manager_id: data.managerId || null
+          manager_id: data.managerId || null,
+          company_account_id: data.companyAccountId || null
         })
         .select(`
           *,
@@ -99,6 +106,8 @@ export default function useStaffLocation() {
         externalStaffId: newLocation.external_staff_id,
         managerId: newLocation.manager_id,
         managerName: data.managerName,
+        companyAccountId: newLocation.company_account_id || undefined,
+        companyAccountName: newLocation.company_accounts?.name,
       };
 
       setStaffLocations(prev => [...prev, frontendLocation]);
@@ -125,12 +134,17 @@ export default function useStaffLocation() {
           location_description: data.locationDescription,
           is_active: data.isActive,
           manager_id: data.managerId || null,
+          company_account_id: data.companyAccountId || null,
           updated_at: new Date().toISOString()
         })
         .eq("id", id)
         .select(`
           *,
           company_locations (
+            name
+          ),
+          company_accounts (
+            id,
             name
           )
         `)
@@ -149,6 +163,8 @@ export default function useStaffLocation() {
         externalStaffId: updatedLocation.external_staff_id,
         managerId: updatedLocation.manager_id,
         managerName: data.managerName,
+        companyAccountId: updatedLocation.company_account_id || undefined,
+        companyAccountName: updatedLocation.company_accounts?.name,
       };
 
       setStaffLocations(prev => 
@@ -216,6 +232,8 @@ export default function useStaffLocation() {
             externalStaffId: item.external_staff_id,
             managerId: item.manager_id,
             managerName: item.manager ? `${item.manager["PAYROLL FIRST NAME"]} ${item.manager["PAYROLL LAST NAME"]}` : undefined,
+            companyAccountId: item.company_account_id,
+            companyAccountName: item.company_accounts?.name,
             changedAt: item.changed_at,
             changedBy: item.changed_by,
             changeType: item.change_type,

@@ -6,6 +6,7 @@ export interface StaffLocation {
   is_active: boolean;
   external_staff_id?: string;
   manager_id?: string;
+  company_account_id?: number;
   created_at: string;
   updated_at: string | null;
 }
@@ -21,6 +22,8 @@ export interface FrontendStaffLocation {
   externalStaffName?: string;
   managerId?: string;
   managerName?: string;
+  companyAccountId?: number;
+  companyAccountName?: string;
 }
 
 export interface StaffLocationFormData {
@@ -30,6 +33,7 @@ export interface StaffLocationFormData {
   isActive: boolean;
   managerId?: string;
   managerName?: string;
+  companyAccountId?: number;
 }
 
 // History tracking interfaces
@@ -42,6 +46,7 @@ export interface StaffLocationHistory {
   is_active: boolean;
   external_staff_id?: string;
   manager_id?: string;
+  company_account_id?: number;
   changed_at: string;
   changed_by?: string;
   change_type: 'INSERT' | 'UPDATE' | 'DELETE';
@@ -59,6 +64,8 @@ export interface FrontendStaffLocationHistory {
   externalStaffId?: string;
   managerId?: string;
   managerName?: string;
+  companyAccountId?: number;
+  companyAccountName?: string;
   changedAt: string;
   changedBy?: string;
   changeType: 'INSERT' | 'UPDATE' | 'DELETE';

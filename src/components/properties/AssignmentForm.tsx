@@ -48,19 +48,36 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   const [formData, setFormData] = React.useState<
     Omit<FrontendAssignment, "id">
-  >({
-    tenantName: assignment?.tenantName || "",
-    tenantId: assignment?.tenantId || "",
-    propertyId: assignment?.propertyId || properties[0]?.id || "",
-    propertyName: assignment?.propertyName || properties[0]?.title || "",
-    roomId: assignment?.roomId || "",
-    roomName: assignment?.roomName || "",
-    staffId: assignment?.staffId || "",
-    staffName: assignment?.staffName || "",
-    status: assignment?.status || ("Active" as AssignmentStatus),
-    startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
-    endDate: assignment?.endDate || "",
-    rentAmount: assignment?.rentAmount || 0,
+  >(() => {
+    // For new assignments, try to get rent amount from room or property
+    let initialRentAmount = assignment?.rentAmount || 0;
+    
+    if (!assignment && properties.length > 0 && rooms.length > 0) {
+      // For new assignments, try to get rent from first available room or property
+      const defaultProperty = properties[0];
+      const defaultRoom = rooms.find(r => r.propertyId === defaultProperty?.id);
+      
+      if (defaultRoom?.rentAmount && defaultRoom.rentAmount > 0) {
+        initialRentAmount = defaultRoom.rentAmount;
+      } else if ((defaultProperty as any)?.rentAmount && (defaultProperty as any).rentAmount > 0) {
+        initialRentAmount = (defaultProperty as any).rentAmount;
+      }
+    }
+    
+    return {
+      tenantName: assignment?.tenantName || "",
+      tenantId: assignment?.tenantId || "",
+      propertyId: assignment?.propertyId || properties[0]?.id || "",
+      propertyName: assignment?.propertyName || properties[0]?.title || "",
+      roomId: assignment?.roomId || "",
+      roomName: assignment?.roomName || "",
+      staffId: assignment?.staffId || "",
+      staffName: assignment?.staffName || "",
+      status: assignment?.status || ("Active" as AssignmentStatus),
+      startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
+      endDate: assignment?.endDate || "",
+      rentAmount: initialRentAmount,
+    };
   });
 
   // Search field state
@@ -148,18 +165,50 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   // Initialize rent amount when component mounts or assignment changes
   React.useEffect(() => {
-    if (assignment) {
+    if (assignment && rooms.length > 0) {
       // If editing existing assignment, check if rent was overridden
       const currentRoom = rooms.find(r => r.id === assignment.roomId);
-      const roomRentAmount = currentRoom?.rentAmount || 0;
-      setOriginalRentAmount(roomRentAmount);
+      const currentProperty = properties.find(p => p.id === assignment.propertyId);
       
-      // If assignment rent differs from room rent, assume it was overridden
-      if (assignment.rentAmount !== roomRentAmount && roomRentAmount > 0) {
+      const roomRentAmount = currentRoom?.rentAmount || 0;
+      const propertyRentAmount = (currentProperty as any)?.rentAmount || 0;
+      const fallbackRentAmount = roomRentAmount > 0 ? roomRentAmount : propertyRentAmount;
+      
+      setOriginalRentAmount(fallbackRentAmount);
+      
+      // If assignment has no rent amount (0), auto-populate from room/property
+      if (assignment.rentAmount === 0 && fallbackRentAmount > 0) {
+        setFormData(prev => ({
+          ...prev,
+          rentAmount: fallbackRentAmount
+        }));
+      } else if (assignment.rentAmount !== fallbackRentAmount && fallbackRentAmount > 0) {
+        // If assignment rent differs from room/property rent, assume it was overridden
         setIsRentOverrideEnabled(true);
       }
+    } else if (!assignment && properties.length > 0 && rooms.length > 0) {
+      // For new assignments, auto-populate rent amount when data is available
+      const defaultProperty = properties[0];
+      const availableRooms = rooms.filter(r => r.propertyId === defaultProperty?.id);
+      
+      if (availableRooms.length > 0) {
+        const roomWithRent = availableRooms.find(r => r.rentAmount && r.rentAmount > 0);
+        if (roomWithRent) {
+          setFormData(prev => ({
+            ...prev,
+            rentAmount: prev.rentAmount === 0 ? roomWithRent.rentAmount : prev.rentAmount
+          }));
+          setOriginalRentAmount(roomWithRent.rentAmount);
+        } else if ((defaultProperty as any)?.rentAmount && (defaultProperty as any).rentAmount > 0) {
+          setFormData(prev => ({
+            ...prev,
+            rentAmount: prev.rentAmount === 0 ? (defaultProperty as any).rentAmount : prev.rentAmount
+          }));
+          setOriginalRentAmount((defaultProperty as any).rentAmount);
+        }
+      }
     }
-  }, [assignment, rooms]);
+  }, [assignment, rooms, properties]);
 
   // === Load ALL staff on mount, without status filter ===
   React.useEffect(() => {
@@ -327,20 +376,27 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
         propertyName: selectedProperty?.title || "",
         roomId: "",
         roomName: "",
+        // Auto-populate rent amount from property if not overridden
+        rentAmount: isRentOverrideEnabled ? prev.rentAmount : (selectedProperty as any)?.rentAmount || prev.rentAmount,
       }));
     } else if (name === "roomId") {
       const selectedRoom = rooms.find((r) => r.id === value);
+      const selectedProperty = properties.find((p) => p.id === formData.propertyId);
+      
+      // Use room rent amount first, then fall back to property rent amount
       const roomRentAmount = selectedRoom?.rentAmount || 0;
+      const propertyRentAmount = (selectedProperty as any)?.rentAmount || 0;
+      const finalRentAmount = roomRentAmount > 0 ? roomRentAmount : propertyRentAmount;
       
       setFormData((prev) => ({
         ...prev,
         roomId: value,
         roomName: selectedRoom?.name || "",
-        rentAmount: isRentOverrideEnabled ? prev.rentAmount : roomRentAmount,
+        rentAmount: isRentOverrideEnabled ? prev.rentAmount : finalRentAmount,
       }));
       
       // Store original rent amount for override functionality
-      setOriginalRentAmount(roomRentAmount);
+      setOriginalRentAmount(finalRentAmount);
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -716,7 +772,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   <label htmlFor="rentAmount" className="text-sm font-medium leading-none">
                     Rent Amount ($)
                   </label>
-                  {hasRole("Properties Manager") && (
+                  {(hasRole("Properties Manager") || hasRole("admin") || hasRole("administrator")) && (
                     <Button
                       type="button"
                       variant="outline"
@@ -752,12 +808,12 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   className="mt-2"
                   min={0}
                   required
-                  readOnly={!isRentOverrideEnabled && !hasRole("Properties Manager")}
-                  disabled={!isRentOverrideEnabled && !hasRole("Properties Manager")}
+                  readOnly={!isRentOverrideEnabled && !(hasRole("Properties Manager") || hasRole("admin") || hasRole("administrator"))}
+                  disabled={!isRentOverrideEnabled && !(hasRole("Properties Manager") || hasRole("admin") || hasRole("administrator"))}
                 />
-                {!hasRole("Properties Manager") && (
+                {!(hasRole("Properties Manager") || hasRole("admin") || hasRole("administrator")) && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Rent amount is automatically populated from room data. Contact Properties Manager to override.
+                    Rent amount is automatically populated from room data. Contact Properties Manager or Admin to override.
                   </p>
                 )}
                 {isRentOverrideEnabled && (

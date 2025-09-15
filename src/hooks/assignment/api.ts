@@ -79,6 +79,7 @@ export const createAssignment = async (
     transportation_agreement: assignment.agreements?.transportation || false,
     flight_agreement: assignment.agreements?.flight_agreement || false,
     bus_card_agreement: assignment.agreements?.bus_card || false
+    // Removed payment_status as it was removed from assignments table
   };
 
   const { data, error } = await (supabase as any)

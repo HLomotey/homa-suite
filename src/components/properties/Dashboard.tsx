@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUp, ArrowDown, Percent, Building, DoorOpen, Users, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Percent, Building, DoorOpen, Users, Loader2, Shield } from "lucide-react";
 import { useProperties } from "@/hooks/property/useProperty";
 import { useRooms } from "@/hooks/room/useRoom";
+import { useAssignments } from "@/hooks/assignment/useAssignment";
 import { RoomStatus } from "@/integration/supabase/types/room";
 import OccupancyTrendChart from "./charts/OccupancyTrendChart";
 import AvailableRoomsChart from "./charts/AvailableRoomsChart";
@@ -13,9 +14,10 @@ import { format, subDays } from "date-fns";
 
 // Occupancy Dashboard Component
 export const OccupancyDashboard = () => {
-  // Fetch properties and rooms data
+  // Fetch properties, rooms, and assignments data
   const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
   const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
+  const { assignments, loading: assignmentsLoading, error: assignmentsError } = useAssignments();
 
   // Calculate dashboard metrics and chart data
   const { dashboardMetrics, chartData } = useMemo(() => {
@@ -142,12 +144,17 @@ export const OccupancyDashboard = () => {
     };
   }, [properties, rooms, propertiesLoading, roomsLoading]);
 
+  // Check if there are active tenants for Security Deposit tab
+  const hasActiveTenants = assignments?.some(assignment => 
+    assignment.tenantId && assignment.status === 'Active'
+  ) || false;
+
   // Handle loading state
-  const isLoading = propertiesLoading || roomsLoading;
+  const isLoading = propertiesLoading || roomsLoading || assignmentsLoading;
   
   // Handle error state
-  const hasError = propertiesError || roomsError;
-  const errorMessage = propertiesError?.message || roomsError?.message;
+  const hasError = propertiesError || roomsError || assignmentsError;
+  const errorMessage = propertiesError?.message || roomsError?.message || assignmentsError?.message;
 
   if (hasError) {
     return (
@@ -290,6 +297,7 @@ export const OccupancyDashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );
