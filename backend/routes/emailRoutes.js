@@ -322,4 +322,83 @@ router.post('/test-send', [body('to').isEmail().withMessage('Valid email address
   }
 });
 
+// Send refund decision report with PDF attachment
+router.post('/send-refund-report', async (req, res) => {
+  try {
+    const { to, subject, html, text } = req.body;
+    const attachment = req.files?.attachment;
+
+    if (!to || !subject || !html || !attachment) {
+      return res.status(400).json({
+        error: 'Missing required fields: to, subject, html, attachment'
+      });
+    }
+
+    const recipients = to.split(',').map(email => email.trim());
+    
+    const emailRequest = {
+      to: recipients,
+      subject,
+      body: html,
+      textBody: text,
+      formType: 'security_deposit_refund',
+      attachments: [{
+        filename: attachment.name,
+        content: attachment.data,
+        contentType: attachment.mimetype
+      }]
+    };
+
+    const result = await emailService.sendEmail(emailRequest);
+
+    res.status(200).json({
+      success: true,
+      messageId: result.messageId,
+      message: 'Refund report sent successfully'
+    });
+
+  } catch (error) {
+    logger.error('Refund report email error', error);
+    res.status(500).json({
+      error: 'Failed to send refund report',
+      message: error.message
+    });
+  }
+});
+
+// Send HR review notification
+router.post('/send-hr-notification', async (req, res) => {
+  try {
+    const { to, subject, html } = req.body;
+
+    if (!to || !subject || !html) {
+      return res.status(400).json({
+        error: 'Missing required fields: to, subject, html'
+      });
+    }
+
+    const emailRequest = {
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      body: html,
+      formType: 'hr_review_notification'
+    };
+
+    const result = await emailService.sendEmail(emailRequest);
+
+    res.status(200).json({
+      success: true,
+      messageId: result.messageId,
+      message: 'HR notification sent successfully'
+    });
+
+  } catch (error) {
+    logger.error('HR notification email error', error);
+    res.status(500).json({
+      error: 'Failed to send HR notification',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

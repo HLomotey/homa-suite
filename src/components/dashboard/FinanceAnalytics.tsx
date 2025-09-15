@@ -854,7 +854,7 @@ export function FinanceAnalytics() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Wages & Salaries</p>
-                        <p className="text-lg font-bold text-blue-600">${expenditureData.expenditureBreakdown.wages_salaries.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-blue-600">{formatCurrency(expenditureData.expenditureBreakdown.wages_salaries)}</p>
                         <p className="text-xs text-muted-foreground">Largest expense category</p>
                       </div>
                       <Users className="h-8 w-8 text-blue-500" />
@@ -880,7 +880,7 @@ export function FinanceAnalytics() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Admin Costs</p>
-                        <p className="text-lg font-bold text-purple-600">${expenditureData.expenditureBreakdown.admin_cost.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-purple-600">{formatCurrency(expenditureData.expenditureBreakdown.admin_cost)}</p>
                         <p className="text-xs text-muted-foreground">Operational expenses</p>
                       </div>
                       <CreditCard className="h-8 w-8 text-purple-500" />

@@ -107,6 +107,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
       ...prev,
       [name]:
         name === "price" ||
+        name === "rentAmount" ||
         name === "bedrooms" ||
         name === "bathrooms" ||
         name === "area"
@@ -407,6 +408,27 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({
                   required
                 />
               </div>
+              <div>
+                <label
+                  htmlFor="rentAmount"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Rent Amount ($)
+                </label>
+                <Input
+                  id="rentAmount"
+                  name="rentAmount"
+                  type="number"
+                  value={formData.rentAmount}
+                  onChange={handleChange}
+                  className="mt-2"
+                  min={0}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label
                   htmlFor="area"

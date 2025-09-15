@@ -22,7 +22,7 @@ export interface Assignment {
   start_date: string;
   end_date: string | null;
   rent_amount: number;
-  payment_status: string;
+  // payment_status removed - no longer used in assignments table
   housing_agreement: boolean;
   transportation_agreement: boolean;
   flight_agreement: boolean;
