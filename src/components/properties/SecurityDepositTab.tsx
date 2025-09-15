@@ -15,11 +15,13 @@ import {
   createSecurityDeposit,
   updateDeductionStatus 
 } from '@/integration/supabase/api/security-deposits';
+import { getRefundDecisionByDepositId, getApprovedRefundDecisionByAssignmentId } from '@/integration/supabase/api/refund-decisions';
 import { format } from 'date-fns';
 import { useAssignments } from '@/hooks/assignment/useAssignment';
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 import { useToast } from "@/components/ui/use-toast";
 import { EligibilityCheckForm } from './EligibilityCheckForm';
+import { PDFReportService } from '@/services/PDFReportService';
 
 // Using types from security-deposit.ts
 interface EligibilityCheck {
@@ -51,7 +53,7 @@ export const SecurityDepositTab = () => {
   const { assignments, loading: assignmentsLoading } = useAssignments();
   const { externalStaff, loading: staffLoading } = useExternalStaff();
   
-  const [selectedAssignment, setSelectedAssignment] = useState<string>('');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [depositData, setDepositData] = useState<FrontendSecurityDeposit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,11 +64,37 @@ export const SecurityDepositTab = () => {
   const [isEligibilityCheckOpen, setIsEligibilityCheckOpen] = useState(false);
   const [isRefundDecisionOpen, setIsRefundDecisionOpen] = useState(false);
   const [showEligibilityForm, setShowEligibilityForm] = useState(false);
+  const [hasApprovedRefund, setHasApprovedRefund] = useState<boolean>(false);
+  const [refundDecisionData, setRefundDecisionData] = useState<any>(null);
 
   // Filter assignments that have active tenants
   const assignmentsWithTenants = assignments?.filter(assignment => 
     assignment.tenantId && assignment.status === 'Active'
   ) || [];
+
+  // Check for approved refund decision when selectedAssignmentId changes
+  useEffect(() => {
+    const checkRefundDecision = async () => {
+      if (!selectedAssignmentId) {
+        setHasApprovedRefund(false);
+        setRefundDecisionData(null);
+        return;
+      }
+
+      try {
+        const { data: refundDecision } = await getApprovedRefundDecisionByAssignmentId(selectedAssignmentId);
+        const isApproved = !!refundDecision && refundDecision.decision_type === 'Approved';
+        setHasApprovedRefund(isApproved);
+        setRefundDecisionData(refundDecision);
+      } catch (error) {
+        console.error('Error checking refund decision:', error);
+        setHasApprovedRefund(false);
+        setRefundDecisionData(null);
+      }
+    };
+
+    checkRefundDecision();
+  }, [selectedAssignmentId]);
 
   // Load security deposit data from database
   useEffect(() => {
@@ -283,6 +311,64 @@ export const SecurityDepositTab = () => {
     setIsRefundDecisionOpen(true);
   };
 
+  const generateRefundPDF = async () => {
+    if (!selectedAssignmentId || !refundDecisionData) {
+      toast({
+        title: "Error",
+        description: "No refund decision data available for PDF generation.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const assignment = assignmentsWithTenants.find(a => a.id === selectedAssignmentId);
+      const selectedDeposit = depositData.find(d => d.assignmentId === selectedAssignmentId);
+      
+      if (!assignment || !selectedDeposit) {
+        toast({
+          title: "Error",
+          description: "Assignment or deposit data not found.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create assessment data from refund decision
+      const assessmentData = refundDecisionData.assessment_data || {};
+      
+      // Generate PDF using the static method
+      const { pdfBlob, filename } = await PDFReportService.generateRefundReport(
+        selectedDeposit,
+        assignment,
+        refundDecisionData,
+        'Current User'
+      );
+
+      // Download the PDF
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF Generated",
+        description: "Security deposit refund report has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "PDF Generation Failed",
+        description: "Failed to generate the refund report PDF.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const exportAuditTrail = (decision: RefundDecision) => {
     const auditData = {
       depositId: selectedDeposit?.id,
@@ -338,7 +424,7 @@ export const SecurityDepositTab = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedAssignment} onValueChange={setSelectedAssignment}>
+          <Select value={selectedAssignmentId || ''} onValueChange={setSelectedAssignmentId}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select an assignment" />
             </SelectTrigger>
@@ -358,7 +444,7 @@ export const SecurityDepositTab = () => {
       </Card>
 
       {/* Deposit Records */}
-      {selectedAssignment && (
+      {selectedAssignmentId && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Deposit Information */}
           <Card className="bg-black/40 backdrop-blur-md border border-white/10">
@@ -370,14 +456,15 @@ export const SecurityDepositTab = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {(() => {
-                const selectedDeposit = depositData.find(d => d.assignmentId === selectedAssignment);
-                console.log('SecurityDepositTab: Selected assignment:', selectedAssignment);
+                const selectedDeposit = depositData.find(d => d.assignmentId === selectedAssignmentId);
+                const selectedAssignment = assignmentsWithTenants.find(a => a.id === selectedAssignmentId);
+                console.log('SecurityDepositTab: Selected assignment ID:', selectedAssignmentId);
                 console.log('SecurityDepositTab: Available deposit data:', depositData);
                 console.log('SecurityDepositTab: Found deposit for assignment:', selectedDeposit);
                 return !selectedDeposit ? (
                   <div className="text-center py-8">
                     <p className="text-white/60 mb-4">No deposit record found</p>
-                    <Button onClick={() => handleCreateSecurityDeposit(selectedAssignment)}>
+                    <Button onClick={() => handleCreateSecurityDeposit(selectedAssignment?.id || '')}>
                       Create Deposit Record
                     </Button>
                   </div>
@@ -426,12 +513,28 @@ export const SecurityDepositTab = () => {
                       <Button 
                         onClick={() => {
                           setSelectedDeposit(selectedDeposit);
-                          setShowEligibilityForm(true);
+                          if (hasApprovedRefund) {
+                            // Generate and download PDF
+                            generateRefundPDF();
+                          } else {
+                            // Show eligibility form
+                            setShowEligibilityForm(true);
+                          }
                         }}
                         className="flex-1"
+                        variant={hasApprovedRefund ? "outline" : "default"}
                       >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Run Eligibility Check
+                        {hasApprovedRefund ? (
+                          <>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Preview Refund Results
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Run Eligibility Check
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>

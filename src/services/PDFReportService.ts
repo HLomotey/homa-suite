@@ -2,8 +2,8 @@
  * PDF Report Generation Service for Security Deposit Refund Decisions
  */
 
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { PDFReportData, RefundDecision, EligibilityAssessmentData } from '@/integration/supabase/types/refund-decision';
 import { FrontendSecurityDeposit } from '@/integration/supabase/types/security-deposit';
@@ -41,7 +41,7 @@ export class PDFReportService {
     let yPosition = 20;
 
     // Header
-    yPosition = this.addHeader(doc, yPosition);
+    yPosition = this.addHeader(doc, yPosition, decision, currentUser);
     
     // Tenant and Property Information
     yPosition = this.addTenantInfo(doc, deposit, assignment, yPosition);
@@ -64,13 +64,13 @@ export class PDFReportService {
     this.addFooter(doc);
 
     // Generate blob and filename
-    const pdfBlob = doc.output('blob');
+    const pdfBlob = new Blob([doc.output('arraybuffer')], { type: 'application/pdf' });
     const filename = `refund-report-${assignment.tenantName?.replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
 
     return { pdfBlob, filename };
   }
 
-  private static addHeader(doc: jsPDF, yPosition: number): number {
+  private static addHeader(doc: jsPDF, yPosition: number, decision: RefundDecision, currentUser: string): number {
     // Company logo placeholder (you can add actual logo here)
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
@@ -84,7 +84,21 @@ export class PDFReportService {
     doc.setLineWidth(0.5);
     doc.line(20, yPosition, 190, yPosition);
     
-    return yPosition + 15;
+    // Add approval information
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Approval Information', 20, yPosition);
+    yPosition += 10;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Approved by: ${currentUser}`, 20, yPosition);
+    yPosition += 6;
+    doc.text(`Approval Date: ${format(new Date(), 'MMMM dd, yyyy')}`, 20, yPosition);
+    yPosition += 6;
+    doc.text(`Decision ID: ${decision.id}`, 20, yPosition);
+    yPosition += 15;
+
+    return yPosition;
   }
 
   private static addTenantInfo(
@@ -259,7 +273,7 @@ export class PDFReportService {
     // Create deductions table
     const deductions = this.calculateDeductions(decision.assessment_data);
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPosition,
       head: [['Description', 'Amount']],
       body: deductions.map(d => [d.reason, `$${d.amount.toFixed(2)}`]),

@@ -30,6 +30,7 @@ import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 import { FinanceDrillThroughDashboard } from "@/components/finance/drill-through/FinanceDrillThroughDashboard";
 import ProjectionModule from '@/components/finance/projections/ProjectionModule';
 import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
+import { EligibilityApprovalPortal } from "@/components/finance/EligibilityApprovalPortal";
 
 interface DateRange {
   year: number;
@@ -164,6 +165,7 @@ export default function Finance() {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="detailed-analysis">Detailed Analysis</TabsTrigger>
           <TabsTrigger value="projections">Projections</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="budgeting">Budgeting</TabsTrigger>
@@ -186,6 +188,23 @@ export default function Finance() {
 
         <TabsContent value="projections" className="space-y-4">
           <ProjectionModule />
+        </TabsContent>
+
+        <TabsContent value="approvals" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Eligibility Assessment Approvals
+              </CardTitle>
+              <CardDescription>
+                Review and approve eligibility assessments for security deposit refunds
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EligibilityApprovalPortal />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">

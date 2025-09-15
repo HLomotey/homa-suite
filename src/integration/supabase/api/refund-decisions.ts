@@ -11,6 +11,7 @@ import {
   RefundDecisionResult
 } from '../types/refund-decision';
 
+
 /**
  * Create a new refund decision
  */
@@ -71,6 +72,37 @@ export async function getRefundDecisionByDepositId(
   } catch (err) {
     console.error('Unexpected error fetching refund decision:', err);
     return { data: null, error: 'Failed to fetch refund decision' };
+  }
+}
+
+/**
+ * Get approved refund decision by assignment ID
+ */
+export async function getApprovedRefundDecisionByAssignmentId(
+  assignmentId: string
+): Promise<{ data: RefundDecision | null; error: string | null }> {
+  try {
+    const { data, error } = await supabase
+      .from('security_deposit_refund_decisions')
+      .select(`
+        *,
+        security_deposits!inner(assignment_id)
+      `)
+      .eq('security_deposits.assignment_id', assignmentId)
+      .eq('decision_type', 'Approved')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error fetching approved refund decision by assignment:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data: data || null, error: null };
+  } catch (err) {
+    console.error('Unexpected error fetching approved refund decision by assignment:', err);
+    return { data: null, error: 'Failed to fetch approved refund decision' };
   }
 }
 
