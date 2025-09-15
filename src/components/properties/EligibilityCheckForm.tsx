@@ -16,6 +16,7 @@ import { createRefundDecision, updateRefundDecision } from '@/integration/supaba
 import { PDFReportService } from '@/services/PDFReportService';
 import { EmailService } from '@/services/EmailService';
 import { useToast } from '@/components/ui/use-toast';
+import { submitEligibilityForFinanceApproval } from '@/integration/supabase/api/eligibility';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -193,21 +194,49 @@ export const EligibilityCheckForm: React.FC<EligibilityCheckFormProps> = ({
       reasons.push('✓ House rules followed');
     }
 
-    // Check residency compliance
+    // Check residency compliance - CRITICAL RULE: Early departure = non-refundable
     if (!assessment.residencyCompliance.stayedUntilEndDate) {
-      if (!assessment.programCompliance.companyRelocation) {
+      // Company relocations do NOT affect deposit eligibility - they still get refund if other conditions met
+      if (assessment.programCompliance.companyRelocation) {
+        reasons.push('✓ Company relocation noted - does not affect deposit eligibility');
+      } else {
         reasons.push('❌ Early departure - deposit non-refundable');
         isEligible = false;
-        // Early departure = full forfeiture unless company relocation
+        // Early departure = full forfeiture (overrides all other deductions)
+        deductions.length = 0; // Clear other deductions
         deductions.push({
-          reason: 'Early departure',
+          reason: 'Early departure - non-refundable',
           amount: deposit.totalAmount
         });
-      } else {
-        reasons.push('✓ Company relocation - early departure excused');
+        return {
+          isEligible: false,
+          refundRecommendation: 'No Refund',
+          refundAmount: 0,
+          deductions,
+          reasons,
+          requiresHRReview: true // Early departure always requires HR review
+        };
       }
     } else {
       reasons.push('✓ Stayed until agreed end date');
+    }
+
+    // For J1 staff: Check DS-2019 end date compliance
+    if (assessment.programCompliance.isJ1Staff) {
+      const ds2019EndDate = new Date(assessment.programCompliance.ds2019EndDate);
+      const programEndDate = new Date(assessment.programCompliance.programEndDate);
+      const actualDepartureDate = new Date(assessment.residencyCompliance.actualDepartureDate);
+      
+      if (actualDepartureDate > ds2019EndDate) {
+        reasons.push('❌ Departed after DS-2019 end date - program violation');
+        isEligible = false;
+        deductions.push({
+          reason: 'DS-2019 program violation',
+          amount: 100
+        });
+      } else {
+        reasons.push('✓ DS-2019 compliance maintained');
+      }
     }
 
     // Calculate total deductions
@@ -225,10 +254,19 @@ export const EligibilityCheckForm: React.FC<EligibilityCheckFormProps> = ({
     }
 
     // Check if HR review is required
-    const requiresHRReview = 
+    let requiresHRReview = 
       assessment.residencyCompliance.hrReviewRequired ||
-      (!assessment.residencyCompliance.stayedUntilEndDate && assessment.residencyCompliance.earlyDepartureReason !== '') ||
+      (!assessment.residencyCompliance.stayedUntilEndDate) || // Early departure requests always require HR review
       totalDeductions > 200;
+    
+    // Add J1 program violation check for HR review
+    if (assessment.programCompliance.isJ1Staff) {
+      const ds2019EndDate = new Date(assessment.programCompliance.ds2019EndDate);
+      const actualDepartureDate = new Date(assessment.residencyCompliance.actualDepartureDate);
+      if (actualDepartureDate > ds2019EndDate) {
+        requiresHRReview = true;
+      }
+    }
 
     return {
       isEligible,
@@ -247,96 +285,28 @@ export const EligibilityCheckForm: React.FC<EligibilityCheckFormProps> = ({
       // Calculate eligibility result
       const result = calculateEligibility();
       
-      // Save decision to database
-      const { data: refundDecision, error: saveError } = await createRefundDecision({
-        security_deposit_id: deposit.id,
-        assessment_data: assessment,
-        result: result,
-        approved_by: currentUser?.user?.id || null
-      });
-
-      if (saveError || !refundDecision) {
-        throw new Error(saveError || 'Failed to save refund decision');
-      }
-
-      toast({
-        title: "Assessment Saved",
-        description: "Refund decision has been recorded in the database.",
-      });
-
-      // Generate PDF report
-      const { pdfBlob, filename } = await PDFReportService.generateRefundReport(
-        deposit,
-        assignment,
-        refundDecision,
-        currentUser?.externalStaff?.full_name || currentUser?.profile?.full_name || 'System User'
-      );
-
-      // Update decision with PDF info
-      const pdfPath = `reports/${filename}`;
-      await updateRefundDecision(refundDecision.id, {
-        pdf_report_generated: true,
-        pdf_report_path: pdfPath
-      });
-
-      toast({
-        title: "PDF Generated",
-        description: "Assessment report has been generated successfully.",
-      });
-
-      // Send email notification
-      const recipients = [
-        'tenant@example.com', // TODO: Get actual tenant email from assignment or external_staff
-        'housing@bohhousing.com'
-      ];
-
-      const emailResult = await EmailService.sendRefundDecisionEmail(
-        {
-          refund_decision_id: refundDecision.id,
-          recipients,
-          pdf_path: pdfPath,
-          tenant_name: assignment.tenantName || 'Unknown',
-          property_name: assignment.propertyName || 'Unknown',
-          refund_amount: result.refundAmount,
-          decision_type: result.refundRecommendation
-        },
-        pdfBlob,
-        filename
-      );
-
-      if (emailResult.success) {
-        // Update decision with email info
-        await updateRefundDecision(refundDecision.id, {
-          email_sent: true,
-          email_sent_at: new Date().toISOString(),
-          email_recipients: recipients
+      // Submit eligibility assessment for finance approval (no decision created yet)
+      try {
+        const assessmentId = await submitEligibilityForFinanceApproval({
+          security_deposit_id: deposit.id,
+          assessment_data: assessment,
+          calculated_result: result,
+          assessed_by: currentUser.user.id
         });
 
         toast({
-          title: "Email Sent",
-          description: `Assessment report sent to ${recipients.length} recipients.`,
+          title: "Assessment Submitted",
+          description: "Eligibility assessment has been submitted to Finance Manager for approval.",
         });
-      } else {
+
+      } catch (submitError) {
+        console.error('Error submitting eligibility assessment:', submitError);
         toast({
-          title: "Email Failed",
-          description: emailResult.error || "Failed to send email notification.",
+          title: "Submission Failed",
+          description: "Failed to submit eligibility assessment for finance approval.",
           variant: "destructive"
         });
-      }
-
-      // Send HR notification if required
-      if (result.requiresHRReview) {
-        await EmailService.sendHRReviewNotification(
-          refundDecision.id,
-          assignment.tenantName || 'Unknown',
-          assignment.propertyName || 'Unknown',
-          ['hr@bohhousing.com']
-        );
-
-        toast({
-          title: "HR Notified",
-          description: "HR team has been notified for review.",
-        });
+        throw submitError;
       }
 
       // Complete the workflow
