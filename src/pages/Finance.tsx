@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +28,11 @@ import { FinanceAnalyticsTab } from "@/components/finance/FinanceAnalyticsTab";
 import { InvoiceDateFilter } from "@/components/ui/invoice-date-filter";
 import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
 import { FinanceDrillThroughDashboard } from "@/components/finance/drill-through/FinanceDrillThroughDashboard";
+import { ExpenseDrillThroughDashboard } from "@/components/finance/drill-through/ExpenseDrillThroughDashboard";
 import ProjectionModule from '@/components/finance/projections/ProjectionModule';
 import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
 import { EligibilityApprovalPortal } from "@/components/finance/EligibilityApprovalPortal";
+import { useFinanceExpenses } from "@/hooks/finance/useFinanceExpense";
 
 interface DateRange {
   year: number;
@@ -42,6 +44,26 @@ export default function Finance() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedDateRanges, setSelectedDateRanges] = useState<DateRange[]>([]);
   const { data: financeData, isLoading } = useFinanceAnalytics(selectedDateRanges);
+  const { data: expenseData = [], isLoading: expenseLoading } = useFinanceExpenses();
+
+  // Calculate expense analytics
+  const expenseAnalytics = React.useMemo(() => {
+    const totalExpenses = expenseData.reduce((sum, expense) => sum + expense.total, 0);
+    const expenseCount = expenseData.length;
+    const averageExpense = expenseCount > 0 ? totalExpenses / expenseCount : 0;
+    
+    // Category breakdown
+    const categories = [...new Set(expenseData.map(e => e.category))];
+    const companies = [...new Set(expenseData.map(e => e.company))];
+    
+    return {
+      totalExpenses,
+      expenseCount,
+      averageExpense,
+      categoryCount: categories.length,
+      companyCount: companies.length
+    };
+  }, [expenseData]);
 
   const handleDateRangeChange = (dateRanges: DateRange[]) => {
     setSelectedDateRanges(dateRanges);
@@ -164,6 +186,7 @@ export default function Finance() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="detailed-analysis">Detailed Analysis</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="projections">Projections</TabsTrigger>
           <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -182,6 +205,68 @@ export default function Finance() {
         <TabsContent value="detailed-analysis" className="space-y-4">
           <FinanceDrillThroughDashboard
             onBack={() => setActiveTab("analytics")}
+            dateRanges={selectedDateRanges}
+          />
+        </TabsContent>
+
+        <TabsContent value="expenses" className="space-y-4">
+          {/* Expense Summary Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-background border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Expenses
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{expenseLoading ? "..." : formatCurrency(expenseAnalytics.totalExpenses)}</div>
+                <p className="text-xs text-muted-foreground">Current period</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Expense Count
+                </CardTitle>
+                <FileText className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{expenseLoading ? "..." : expenseAnalytics.expenseCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  {expenseLoading ? "..." : `${formatCurrency(expenseAnalytics.averageExpense)} average`}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Categories</CardTitle>
+                <PieChart className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{expenseLoading ? "..." : expenseAnalytics.categoryCount}</div>
+                <p className="text-xs text-muted-foreground">Active categories</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Companies
+                </CardTitle>
+                <BarChart className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{expenseLoading ? "..." : expenseAnalytics.companyCount}</div>
+                <p className="text-xs text-muted-foreground">Active companies</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <ExpenseDrillThroughDashboard
+            onBack={() => setActiveTab("overview")}
             dateRanges={selectedDateRanges}
           />
         </TabsContent>
