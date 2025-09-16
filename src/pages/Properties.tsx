@@ -9,6 +9,7 @@ import { AssignmentsList } from "@/components/properties/AssignmentsList";
 import { TenantsList } from "@/components/properties/TenantsList";
 import { BillingLog } from "@/components/properties/BillingLog";
 import { SecurityDepositTab } from "@/components/properties/SecurityDepositTab";
+import FlightAgreementTab from "@/components/properties/FlightAgreementTab";
 import PropertyForm from "@/components/properties/PropertyForm";
 import TenantForm from "@/components/properties/TenantForm";
 import { Inventory } from "@/components/inventory";
@@ -128,6 +129,7 @@ const HousingPage: React.FC = () => {
             Billing
           </TabsTrigger>
           <TabsTrigger value="security-deposits">Security Deposits</TabsTrigger>
+          <TabsTrigger value="flight-agreements">Flight Agreements</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="utilities">Utilities</TabsTrigger>
           <TabsTrigger value="maintenance-admin">Maintenance Admin</TabsTrigger>
@@ -179,6 +181,10 @@ const HousingPage: React.FC = () => {
 
         <TabsContent value="security-deposits">
           <SecurityDepositTab />
+        </TabsContent>
+
+        <TabsContent value="flight-agreements">
+          <FlightAgreementTab />
         </TabsContent>
 
         <TabsContent value="inventory">
