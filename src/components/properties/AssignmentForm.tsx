@@ -963,7 +963,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               {[
                 { agreement: housingAgreement, type: 'housing', label: 'Housing', icon: Home, color: 'blue', isDeposit: true },
                 { agreement: transportationAgreement, type: 'transportation', label: 'Transportation', icon: Car, color: 'green', isDeposit: false },
-                { agreement: flightAgreement, type: 'flight_agreement', label: 'Flight Agreement', icon: Plane, color: 'purple', isDeposit: false },
+                { agreement: flightAgreement, type: 'flight_agreement', label: 'Flight Agreement', icon: Plane, color: 'purple', isDeposit: true },
                 { agreement: busCardAgreement, type: 'bus_card', label: 'Bus Card', icon: CreditCard, color: 'orange', isDeposit: false }
               ].map(({ agreement, type, label, icon: Icon, color, isDeposit }) => {
                 if (!agreement) return null;
