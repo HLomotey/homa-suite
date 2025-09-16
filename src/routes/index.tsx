@@ -2,6 +2,7 @@ import { createBrowserRouter, RouteObject } from "react-router-dom";
 import React, { lazy, Suspense } from "react";
 import { AppLayout } from "@/components/layout";
 import { ModuleRouteGuard } from "@/components/permissions/ModuleRouteGuard";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Lazy load all page components
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -226,7 +227,11 @@ export const routes: RouteObject[] = [
   },
   {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
-import { AuthProvider, ProtectedRoute } from "@/components/auth";
+import { AuthProvider } from "@/components/auth";
 import { PermissionsProvider } from "@/components/permissions";
 import { GlobalClickTracker } from "@/components/analytics/GlobalClickTracker";
 import { router } from "./routes";

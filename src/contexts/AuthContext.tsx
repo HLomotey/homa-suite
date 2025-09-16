@@ -1,9 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integration/supabase/client";
 import { useInactivityTimer } from "@/hooks/auth/useInactivityTimer";
 
@@ -14,7 +9,11 @@ import {
   AuthProviderProps,
   AUTH_CONSTANTS,
 } from "./auth/types";
-import { validateSession, updateLastActivity, clearLastActivity } from "./auth/sessionValidation";
+import {
+  validateSession,
+  updateLastActivity,
+  clearLastActivity,
+} from "./auth/sessionValidation";
 import { validateUserAccess } from "./auth/userValidation";
 import {
   buildAuthUser,
@@ -49,7 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle automatic logout due to inactivity
   const handleInactivityLogout = async () => {
-    console.log('User inactive for 5 minutes, logging out...');
+    console.log("User inactive for 5 minutes, logging out...");
     if (currentUser) {
       console.log(`Logging out ${currentUser.user.email} due to inactivity`);
       await authSignOut(setCurrentUser);
@@ -62,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { resetTimer } = useInactivityTimer({
     timeout: AUTH_CONSTANTS.INACTIVITY_TIMEOUT,
     onTimeout: handleInactivityLogout,
-    isActive: !!currentUser && !loading // Only active when user is logged in and not loading
+    isActive: !!currentUser && !loading, // Only active when user is logged in and not loading
   });
 
   // Track user activity in localStorage
@@ -75,17 +74,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // List of events that indicate user activity
       const events = [
-        'mousedown',
-        'mousemove',
-        'keypress',
-        'scroll',
-        'touchstart',
-        'click',
-        'keydown'
+        "mousedown",
+        "mousemove",
+        "keypress",
+        "scroll",
+        "touchstart",
+        "click",
+        "keydown",
       ];
 
       // Add event listeners
-      events.forEach(event => {
+      events.forEach((event) => {
         document.addEventListener(event, handleActivity, true);
       });
 
@@ -94,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Cleanup function
       return () => {
-        events.forEach(event => {
+        events.forEach((event) => {
           document.removeEventListener(event, handleActivity, true);
         });
       };
@@ -121,7 +120,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return authSignOut(setCurrentUser);
   };
 
-
   // Refresh user data with session validation
   const refreshUserData = async (): Promise<void> => {
     try {
@@ -136,7 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const authUser = await buildAuthUser(session.user, session);
           setCurrentUser(authUser);
         } else {
-          console.log('Invalid session during refresh, signing out');
+          console.log("Invalid session during refresh, signing out");
           await supabase.auth.signOut();
           setCurrentUser(null);
         }
@@ -149,7 +147,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setCurrentUser(null);
     }
   };
-
 
   // Initialize auth state with proper session validation
   useEffect(() => {
@@ -166,18 +163,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (session?.user) {
             // Validate the session before building auth user
             const isValidSession = await validateSession(session);
-            
+
             if (isValidSession) {
-              console.log('Valid session found, building auth user');
+              console.log("Valid session found, building auth user");
               const authUser = await buildAuthUser(session.user, session);
               setCurrentUser(authUser);
             } else {
-              console.log('Invalid session detected, signing out');
+              console.log("Invalid session detected, signing out");
               await supabase.auth.signOut();
               setCurrentUser(null);
             }
           } else {
-            console.log('No session found');
+            console.log("No session found");
             setCurrentUser(null);
           }
           setLoading(false);
@@ -200,27 +197,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (mounted) {
-        console.log('Auth state change event:', event);
-        
+        console.log("Auth state change event:", event);
+
         if (session?.user) {
           // Skip SIGNED_IN events as they're handled by signIn function
-          if (event === 'SIGNED_IN') {
-            console.log('Skipping SIGNED_IN event - handled by signIn function');
+          if (event === "SIGNED_IN") {
+            console.log(
+              "Skipping SIGNED_IN event - handled by signIn function"
+            );
             return;
           }
-          
+
           // For TOKEN_REFRESHED and other events, validate session first
-          if (event === 'TOKEN_REFRESHED') {
+          if (event === "TOKEN_REFRESHED") {
             const isValidSession = await validateSession(session);
             if (!isValidSession) {
-              console.log('Session validation failed after token refresh, signing out');
+              console.log(
+                "Session validation failed after token refresh, signing out"
+              );
               await supabase.auth.signOut();
               setCurrentUser(null);
               setLoading(false);
               return;
             }
           }
-          
+
           console.log(`Auth state change: ${event} - rebuilding user data`);
           const authUser = await buildAuthUser(session.user, session);
           setCurrentUser(authUser);
@@ -246,7 +247,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp: handleSignUp,
     signOut: handleSignOut,
     refreshUserData,
-    hasPermission: (permissionKey: string) => hasPermission(currentUser, permissionKey),
+    hasPermission: (permissionKey: string) =>
+      hasPermission(currentUser, permissionKey),
     hasModule: (moduleId: string) => hasModule(currentUser, moduleId),
     hasRole: (roleName: string) => hasRole(currentUser, roleName),
     isManagement: () => isManagement(currentUser),
