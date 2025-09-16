@@ -37,7 +37,7 @@ export interface UserActivity {
   id: string;
   userId: string;
   action: string;
-  details: any;
+  details?: any;
   timestamp: string;
   ip?: string;
   userAgent?: string;
