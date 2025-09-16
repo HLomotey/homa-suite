@@ -19,6 +19,7 @@ interface UploadComponentProps {
   guidelines: string[];
   templateName: string;
   badgeText: string;
+  dataType?: 'invoice' | 'expense'; // Add data type to determine processing method
 }
 
 export const UploadComponent: React.FC<UploadComponentProps> = ({
@@ -29,6 +30,7 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
   guidelines,
   templateName,
   badgeText,
+  dataType = 'invoice', // Default to invoice for backward compatibility
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -69,8 +71,10 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
         }
       });
 
-      // Process the data
-      const processedCount = await batchProcessor.processFinanceData(processedData.data);
+      // Process the data based on data type
+      const processedCount = dataType === 'expense' 
+        ? await batchProcessor.processFinanceExpenseData(processedData.data)
+        : await batchProcessor.processFinanceData(processedData.data);
       
       // Update stats
       const stats = {

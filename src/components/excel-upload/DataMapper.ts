@@ -4,6 +4,15 @@
 
 import { convertExcelDate } from './ExcelDateConverter';
 
+export interface FinanceExpenseData {
+  Company: string;
+  Date: string;
+  Type: string;
+  Payee: string;
+  Category: string;
+  Total: number;
+}
+
 export interface FinanceInvoiceData {
   client_name: string;
   invoice_number: string;
@@ -67,6 +76,20 @@ const validateNumericField = (value: any, min: number = 0, max: number = 999.99)
   const parsed = parseFloat(value || 0);
   if (isNaN(parsed)) return min;
   return Math.min(Math.max(parsed, min), max);
+};
+
+/**
+ * Maps raw Excel row data to finance expense schema
+ */
+export const mapToFinanceExpense = (row: any): FinanceExpenseData => {
+  return {
+    Company: row['Company'] || row.company || 'Unknown Company',
+    Date: convertExcelDate(row['Date'] || row.date) || new Date().toISOString().split('T')[0],
+    Type: row['Type'] || row.type || 'Expense',
+    Payee: row['Payee'] || row.payee || 'Unknown Payee',
+    Category: row['Category'] || row.category || 'General',
+    Total: Math.max(parseFloat(row['Total'] || row.total || 0) || 0, 0)
+  };
 };
 
 /**

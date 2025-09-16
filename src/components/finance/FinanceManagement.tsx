@@ -112,7 +112,7 @@ export function FinanceManagement() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <UploadComponent {...expenseConfig} />
+              <UploadComponent {...expenseConfig} dataType="expense" />
             </CardContent>
           </Card>
         </TabsContent>
