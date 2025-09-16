@@ -317,9 +317,14 @@ export function FinanceDrillDownModal({ isOpen, view, onClose, financeData }: Fi
             <h2 className="text-xl font-semibold text-white">{getViewTitle()}</h2>
             <p className="text-sm text-muted-foreground">Detailed financial analysis and actionable insights</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              Back to Dashboard
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">

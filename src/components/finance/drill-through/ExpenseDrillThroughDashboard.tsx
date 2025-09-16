@@ -285,33 +285,210 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4">
-          <Card className="bg-[#1f0a0a] border border-red-900/30">
-            <CardContent className="p-8 text-center">
-              <Receipt className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <h3 className="text-white text-lg font-semibold mb-2">Category Analysis</h3>
-              <p className="text-red-300">Detailed expense category breakdown coming soon</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Category Breakdown Chart */}
+            <Card className="bg-[#1f0a0a] border border-red-900/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <PieChart className="h-5 w-5 mr-2 text-red-400" />
+                  Category Breakdown
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(expenseAnalytics.categoryTotals)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 8)
+                    .map(([category, amount], index) => {
+                      const percentage = (amount / expenseAnalytics.totalExpenses) * 100;
+                      const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500'];
+                      return (
+                        <div key={category} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]}`}></div>
+                            <span className="text-white text-sm font-medium truncate">{category}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-white font-semibold">{formatCurrency(amount)}</div>
+                            <div className="text-red-300 text-xs">{percentage.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Category Summary Stats */}
+            <Card className="bg-[#1f0a0a] border border-red-900/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2 text-orange-400" />
+                  Category Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-3 bg-red-900/20 rounded-lg border border-red-800/30">
+                    <div className="text-red-300 text-sm">Highest Category</div>
+                    <div className="text-white font-bold">{expenseAnalytics.topCategory?.[0] || 'N/A'}</div>
+                    <div className="text-red-400 text-sm">{expenseAnalytics.topCategory ? formatCurrency(expenseAnalytics.topCategory[1]) : ''}</div>
+                  </div>
+                  
+                  <div className="p-3 bg-orange-900/20 rounded-lg border border-orange-800/30">
+                    <div className="text-orange-300 text-sm">Total Categories</div>
+                    <div className="text-white font-bold">{expenseAnalytics.categoryCount}</div>
+                    <div className="text-orange-400 text-sm">Active categories</div>
+                  </div>
+                  
+                  <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-800/30">
+                    <div className="text-yellow-300 text-sm">Average per Category</div>
+                    <div className="text-white font-bold">
+                      {formatCurrency(expenseAnalytics.totalExpenses / expenseAnalytics.categoryCount)}
+                    </div>
+                    <div className="text-yellow-400 text-sm">Mean spending</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="details" className="space-y-4">
           <Card className="bg-[#1f0a0a] border border-red-900/30">
-            <CardContent className="p-8 text-center">
-              <Receipt className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <h3 className="text-white text-lg font-semibold mb-2">Expense Details</h3>
-              <p className="text-red-300">Detailed expense list and filtering coming soon</p>
+            <CardHeader>
+              <CardTitle className="text-white flex items-center">
+                <Receipt className="h-5 w-5 mr-2 text-red-400" />
+                Expense Details ({filteredExpenses.length} expenses)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-96 overflow-y-auto">
+                <div className="space-y-2">
+                  {filteredExpenses
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 50)
+                    .map((expense, index) => (
+                      <div 
+                        key={expense.id || index}
+                        className="flex items-center justify-between p-3 bg-red-900/10 rounded-lg border border-red-800/20 hover:bg-red-900/20 transition-colors cursor-pointer"
+                        onClick={() => handleExpenseSelect(expense)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-white font-medium">{expense.payee}</div>
+                            <div className="text-red-300 text-sm px-2 py-1 bg-red-900/30 rounded">
+                              {expense.category}
+                            </div>
+                          </div>
+                          <div className="text-red-400 text-sm mt-1">
+                            {expense.company} • {new Date(expense.date).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white font-bold">{formatCurrency(expense.total)}</div>
+                          <div className="text-red-300 text-sm">{expense.type}</div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  {filteredExpenses.length > 50 && (
+                    <div className="text-center p-4 text-red-300 text-sm">
+                      Showing first 50 of {filteredExpenses.length} expenses
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-4">
-          <Card className="bg-[#1f0a0a] border border-red-900/30">
-            <CardContent className="p-8 text-center">
-              <Receipt className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <h3 className="text-white text-lg font-semibold mb-2">Expense Trends</h3>
-              <p className="text-red-300">Expense trend analysis coming soon</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Monthly Trends */}
+            <Card className="bg-[#1f0a0a] border border-red-900/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-green-400" />
+                  Monthly Trends
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {(() => {
+                    const monthlyData = filteredExpenses.reduce((acc, expense) => {
+                      const date = new Date(expense.date);
+                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                      
+                      if (!acc[monthKey]) {
+                        acc[monthKey] = { label: monthLabel, total: 0, count: 0 };
+                      }
+                      acc[monthKey].total += expense.total;
+                      acc[monthKey].count += 1;
+                      return acc;
+                    }, {} as Record<string, { label: string; total: number; count: number }>);
+                    
+                    return Object.entries(monthlyData)
+                      .sort(([a], [b]) => b.localeCompare(a))
+                      .slice(0, 6)
+                      .map(([month, data]) => (
+                        <div key={month} className="flex items-center justify-between p-3 bg-green-900/10 rounded-lg border border-green-800/20">
+                          <div>
+                            <div className="text-white font-medium">{data.label}</div>
+                            <div className="text-green-400 text-sm">{data.count} expenses</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-white font-bold">{formatCurrency(data.total)}</div>
+                            <div className="text-green-300 text-sm">
+                              Avg: {formatCurrency(data.total / data.count)}
+                            </div>
+                          </div>
+                        </div>
+                      ));
+                  })()
+                  }
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Company Trends */}
+            <Card className="bg-[#1f0a0a] border border-red-900/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <Building className="h-5 w-5 mr-2 text-blue-400" />
+                  Company Spending
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {Object.entries(expenseAnalytics.companyTotals)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 6)
+                    .map(([company, amount]) => {
+                      const companyExpenses = filteredExpenses.filter(e => e.company === company);
+                      const avgExpense = amount / companyExpenses.length;
+                      return (
+                        <div key={company} className="flex items-center justify-between p-3 bg-blue-900/10 rounded-lg border border-blue-800/20">
+                          <div>
+                            <div className="text-white font-medium">{company}</div>
+                            <div className="text-blue-400 text-sm">{companyExpenses.length} expenses</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-white font-bold">{formatCurrency(amount)}</div>
+                            <div className="text-blue-300 text-sm">
+                              Avg: {formatCurrency(avgExpense)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
