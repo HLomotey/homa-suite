@@ -8,8 +8,8 @@ import { UserValidationResult } from "./types";
 import { validateUserAccess } from "./userValidation";
 
 // Constants for session management
-const LAST_ACTIVITY_KEY = 'auth_last_activity';
-const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+const LAST_ACTIVITY_KEY = "auth_last_activity";
+const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 /**
  * Updates the last activity timestamp in localStorage
@@ -42,12 +42,16 @@ export const clearLastActivity = (): void => {
 export const isSessionExpiredByInactivity = (): boolean => {
   const lastActivity = getLastActivity();
   if (!lastActivity) return false;
-  
+
   const now = Date.now();
   const timeSinceLastActivity = now - lastActivity;
-  
-  console.log(`Time since last activity: ${Math.floor(timeSinceLastActivity / 1000)} seconds`);
-  
+
+  console.log(
+    `Time since last activity: ${Math.floor(
+      timeSinceLastActivity / 1000
+    )} seconds`
+  );
+
   return timeSinceLastActivity > SESSION_TIMEOUT;
 };
 
@@ -61,14 +65,14 @@ export const validateSession = async (session: Session): Promise<boolean> => {
     // Check if session is expired by Supabase timestamp
     const now = Math.floor(Date.now() / 1000);
     if (session.expires_at && session.expires_at < now) {
-      console.log('Supabase session expired, logging out');
+      console.log("Supabase session expired, logging out");
       clearLastActivity();
       return false;
     }
 
     // Check if session is expired due to inactivity
     if (isSessionExpiredByInactivity()) {
-      console.log('Session expired due to inactivity, logging out');
+      console.log("Session expired due to inactivity, logging out");
       clearLastActivity();
       return false;
     }
@@ -76,7 +80,7 @@ export const validateSession = async (session: Session): Promise<boolean> => {
     // Validate user still exists and has access
     const validation = await validateUserAccess(session.user.email!);
     if (!validation.isValid) {
-      console.log('User access validation failed:', validation.details);
+      console.log("User access validation failed:", validation.details);
       clearLastActivity();
       return false;
     }
@@ -85,7 +89,7 @@ export const validateSession = async (session: Session): Promise<boolean> => {
     updateLastActivity();
     return true;
   } catch (error) {
-    console.error('Session validation error:', error);
+    console.error("Session validation error:", error);
     clearLastActivity();
     return false;
   }
