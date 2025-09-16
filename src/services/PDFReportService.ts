@@ -115,11 +115,45 @@ export class PDFReportService {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
 
+    // Helper function to safely format dates
+    const formatDate = (dateValue: string | Date | null | undefined): string => {
+      if (!dateValue) return 'N/A';
+      
+      try {
+        const date = new Date(dateValue);
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date value:', dateValue);
+          return 'Invalid Date';
+        }
+        return format(date, 'MMM dd, yyyy');
+      } catch (error) {
+        console.error('Date formatting error:', error, 'for value:', dateValue);
+        return 'Invalid Date';
+      }
+    };
+
+    // Helper function to format assignment period safely
+    const formatAssignmentPeriod = (): string => {
+      const startDate = formatDate(assignment.startDate);
+      const endDate = formatDate(assignment.endDate);
+      
+      if (startDate === 'N/A' && endDate === 'N/A') {
+        return 'N/A';
+      } else if (startDate === 'N/A') {
+        return `Unknown - ${endDate}`;
+      } else if (endDate === 'N/A') {
+        return `${startDate} - Ongoing`;
+      } else {
+        return `${startDate} - ${endDate}`;
+      }
+    };
+
     const tenantInfo = [
       ['Tenant Name:', assignment.tenantName || 'N/A'],
       ['Property:', assignment.propertyName || 'N/A'],
       ['Room:', assignment.roomName || 'N/A'],
-      ['Assignment Period:', `${format(new Date(assignment.startDate), 'MMM dd, yyyy')} - ${format(new Date(assignment.endDate), 'MMM dd, yyyy')}`],
+      ['Assignment Period:', formatAssignmentPeriod()],
       ['Security Deposit ID:', deposit.id],
       ['Deposit Amount:', `$${deposit.totalAmount.toFixed(2)}`],
       ['Payment Status:', deposit.paymentStatus]
