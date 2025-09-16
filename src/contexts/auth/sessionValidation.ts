@@ -7,6 +7,50 @@ import { Session } from "@supabase/supabase-js";
 import { UserValidationResult } from "./types";
 import { validateUserAccess } from "./userValidation";
 
+// Constants for session management
+const LAST_ACTIVITY_KEY = 'auth_last_activity';
+const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+/**
+ * Updates the last activity timestamp in localStorage
+ */
+export const updateLastActivity = (): void => {
+  const now = Date.now();
+  localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
+};
+
+/**
+ * Gets the last activity timestamp from localStorage
+ * @returns number - Last activity timestamp or 0 if not found
+ */
+export const getLastActivity = (): number => {
+  const lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
+  return lastActivity ? parseInt(lastActivity, 10) : 0;
+};
+
+/**
+ * Clears the last activity timestamp from localStorage
+ */
+export const clearLastActivity = (): void => {
+  localStorage.removeItem(LAST_ACTIVITY_KEY);
+};
+
+/**
+ * Checks if the session has expired based on last activity
+ * @returns boolean - Whether the session has expired due to inactivity
+ */
+export const isSessionExpiredByInactivity = (): boolean => {
+  const lastActivity = getLastActivity();
+  if (!lastActivity) return false;
+  
+  const now = Date.now();
+  const timeSinceLastActivity = now - lastActivity;
+  
+  console.log(`Time since last activity: ${Math.floor(timeSinceLastActivity / 1000)} seconds`);
+  
+  return timeSinceLastActivity > SESSION_TIMEOUT;
+};
+
 /**
  * Validates if a session is still valid
  * @param session - The Supabase session to validate
@@ -14,23 +58,35 @@ import { validateUserAccess } from "./userValidation";
  */
 export const validateSession = async (session: Session): Promise<boolean> => {
   try {
-    // Check if session is expired
+    // Check if session is expired by Supabase timestamp
     const now = Math.floor(Date.now() / 1000);
     if (session.expires_at && session.expires_at < now) {
-      console.log("Session expired, logging out");
+      console.log('Supabase session expired, logging out');
+      clearLastActivity();
+      return false;
+    }
+
+    // Check if session is expired due to inactivity
+    if (isSessionExpiredByInactivity()) {
+      console.log('Session expired due to inactivity, logging out');
+      clearLastActivity();
       return false;
     }
 
     // Validate user still exists and has access
     const validation = await validateUserAccess(session.user.email!);
     if (!validation.isValid) {
-      console.log("User access validation failed:", validation.details);
+      console.log('User access validation failed:', validation.details);
+      clearLastActivity();
       return false;
     }
 
+    // Update last activity since session is valid
+    updateLastActivity();
     return true;
   } catch (error) {
-    console.error("Session validation error:", error);
+    console.error('Session validation error:', error);
+    clearLastActivity();
     return false;
   }
 };

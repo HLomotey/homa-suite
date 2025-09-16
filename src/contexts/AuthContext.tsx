@@ -14,7 +14,7 @@ import {
   AuthProviderProps,
   AUTH_CONSTANTS,
 } from "./auth/types";
-import { validateSession } from "./auth/sessionValidation";
+import { validateSession, updateLastActivity, clearLastActivity } from "./auth/sessionValidation";
 import { validateUserAccess } from "./auth/userValidation";
 import {
   buildAuthUser,
@@ -58,12 +58,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Initialize inactivity timer
+  // Initialize inactivity timer with activity tracking
   const { resetTimer } = useInactivityTimer({
     timeout: AUTH_CONSTANTS.INACTIVITY_TIMEOUT,
     onTimeout: handleInactivityLogout,
     isActive: !!currentUser && !loading // Only active when user is logged in and not loading
   });
+
+  // Track user activity in localStorage
+  useEffect(() => {
+    if (currentUser) {
+      const handleActivity = () => {
+        updateLastActivity();
+        resetTimer();
+      };
+
+      // List of events that indicate user activity
+      const events = [
+        'mousedown',
+        'mousemove',
+        'keypress',
+        'scroll',
+        'touchstart',
+        'click',
+        'keydown'
+      ];
+
+      // Add event listeners
+      events.forEach(event => {
+        document.addEventListener(event, handleActivity, true);
+      });
+
+      // Set initial activity timestamp
+      updateLastActivity();
+
+      // Cleanup function
+      return () => {
+        events.forEach(event => {
+          document.removeEventListener(event, handleActivity, true);
+        });
+      };
+    }
+  }, [currentUser, resetTimer]);
 
   // Wrapper functions that use the modular auth operations
   const handleSignIn = async (
@@ -81,6 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const handleSignOut = async (): Promise<void> => {
+    clearLastActivity();
     return authSignOut(setCurrentUser);
   };
 
