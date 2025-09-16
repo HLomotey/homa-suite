@@ -26,7 +26,7 @@ export const fetchProperties = async (): Promise<FrontendProperty[]> => {
       .select(`
         *,
         company_locations(*),
-        billing_staff(id, legal_name)
+        external_staff(id, "PAYROLL FIRST NAME", "PAYROLL LAST NAME")
       `)
       .order("created_at", { ascending: false }) as { data: Property[] | null, error: any };
 
@@ -68,7 +68,7 @@ export const fetchPropertyById = async (
     .select(`
       *,
       company_locations(*),
-      billing_staff(id, legal_name)
+      external_staff(id, "PAYROLL FIRST NAME", "PAYROLL LAST NAME")
     `)
     .eq("id", id)
     .single() as { data: Property | null, error: any };
@@ -138,6 +138,7 @@ export const updateProperty = async (
     if (property.title !== undefined) updateData.title = property.title;
     if (property.address !== undefined) updateData.address = property.address;
     if (property.price !== undefined) updateData.price = property.price;
+    if (property.rentAmount !== undefined) updateData.rent_amount = property.rentAmount;
     if (property.bedrooms !== undefined) updateData.bedrooms = property.bedrooms;
     if (property.bathrooms !== undefined) updateData.bathrooms = property.bathrooms;
     if (property.area !== undefined) updateData.area = property.area;
@@ -157,7 +158,7 @@ export const updateProperty = async (
     const result = await (propertiesTable as any).update(updateData).eq("id", id).select(`
       *,
       company_locations(*),
-      external_staff(id, "PAYROLL LAST NAME", "PAYROLL FIRST NAME", business_key)
+      external_staff(id, "PAYROLL FIRST NAME", "PAYROLL LAST NAME")
     `).single();
     
     // Extract data and error from the result
@@ -207,7 +208,7 @@ export const fetchPropertiesByStatus = async (
     .select(`
       *,
       company_locations(*),
-      billing_staff(id, legal_name)
+      external_staff(id, "PAYROLL FIRST NAME", "PAYROLL LAST NAME")
     `)
     .eq("status", status)
     .order("created_at", { ascending: false }) as { data: Property[] | null, error: any };
@@ -233,7 +234,7 @@ export const fetchPropertiesByType = async (
     .select(`
       *,
       company_locations(*),
-      billing_staff(id, legal_name)
+      external_staff(id, "PAYROLL FIRST NAME", "PAYROLL LAST NAME")
     `)
     .eq("type", type)
     .order("created_at", { ascending: false }) as { data: Property[] | null, error: any };
