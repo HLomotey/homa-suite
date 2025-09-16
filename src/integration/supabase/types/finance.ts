@@ -488,6 +488,37 @@ export const mapDatabaseRevenueProfitDataToFrontend = (
 };
 
 /**
+ * FinanceExpense interface representing the finance_expenses table in Supabase
+ * Using exact column names from Excel file
+ */
+export interface FinanceExpense {
+  id: string;
+  Company: string;
+  Date: string;
+  Type: string;
+  Payee: string;
+  Category: string;
+  Total: number;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Frontend finance expense type with camelCase properties
+ */
+export interface FrontendFinanceExpense {
+  id: string;
+  company: string;
+  date: string;
+  type: string;
+  payee: string;
+  category: string;
+  total: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
  * Maps a database finance transaction to the frontend format
  * Updated to match the invoice line item format
  */
@@ -513,5 +544,40 @@ export const mapDatabaseFinanceTransactionToFrontend = (
     tax2Amount: dbFinanceTransaction.tax_2_amount,
     currency: dbFinanceTransaction.currency || "USD",
     companyAccountName: dbFinanceTransaction.company_account_name
+  };
+};
+
+/**
+ * Maps a database finance expense to the frontend format
+ */
+export const mapDatabaseFinanceExpenseToFrontend = (
+  dbExpense: FinanceExpense
+): FrontendFinanceExpense => {
+  return {
+    id: dbExpense.id,
+    company: dbExpense.Company,
+    date: dbExpense.Date,
+    type: dbExpense.Type,
+    payee: dbExpense.Payee,
+    category: dbExpense.Category,
+    total: dbExpense.Total,
+    createdAt: dbExpense.created_at,
+    updatedAt: dbExpense.updated_at || undefined
+  };
+};
+
+/**
+ * Maps frontend finance expense data to database format
+ */
+export const mapFrontendFinanceExpenseToDatabase = (
+  frontendExpense: Omit<FrontendFinanceExpense, 'id' | 'createdAt' | 'updatedAt'>
+): Omit<FinanceExpense, 'id' | 'created_at' | 'updated_at'> => {
+  return {
+    Company: frontendExpense.company,
+    Date: frontendExpense.date,
+    Type: frontendExpense.type,
+    Payee: frontendExpense.payee,
+    Category: frontendExpense.category,
+    Total: frontendExpense.total
   };
 };

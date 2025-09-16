@@ -23,6 +23,19 @@ export {
   fetchRevenueProfitData
 } from './api';
 
+// Re-export finance expense API functions
+export {
+  fetchFinanceExpenses,
+  fetchFinanceExpenseById,
+  createFinanceExpense,
+  updateFinanceExpense,
+  deleteFinanceExpense,
+  bulkCreateFinanceExpenses,
+  fetchFinanceExpensesByCompany,
+  fetchFinanceExpensesByCategory,
+  fetchFinanceExpensesByDateRange
+} from './useFinanceExpense';
+
 // Re-export hooks
 export {
   useTransactions,
@@ -42,3 +55,16 @@ export {
   useCashFlow,
   useRevenueProfitData
 } from './useFinance';
+
+// Re-export finance expense hooks
+export {
+  useFinanceExpenses,
+  useFinanceExpense,
+  useCreateFinanceExpense,
+  useUpdateFinanceExpense,
+  useDeleteFinanceExpense,
+  useBulkCreateFinanceExpenses,
+  useFinanceExpensesByCompany,
+  useFinanceExpensesByCategory,
+  useFinanceExpensesByDateRange
+} from './useFinanceExpense';

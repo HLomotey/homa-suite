@@ -13,6 +13,7 @@ import UploadPayroll from "./UploadPayroll";
 import UploadAttendance from "./UploadAttendance";
 import UploadRooms from "./UploadRooms";
 import { UploadComponent } from "@/components/excel-upload/UploadComponent";
+import { FinanceManagement } from "@/components/finance/FinanceManagement";
 
 export default function ExcelUploads() {
   const financeConfig = {
@@ -155,7 +156,7 @@ export default function ExcelUploads() {
         </TabsContent>
 
         <TabsContent value="finance" className="space-y-4">
-          <UploadComponent {...financeConfig} />
+          <FinanceManagement />
         </TabsContent>
 
         <TabsContent value="operations" className="space-y-4">
