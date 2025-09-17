@@ -11,7 +11,7 @@ UPDATE security_deposits
 SET default_amount = CASE 
     WHEN benefit_type = 'housing' THEN 500.00
     WHEN benefit_type = 'bus_card' THEN 25.00
-    WHEN benefit_type = 'transportation' THEN 0.00  -- Variable amount
+    WHEN benefit_type = 'transportation' THEN 25.00  -- Variable amount
     WHEN benefit_type = 'flight_agreement' THEN 0.00  -- Variable amount
     ELSE 0.00
 END
