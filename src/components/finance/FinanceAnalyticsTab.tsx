@@ -1,11 +1,11 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DollarSign, TrendingDown, TrendingUp, FileText, CheckCircle, AlertTriangle, XCircle, Target, Receipt, Activity } from "lucide-react";
 import { useFinanceAnalytics, useRevenueMetrics } from "@/hooks/finance/useFinanceAnalytics";
-import { useExpenseAnalytics } from "@/hooks/finance/useExpenseAnalytics";
+import { useFinanceExpenses } from "@/hooks/finance";
 import { useProfitLoss } from "@/hooks/finance/useProfitLoss";
 import { useRevenueForecasting } from "@/hooks/finance/useRevenueForecasting";
 
@@ -25,12 +25,184 @@ export interface FinanceMetricsProps {
 export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
   const { data: financeData, isLoading } = useFinanceAnalytics(dateRanges);
   const { data: revenueData, isLoading: isRevenueLoading } = useRevenueMetrics(dateRanges);
-  const { data: expenseData, isLoading: isExpenseLoading } = useExpenseAnalytics(dateRanges);
-  const { data: profitLossData, isLoading: isPLLoading } = useProfitLoss(dateRanges);
+  const { data: expenses = [], isLoading: isExpenseLoading } = useFinanceExpenses();
   const { data: forecastData, isLoading: isForecastLoading } = useRevenueForecasting();
   
   // State for dashboard tabs
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Calculate expense analytics from real data
+  const expenseData = React.useMemo(() => {
+    console.log('FinanceAnalyticsTab: Processing expenses:', expenses.length, 'expenses');
+    if (!expenses.length) {
+      return {
+        totalExpenses: 0,
+        approvedExpenses: 0,
+        pendingExpenses: 0,
+        rejectedExpenses: 0,
+        expenseCount: 0,
+        averageExpenseAmount: 0,
+        expensesByCategory: [],
+        expensesByDepartment: [],
+        topPayees: [],
+        approvalMetrics: {
+          approvalRate: 100,
+          avgApprovalTime: 0,
+          pendingCount: 0,
+          rejectedCount: 0,
+        },
+      };
+    }
+
+    const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || expense.total || 0), 0);
+    const expenseCount = expenses.length;
+    const averageExpenseAmount = expenseCount > 0 ? totalExpenses / expenseCount : 0;
+    
+    // Calculate approval status metrics
+    const approvedExpenses = expenses
+      .filter(expense => expense.approvalStatus === 'approved')
+      .reduce((sum, expense) => sum + (expense.amount || expense.total || 0), 0);
+    
+    const pendingExpenses = expenses
+      .filter(expense => expense.approvalStatus === 'pending' || !expense.approvalStatus)
+      .reduce((sum, expense) => sum + (expense.amount || expense.total || 0), 0);
+    
+    const rejectedExpenses = expenses
+      .filter(expense => expense.approvalStatus === 'rejected')
+      .reduce((sum, expense) => sum + (expense.amount || expense.total || 0), 0);
+    
+    const approvedCount = expenses.filter(expense => expense.approvalStatus === 'approved').length;
+    const pendingCount = expenses.filter(expense => expense.approvalStatus === 'pending' || !expense.approvalStatus).length;
+    const rejectedCount = expenses.filter(expense => expense.approvalStatus === 'rejected').length;
+    
+    const approvalRate = expenseCount > 0 ? (approvedCount / expenseCount) * 100 : 0;
+    
+    console.log('FinanceAnalyticsTab: Calculated totals:', {
+      totalExpenses,
+      expenseCount,
+      averageExpenseAmount
+    });
+
+    // Category breakdown
+    const categoryData = expenses.reduce((acc, expense) => {
+      const category = expense.category || 'other';
+      if (!acc[category]) {
+        acc[category] = { amount: 0, count: 0 };
+      }
+      acc[category].amount += (expense.amount || expense.total || 0);
+      acc[category].count += 1;
+      return acc;
+    }, {} as Record<string, { amount: number; count: number }>);
+
+    const expensesByCategory = Object.entries(categoryData)
+      .map(([category, data]) => ({
+        category,
+        amount: data.amount,
+        count: data.count,
+        percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+        averageAmount: data.count > 0 ? data.amount / data.count : 0,
+        monthOverMonthChange: 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // Company/Department breakdown
+    const departmentData = expenses.reduce((acc, expense) => {
+      const department = expense.company || 'Unassigned';
+      if (!acc[department]) {
+        acc[department] = { amount: 0, count: 0 };
+      }
+      acc[department].amount += (expense.amount || expense.total || 0);
+      acc[department].count += 1;
+      return acc;
+    }, {} as Record<string, { amount: number; count: number }>);
+
+    const expensesByDepartment = Object.entries(departmentData)
+      .map(([department, data]) => ({
+        department,
+        amount: data.amount,
+        count: data.count,
+        percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // Top payees
+    const payeeData = expenses.reduce((acc, expense) => {
+      const payee = expense.payee || 'Unknown';
+      if (!acc[payee]) {
+        acc[payee] = { amount: 0, count: 0, categories: new Set() };
+      }
+      acc[payee].amount += (expense.amount || expense.total || 0);
+      acc[payee].count += 1;
+      acc[payee].categories.add(expense.category || 'other');
+      return acc;
+    }, {} as Record<string, { amount: number; count: number; categories: Set<string> }>);
+
+    const topPayees = Object.entries(payeeData)
+      .map(([payee, data]) => ({
+        payee,
+        amount: data.amount,
+        count: data.count,
+        categories: Array.from(data.categories),
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+
+    return {
+      totalExpenses,
+      approvedExpenses,
+      pendingExpenses,
+      rejectedExpenses,
+      expenseCount,
+      averageExpenseAmount,
+      expensesByCategory,
+      expensesByDepartment,
+      topPayees,
+      approvalMetrics: {
+        approvalRate,
+        avgApprovalTime: 0, // Could be calculated if we track approval timestamps
+        pendingCount,
+        rejectedCount,
+      },
+    };
+  }, [expenses]);
+  
+  // Calculate P&L data from real expense and revenue data
+  const profitLossData = React.useMemo(() => {
+    const revenue = financeData?.totalRevenue || 0;
+    const totalExpenses = expenseData.totalExpenses; // Real expense data from finance_expenses table
+    const netProfit = revenue - totalExpenses;
+    const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+
+    return {
+      currentPeriod: {
+        revenue,
+        expenses: totalExpenses, // Using real expense data
+        projectedRevenue: forecastData?.projectedRevenue || 0,
+        projectedExpenses: totalExpenses,
+        grossProfit: netProfit,
+        netProfit,
+        profitMargin,
+        projectedProfitMargin: profitMargin,
+      },
+      expenseBreakdown: expenseData.expensesByCategory.map(cat => ({
+        category: cat.category,
+        amount: cat.amount,
+        percentage: cat.percentage,
+        budgetVariance: 0,
+        projectedAmount: 0,
+      })),
+      keyMetrics: {
+        totalRevenue: revenue,
+        totalExpenses: totalExpenses, // Using real expense data
+        totalProjectedRevenue: forecastData?.projectedRevenue || 0,
+        totalProjectedExpenses: totalExpenses,
+        operatingMargin: profitMargin,
+        cashFlow: netProfit,
+        burnRate: totalExpenses, // Using real expense data
+        runway: totalExpenses > 0 ? revenue / totalExpenses : 0,
+      },
+    };
+  }, [financeData, expenseData, forecastData]);
   
   // Format currency values
   const formatCurrency = (value: number | undefined) => {
@@ -110,6 +282,9 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
                 <div className="text-2xl font-bold text-white">
                   {isExpenseLoading ? "Loading..." : formatCurrency(expenseData?.totalExpenses)}
                 </div>
+                <div className="text-xs text-red-200 mt-1">
+                  Real data from finance_expenses
+                </div>
                 <div className="flex flex-col gap-1 mt-1">
                   <p className="text-xs text-red-300">
                     {isExpenseLoading ? "Calculating..." : `${expenseData?.expenseCount || 0} transactions`}
@@ -131,11 +306,11 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">
-                  {isPLLoading ? "Loading..." : formatCurrency(profitLossData?.currentPeriod.netProfit)}
+                  {isLoading ? "Loading..." : formatCurrency(profitLossData?.currentPeriod.netProfit)}
                 </div>
                 <div className="flex items-center mt-1">
                   <p className="text-xs text-blue-300">
-                    {isPLLoading ? "Calculating..." : `${formatPercentage(profitLossData?.currentPeriod.profitMargin)} margin`}
+                    {isLoading ? "Calculating..." : `${formatPercentage(profitLossData?.currentPeriod.profitMargin)} margin`}
                   </p>
                 </div>
               </CardContent>
@@ -457,7 +632,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
 
         <TabsContent value="expenses" className="space-y-4">
           {/* Expense Overview Cards */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
@@ -470,7 +645,10 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Approved</CardTitle>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Approved
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">{formatCurrency(expenseData?.approvedExpenses)}</div>
@@ -482,12 +660,30 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  Pending
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">{formatCurrency(expenseData?.pendingExpenses)}</div>
                 <p className="text-xs text-muted-foreground">
                   {expenseData?.approvalMetrics.pendingCount} pending
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <XCircle className="h-4 w-4 text-red-500" />
+                  Rejected
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{formatCurrency(expenseData?.rejectedExpenses)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {expenseData?.approvalMetrics.rejectedCount} rejected
                 </p>
               </CardContent>
             </Card>
@@ -522,6 +718,33 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
                       <div className="font-bold">{formatCurrency(category.amount)}</div>
                       <div className="text-sm text-muted-foreground">
                         {formatPercentage(category.percentage)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Department/Company Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Expenses by Company/Department</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {expenseData?.expensesByDepartment.slice(0, 6).map((dept, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div>
+                      <div className="font-medium">{dept.department}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {dept.count} transactions
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold">{formatCurrency(dept.amount)}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatPercentage(dept.percentage)}
                       </div>
                     </div>
                   </div>

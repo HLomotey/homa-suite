@@ -489,18 +489,28 @@ export const mapDatabaseRevenueProfitDataToFrontend = (
 
 /**
  * FinanceExpense interface representing the finance_expenses table in Supabase
- * Using exact column names from Excel file
+ * Updated to match actual database schema
  */
 export interface FinanceExpense {
   id: string;
-  Company: string;
-  Date: string;
-  Type: string;
-  Payee: string;
-  Category: string;
-  Total: number;
+  company: string;
+  date: string;
+  type: string;
+  payee: string;
+  category: string;
+  subcategory?: string;
+  amount: number;
+  currency?: string;
+  property_id?: string;
+  department?: string;
+  description?: string;
+  receipt_url?: string;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  approved_by?: string;
+  approved_at?: string;
   created_at: string;
   updated_at: string | null;
+  created_by?: string;
 }
 
 /**
@@ -513,9 +523,20 @@ export interface FrontendFinanceExpense {
   type: string;
   payee: string;
   category: string;
-  total: number;
+  subcategory?: string;
+  amount: number;
+  total?: number; // For backward compatibility
+  currency?: string;
+  propertyId?: string;
+  department?: string;
+  description?: string;
+  receiptUrl?: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: string;
 }
 
 /**
@@ -555,14 +576,25 @@ export const mapDatabaseFinanceExpenseToFrontend = (
 ): FrontendFinanceExpense => {
   return {
     id: dbExpense.id,
-    company: dbExpense.Company,
-    date: dbExpense.Date,
-    type: dbExpense.Type,
-    payee: dbExpense.Payee,
-    category: dbExpense.Category,
-    total: dbExpense.Total,
+    company: dbExpense.company,
+    date: dbExpense.date,
+    type: dbExpense.type,
+    payee: dbExpense.payee,
+    category: dbExpense.category,
+    subcategory: dbExpense.subcategory,
+    amount: dbExpense.amount,
+    total: dbExpense.amount, // For backward compatibility
+    currency: dbExpense.currency,
+    propertyId: dbExpense.property_id,
+    department: dbExpense.department,
+    description: dbExpense.description,
+    receiptUrl: dbExpense.receipt_url,
+    approvalStatus: dbExpense.approval_status,
+    approvedBy: dbExpense.approved_by,
+    approvedAt: dbExpense.approved_at,
     createdAt: dbExpense.created_at,
-    updatedAt: dbExpense.updated_at || undefined
+    updatedAt: dbExpense.updated_at || undefined,
+    createdBy: dbExpense.created_by
   };
 };
 
@@ -573,11 +605,21 @@ export const mapFrontendFinanceExpenseToDatabase = (
   frontendExpense: Omit<FrontendFinanceExpense, 'id' | 'createdAt' | 'updatedAt'>
 ): Omit<FinanceExpense, 'id' | 'created_at' | 'updated_at'> => {
   return {
-    Company: frontendExpense.company,
-    Date: frontendExpense.date,
-    Type: frontendExpense.type,
-    Payee: frontendExpense.payee,
-    Category: frontendExpense.category,
-    Total: frontendExpense.total
+    company: frontendExpense.company,
+    date: frontendExpense.date,
+    type: frontendExpense.type,
+    payee: frontendExpense.payee,
+    category: frontendExpense.category,
+    subcategory: frontendExpense.subcategory,
+    amount: frontendExpense.amount || frontendExpense.total || 0,
+    currency: frontendExpense.currency,
+    property_id: frontendExpense.propertyId,
+    department: frontendExpense.department,
+    description: frontendExpense.description,
+    receipt_url: frontendExpense.receiptUrl,
+    approval_status: frontendExpense.approvalStatus,
+    approved_by: frontendExpense.approvedBy,
+    approved_at: frontendExpense.approvedAt,
+    created_by: frontendExpense.createdBy
   };
 };
