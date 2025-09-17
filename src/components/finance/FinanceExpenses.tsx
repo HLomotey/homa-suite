@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { useFinanceExpenses, useDeleteFinanceExpense } from '@/hooks/finance';
 import { FrontendFinanceExpense } from '@/integration/supabase/types/finance';
 import { FinanceExpenseExcelUpload } from './FinanceExpenseExcelUpload';
@@ -30,7 +32,12 @@ import {
   DollarSign,
   TrendingUp,
   Calendar,
-  Building
+  Building,
+  PieChart,
+  BarChart3,
+  Target,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -63,10 +70,65 @@ export function FinanceExpenses() {
   const uniqueCategories = [...new Set(expenses.map(e => e.category))];
   const uniqueTypes = [...new Set(expenses.map(e => e.type))];
 
-  // Calculate summary statistics
-  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.total, 0);
-  const averageExpense = filteredExpenses.length > 0 ? totalExpenses / filteredExpenses.length : 0;
-  const expenseCount = filteredExpenses.length;
+  // Calculate comprehensive analytics using useMemo for performance
+  const analytics = useMemo(() => {
+    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.total, 0);
+    const averageExpense = filteredExpenses.length > 0 ? totalExpenses / filteredExpenses.length : 0;
+    const expenseCount = filteredExpenses.length;
+
+    // Category breakdown
+    const categoryBreakdown = filteredExpenses.reduce((acc, expense) => {
+      acc[expense.category] = (acc[expense.category] || 0) + expense.total;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Company breakdown
+    const companyBreakdown = filteredExpenses.reduce((acc, expense) => {
+      acc[expense.company] = (acc[expense.company] || 0) + expense.total;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Type breakdown
+    const typeBreakdown = filteredExpenses.reduce((acc, expense) => {
+      acc[expense.type] = (acc[expense.type] || 0) + expense.total;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Monthly trend
+    const monthlyTrend = filteredExpenses.reduce((acc, expense) => {
+      const month = new Date(expense.date).toISOString().slice(0, 7); // YYYY-MM
+      acc[month] = (acc[month] || 0) + expense.total;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Top categories and companies
+    const topCategories = Object.entries(categoryBreakdown)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
+    
+    const topCompanies = Object.entries(companyBreakdown)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
+
+    // Highest and lowest expenses
+    const sortedExpenses = [...filteredExpenses].sort((a, b) => b.total - a.total);
+    const highestExpense = sortedExpenses[0];
+    const lowestExpense = sortedExpenses[sortedExpenses.length - 1];
+
+    return {
+      totalExpenses,
+      averageExpense,
+      expenseCount,
+      categoryBreakdown,
+      companyBreakdown,
+      typeBreakdown,
+      monthlyTrend,
+      topCategories,
+      topCompanies,
+      highestExpense,
+      lowestExpense
+    };
+  }, [filteredExpenses]);
 
   const handleDeleteExpense = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
@@ -121,17 +183,22 @@ export function FinanceExpenses() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Enhanced Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <DollarSign className="h-5 w-5 text-blue-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-600">Total Expenses</p>
-                <p className="text-xl font-bold">{formatCurrency(totalExpenses)}</p>
+                <p className="text-xl font-bold">{formatCurrency(analytics.totalExpenses)}</p>
+                {analytics.highestExpense && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Highest: {formatCurrency(analytics.highestExpense.total)}
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -143,9 +210,14 @@ export function FinanceExpenses() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-green-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-600">Average Expense</p>
-                <p className="text-xl font-bold">{formatCurrency(averageExpense)}</p>
+                <p className="text-xl font-bold">{formatCurrency(analytics.averageExpense)}</p>
+                {analytics.lowestExpense && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Lowest: {formatCurrency(analytics.lowestExpense.total)}
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -157,9 +229,12 @@ export function FinanceExpenses() {
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Calendar className="h-5 w-5 text-purple-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-600">Total Records</p>
-                <p className="text-xl font-bold">{expenseCount}</p>
+                <p className="text-xl font-bold">{analytics.expenseCount}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {analytics.topCategories.length} categories
+                </p>
               </div>
             </div>
           </CardContent>
@@ -171,9 +246,12 @@ export function FinanceExpenses() {
               <div className="p-2 bg-orange-100 rounded-lg">
                 <Building className="h-5 w-5 text-orange-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-600">Companies</p>
                 <p className="text-xl font-bold">{uniqueCompanies.length}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {Object.keys(analytics.monthlyTrend).length} months
+                </p>
               </div>
             </div>
           </CardContent>
@@ -247,67 +325,235 @@ export function FinanceExpenses() {
         </CardContent>
       </Card>
 
-      {/* Expenses Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Expense Records ({filteredExpenses.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">Loading expenses...</div>
-          ) : filteredExpenses.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {expenses.length === 0 ? 'No expenses found. Upload an Excel file to get started.' : 'No expenses match your filters.'}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Payee</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredExpenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>{formatDate(expense.date)}</TableCell>
-                      <TableCell className="font-medium">{expense.company}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{expense.type}</Badge>
-                      </TableCell>
-                      <TableCell>{expense.payee}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{expense.category}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(expense.total)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            disabled={deleteExpenseMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+      {/* Analytics and Data Visualization */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="companies">Companies</TabsTrigger>
+          <TabsTrigger value="records">All Records</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Categories Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PieChart className="h-5 w-5" />
+                  Top Categories
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {analytics.topCategories.map(([category, amount], index) => {
+                    const percentage = (amount / analytics.totalExpenses) * 100;
+                    return (
+                      <div key={category} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">{category}</span>
+                          <span className="text-sm text-gray-600">
+                            {formatCurrency(amount)} ({percentage.toFixed(1)}%)
+                          </span>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Companies Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Top Companies
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {analytics.topCompanies.map(([company, amount], index) => {
+                    const percentage = (amount / analytics.totalExpenses) * 100;
+                    return (
+                      <div key={company} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">{company}</span>
+                          <span className="text-sm text-gray-600">
+                            {formatCurrency(amount)} ({percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                        <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Monthly Trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Monthly Spending Trend
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {Object.entries(analytics.monthlyTrend)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([month, amount]) => {
+                    const maxAmount = Math.max(...Object.values(analytics.monthlyTrend));
+                    const percentage = (amount / maxAmount) * 100;
+                    const monthName = new Date(month + '-01').toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long' 
+                    });
+                    return (
+                      <div key={month} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">{monthName}</span>
+                          <span className="text-sm text-gray-600">
+                            {formatCurrency(amount)}
+                          </span>
+                        </div>
+                        <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Category Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(analytics.categoryBreakdown)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([category, amount]) => {
+                    const percentage = (amount / analytics.totalExpenses) * 100;
+                    const categoryExpenses = filteredExpenses.filter(e => e.category === category);
+                    return (
+                      <Card key={category} className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-medium">{category}</h3>
+                            <Badge variant="outline">{categoryExpenses.length}</Badge>
+                          </div>
+                          <p className="text-2xl font-bold">{formatCurrency(amount)}</p>
+                          <p className="text-sm text-gray-600">{percentage.toFixed(1)}% of total</p>
+                          <Progress value={percentage} className="h-2" />
+                        </div>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="companies" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Company Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(analytics.companyBreakdown)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([company, amount]) => {
+                    const percentage = (amount / analytics.totalExpenses) * 100;
+                    const companyExpenses = filteredExpenses.filter(e => e.company === company);
+                    return (
+                      <Card key={company} className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-medium">{company}</h3>
+                            <Badge variant="outline">{companyExpenses.length}</Badge>
+                          </div>
+                          <p className="text-2xl font-bold">{formatCurrency(amount)}</p>
+                          <p className="text-sm text-gray-600">{percentage.toFixed(1)}% of total</p>
+                          <Progress value={percentage} className="h-2" />
+                        </div>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="records" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Expense Records ({filteredExpenses.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Loading expenses...</div>
+              ) : filteredExpenses.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {expenses.length === 0 ? 'No expenses found. Upload an Excel file to get started.' : 'No expenses match your filters.'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Payee</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExpenses.map((expense) => (
+                        <TableRow key={expense.id}>
+                          <TableCell>{formatDate(expense.date)}</TableCell>
+                          <TableCell className="font-medium">{expense.company}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{expense.type}</Badge>
+                          </TableCell>
+                          <TableCell>{expense.payee}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{expense.category}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(expense.total)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteExpense(expense.id)}
+                                disabled={deleteExpenseMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Excel Upload Modal */}
       {showUpload && (
