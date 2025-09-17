@@ -5,6 +5,7 @@ import { Receipt, CreditCard } from 'lucide-react';
 import { UploadComponent } from '@/components/excel-upload/UploadComponent';
 
 export function FinanceManagement() {
+  // Updated to include Item Name as separate field
   const invoiceConfig = {
     title: "Invoice Data",
     icon: Receipt,
@@ -17,6 +18,7 @@ export function FinanceManagement() {
       "Date",
       "Invoice Status",
       "Date Paid",
+      "Item Name",
       "Item Description",
       "Rate",
       "Quantity",
@@ -35,6 +37,7 @@ export function FinanceManagement() {
       "Rate and quantities should be numeric values",
       "Discount percentage should be between 0-100",
       "Invoice Status: pending, paid, overdue, cancelled",
+      "Company Account: Use integer values 1-4 (1=MARYLAND, 2=NEM, 3=BOHCONCEPTS, 4=HAWAII)",
       "Tax types should be GST, VAT, or Sales Tax",
       "Currency should be standard 3-letter code (USD, EUR, GBP)",
       "Maximum file size: 10MB",

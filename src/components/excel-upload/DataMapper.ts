@@ -31,6 +31,7 @@ export interface FinanceInvoiceData {
   tax_2_amount: number;
   line_total: number;
   currency: string;
+  company_account_id: number | null;
 }
 
 /**
@@ -79,6 +80,52 @@ const validateNumericField = (value: any, min: number = 0, max: number = 999.99)
 };
 
 /**
+ * Maps company account names or numbers to integer IDs
+ * Company accounts: 1-4 corresponding to the database records
+ */
+const mapCompanyAccountToId = (companyAccount: any): number | null => {
+  if (!companyAccount) return null;
+  
+  const value = String(companyAccount).trim();
+  
+  // If it's already a number between 1-4, return it
+  const numericValue = parseInt(value);
+  if (!isNaN(numericValue) && numericValue >= 1 && numericValue <= 4) {
+    return numericValue;
+  }
+  
+  // Map company names to IDs based on database records
+  const companyNameMappings: Record<string, number> = {
+    'BOHCONCEPTS MARYLAND LLC': 1,
+    'BOHCONCEPTSNEM LLC': 2,
+    'BOHCONCEPTS LLC': 3,
+    'BOHCONCEPTS HAWAII LLC': 4,
+    // Also support partial matches and variations
+    'MARYLAND': 1,
+    'NEM': 2,
+    'BOHCONCEPTS': 3, // Default to main company if just "BOHCONCEPTS"
+    'HAWAII': 4
+  };
+  
+  // Check for exact matches first
+  const upperValue = value.toUpperCase();
+  if (companyNameMappings[upperValue]) {
+    return companyNameMappings[upperValue];
+  }
+  
+  // Check for partial matches
+  for (const [key, id] of Object.entries(companyNameMappings)) {
+    if (upperValue.includes(key)) {
+      return id;
+    }
+  }
+  
+  // If no match found, log warning and return null
+  console.warn(`Unknown company account: "${value}". Expected integer 1-4 or company name.`);
+  return null;
+};
+
+/**
  * Maps raw Excel row data to finance expense schema
  */
 export const mapToFinanceExpense = (row: any): FinanceExpenseData => {
@@ -108,7 +155,7 @@ export const mapToFinanceInvoice = (row: any): FinanceInvoiceData => {
     date_issued: convertExcelDate(row['Date'] || row.date_issued) || new Date().toISOString().split('T')[0],
     invoice_status: normalizeInvoiceStatus(row['Invoice Status'] || row.invoice_status || 'pending'),
     date_paid: convertExcelDate(row['Date Paid'] || row.date_paid),
-    item_name: row['Item Description'] || row.item_name || 'Service',
+    item_name: row['Item Name'] || row.item_name || 'Service',
     item_description: row['Item Description'] || row.item_description || 'Service provided',
     rate: Math.max(parseFloat(row['Rate'] || row.rate || 0) || 0.01, 0.01), // Ensure non-zero value for NOT NULL constraint
     quantity: Math.max(parseInt(row['Quantity'] || row.quantity || 1) || 1, 1), // Ensure non-zero value for NOT NULL constraint
@@ -119,6 +166,7 @@ export const mapToFinanceInvoice = (row: any): FinanceInvoiceData => {
     tax_2_type: row['Tax 2 Type'] || row.tax_2_type || null,
     tax_2_amount: validateNumericField(row['Tax 2 Amount'] || row.tax_2_amount || 0, 0, 999999999999.99), // DECIMAL(15,2) limit
     line_total: Math.max(parseFloat(row['Line Total'] || row.line_total || 0) || 0.01, 0.01), // Ensure non-zero value for NOT NULL constraint
-    currency: row['Currency'] || row.currency || 'USD'
+    currency: row['Currency'] || row.currency || 'USD',
+    company_account_id: mapCompanyAccountToId(row['Company Account'] || row.company_account || row.company_account_id)
   };
 };
