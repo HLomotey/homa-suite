@@ -162,8 +162,9 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
             </Card>
           </div>
 
-        {/* Total Invoices Card */}
-        <Card className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border-blue-800/30">
+          {/* Total Invoices Card */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border-blue-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-100">Total Invoices</CardTitle>
           </CardHeader>
@@ -186,10 +187,10 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               )}
             </div>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Average Invoice Value Card */}
-        <Card className="bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-800/30">
+            {/* Average Invoice Value Card */}
+            <Card className="bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-violet-100">Avg Invoice Value</CardTitle>
           </CardHeader>
@@ -198,13 +199,13 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               {isLoading ? "Loading..." : formatCurrency(financeData?.averageInvoiceValue)}
             </div>
           </CardContent>
-        </Card>
-      </div>
+            </Card>
+          </div>
 
-      {/* Invoice Status Breakdown */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Paid Invoices Card */}
-        <Card className="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border-emerald-800/30">
+          {/* Invoice Status Breakdown */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Paid Invoices Card */}
+            <Card className="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border-emerald-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-emerald-100 flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
@@ -228,10 +229,10 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               )}
             </div>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Sent Invoices Card */}
-        <Card className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/20 border-yellow-800/30">
+            {/* Sent Invoices Card */}
+            <Card className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/20 border-yellow-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-yellow-100 flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -255,10 +256,10 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               )}
             </div>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Overdue Invoices Card */}
-        <Card className="bg-gradient-to-br from-red-900/40 to-red-800/20 border-red-800/30">
+            {/* Overdue Invoices Card */}
+            <Card className="bg-gradient-to-br from-red-900/40 to-red-800/20 border-red-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-red-100 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -282,11 +283,11 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               )}
             </div>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Additional Status Card - Shows pending/cancelled if they exist */}
-        {!isLoading && financeData && (financeData.pendingInvoices > 0 || financeData.cancelledInvoices > 0) && (
-          <Card className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border-gray-800/30">
+            {/* Additional Status Card - Shows pending/cancelled if they exist */}
+            {!isLoading && financeData && (financeData.pendingInvoices > 0 || financeData.cancelledInvoices > 0) && (
+              <Card className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border-gray-800/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-100 flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
@@ -310,13 +311,13 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
                 )}
               </div>
             </CardContent>
-          </Card>
-        )}
-      </div>
+              </Card>
+            )}
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Monthly Revenue Card */}
-        <Card className="bg-gradient-to-br from-indigo-900/40 to-indigo-800/20 border-indigo-800/30">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Monthly Revenue Card */}
+            <Card className="bg-gradient-to-br from-indigo-900/40 to-indigo-800/20 border-indigo-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-indigo-100">Monthly Revenue</CardTitle>
           </CardHeader>
@@ -330,10 +331,10 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               </p>
             </div>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Collection Rate Card */}
-        <Card className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-800/30">
+            {/* Collection Rate Card */}
+            <Card className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-800/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-purple-100">Collection Rate</CardTitle>
           </CardHeader>
@@ -347,8 +348,8 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               </p>
             </div>
           </CardContent>
-        </Card>
-      </div>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="profit-loss" className="space-y-4">
