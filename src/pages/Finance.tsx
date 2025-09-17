@@ -32,6 +32,7 @@ import { ExpenseDrillThroughDashboard } from "@/components/finance/drill-through
 import ProjectionModule from '@/components/finance/projections/ProjectionModule';
 import { FinanceBudgeting } from "@/components/finance/FinanceBudgeting";
 import { EligibilityApprovalPortal } from "@/components/finance/EligibilityApprovalPortal";
+import { FinanceAnalysisDashboard } from "@/components/finance/FinanceAnalysisDashboard";
 import { useFinanceExpenses } from "@/hooks/finance/useFinanceExpense";
 
 interface DateRange {
@@ -184,6 +185,7 @@ export default function Finance() {
       >
         <TabsList className="bg-background border-border">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="company-analysis">Company Analysis</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="detailed-analysis">Detailed Analysis</TabsTrigger>
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
@@ -196,6 +198,10 @@ export default function Finance() {
 
         <TabsContent value="overview" className="space-y-4">
           <FinanceOverview dateRanges={selectedDateRanges} />
+        </TabsContent>
+
+        <TabsContent value="company-analysis" className="space-y-4">
+          <FinanceAnalysisDashboard />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
