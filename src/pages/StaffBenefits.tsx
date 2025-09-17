@@ -94,9 +94,9 @@ export default function StaffBenefits() {
 
       {viewMode === "view" && selectedBenefit && (
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-slate-900 rounded-lg shadow-sm border border-slate-700 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">
+              <h2 className="text-2xl font-semibold text-white">
                 Housing and Transport Allocation Details
               </h2>
               <div className="flex gap-2">
@@ -117,51 +117,54 @@ export default function StaffBenefits() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="text-lg font-medium mb-4">Staff Information</h3>
+                <h3 className="text-lg font-medium mb-4 text-white">
+                  Staff Information
+                </h3>
                 <div className="space-y-2">
                   <div>
-                    <span className="font-medium">Name:</span>{" "}
-                    {selectedBenefit.staff_name || "N/A"}
+                    <span className="font-medium text-blue-300">Name:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.staff_name || "N/A"}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Email:</span>{" "}
-                    {selectedBenefit.staff_email || "N/A"}
+                    <span className="font-medium text-blue-300">Email:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.staff_email || "N/A"}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Department:</span>{" "}
-                    {selectedBenefit.staff_department || "N/A"}
+                    <span className="font-medium text-blue-300">Department:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.staff_department || "N/A"}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Job Title:</span>{" "}
-                    {selectedBenefit.staff_job_title || "N/A"}
+                    <span className="font-medium text-blue-300">Job Title:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.staff_job_title || "N/A"}</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-medium mb-4">Allocation Details</h3>
+                <h3 className="text-lg font-medium mb-4 text-white">
+                  Allocation Details
+                </h3>
                 <div className="space-y-2">
                   <div>
-                    <span className="font-medium">Type:</span>{" "}
-                    {selectedBenefit.benefit_type}
+                    <span className="font-medium text-blue-300">Type:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.benefit_type}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Status:</span>{" "}
-                    {selectedBenefit.status}
+                    <span className="font-medium text-blue-300">Status:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.status}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Allocation Type:</span>{" "}
-                    {selectedBenefit.benefit_type.charAt(0).toUpperCase() +
-                      selectedBenefit.benefit_type.slice(1)}
+                    <span className="font-medium text-blue-300">Allocation Type:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.benefit_type === "housing" ? "Housing" : "Transportation"}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Effective Date:</span>{" "}
-                    {selectedBenefit.effective_date}
+                    <span className="font-medium text-blue-300">Effective Date:</span>{" "}
+                    <span className="text-gray-200">{selectedBenefit.effective_date}</span>
                   </div>
                   {selectedBenefit.expiry_date && (
                     <div>
-                      <span className="font-medium">Expiry Date:</span>{" "}
-                      {selectedBenefit.expiry_date}
+                      <span className="font-medium text-blue-300">Expiry Date:</span>{" "}
+                      <span className="text-gray-200">{selectedBenefit.expiry_date}</span>
                     </div>
                   )}
                 </div>
@@ -169,7 +172,7 @@ export default function StaffBenefits() {
 
               {selectedBenefit.benefit_type === "housing" && (
                 <div>
-                  <h3 className="text-lg font-medium mb-4">
+                  <h3 className="text-lg font-medium mb-4 text-white">
                     Housing Allocation
                   </h3>
                   <div className="space-y-2">
@@ -191,18 +194,18 @@ export default function StaffBenefits() {
 
               {selectedBenefit.benefit_type === "transportation" && (
                 <div>
-                  <h3 className="text-lg font-medium mb-4">
+                  <h3 className="text-lg font-medium mb-4 text-white">
                     Transport Allocation
                   </h3>
                   <div className="space-y-2">
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <div className="p-3 bg-blue-900/20 border border-blue-700/30 rounded-md">
                       <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                        <span className="font-medium text-green-900">
+                        <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                        <span className="font-medium text-blue-100">
                           Transport Allocated
                         </span>
                       </div>
-                      <p className="text-sm text-green-700 mt-1">
+                      <p className="text-sm text-blue-200 mt-1">
                         This staff member has been allocated transportation
                         support.
                       </p>
@@ -214,8 +217,8 @@ export default function StaffBenefits() {
 
             {selectedBenefit.notes && (
               <div className="mt-6">
-                <h3 className="text-lg font-medium mb-2">Notes</h3>
-                <p className="text-gray-700">{selectedBenefit.notes}</p>
+                <h3 className="text-lg font-medium mb-2 text-white">Notes</h3>
+                <p className="text-gray-300">{selectedBenefit.notes}</p>
               </div>
             )}
           </div>
