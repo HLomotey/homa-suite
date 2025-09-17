@@ -56,15 +56,21 @@ const normalizeInvoiceStatus = (status: string): string => {
     'unpaid': 'pending',
     'open': 'pending',
     'due': 'pending',
+    'outstanding': 'pending',
+    'awaiting payment': 'pending',
     'late': 'overdue',
     'past due': 'overdue',
     'pastdue': 'overdue',
+    'overdue': 'overdue',
     'void': 'cancelled',
     'canceled': 'cancelled',
+    'cancelled': 'cancelled',
     'complete': 'paid',
     'completed': 'paid',
     'settled': 'paid',
-    'closed': 'paid'
+    'closed': 'paid',
+    'payment received': 'paid',
+    'fully paid': 'paid'
   };
   
   return statusMappings[normalized] || 'pending';
