@@ -62,7 +62,7 @@ interface DateRange {
   month: number;
 }
 
-// Fetch expenditure data from projections table
+// Fetch expense data from finance_expenses table
 const fetchExpenseData = async (
   dateRanges?: DateRange[],
   signal?: AbortSignal
@@ -72,23 +72,8 @@ const fetchExpenseData = async (
   console.log('fetchExpenseData called with dateRanges:', dateRanges);
 
   let query = supabaseAdmin
-    .from("projections")
-    .select(`
-      id,
-      projection_date,
-      status,
-      monthly_gross_wages_salaries,
-      payroll_taxes,
-      admin_cost,
-      management_payroll_expenses,
-      estimated_other,
-      employee_engagement,
-      health_insurance_benefits,
-      travel,
-      other_benefits,
-      location_id
-    `, { count: "exact" })
-    .in('status', ['active', 'draft']);
+    .from("finance_expenses")
+    .select("*", { count: "exact" });
 
   // Apply date filters if specified
   if (dateRanges && dateRanges.length > 0) {
@@ -96,25 +81,25 @@ const fetchExpenseData = async (
       const range = dateRanges[0];
       const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
       const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
-      query = query.gte('projection_date', startDate).lte('projection_date', endDate);
+      query = query.gte('Date', startDate).lte('Date', endDate);
     } else {
       // Multiple date ranges - use OR conditions
       const orConditions = dateRanges.map(range => {
         const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
         const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
-        return `and(projection_date.gte.${startDate},projection_date.lte.${endDate})`;
+        return `and(Date.gte.${startDate},Date.lte.${endDate})`;
       }).join(",");
       query = query.or(orConditions);
     }
   }
 
   const { data, error, count } = await query
-    .order("projection_date", { ascending: false })
+    .order("Date", { ascending: false })
     .limit(PAGE_SIZE);
 
   if (error) {
-    console.error("Error fetching expenditure data:", error);
-    throw new Error(`Failed to fetch expenditure data: ${error.message}`);
+    console.error("Error fetching expense data:", error);
+    throw new Error(`Failed to fetch expense data: ${error.message}`);
   }
 
   return { 
@@ -137,41 +122,22 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
 
         console.log(`Processing ${expenseCount} expense records out of ${totalCount} total`);
 
-        // Calculate total expenses from projections expenditure fields
-        const calculateProjectionExpenses = (projection: any) => {
-          return (
-            (parseFloat(projection.monthly_gross_wages_salaries) || 0) +
-            (parseFloat(projection.payroll_taxes) || 0) +
-            (parseFloat(projection.admin_cost) || 0) +
-            (parseFloat(projection.management_payroll_expenses) || 0) +
-            (parseFloat(projection.estimated_other) || 0) +
-            (parseFloat(projection.employee_engagement) || 0) +
-            (parseFloat(projection.health_insurance_benefits) || 0) +
-            (parseFloat(projection.travel) || 0) +
-            (parseFloat(projection.other_benefits) || 0)
-          );
-        };
-
-        const totalExpenses = expenses.reduce((sum, projection) => {
-          return sum + calculateProjectionExpenses(projection);
+        // Calculate total expenses from finance_expenses table
+        const totalExpenses = expenses.reduce((sum, expense) => {
+          const amount = parseFloat(expense.Total) || 0;
+          return sum + amount;
         }, 0);
 
-        // For projections, we consider 'active' as approved and 'draft' as pending
-        const approvedExpenses = expenses
-          .filter(projection => projection.status === 'active')
-          .reduce((sum, projection) => sum + calculateProjectionExpenses(projection), 0);
-
-        const pendingExpenses = expenses
-          .filter(projection => projection.status === 'draft')
-          .reduce((sum, projection) => sum + calculateProjectionExpenses(projection), 0);
-
-        const rejectedExpenses = 0; // Projections don't have rejected status
+        // All expenses in finance_expenses are considered approved (no approval workflow)
+        const approvedExpenses = totalExpenses;
+        const pendingExpenses = 0;
+        const rejectedExpenses = 0;
 
         const averageExpenseAmount = expenseCount > 0 ? totalExpenses / expenseCount : 0;
 
-        // Monthly expense aggregation from projections
-        const monthlyData = expenses.reduce((acc, projection) => {
-          const month = new Date(projection.projection_date).toLocaleDateString("en-US", {
+        // Monthly expense aggregation from finance_expenses
+        const monthlyData = expenses.reduce((acc, expense) => {
+          const month = new Date(expense.Date).toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
           });
@@ -185,15 +151,10 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
             };
           }
 
-          const amount = calculateProjectionExpenses(projection);
+          const amount = parseFloat(expense.Total) || 0;
           acc[month].amount += amount;
           acc[month].count += 1;
-
-          if (projection.status === 'active') {
-            acc[month].approvedAmount += amount;
-          } else if (projection.status === 'draft') {
-            acc[month].pendingAmount += amount;
-          }
+          acc[month].approvedAmount += amount; // All expenses are considered approved
 
           return acc;
         }, {} as Record<string, { amount: number; count: number; approvedAmount: number; pendingAmount: number }>);
@@ -208,41 +169,27 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           }))
           .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
-        // Category analysis from projections expenditure fields
-        const categoryData = expenses.reduce((acc, projection) => {
-          const month = new Date(projection.projection_date).toLocaleDateString("en-US", {
+        // Category analysis from finance_expenses
+        const categoryData = expenses.reduce((acc, expense) => {
+          const category = expense.Category || 'other';
+          const month = new Date(expense.Date).toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
           });
 
-          const categories = {
-            'wages_salaries': parseFloat(projection.monthly_gross_wages_salaries) || 0,
-            'payroll_taxes': parseFloat(projection.payroll_taxes) || 0,
-            'admin_cost': parseFloat(projection.admin_cost) || 0,
-            'management_payroll': parseFloat(projection.management_payroll_expenses) || 0,
-            'estimated_other': parseFloat(projection.estimated_other) || 0,
-            'employee_engagement': parseFloat(projection.employee_engagement) || 0,
-            'health_insurance': parseFloat(projection.health_insurance_benefits) || 0,
-            'travel': parseFloat(projection.travel) || 0,
-            'other_benefits': parseFloat(projection.other_benefits) || 0,
-          };
+          if (!acc[category]) {
+            acc[category] = { amount: 0, count: 0, monthlyAmounts: {} };
+          }
 
-          Object.entries(categories).forEach(([category, amount]) => {
-            if (amount > 0) {
-              if (!acc[category]) {
-                acc[category] = { amount: 0, count: 0, monthlyAmounts: {} };
-              }
+          const amount = parseFloat(expense.Total) || 0;
+          acc[category].amount += amount;
+          acc[category].count += 1;
 
-              acc[category].amount += amount;
-              acc[category].count += 1;
-
-              // Track monthly amounts for MoM calculation
-              if (!acc[category].monthlyAmounts[month]) {
-                acc[category].monthlyAmounts[month] = 0;
-              }
-              acc[category].monthlyAmounts[month] += amount;
-            }
-          });
+          // Track monthly amounts for MoM calculation
+          if (!acc[category].monthlyAmounts[month]) {
+            acc[category].monthlyAmounts[month] = 0;
+          }
+          acc[category].monthlyAmounts[month] += amount;
 
           return acc;
         }, {} as Record<string, { amount: number; count: number; monthlyAmounts: Record<string, number> }>);
@@ -258,7 +205,7 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
               : 0;
 
             return {
-              category: category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              category,
               amount: data.amount,
               count: data.count,
               percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
@@ -268,14 +215,14 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           })
           .sort((a, b) => b.amount - a.amount);
 
-        // Department analysis (using location_id as department proxy)
-        const departmentData = expenses.reduce((acc, projection) => {
-          const department = projection.location_id || 'Unassigned';
+        // Department analysis (using Company as department)
+        const departmentData = expenses.reduce((acc, expense) => {
+          const department = expense.Company || 'Unassigned';
           if (!acc[department]) {
             acc[department] = { amount: 0, count: 0 };
           }
 
-          const amount = calculateProjectionExpenses(projection);
+          const amount = parseFloat(expense.Total) || 0;
           acc[department].amount += amount;
           acc[department].count += 1;
 
@@ -284,31 +231,45 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
 
         const expensesByDepartment = Object.entries(departmentData)
           .map(([department, data]) => ({
-            department: department === 'Unassigned' ? 'Unassigned' : `Location ${department}`,
+            department,
             amount: data.amount,
             count: data.count,
             percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
           }))
           .sort((a, b) => b.amount - a.amount);
 
-        // Top expense sources (by projection/location)
-        const topPayees = expenses
-          .map(projection => ({
-            payee: `Projection ${projection.id.slice(0, 8)}`,
-            amount: calculateProjectionExpenses(projection),
-            count: 1,
-            categories: ['Operational Expenses'],
+        // Top payees analysis
+        const payeeData = expenses.reduce((acc, expense) => {
+          const payee = expense.Payee || 'Unknown';
+          if (!acc[payee]) {
+            acc[payee] = { amount: 0, count: 0, categories: new Set() };
+          }
+
+          const amount = parseFloat(expense.Total) || 0;
+          acc[payee].amount += amount;
+          acc[payee].count += 1;
+          acc[payee].categories.add(expense.Category || 'other');
+
+          return acc;
+        }, {} as Record<string, { amount: number; count: number; categories: Set<string> }>);
+
+        const topPayees = Object.entries(payeeData)
+          .map(([payee, data]) => ({
+            payee,
+            amount: data.amount,
+            count: data.count,
+            categories: Array.from(data.categories),
           }))
           .sort((a, b) => b.amount - a.amount)
           .slice(0, 10);
 
-        // Approval metrics (using projection status)
-        const approvedCount = expenses.filter(p => p.status === 'active').length;
-        const pendingCount = expenses.filter(p => p.status === 'draft').length;
-        const rejectedCount = 0; // Projections don't have rejected status
-        const approvalRate = expenseCount > 0 ? (approvedCount / expenseCount) * 100 : 0;
+        // Approval metrics (all expenses in finance_expenses are considered approved)
+        const approvedCount = expenseCount;
+        const pendingCount = 0;
+        const rejectedCount = 0;
+        const approvalRate = 100; // All expenses are approved
 
-        // For projections, we don't have approval timestamps, so we'll use a default
+        // No approval workflow, so no approval time
         const avgApprovalTime = 0;
 
         return {

@@ -107,45 +107,32 @@ const fetchRevenueData = async (dateRanges?: DateRange[]) => {
   return data || [];
 };
 
-// Fetch expense data from projections table (expenditure fields)
+// Fetch expense data from finance_expenses table
 const fetchExpenseData = async (dateRanges?: DateRange[]) => {
   let query = supabaseAdmin
-    .from("projections")
-    .select(`
-      id,
-      projection_date,
-      monthly_gross_wages_salaries,
-      payroll_taxes,
-      admin_cost,
-      management_payroll_expenses,
-      estimated_other,
-      employee_engagement,
-      health_insurance_benefits,
-      travel,
-      other_benefits
-    `)
-    .in('status', ['active', 'draft']); // Only active and draft projections
+    .from("finance_expenses")
+    .select("*");
 
   if (dateRanges && dateRanges.length > 0) {
     if (dateRanges.length === 1) {
       const range = dateRanges[0];
       const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
       const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
-      query = query.gte('projection_date', startDate).lte('projection_date', endDate);
+      query = query.gte('Date', startDate).lte('Date', endDate);
     } else {
       const orConditions = dateRanges.map(range => {
         const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
         const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
-        return `and(projection_date.gte.${startDate},projection_date.lte.${endDate})`;
+        return `and(Date.gte.${startDate},Date.lte.${endDate})`;
       }).join(",");
       query = query.or(orConditions);
     }
   }
 
-  const { data, error } = await query.order('projection_date', { ascending: false });
+  const { data, error } = await query.order('Date', { ascending: false });
   
   if (error) {
-    console.error("Error fetching expenditure data:", error);
+    console.error("Error fetching expense data:", error);
     throw error;
   }
 
@@ -190,18 +177,8 @@ const processProfitLossData = (
     .filter(invoice => invoice.invoice_status === 'paid' && invoice.date_paid)
     .reduce((sum, invoice) => sum + (parseFloat(invoice.line_total) || 0), 0);
 
-  const totalExpenses = expenseData.reduce((sum, projection) => {
-    const expenses = 
-      (parseFloat(projection.monthly_gross_wages_salaries) || 0) +
-      (parseFloat(projection.payroll_taxes) || 0) +
-      (parseFloat(projection.admin_cost) || 0) +
-      (parseFloat(projection.management_payroll_expenses) || 0) +
-      (parseFloat(projection.estimated_other) || 0) +
-      (parseFloat(projection.employee_engagement) || 0) +
-      (parseFloat(projection.health_insurance_benefits) || 0) +
-      (parseFloat(projection.travel) || 0) +
-      (parseFloat(projection.other_benefits) || 0);
-    return sum + expenses;
+  const totalExpenses = expenseData.reduce((sum, expense) => {
+    return sum + (parseFloat(expense.Total) || 0);
   }, 0);
 
   const totalProjectedRevenue = projectionData
@@ -242,25 +219,13 @@ const processProfitLossData = (
     return acc;
   }, {} as Record<string, number>);
 
-  const monthlyExpenseData = expenseData.reduce((acc, projection) => {
-    const month = new Date(projection.projection_date).toLocaleDateString("en-US", {
+  const monthlyExpenseData = expenseData.reduce((acc, expense) => {
+    const month = new Date(expense.Date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
     });
     if (!acc[month]) acc[month] = 0;
-    
-    const totalExpense = 
-      (parseFloat(projection.monthly_gross_wages_salaries) || 0) +
-      (parseFloat(projection.payroll_taxes) || 0) +
-      (parseFloat(projection.admin_cost) || 0) +
-      (parseFloat(projection.management_payroll_expenses) || 0) +
-      (parseFloat(projection.estimated_other) || 0) +
-      (parseFloat(projection.employee_engagement) || 0) +
-      (parseFloat(projection.health_insurance_benefits) || 0) +
-      (parseFloat(projection.travel) || 0) +
-      (parseFloat(projection.other_benefits) || 0);
-    
-    acc[month] += totalExpense;
+    acc[month] += parseFloat(expense.Total) || 0;
     return acc;
   }, {} as Record<string, number>);
 
@@ -320,35 +285,21 @@ const processProfitLossData = (
       : 0;
   }
 
-  // Expense breakdown by category from projections
-  const expenseCategories = expenseData.reduce((acc, projection) => {
-    const categories = {
-      'wages_salaries': parseFloat(projection.monthly_gross_wages_salaries) || 0,
-      'payroll_taxes': parseFloat(projection.payroll_taxes) || 0,
-      'admin_cost': parseFloat(projection.admin_cost) || 0,
-      'management_payroll': parseFloat(projection.management_payroll_expenses) || 0,
-      'estimated_other': parseFloat(projection.estimated_other) || 0,
-      'employee_engagement': parseFloat(projection.employee_engagement) || 0,
-      'health_insurance': parseFloat(projection.health_insurance_benefits) || 0,
-      'travel': parseFloat(projection.travel) || 0,
-      'other_benefits': parseFloat(projection.other_benefits) || 0,
-    };
-
-    Object.entries(categories).forEach(([category, amount]) => {
-      if (!acc[category]) acc[category] = 0;
-      acc[category] += amount;
-    });
-
+  // Expense breakdown by category from finance_expenses
+  const expensesByCategory = expenseData.reduce((acc, expense) => {
+    const category = expense.Category || 'other';
+    if (!acc[category]) acc[category] = 0;
+    acc[category] += parseFloat(expense.Total) || 0;
     return acc;
   }, {} as Record<string, number>);
 
-  const expenseBreakdown = Object.entries(expenseCategories)
+  const expenseBreakdown = Object.entries(expensesByCategory)
     .map(([category, amount]) => ({
-      category: category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      category,
       amount,
       percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0,
       budgetVariance: 0, // Would need budget data to calculate
-      projectedAmount: amount, // This is already projected data
+      projectedAmount: 0, // Would need projected expense breakdown
     }))
     .sort((a, b) => b.amount - a.amount);
 
