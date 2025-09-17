@@ -27,20 +27,36 @@ const QUERY_KEYS = {
  */
 
 /**
- * Fetch all finance expenses
+ * Fetch all finance expenses (no limit to ensure all data is retrieved)
  */
 export const fetchFinanceExpenses = async (): Promise<FrontendFinanceExpense[]> => {
-  const { data, error } = await supabase
-    .from('finance_expenses')
-    .select('*')
-    .order('Date', { ascending: false });
+  let allData: any[] = [];
+  let from = 0;
+  const limit = 1000; // Supabase's default limit
+  let hasMore = true;
 
-  if (error) {
-    console.error('Error fetching finance expenses:', error);
-    throw new Error(error.message);
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('finance_expenses')
+      .select('*')
+      .order('Date', { ascending: false })
+      .range(from, from + limit - 1);
+
+    if (error) {
+      console.error('Error fetching finance expenses:', error);
+      throw new Error(error.message);
+    }
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      from += limit;
+      hasMore = data.length === limit; // Continue if we got a full batch
+    } else {
+      hasMore = false;
+    }
   }
 
-  return data?.map(mapDatabaseFinanceExpenseToFrontend) || [];
+  return allData?.map(mapDatabaseFinanceExpenseToFrontend) || [];
 };
 
 /**
