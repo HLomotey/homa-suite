@@ -13,6 +13,8 @@ import RoomForm from "./RoomForm";
 import { FrontendRoom, RoomStatus, RoomType } from "@/integration/supabase/types";
 import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, useBulkDeleteRooms, useRoomsByStatus, useRoomsByProperty } from "@/hooks/room";
 import { useProperties } from "@/hooks/property";
+import { useAssignments } from "@/hooks/assignment/useAssignment";
+import { FrontendAssignment } from "@/integration/supabase/types";
 
 
 
@@ -40,6 +42,32 @@ export const RoomsList = () => {
   // Fetch properties for the form
   const { properties, loading: propertiesLoading, error: propertiesError } = useProperties();
   
+  // Fetch assignments to calculate terminated assignments
+  const { assignments, loading: assignmentsLoading, error: assignmentsError } = useAssignments();
+  
+  // Helper function to check if assignment should be terminated based on end date
+  const getAssignmentStatus = (assignment: FrontendAssignment) => {
+    if (!assignment.endDate) {
+      return assignment.status;
+    }
+    
+    const currentDate = new Date();
+    const endDate = new Date(assignment.endDate);
+    
+    // If end date has passed and status is still Active or Pending, mark as Terminated
+    if (endDate < currentDate && (assignment.status === 'Active' || assignment.status === 'Pending')) {
+      return 'Terminated';
+    }
+    
+    return assignment.status;
+  };
+
+  // Calculate terminated assignments count
+  const terminatedAssignmentsCount = assignments ? assignments.filter(assignment => {
+    const actualStatus = getAssignmentStatus(assignment);
+    return actualStatus === 'Terminated';
+  }).length : 0;
+
   // Debug properties data
   React.useEffect(() => {
     console.log("RoomsList - Properties loaded:", properties);
@@ -211,7 +239,7 @@ export const RoomsList = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatsCard 
           title="Total Rooms" 
           value={rooms ? rooms.length.toString() : "0"} 
@@ -239,6 +267,13 @@ export const RoomsList = () => {
           icon={<Square className="h-5 w-5" />}
           color="purple"
           loading={roomsLoading}
+        />
+        <StatsCard 
+          title="Terminated Assignments" 
+          value={terminatedAssignmentsCount.toString()} 
+          icon={<Trash2 className="h-5 w-5" />}
+          color="red"
+          loading={assignmentsLoading}
         />
       </div>
 
@@ -415,7 +450,7 @@ interface StatsCardProps {
   title: string;
   value: string;
   icon: React.ReactNode;
-  color: "blue" | "green" | "amber" | "purple";
+  color: "blue" | "green" | "amber" | "purple" | "red";
   loading?: boolean;
 }
 
@@ -425,6 +460,7 @@ const StatsCard = ({ title, value, icon, color, loading = false }: StatsCardProp
     green: "bg-green-950/40 border-green-800/30 text-green-500",
     amber: "bg-amber-950/40 border-amber-800/30 text-amber-500",
     purple: "bg-purple-950/40 border-purple-800/30 text-purple-500",
+    red: "bg-red-950/40 border-red-800/30 text-red-500",
   };
 
   return (

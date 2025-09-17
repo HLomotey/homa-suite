@@ -74,6 +74,7 @@ export default function ExternalStaff() {
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
   const [dateRangeFilter, setDateRangeFilter] = useState<string>("all");
   const [terminationPeriodFilter, setTerminationPeriodFilter] = useState<string>("all");
+  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -157,6 +158,14 @@ export default function ExternalStaff() {
         }
       } else if (terminationPeriodFilter !== "all" && !staff["TERMINATION DATE"]) {
         // If filtering by termination period but staff has no termination date, exclude them
+        return false;
+      }
+    }
+
+    // Department filter
+    if (selectedDepartment) {
+      const staffDepartment = staff["HOME DEPARTMENT"] || staff["DEPARTMENT"];
+      if (staffDepartment !== selectedDepartment) {
         return false;
       }
     }
@@ -341,7 +350,13 @@ export default function ExternalStaff() {
       </div>
 
       {/* Statistics Dashboard */}
-      <ExternalStaffStats stats={stats} loading={statsLoading} />
+      <ExternalStaffStats 
+        stats={stats} 
+        loading={statsLoading} 
+        onDepartmentFilter={setSelectedDepartment}
+        selectedDepartment={selectedDepartment}
+        onStatusChange={(newStatus) => handleStatusChange(newStatus as StaffStatus)}
+      />
 
       {/* Main Tabs for Current vs Historical */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -354,7 +369,14 @@ export default function ExternalStaff() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Staff Information ({totalCount})</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle>Staff Information ({filteredStaff.length})</CardTitle>
+                  {selectedDepartment && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      Department: {selectedDepartment}
+                    </Badge>
+                  )}
+                </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
