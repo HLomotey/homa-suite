@@ -19,12 +19,14 @@ import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 import { useAuth } from "@/contexts/AuthContext";
 import { FrontendRoom } from "@/integration/supabase/types/room";
+import { useFlightAgreements } from "@/hooks/flight-agreements/useFlightAgreements";
+import { CreateFlightAgreementData, CreateDeductionData } from "@/integration/supabase/api/flight-agreements";
 
 export interface AssignmentFormProps {
   assignment?: FrontendAssignment;
   onSave: (assignment: Omit<FrontendAssignment, "id">) => void;
   onCancel: () => void;
-  properties: { id: string; title: string; address: string }[];
+  properties: { id: string; title: string; address: string; rentAmount?: number }[];
   rooms: { id: string; name: string; propertyId: string; rentAmount?: number }[];
 }
 
@@ -46,24 +48,27 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     setStatus,
   } = useExternalStaff();
 
+  // Flight agreements hook
+  const { createAgreement: createFlightAgreement } = useFlightAgreements();
+
   const [formData, setFormData] = React.useState<
     Omit<FrontendAssignment, "id">
   >(() => {
     // For new assignments, try to get rent amount from room or property
     let initialRentAmount = assignment?.rentAmount || 0;
-    
+
     if (!assignment && properties.length > 0 && rooms.length > 0) {
       // For new assignments, try to get rent from first available room or property
       const defaultProperty = properties[0];
       const defaultRoom = rooms.find(r => r.propertyId === defaultProperty?.id);
-      
+
       if (defaultRoom?.rentAmount && defaultRoom.rentAmount > 0) {
         initialRentAmount = defaultRoom.rentAmount;
-      } else if ((defaultProperty as any)?.rentAmount && (defaultProperty as any).rentAmount > 0) {
-        initialRentAmount = (defaultProperty as any).rentAmount;
+      } else if (defaultProperty?.rentAmount && defaultProperty.rentAmount > 0) {
+        initialRentAmount = defaultProperty.rentAmount;
       }
     }
-    
+
     return {
       tenantName: assignment?.tenantName || "",
       tenantId: assignment?.tenantId || "",
@@ -86,16 +91,16 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   );
   const [showTenantSuggestions, setShowTenantSuggestions] = React.useState(false);
   const [filteredStaff, setFilteredStaff] = React.useState<FrontendExternalStaff[]>([]);
-  
+
   // Track if current selections are valid
   const [isValidTenant, setIsValidTenant] = React.useState(!!assignment?.tenantId);
   const [isValidStaff, setIsValidStaff] = React.useState(!!assignment?.staffId);
 
   // Benefit agreement states
-  const [housingAgreement, setHousingAgreement] = React.useState(false);
-  const [transportationAgreement, setTransportationAgreement] = React.useState(false);
-  const [flightAgreement, setFlightAgreement] = React.useState(false);
-  const [busCardAgreement, setBusCardAgreement] = React.useState(false);
+  const [housingAgreement, setHousingAgreement] = React.useState(assignment?.agreements?.housing || false);
+  const [transportationAgreement, setTransportationAgreement] = React.useState(assignment?.agreements?.transportation || false);
+  const [flightAgreement, setFlightAgreement] = React.useState(assignment?.agreements?.flight_agreement || false);
+  const [busCardAgreement, setBusCardAgreement] = React.useState(assignment?.agreements?.bus_card || false);
 
   // Rent amount override states
   const [isRentOverrideEnabled, setIsRentOverrideEnabled] = React.useState(false);
@@ -109,28 +114,41 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     bus_card?: SecurityDeposit;
   }>({});
 
-  // Helper function to create a new security deposit
-  const createSecurityDeposit = (benefitType: 'housing' | 'transportation' | 'flight_agreement' | 'bus_card'): SecurityDeposit => ({
-    benefitType,
-    totalAmount: 0,
-    paymentMethod: 'cash',
-    paymentStatus: 'pending',
-    paidDate: "",
-    notes: "",
-    deductionSchedule: []
-  });
+  // Flight agreement specific state
+  const [flightAgreementAmount, setFlightAgreementAmount] = React.useState<number>((assignment as any)?.flightAgreementAmount || 0);
+  const [flightAgreementNotes, setFlightAgreementNotes] = React.useState<string>((assignment as any)?.flightAgreementNotes || "");
+
+  // Helper function to create a new security deposit with default amounts
+  const createSecurityDeposit = (benefitType: 'housing' | 'transportation' | 'flight_agreement' | 'bus_card'): SecurityDeposit => {
+    const defaultAmounts = {
+      housing: 500.00,
+      transportation: 0.00,
+      flight_agreement: 0.00,
+      bus_card: 25.00
+    };
+
+    return {
+      benefitType,
+      totalAmount: defaultAmounts[benefitType],
+      paymentMethod: 'cash',
+      paymentStatus: 'pending',
+      paidDate: "",
+      notes: "",
+      deductionSchedule: []
+    };
+  };
 
   // Helper function to generate deduction schedule
   const generateDeductionSchedule = (totalAmount: number, startDate: string) => {
     if (totalAmount <= 0 || !startDate) return [];
-    
+
     const deductionAmount = totalAmount / 4;
     const start = new Date(startDate);
-    
+
     return Array.from({ length: 4 }, (_, index) => {
       const scheduledDate = new Date(start);
       scheduledDate.setDate(scheduledDate.getDate() + (14 * (index + 1))); // Bi-weekly
-      
+
       return {
         deductionNumber: index + 1,
         scheduledDate: scheduledDate.toISOString().split('T')[0],
@@ -140,10 +158,59 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     });
   };
 
+  // Helper function to generate flight agreement deduction schedule (3 periods on 7th and 22nd)
+  const generateFlightDeductionSchedule = (totalAmount: number, startDate: string): CreateDeductionData[] => {
+    if (totalAmount <= 0 || !startDate) return [];
+
+    const deductionAmount = Math.round((totalAmount / 3) * 100) / 100; // Round to 2 decimal places
+    const deductions: CreateDeductionData[] = [];
+
+    let currentDate = new Date(startDate);
+
+    for (let i = 0; i < 3; i++) {
+      // Determine if we should use 7th or 22nd based on current date
+      let deductionDate: Date;
+
+      if (i === 0) {
+        // First deduction: next available payroll date
+        if (currentDate.getDate() <= 7) {
+          deductionDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 7);
+        } else if (currentDate.getDate() <= 22) {
+          deductionDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 22);
+        } else {
+          deductionDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 7);
+        }
+      } else {
+        // Subsequent deductions: alternate between 7th and 22nd
+        const prevDate = deductions[i - 1].deduction_date;
+        const prevDay = new Date(prevDate).getDate();
+
+        if (prevDay === 7) {
+          deductionDate = new Date(new Date(prevDate).getFullYear(), new Date(prevDate).getMonth(), 22);
+        } else {
+          deductionDate = new Date(new Date(prevDate).getFullYear(), new Date(prevDate).getMonth() + 1, 7);
+        }
+      }
+
+      const payrollPeriod = `${deductionDate.getFullYear()}-${String(deductionDate.getMonth() + 1).padStart(2, '0')}`;
+
+      deductions.push({
+        agreement_id: '', // Will be set when creating
+        deduction_sequence: i + 1,
+        payroll_period: payrollPeriod,
+        deduction_date: deductionDate.toISOString().split('T')[0],
+        scheduled_amount: deductionAmount,
+        notes: `Flight agreement deduction ${i + 1} of 3`
+      });
+    }
+
+    return deductions;
+  };
+
   // Update deduction schedules when amounts or start date change
   React.useEffect(() => {
     if (!formData.startDate) return;
-    
+
     setSecurityDeposits(prev => {
       const updated = { ...prev };
       Object.keys(updated).forEach(key => {
@@ -160,6 +227,25 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     });
   }, [formData.startDate]);
 
+  // Initialize security deposits when agreements are checked
+  React.useEffect(() => {
+    if (housingAgreement && !securityDeposits.housing) {
+      setSecurityDeposits(prev => ({
+        ...prev,
+        housing: createSecurityDeposit('housing')
+      }));
+    }
+  }, [housingAgreement]);
+
+  React.useEffect(() => {
+    if (busCardAgreement && !securityDeposits.bus_card) {
+      setSecurityDeposits(prev => ({
+        ...prev,
+        bus_card: createSecurityDeposit('bus_card')
+      }));
+    }
+  }, [busCardAgreement]);
+
   // Rooms filtered by selected property
   const filteredRooms = rooms.filter((room) => room.propertyId === formData.propertyId);
 
@@ -169,13 +255,13 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       // If editing existing assignment, check if rent was overridden
       const currentRoom = rooms.find(r => r.id === assignment.roomId);
       const currentProperty = properties.find(p => p.id === assignment.propertyId);
-      
+
       const roomRentAmount = currentRoom?.rentAmount || 0;
-      const propertyRentAmount = (currentProperty as any)?.rentAmount || 0;
+      const propertyRentAmount = currentProperty?.rentAmount || 0;
       const fallbackRentAmount = roomRentAmount > 0 ? roomRentAmount : propertyRentAmount;
-      
+
       setOriginalRentAmount(fallbackRentAmount);
-      
+
       // If assignment has no rent amount (0), auto-populate from room/property
       if (assignment.rentAmount === 0 && fallbackRentAmount > 0) {
         setFormData(prev => ({
@@ -190,7 +276,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       // For new assignments, auto-populate rent amount when data is available
       const defaultProperty = properties[0];
       const availableRooms = rooms.filter(r => r.propertyId === defaultProperty?.id);
-      
+
       if (availableRooms.length > 0) {
         const roomWithRent = availableRooms.find(r => r.rentAmount && r.rentAmount > 0);
         if (roomWithRent) {
@@ -199,12 +285,12 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
             rentAmount: prev.rentAmount === 0 ? roomWithRent.rentAmount : prev.rentAmount
           }));
           setOriginalRentAmount(roomWithRent.rentAmount);
-        } else if ((defaultProperty as any)?.rentAmount && (defaultProperty as any).rentAmount > 0) {
+        } else if (defaultProperty?.rentAmount && defaultProperty.rentAmount > 0) {
           setFormData(prev => ({
             ...prev,
-            rentAmount: prev.rentAmount === 0 ? (defaultProperty as any).rentAmount : prev.rentAmount
+            rentAmount: prev.rentAmount === 0 ? defaultProperty.rentAmount : prev.rentAmount
           }));
-          setOriginalRentAmount((defaultProperty as any).rentAmount);
+          setOriginalRentAmount(defaultProperty.rentAmount);
         }
       }
     }
@@ -232,47 +318,47 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   React.useEffect(() => {
     console.log(`Filtering ${externalStaff.length} staff records...`);
     const startTime = performance.now();
-    
+
     if (!tenantSearchQuery.trim()) {
       // Limit to first 1000 records for performance when showing all
       const limitedStaff = externalStaff.slice(0, 1000);
       setFilteredStaff(limitedStaff);
-      console.log(`Showing first ${limitedStaff.length} records (no filter)`); 
+      console.log(`Showing first ${limitedStaff.length} records (no filter)`);
       return;
     }
 
     const q = tenantSearchQuery.toLowerCase().trim();
     const parts = q.split(/\s+/).filter(p => p.length > 0);
-    
+
     if (parts.length === 0) {
       const limitedStaff = externalStaff.slice(0, 1000);
       setFilteredStaff(limitedStaff);
       return;
     }
-    
+
     // Use more efficient filtering approach
     let filtered = externalStaff;
-    
+
     // Apply each search term to progressively filter the results
     for (const part of parts) {
       filtered = filtered.filter((staff) => {
         const firstName = (staff["PAYROLL FIRST NAME"] || "").toLowerCase();
         const lastName = (staff["PAYROLL LAST NAME"] || "").toLowerCase();
         const fullName = `${firstName} ${lastName}`.trim();
-        
+
         // Check most common fields first for performance
         if (firstName.includes(part) || lastName.includes(part) || fullName.includes(part)) {
           return true;
         }
-        
+
         // Only check these fields if the above didn't match
         const jobTitle = (staff["JOB TITLE"] || "").toLowerCase();
         const department = (staff["HOME DEPARTMENT"] || "").toLowerCase();
         const location = (staff["LOCATION"] || "").toLowerCase();
-        
+
         return jobTitle.includes(part) || department.includes(part) || location.includes(part);
       });
-      
+
       // Early exit if we've filtered down to a reasonable number
       if (filtered.length < 100) break;
     }
@@ -286,32 +372,32 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
         const bLast = (b["PAYROLL LAST NAME"] || "").toLowerCase();
         const aFull = `${aFirst} ${aLast}`.trim();
         const bFull = `${bFirst} ${bLast}`.trim();
-        
+
         // Exact matches first
         if (aFull === q && bFull !== q) return -1;
         if (bFull === q && aFull !== q) return 1;
-        
+
         // Then starts with matches
         if (aFull.startsWith(q) && !bFull.startsWith(q)) return -1;
         if (bFull.startsWith(q) && !aFull.startsWith(q)) return 1;
-        
+
         // Then last name matches
         if (aLast.startsWith(parts[0]) && !bLast.startsWith(parts[0])) return -1;
         if (bLast.startsWith(parts[0]) && !aLast.startsWith(parts[0])) return 1;
-        
+
         // Then first name matches
         if (aFirst.startsWith(parts[0]) && !bFirst.startsWith(parts[0])) return -1;
         if (bFirst.startsWith(parts[0]) && !aFirst.startsWith(parts[0])) return 1;
-        
+
         // Default to alphabetical
         return aFull.localeCompare(bFull);
       });
     }
-    
+
     // Limit results if there are too many
     const finalResults = filtered.length > 1000 ? filtered.slice(0, 1000) : filtered;
     setFilteredStaff(finalResults);
-    
+
     const endTime = performance.now();
     console.log(`Filtered to ${finalResults.length} records in ${(endTime - startTime).toFixed(2)}ms`);
   }, [tenantSearchQuery, externalStaff]);
@@ -321,7 +407,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     const value = e.target.value;
     setTenantSearchQuery(value);
     setShowTenantSuggestions(true);
-    
+
     // Check if the typed value matches any staff member exactly
     const matchingStaff = externalStaff.find(staff => {
       const firstName = staff["PAYROLL FIRST NAME"] || "";
@@ -329,20 +415,20 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       const fullName = `${firstName} ${lastName}`.trim();
       return fullName.toLowerCase() === value.toLowerCase();
     });
-    
+
     if (matchingStaff) {
-      setFormData((prev) => ({ 
-        ...prev, 
+      setFormData((prev) => ({
+        ...prev,
         tenantName: value,
-        tenantId: matchingStaff.id 
+        tenantId: matchingStaff.id
       }));
       setIsValidTenant(true);
     } else {
       // Clear tenant ID if no exact match
-      setFormData((prev) => ({ 
-        ...prev, 
+      setFormData((prev) => ({
+        ...prev,
         tenantName: value,
-        tenantId: "" 
+        tenantId: ""
       }));
       setIsValidTenant(false);
     }
@@ -377,24 +463,24 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
         roomId: "",
         roomName: "",
         // Auto-populate rent amount from property if not overridden
-        rentAmount: isRentOverrideEnabled ? prev.rentAmount : (selectedProperty as any)?.rentAmount || prev.rentAmount,
+        rentAmount: isRentOverrideEnabled ? prev.rentAmount : selectedProperty?.rentAmount || prev.rentAmount,
       }));
     } else if (name === "roomId") {
       const selectedRoom = rooms.find((r) => r.id === value);
       const selectedProperty = properties.find((p) => p.id === formData.propertyId);
-      
+
       // Use room rent amount first, then fall back to property rent amount
       const roomRentAmount = selectedRoom?.rentAmount || 0;
-      const propertyRentAmount = (selectedProperty as any)?.rentAmount || 0;
+      const propertyRentAmount = selectedProperty?.rentAmount || 0;
       const finalRentAmount = roomRentAmount > 0 ? roomRentAmount : propertyRentAmount;
-      
+
       setFormData((prev) => ({
         ...prev,
         roomId: value,
         roomName: selectedRoom?.name || "",
         rentAmount: isRentOverrideEnabled ? prev.rentAmount : finalRentAmount,
       }));
-      
+
       // Store original rent amount for override functionality
       setOriginalRentAmount(finalRentAmount);
     } else {
@@ -405,7 +491,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate tenant
@@ -420,7 +506,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
     if (!formData.staffId) {
       toast({
-        title: "Validation Error", 
+        title: "Validation Error",
         description: "Please select a staff member.",
         variant: "destructive",
       });
@@ -474,26 +560,39 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
     for (const { agreement, type, label } of benefitValidations) {
       if (agreement) {
-        const deposit = securityDeposits[type as keyof typeof securityDeposits];
-        if (!deposit || deposit.totalAmount <= 0) {
-          toast({
-            title: "Validation Error",
-            description: `Please enter a security deposit amount for the ${label} agreement.`,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Validate deduction schedule totals match deposit amount
-        if (deposit.deductionSchedule.length > 0) {
-          const totalDeductions = deposit.deductionSchedule.reduce((sum, deduction) => sum + deduction.amount, 0);
-          if (Math.abs(totalDeductions - deposit.totalAmount) > 0.01) {
+        // Special validation for flight agreement
+        if (type === 'flight_agreement') {
+          if (!flightAgreementAmount || flightAgreementAmount <= 0) {
             toast({
               title: "Validation Error",
-              description: `${label} deduction schedule total must equal the security deposit amount.`,
+              description: "Please enter a valid flight agreement amount.",
               variant: "destructive",
             });
             return;
+          }
+        } else {
+          // Regular security deposit validation for other agreements
+          const deposit = securityDeposits[type as keyof typeof securityDeposits];
+          if (!deposit || deposit.totalAmount <= 0) {
+            toast({
+              title: "Validation Error",
+              description: `Please enter a security deposit amount for the ${label} agreement.`,
+              variant: "destructive",
+            });
+            return;
+          }
+
+          // Validate deduction schedule totals match deposit amount
+          if (deposit.deductionSchedule.length > 0) {
+            const totalDeductions = deposit.deductionSchedule.reduce((sum, deduction) => sum + deduction.amount, 0);
+            if (Math.abs(totalDeductions - deposit.totalAmount) > 0.01) {
+              toast({
+                title: "Validation Error",
+                description: `${label} deduction schedule total must equal the security deposit amount.`,
+                variant: "destructive",
+              });
+              return;
+            }
           }
         }
       }
@@ -514,6 +613,41 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
 
     try {
+      // Create flight agreement if selected
+      if (flightAgreement && flightAgreementAmount > 0 && formData.tenantId) {
+        const selectedStaff = externalStaff.find(staff => staff.id === formData.tenantId);
+        if (selectedStaff) {
+          const flightAgreementData: CreateFlightAgreementData = {
+            staff_id: formData.tenantId,
+            staff_name: formData.tenantName,
+            department: selectedStaff["HOME DEPARTMENT"] || selectedStaff["DEPARTMENT"] || "",
+            job_title: selectedStaff["JOB TITLE"] || "",
+            agreement_amount: flightAgreementAmount,
+            deduction_amount: Math.round((flightAgreementAmount / 3) * 100) / 100,
+            total_deductions: 3,
+            start_date: formData.startDate,
+            notes: flightAgreementNotes || `Flight agreement for assignment to ${formData.propertyName} - ${formData.roomName}`
+          };
+
+          const deductionsData = generateFlightDeductionSchedule(flightAgreementAmount, formData.startDate);
+
+          try {
+            await createFlightAgreement(flightAgreementData, deductionsData);
+            toast({
+              title: "Success",
+              description: `Flight agreement created for ${formData.tenantName}`,
+            });
+          } catch (flightError) {
+            console.error("Error creating flight agreement:", flightError);
+            toast({
+              title: "Warning",
+              description: "Assignment will be saved, but flight agreement creation failed. Please create it manually.",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+
       // Include agreement data and security deposit in the assignment
       const assignmentWithAgreements = {
         ...formData,
@@ -523,7 +657,9 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
           flight_agreement: flightAgreement,
           bus_card: busCardAgreement,
         },
-        securityDeposits: Object.values(securityDeposits).filter(deposit => deposit && deposit.totalAmount > 0)
+        securityDeposits: Object.values(securityDeposits).filter(deposit => deposit && deposit.totalAmount > 0),
+        flightAgreementAmount: flightAgreement ? flightAgreementAmount : 0,
+        flightAgreementNotes: flightAgreement ? flightAgreementNotes : ""
       };
       onSave(assignmentWithAgreements);
     } catch (error) {
@@ -718,14 +854,14 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   onValueChange={(value) => {
                     const selectedRoom = filteredRooms.find((r) => r.id === value);
                     const roomRentAmount = selectedRoom?.rentAmount || 0;
-                    
+
                     setFormData((prev) => ({
                       ...prev,
                       roomId: value,
                       roomName: selectedRoom?.name || "",
                       rentAmount: isRentOverrideEnabled ? prev.rentAmount : roomRentAmount,
                     }));
-                    
+
                     // Store original rent amount for override functionality
                     setOriginalRentAmount(roomRentAmount);
                   }}
@@ -852,7 +988,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   Select any benefit agreements that apply to this assignment. All agreements are optional.
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                   <Checkbox
@@ -949,7 +1085,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   <p className="text-xs text-green-700">
                     ✓ Agreement confirmed for: {[
                       housingAgreement && "Housing",
-                      transportationAgreement && "Transportation", 
+                      transportationAgreement && "Transportation",
                       flightAgreement && "Flight Agreement",
                       busCardAgreement && "Bus Card"
                     ].filter(Boolean).join(", ")}
@@ -968,6 +1104,95 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
               ].map(({ agreement, type, label, icon: Icon, color, isDeposit }) => {
                 if (!agreement) return null;
 
+                // Special handling for flight agreement
+                if (type === 'flight_agreement') {
+                  const flightDeductionSchedule = flightAgreementAmount > 0
+                    ? generateFlightDeductionSchedule(flightAgreementAmount, formData.startDate)
+                    : [];
+
+                  return (
+                    <div key={type} className="p-4 border border-purple-600 rounded-lg bg-purple-900/20 text-white">
+                      <div className="flex items-center space-x-2">
+                        <Icon className="h-5 w-5 text-purple-400" />
+                        <h3 className="text-sm font-medium leading-none text-white">
+                          Flight Agreement Details
+                        </h3>
+                      </div>
+                      <p className="text-xs text-gray-300 mb-4">
+                        Enter the flight agreement amount and details. This will create a separate flight agreement with automatic payroll deductions.
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium leading-none text-white">
+                            Agreement Amount ($) *
+                          </label>
+                          <Input
+                            type="number"
+                            value={flightAgreementAmount || 0}
+                            onChange={(e) => setFlightAgreementAmount(Number(e.target.value))}
+                            className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                            min={0}
+                            step="0.01"
+                            placeholder="0.00"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium leading-none text-white">
+                            Notes (Optional)
+                          </label>
+                          <Input
+                            type="text"
+                            value={flightAgreementNotes}
+                            onChange={(e) => setFlightAgreementNotes(e.target.value)}
+                            className="mt-2 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                            placeholder="Additional notes..."
+                          />
+                        </div>
+                      </div>
+
+                      {/* Flight Deduction Schedule Preview */}
+                      {flightDeductionSchedule.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium leading-none mb-3 text-white">
+                            Payroll Deduction Schedule (3 periods)
+                          </h4>
+                          <div className="space-y-2">
+                            {flightDeductionSchedule.map((deduction, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-gray-700 rounded border border-gray-600">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-xs font-medium text-gray-300">
+                                    Deduction {deduction.deduction_sequence}
+                                  </span>
+                                  <span className="text-sm text-white">
+                                    ${deduction.scheduled_amount.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-gray-400">
+                                    {new Date(deduction.deduction_date).toLocaleDateString()}
+                                  </span>
+                                  <span className="text-xs px-2 py-1 rounded bg-yellow-600 text-yellow-100">
+                                    Scheduled
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-2 text-xs text-gray-300">
+                            <p>• Deductions will be automatically processed on the 7th and 22nd of each month</p>
+                            <p>• Each deduction: ${flightAgreementAmount > 0 ? (flightAgreementAmount / 3).toFixed(2) : '0.00'}</p>
+                            <p>• Total recovery period: 3 payroll periods</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Regular security deposit handling for other agreements
                 const benefitType = type as keyof typeof securityDeposits;
                 const deposit = securityDeposits[benefitType];
 
@@ -978,7 +1203,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                       ...createSecurityDeposit(type as SecurityDeposit['benefitType']),
                       ...prev[benefitType],
                       ...updates,
-                      deductionSchedule: updates.totalAmount 
+                      deductionSchedule: updates.totalAmount
                         ? generateDeductionSchedule(updates.totalAmount, formData.startDate)
                         : prev[benefitType]?.deductionSchedule || []
                     }
@@ -988,12 +1213,11 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                 return (
                   <div key={type} className="p-4 border border-gray-600 rounded-lg bg-gray-800 text-white">
                     <div className="flex items-center space-x-2">
-                      <Icon className={`h-5 w-5 ${
-                        color === 'blue' ? 'text-blue-400' :
+                      <Icon className={`h-5 w-5 ${color === 'blue' ? 'text-blue-400' :
                         color === 'green' ? 'text-green-400' :
-                        color === 'purple' ? 'text-purple-400' :
-                        'text-orange-400'
-                      }`} />
+                          color === 'purple' ? 'text-purple-400' :
+                            'text-orange-400'
+                        }`} />
                       <h3 className="text-sm font-medium leading-none text-white">
                         {label} {isDeposit ? 'Security Deposit' : 'Charge Amount'}
                       </h3>
@@ -1001,7 +1225,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     <p className="text-xs text-gray-300 mb-4">
                       Enter the {isDeposit ? 'security deposit details' : 'charge amount details'} for the {label.toLowerCase()} agreement.
                     </p>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="text-sm font-medium leading-none text-white">
@@ -1018,7 +1242,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label className="text-sm font-medium leading-none text-white">
                           Payment Method
@@ -1035,7 +1259,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                           <option value="other">Other</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className="text-sm font-medium leading-none text-white">
                           Payment Date
@@ -1043,7 +1267,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         <Input
                           type="date"
                           value={deposit?.paidDate || ""}
-                          onChange={(e) => updateDeposit({ 
+                          onChange={(e) => updateDeposit({
                             paidDate: e.target.value,
                             paymentStatus: e.target.value !== "" ? 'paid' : 'pending'
                           })}
@@ -1101,13 +1325,12 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                                 <span className="text-xs text-gray-400">
                                   {deduction.scheduledDate}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  deduction.status === 'scheduled' 
-                                    ? 'bg-blue-600 text-blue-100'
-                                    : deduction.status === 'deducted'
+                                <span className={`text-xs px-2 py-1 rounded ${deduction.status === 'scheduled'
+                                  ? 'bg-blue-600 text-blue-100'
+                                  : deduction.status === 'deducted'
                                     ? 'bg-green-600 text-green-100'
                                     : 'bg-gray-600 text-gray-100'
-                                }`}>
+                                  }`}>
                                   {deduction.status}
                                 </span>
                               </div>
@@ -1124,15 +1347,13 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
                     {/* Status Indicator */}
                     {deposit && deposit.totalAmount > 0 && (
-                      <div className={`mt-3 p-2 rounded-md ${
-                        deposit.paymentStatus === 'paid' 
-                          ? "bg-green-800 border border-green-600" 
-                          : "bg-yellow-800 border border-yellow-600"
-                      }`}>
-                        <p className={`text-xs ${
-                          deposit.paymentStatus === 'paid' ? "text-green-200" : "text-yellow-200"
+                      <div className={`mt-3 p-2 rounded-md ${deposit.paymentStatus === 'paid'
+                        ? "bg-green-800 border border-green-600"
+                        : "bg-yellow-800 border border-yellow-600"
                         }`}>
-                          {deposit.paymentStatus === 'paid' 
+                        <p className={`text-xs ${deposit.paymentStatus === 'paid' ? "text-green-200" : "text-yellow-200"
+                          }`}>
+                          {deposit.paymentStatus === 'paid'
                             ? `✓ ${label} ${isDeposit ? 'security deposit' : 'charge'} of $${deposit.totalAmount} has been paid${deposit.paidDate ? ` on ${deposit.paidDate}` : ""} via ${deposit.paymentMethod}`
                             : `⚠ ${label} ${isDeposit ? 'security deposit' : 'charge'} of $${deposit.totalAmount} is pending payment via ${deposit.paymentMethod}`
                           }

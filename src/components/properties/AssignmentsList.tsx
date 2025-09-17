@@ -303,8 +303,8 @@ export const AssignmentsList = () => {
             assignment={editingAssignment}
             onSave={handleSaveAssignment}
             onCancel={() => setIsFormOpen(false)}
-            properties={properties ? properties.map(p => ({ id: p.id, title: p.title, address: p.address })) : []}
-            rooms={rooms ? rooms.map(r => ({ id: r.id, name: r.name, propertyId: r.propertyId })) : []}
+            properties={properties ? properties.map(p => ({ id: p.id, title: p.title, address: p.address, rentAmount: p.rentAmount })) : []}
+            rooms={rooms ? rooms.map(r => ({ id: r.id, name: r.name, propertyId: r.propertyId, rentAmount: r.rentAmount })) : []}
           />
         </DialogContent>
       </Dialog>
