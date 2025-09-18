@@ -279,6 +279,8 @@ export function FinanceExpenseExcelUpload({ onClose }: FinanceExpenseExcelUpload
                 accept=".xlsx,.xls"
                 onChange={handleFileSelect}
                 className="hidden"
+                id="excel-file-upload"
+                aria-label="Upload Excel file for expense data"
               />
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-lg font-medium text-gray-900 mb-2">

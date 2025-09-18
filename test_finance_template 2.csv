@@ -1,0 +1,4 @@
+Client Name,Invoice #,Date,Invoice Status,Date Paid,Item Description,Rate,Quantity,Discount Percentage,Line Subtotal,Tax 1 Type,Tax 1 Amount,Tax 2 Type,Tax 2 Amount,Line Total,Currency
+ABC Corporation,INV-2023-001,2023-07-15,Pending,,Web Development Services,125.00,10,5,1187.50,VAT,237.50,,,1425.00,USD
+XYZ Ltd,INV-2023-002,2023-07-15,Paid,2023-07-15,Monthly Maintenance,75.00,6,0,450.00,GST,45.00,PST,22.50,517.50,USD
+Test Client,INV-2023-003,2023-07-16,Pending,,Database Migration,200.00,8,10,1440.00,VAT,288.00,,,1728.00,USD

@@ -144,6 +144,48 @@ const SelectSeparator = React.forwardRef<
 ))
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName
 
+// Custom Select component with simplified interface
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  onValueChange?: (value: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+const CustomSelect = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
+  CustomSelectProps
+>(({ value, onChange, onValueChange, options, placeholder, disabled, className, ...props }, ref) => {
+  const handleValueChange = (newValue: string) => {
+    onChange?.(newValue);
+    onValueChange?.(newValue);
+  };
+
+  return (
+    <Select value={value} onValueChange={handleValueChange} disabled={disabled}>
+      <SelectTrigger className={className} ref={ref} {...props}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+});
+CustomSelect.displayName = "CustomSelect";
+
 export {
   Select,
   SelectGroup,
@@ -155,4 +197,8 @@ export {
   SelectSeparator,
   SelectScrollUpButton,
   SelectScrollDownButton,
+  CustomSelect,
 }
+
+// Export CustomSelect as default for backward compatibility
+export default CustomSelect;
