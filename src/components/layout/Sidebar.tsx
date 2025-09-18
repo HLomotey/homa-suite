@@ -30,6 +30,7 @@ import {
   UserPlus,
   LineChart,
   Mail,
+  UserX,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -100,6 +101,12 @@ const navigationItems = [
     icon: Clock,
     href: "/attendance",
     module: "hr",
+  },
+  {
+    label: "Termination",
+    icon: UserX,
+    href: "/termination",
+    module: "termination",
   },
   {
     label: "Transport",

@@ -1,0 +1,5 @@
+Room Name,Property ID,Property Name,Room Type,Status,Area (sq ft),Current Occupants,Max Occupants,Price,Date Available
+Room 101,PROP001,Main Building,Single,Available,250,0,2,500,2023-09-01
+Room 102,PROP001,Main Building,Double,Occupied,350,2,2,750,2023-10-15
+Room 103,PROP002,Annex Building,Suite,Available,450,0,4,1200,2023-08-20
+Room 104,PROP002,Annex Building,Studio,Maintenance,200,0,1,400,2023-11-30

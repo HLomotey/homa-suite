@@ -45,6 +45,13 @@ const JobOrders = lazy(() => import("@/pages/JobOrders"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const Login = lazy(() => import("@/pages/Login"));
 
+// Lazy load Termination Module
+const TerminationModule = lazy(() =>
+  import("@/components/termination/TerminationModule").then((module) => ({
+    default: module.TerminationModule,
+  }))
+);
+
 // Lazy load HR components
 const HRRecruitment = lazy(() =>
   import("@/components/hr/HRRecruitment").then((module) => ({
@@ -319,6 +326,16 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <ModuleRouteGuard module="hr">
               <AttendancePage />
+            </ModuleRouteGuard>
+          </LazyWrapper>
+        ),
+      },
+      {
+        path: "termination",
+        element: (
+          <LazyWrapper>
+            <ModuleRouteGuard module="termination">
+              <TerminationModule />
             </ModuleRouteGuard>
           </LazyWrapper>
         ),
