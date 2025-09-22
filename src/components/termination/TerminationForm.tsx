@@ -1,65 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import CustomSelect from '../ui/select';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { Badge } from '../ui/badge';
-import { Card } from '../ui/card';
-import { 
-  TerminationRequest, 
-  SeparationType, 
-  RehireEligibility, 
-  DirectDepositAction, 
-  TerminationReason,
-  Profile 
-} from '../../lib/supabase';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { CustomSelect } from '../ui/select';
+import {
+  useStaffTerminationView,
+  useSubmitTerminationRequest,
+} from '@/hooks/staff/useStaffTermination';
+import {
+  TerminationRequestCreate,
+} from '@/integration/supabase/types/staff-termination';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   TERMINATION_REASON_LABELS,
   SEPARATION_TYPE_LABELS,
   REHIRE_ELIGIBILITY_LABELS,
   DIRECT_DEPOSIT_ACTION_LABELS,
-  validateTerminationDates,
-} from '../../lib/termination';
-import { useTermination } from '../../hooks/useTermination';
-import { useAuth } from '@/components/auth/AuthProvider';
+} from '@/constants/termination';
 
 interface TerminationFormProps {
-  onSubmit: (data: Partial<TerminationRequest>) => Promise<void>;
-  onCancel: () => void;
-  initialData?: Partial<TerminationRequest>;
-  isEditing?: boolean;
+  onSuccess?: (requestId: string) => void;
+  onCancel?: () => void;
+  preSelectedStaffId?: string;
 }
 
-export function TerminationForm({ onSubmit, onCancel, initialData, isEditing = false }: TerminationFormProps) {
-  const { currentUser } = useAuth();
-  const { getEmployees } = useTermination();
-  const [employees, setEmployees] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(false);
+export function TerminationForm({
+  onSuccess,
+  onCancel,
+  preSelectedStaffId
+}: TerminationFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    employee_id: initialData?.employee_id || '',
-    manager_id: initialData?.manager_id || '',
-    effective_date: initialData?.effective_date || '',
-    last_day_worked: initialData?.last_day_worked || '',
-    separation_type: initialData?.separation_type || '' as SeparationType,
-    reason_for_leaving: initialData?.reason_for_leaving || '' as TerminationReason,
-    rehire_eligible: initialData?.rehire_eligible || '' as RehireEligibility,
-    direct_deposit_action: initialData?.direct_deposit_action || '' as DirectDepositAction,
-    notes: initialData?.notes || '',
-    manager_comments: initialData?.manager_comments || '',
-    hr_comments: initialData?.hr_comments || '',
+  const { currentUser } = useAuth();
+
+  const [formData, setFormData] = useState<Partial<TerminationRequestCreate>>({
+    staff_id: preSelectedStaffId || '',
+    manager_id: '',
+    effective_termination_date: '',
+    last_day_worked: '',
+    separation_type: 'voluntary',
+    reason_for_leaving: '',
+    eligible_for_rehire: false,
+    direct_deposit_instruction: 'stop',
+    additional_notes: '',
   });
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      const employeeList = await getEmployees();
-      setEmployees(employeeList);
-    };
-    fetchEmployees();
-  }, [getEmployees]);
+  // Fetch staff from the termination view - test without activeOnly filter
+  const { data: staffList = [], isLoading: isLoadingStaff, error: staffError } = useStaffTerminationView({
+    activeOnly: false,
+  });
 
-  const handleInputChange = (field: string, value: string) => {
+  // Debug logging
+  console.log('Staff data count:', staffList?.length || 0);
+  console.log('Employee options count:', employeeOptions.length);
+  if (staffError) console.log('Staff error:', staffError);
+
+
+
+  // Submit termination request mutation
+  const submitTerminationMutation = useSubmitTerminationRequest();
+
+  // Update selected staff when staff_id changes
+  useEffect(() => {
+    if (formData.staff_id) {
+      const staff = staffList.find(s => s.staff_id === formData.staff_id);
+
+      // Auto-select manager if available
+      if (staff?.manager_id) {
+        setFormData(prev => ({ ...prev, manager_id: staff.manager_id }));
+      }
+    }
+  }, [formData.staff_id, staffList]);
+
+  const handleInputChange = (field: keyof TerminationRequestCreate, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -71,29 +88,20 @@ export function TerminationForm({ onSubmit, onCancel, initialData, isEditing = f
     const newErrors: Record<string, string> = {};
 
     // Required fields
-    if (!formData.employee_id) newErrors.employee_id = 'Employee is required';
-    if (!formData.effective_date) newErrors.effective_date = 'Effective date is required';
+    if (!formData.staff_id) newErrors.staff_id = 'Employee is required';
+    if (!formData.effective_termination_date) newErrors.effective_termination_date = 'Effective date is required';
     if (!formData.last_day_worked) newErrors.last_day_worked = 'Last day worked is required';
     if (!formData.separation_type) newErrors.separation_type = 'Separation type is required';
-    if (!formData.reason_for_leaving) newErrors.reason_for_leaving = 'Reason for leaving is required';
-    if (!formData.rehire_eligible) newErrors.rehire_eligible = 'Rehire eligibility is required';
-    if (!formData.direct_deposit_action) newErrors.direct_deposit_action = 'Direct deposit action is required';
+    if (!formData.reason_for_leaving?.trim()) newErrors.reason_for_leaving = 'Reason for leaving is required';
+    if (!formData.direct_deposit_instruction) newErrors.direct_deposit_instruction = 'Direct deposit instruction is required';
 
     // Date validation
-    if (formData.effective_date && formData.last_day_worked) {
-      const dateErrors = validateTerminationDates(formData.effective_date, formData.last_day_worked);
-      if (dateErrors.length > 0) {
-        newErrors.dates = dateErrors[0];
-      }
-    }
+    if (formData.effective_termination_date && formData.last_day_worked) {
+      const effectiveDate = new Date(formData.effective_termination_date);
+      const lastDayWorked = new Date(formData.last_day_worked);
 
-    // Effective date should not be in the past (unless editing)
-    if (formData.effective_date && !isEditing) {
-      const effectiveDate = new Date(formData.effective_date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (effectiveDate < today) {
-        newErrors.effective_date = 'Effective date cannot be in the past';
+      if (lastDayWorked > effectiveDate) {
+        newErrors.last_day_worked = 'Last day worked cannot be after effective termination date';
       }
     }
 
@@ -103,14 +111,17 @@ export function TerminationForm({ onSubmit, onCancel, initialData, isEditing = f
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      const requestId = await submitTerminationMutation.mutateAsync(formData as TerminationRequestCreate);
+      toast.success('Termination request submitted successfully');
+      onSuccess?.(requestId);
     } catch (error) {
       console.error('Form submission error:', error);
+      toast.error('Failed to submit termination request');
     } finally {
       setLoading(false);
     }
@@ -136,55 +147,72 @@ export function TerminationForm({ onSubmit, onCancel, initialData, isEditing = f
     label,
   }));
 
-  const employeeOptions = employees.map(emp => ({
-    value: emp.id,
-    label: `${emp.first_name} ${emp.last_name} (${emp.email})`,
+  const employeeOptions = staffList.map(staff => ({
+    value: staff.staff_id,
+    label: `${staff.full_name} (${staff.work_email || staff.personal_email || 'No email'})`,
   }));
 
-  const managerOptions = employees
-    .filter(emp => emp.role === 'employer' || emp.role === 'admin')
-    .map(emp => ({
-      value: emp.id,
-      label: `${emp.first_name} ${emp.last_name}`,
-    }));
+  const managerOptions = staffList
+    .filter(staff => staff.manager_id && staff.manager_full_name)
+    .reduce((acc, staff) => {
+      if (staff.manager_id && !acc.find(m => m.value === staff.manager_id)) {
+        acc.push({
+          value: staff.manager_id,
+          label: staff.manager_full_name!,
+        });
+      }
+      return acc;
+    }, [] as { value: string; label: string }[]);
 
-  const isHRUser = currentUser?.user?.user_metadata?.role === 'admin';
-  const canEditEmployee = !isEditing && (isHRUser || currentUser?.user?.user_metadata?.role === 'employer');
+  const isHRUser = currentUser?.role === 'admin' || currentUser?.role === 'hr';
+  const canEditEmployee = true; // Allow all users to select employees for now
 
   return (
     <Card className="max-w-4xl mx-auto">
-      <div className="p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          {isEditing ? 'Edit Termination Request' : 'New Termination Request'}
-        </h2>
-
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold text-gray-900">
+          New Termination Request
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Employee CustomSelection */}
+          {/* Employee Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Employee <span className="text-red-500">*</span>
-              </label>
+              </Label>
+
+
+
               <CustomSelect
-                value={formData.employee_id}
-                onChange={(value) => handleInputChange('employee_id', value)}
+                value={formData.staff_id}
+                onChange={(value) => handleInputChange('staff_id', value)}
                 options={employeeOptions}
-                placeholder="CustomSelect employee"
-                disabled={!canEditEmployee}
-                error={errors.employee_id}
-                required
+                placeholder={
+                  isLoadingStaff
+                    ? "Loading employees..."
+                    : employeeOptions.length === 0
+                      ? "No employees found"
+                      : "Select employee"
+                }
+                disabled={!canEditEmployee || isLoadingStaff}
+                error={errors.staff_id}
               />
+              {staffError && (
+                <p className="mt-1 text-sm text-red-600">Error loading staff: {staffError.message}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Manager
-              </label>
+              </Label>
               <CustomSelect
-                value={formData.manager_id}
+                value={formData.manager_id || ''}
                 onChange={(value) => handleInputChange('manager_id', value)}
                 options={managerOptions}
-                placeholder="CustomSelect manager"
+                placeholder="Select manager"
                 error={errors.manager_id}
               />
             </div>
@@ -193,139 +221,99 @@ export function TerminationForm({ onSubmit, onCancel, initialData, isEditing = f
           {/* Termination Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Effective Termination Date <span className="text-red-500">*</span>
-              </label>
+              </Label>
               <Input
                 type="date"
-                value={formData.effective_date}
-                onChange={(e) => handleInputChange('effective_date', e.target.value)}
-                error={errors.effective_date}
-                required
+                value={formData.effective_termination_date}
+                onChange={(e) => handleInputChange('effective_termination_date', e.target.value)}
+                error={errors.effective_termination_date}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Last Day Worked <span className="text-red-500">*</span>
-              </label>
+              </Label>
               <Input
                 type="date"
                 value={formData.last_day_worked}
                 onChange={(e) => handleInputChange('last_day_worked', e.target.value)}
                 error={errors.last_day_worked}
-                required
               />
             </div>
           </div>
 
-          {errors.dates && (
-            <div className="text-red-600 text-sm">{errors.dates}</div>
-          )}
-
           {/* Separation Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Separation Type <span className="text-red-500">*</span>
-              </label>
+              </Label>
               <CustomSelect
                 value={formData.separation_type}
-                onChange={(value) => handleInputChange('separation_type', value as SeparationType)}
+                onChange={(value) => handleInputChange('separation_type', value)}
                 options={separationTypeOptions}
-                placeholder="CustomSelect separation type"
+                placeholder="Select separation type"
                 error={errors.separation_type}
-                required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Eligible for Rehire <span className="text-red-500">*</span>
-              </label>
+              </Label>
               <CustomSelect
-                value={formData.rehire_eligible}
-                onChange={(value) => handleInputChange('rehire_eligible', value as RehireEligibility)}
+                value={formData.eligible_for_rehire?.toString()}
+                onChange={(value) => handleInputChange('eligible_for_rehire', value === 'true')}
                 options={rehireEligibilityOptions}
-                placeholder="CustomSelect rehire eligibility"
-                error={errors.rehire_eligible}
-                required
+                placeholder="Select rehire eligibility"
+                error={errors.eligible_for_rehire}
               />
             </div>
           </div>
 
           {/* Reason for Leaving */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Reason for Leaving <span className="text-red-500">*</span>
-            </label>
+            </Label>
             <CustomSelect
               value={formData.reason_for_leaving}
-              onChange={(value) => handleInputChange('reason_for_leaving', value as TerminationReason)}
+              onChange={(value) => handleInputChange('reason_for_leaving', value)}
               options={reasonOptions}
-              placeholder="CustomSelect reason for leaving"
+              placeholder="Select reason for leaving"
               error={errors.reason_for_leaving}
-              required
             />
           </div>
 
           {/* Direct Deposit Action */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Direct Deposit Instruction <span className="text-red-500">*</span>
-            </label>
+            </Label>
             <CustomSelect
-              value={formData.direct_deposit_action}
-              onChange={(value) => handleInputChange('direct_deposit_action', value as DirectDepositAction)}
+              value={formData.direct_deposit_instruction}
+              onChange={(value) => handleInputChange('direct_deposit_instruction', value)}
               options={directDepositOptions}
-              placeholder="CustomSelect direct deposit action"
-              error={errors.direct_deposit_action}
-              required
+              placeholder="Select direct deposit instruction"
+              error={errors.direct_deposit_instruction}
             />
           </div>
 
           {/* Comments */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Additional Notes
-            </label>
+            </Label>
             <Textarea
-              value={formData.notes}
-              onChange={(value) => handleInputChange('notes', value)}
+              value={formData.additional_notes || ''}
+              onChange={(e) => handleInputChange('additional_notes', e.target.value)}
               placeholder="Enter any additional notes or details..."
               rows={4}
             />
           </div>
-
-          {/* Manager Comments (only for managers) */}
-          {(currentUser?.user?.user_metadata?.role === 'employer' || isHRUser) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Manager Comments
-              </label>
-              <Textarea
-                value={formData.manager_comments}
-                onChange={(value) => handleInputChange('manager_comments', value)}
-                placeholder="Manager's comments on the termination..."
-                rows={3}
-              />
-            </div>
-          )}
-
-          {/* HR Comments (only for HR) */}
-          {isHRUser && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                HR Comments
-              </label>
-              <Textarea
-                value={formData.hr_comments}
-                onChange={(value) => handleInputChange('hr_comments', value)}
-                placeholder="HR comments and notes..."
-                rows={3}
-              />
-            </div>
-          )}
 
           {/* Form Actions */}
           <div className="flex justify-end space-x-4 pt-6 border-t">
@@ -339,13 +327,13 @@ export function TerminationForm({ onSubmit, onCancel, initialData, isEditing = f
             </Button>
             <Button
               type="submit"
-              loading={loading}
+              disabled={loading}
             >
-              {isEditing ? 'Update Termination' : 'Submit Termination Request'}
+              {loading ? 'Submitting...' : 'Submit Termination Request'}
             </Button>
           </div>
         </form>
-      </div>
+      </CardContent>
     </Card>
   );
 }

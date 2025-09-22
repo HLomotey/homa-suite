@@ -39,7 +39,7 @@ export const fetchFinanceExpenses = async (): Promise<FrontendFinanceExpense[]> 
     const { data, error } = await supabase
       .from('finance_expenses')
       .select('*')
-      .order('Date', { ascending: false })
+      .order('date', { ascending: false })
       .range(from, from + limit - 1);
 
     if (error) {
@@ -169,8 +169,8 @@ export const fetchFinanceExpensesByCompany = async (company: string): Promise<Fr
   const { data, error } = await supabase
     .from('finance_expenses')
     .select('*')
-    .eq('Company', company)
-    .order('Date', { ascending: false });
+    .eq('company', company)
+    .order('date', { ascending: false });
 
   if (error) {
     console.error('Error fetching finance expenses by company:', error);
@@ -187,8 +187,8 @@ export const fetchFinanceExpensesByCategory = async (category: string): Promise<
   const { data, error } = await supabase
     .from('finance_expenses')
     .select('*')
-    .eq('Category', category)
-    .order('Date', { ascending: false });
+    .eq('category', category)
+    .order('date', { ascending: false });
 
   if (error) {
     console.error('Error fetching finance expenses by category:', error);
@@ -208,9 +208,9 @@ export const fetchFinanceExpensesByDateRange = async (
   const { data, error } = await supabase
     .from('finance_expenses')
     .select('*')
-    .gte('Date', startDate)
-    .lte('Date', endDate)
-    .order('Date', { ascending: false });
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: false });
 
   if (error) {
     console.error('Error fetching finance expenses by date range:', error);

@@ -93,7 +93,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     const password = formData.password;
 
     const result = await signIn(email, password);
-    
+
     if (result.success) {
       // Show success message if provided
       if (result.error) { // Using error field for success message
@@ -134,11 +134,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       const redirectTo = `${window.location.origin}/reset-password`;
 
       console.log('Attempting password reset for:', email, 'with redirect:', redirectTo);
-      
+
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
       });
-      
+
       console.log('Reset password response:', { data, error });
 
       if (error) {
@@ -220,17 +220,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     }
 
     const result = await signUp(email, password);
-    
+
     if (result.success) {
       toast({
         title: "Account Created",
         description: "Your account has been created successfully. Please check your email to verify your account.",
         variant: "default",
       });
-      
+
       // Switch to login tab
       setActiveTab("login");
-      
+
       // Pre-fill login email
       setFormData(prev => ({ ...prev, email }));
     } else {
@@ -240,8 +240,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
   const isFormValid = Boolean(formData.email && formData.password);
   const isSignUpFormValid = Boolean(
-    signUpData.email && 
-    signUpData.password && 
+    signUpData.email &&
+    signUpData.password &&
     signUpData.confirmPassword &&
     signUpData.password === signUpData.confirmPassword
   );
@@ -284,105 +284,105 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 <TabsTrigger value="login">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login" className="space-y-4 mt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Error Alert */}
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Error Alert */}
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
 
-              {/* Email Field */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="pl-10"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-              </div>
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="pl-10"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
 
-              {/* Password Field */}
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="pl-10 pr-10"
-                    required
-                    disabled={loading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword((s) => !s)}
-                    disabled={loading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  {/* Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="pl-10 pr-10"
+                        required
+                        disabled={loading}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword((s) => !s)}
+                        disabled={loading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button type="submit" className="w-full" disabled={!isFormValid || loading}>
+                    {loading ? (
+                      <>
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                        Signing In...
+                      </>
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      "Sign In"
                     )}
                   </Button>
-                </div>
-              </div>
 
-              {/* Submit Button */}
-              <Button type="submit" className="w-full" disabled={!isFormValid || loading}>
-                {loading ? (
-                  <>
-                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                    Signing In...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-
-              {/* Forgot Password Link */}
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded px-2 py-1 disabled:text-gray-400 disabled:hover:no-underline"
-                  disabled={isSendingResetEmail || !formData.email || isInCooldown}
-                >
-                  {isSendingResetEmail ? (
-                    <span className="flex items-center justify-center">
-                      <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                      Sending...
-                    </span>
-                  ) : isInCooldown ? (
-                    `Wait ${Math.floor(cooldownTimeLeft / 60)}:${String(
-                      cooldownTimeLeft % 60
-                    ).padStart(2, "0")}`
-                  ) : (
-                    "Forgot password?"
-                  )}
-                </button>
-              </div>
-              </form>
+                  {/* Forgot Password Link */}
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded px-2 py-1 disabled:text-gray-400 disabled:hover:no-underline"
+                      disabled={isSendingResetEmail || !formData.email || isInCooldown}
+                    >
+                      {isSendingResetEmail ? (
+                        <span className="flex items-center justify-center">
+                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                          Sending...
+                        </span>
+                      ) : isInCooldown ? (
+                        `Wait ${Math.floor(cooldownTimeLeft / 60)}:${String(
+                          cooldownTimeLeft % 60
+                        ).padStart(2, "0")}`
+                      ) : (
+                        "Forgot password?"
+                      )}
+                    </button>
+                  </div>
+                </form>
               </TabsContent>
-              
+
               <TabsContent value="signup" className="space-y-4 mt-6">
                 <form onSubmit={handleSignUpSubmit} className="space-y-4">
                   {/* Sign Up Error Alert */}

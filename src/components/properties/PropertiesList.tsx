@@ -56,9 +56,9 @@ export const PropertiesList = ({
 
   // Filter properties based on search query and status filter
   const filteredProperties = properties.filter((property) => {
-    const locationText = property.location ? 
+    const locationText = property.location ?
       `${property.location.city} ${property.location.state}`.toLowerCase() : '';
-      
+
     const matchesSearch =
       property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -76,7 +76,7 @@ export const PropertiesList = ({
   const exportToExcel = async () => {
     try {
       setIsExporting(true);
-      
+
       // Prepare data for export
       const exportData = filteredProperties.map(property => ({
         'Property': property.title,
@@ -90,10 +90,10 @@ export const PropertiesList = ({
         'Area (sq ft)': property.area,
         'Date Added': property.dateAdded
       }));
-      
+
       // Generate and download Excel file
       await downloadExcelFile(exportData, `properties_export_${new Date().toISOString().split('T')[0]}.xlsx`, 'Properties');
-      
+
       setIsExporting(false);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
@@ -221,9 +221,9 @@ export const PropertiesList = ({
             </TableHeader>
             <TableBody>
               {filteredProperties.map((property) => (
-                <TableRow 
-                  key={property.id} 
-                  className="cursor-pointer hover:bg-black/20" 
+                <TableRow
+                  key={property.id}
+                  className="cursor-pointer hover:bg-black/20"
                   onClick={() => onSelect && onSelect(property.id)}
                 >
                   <TableCell className="font-medium">
@@ -231,8 +231,8 @@ export const PropertiesList = ({
                   </TableCell>
                   <TableCell>{property.address}</TableCell>
                   <TableCell>
-                    {property.location ? 
-                      `${property.location.city}, ${property.location.state}` : 
+                    {property.location ?
+                      `${property.location.city}, ${property.location.state}` :
                       <span className="text-muted-foreground italic">Not assigned</span>}
                   </TableCell>
                   <TableCell>{property.type}</TableCell>
@@ -288,10 +288,10 @@ const PropertyCard = ({
   onSelect?: (propertyId: string) => void;
 }) => {
   return (
-    <div 
-    className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors" 
-    onClick={() => onSelect && onSelect(property.id)}
-  >
+    <div
+      className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+      onClick={() => onSelect && onSelect(property.id)}
+    >
       <div className="relative h-48">
         <img
           src={property.image}
@@ -312,8 +312,8 @@ const PropertyCard = ({
         </p>
         <p className="text-white/60 flex items-center text-sm mb-3">
           <Home className="h-3 w-3 mr-1" />
-          {property.location ? 
-            `${property.location.city}, ${property.location.state}` : 
+          {property.location ?
+            `${property.location.city}, ${property.location.state}` :
             <span className="italic">No location assigned</span>}
         </p>
         <div className="flex justify-between mb-4">
@@ -342,9 +342,9 @@ const PropertyCard = ({
             Added {property.dateAdded}
           </div>
           <div className="flex gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
@@ -352,9 +352,9 @@ const PropertyCard = ({
             >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();

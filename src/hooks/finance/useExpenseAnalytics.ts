@@ -81,20 +81,23 @@ const fetchExpenseData = async (
       const range = dateRanges[0];
       const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
       const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
-      query = query.gte('Date', startDate).lte('Date', endDate);
+      // Use lowercase 'date' column per schema
+      query = query.gte('date', startDate).lte('date', endDate);
     } else {
       // Multiple date ranges - use OR conditions
       const orConditions = dateRanges.map(range => {
         const startDate = `${range.year}-${range.month.toString().padStart(2, "0")}-01`;
         const endDate = new Date(range.year, range.month, 0).toISOString().split("T")[0];
-        return `and(Date.gte.${startDate},Date.lte.${endDate})`;
+        // Use lowercase 'date' in OR expression
+        return `and(date.gte.${startDate},date.lte.${endDate})`;
       }).join(",");
       query = query.or(orConditions);
     }
   }
 
   const { data, error, count } = await query
-    .order("Date", { ascending: false })
+    // Order by lowercase 'date'
+    .order("date", { ascending: false })
     .limit(PAGE_SIZE);
 
   if (error) {
@@ -123,8 +126,8 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
         console.log(`Processing ${expenseCount} expense records out of ${totalCount} total`);
 
         // Calculate total expenses from finance_expenses table
-        const totalExpenses = expenses.reduce((sum, expense) => {
-          const amount = parseFloat(expense.Total) || 0;
+        const totalExpenses = expenses.reduce((sum, expense: any) => {
+          const amount = Number(expense.amount) || 0;
           return sum + amount;
         }, 0);
 
@@ -136,8 +139,8 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
         const averageExpenseAmount = expenseCount > 0 ? totalExpenses / expenseCount : 0;
 
         // Monthly expense aggregation from finance_expenses
-        const monthlyData = expenses.reduce((acc, expense) => {
-          const month = new Date(expense.Date).toLocaleDateString("en-US", {
+        const monthlyData = expenses.reduce((acc, expense: any) => {
+          const month = new Date(expense.date).toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
           });
@@ -151,7 +154,7 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
             };
           }
 
-          const amount = parseFloat(expense.Total) || 0;
+          const amount = Number(expense.amount) || 0;
           acc[month].amount += amount;
           acc[month].count += 1;
           acc[month].approvedAmount += amount; // All expenses are considered approved
@@ -159,7 +162,11 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           return acc;
         }, {} as Record<string, { amount: number; count: number; approvedAmount: number; pendingAmount: number }>);
 
-        const monthlyExpenses = Object.entries(monthlyData)
+        const monthlyEntries = Object.entries(monthlyData) as [
+          string,
+          { amount: number; count: number; approvedAmount: number; pendingAmount: number }
+        ][];
+        const monthlyExpenses = monthlyEntries
           .map(([month, data]) => ({
             month,
             amount: data.amount,
@@ -170,9 +177,9 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
         // Category analysis from finance_expenses
-        const categoryData = expenses.reduce((acc, expense) => {
-          const category = expense.Category || 'other';
-          const month = new Date(expense.Date).toLocaleDateString("en-US", {
+        const categoryData = expenses.reduce((acc, expense: any) => {
+          const category = expense.category || 'other';
+          const month = new Date(expense.date).toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
           });
@@ -181,7 +188,7 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
             acc[category] = { amount: 0, count: 0, monthlyAmounts: {} };
           }
 
-          const amount = parseFloat(expense.Total) || 0;
+          const amount = Number(expense.amount) || 0;
           acc[category].amount += amount;
           acc[category].count += 1;
 
@@ -194,10 +201,14 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           return acc;
         }, {} as Record<string, { amount: number; count: number; monthlyAmounts: Record<string, number> }>);
 
-        const expensesByCategory = Object.entries(categoryData)
+        const categoryEntries = Object.entries(categoryData) as [
+          string,
+          { amount: number; count: number; monthlyAmounts: Record<string, number> }
+        ][];
+        const expensesByCategory = categoryEntries
           .map(([category, data]) => {
             // Calculate month-over-month change
-            const monthlyAmounts = Object.values(data.monthlyAmounts);
+            const monthlyAmounts = Object.values(data.monthlyAmounts) as number[];
             const currentMonth = monthlyAmounts[monthlyAmounts.length - 1] || 0;
             const previousMonth = monthlyAmounts[monthlyAmounts.length - 2] || 0;
             const monthOverMonthChange = previousMonth > 0 
@@ -216,20 +227,24 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           .sort((a, b) => b.amount - a.amount);
 
         // Department analysis (using Company as department)
-        const departmentData = expenses.reduce((acc, expense) => {
-          const department = expense.Company || 'Unassigned';
+        const departmentData = expenses.reduce((acc, expense: any) => {
+          const department = expense.company || 'Unassigned';
           if (!acc[department]) {
             acc[department] = { amount: 0, count: 0 };
           }
 
-          const amount = parseFloat(expense.Total) || 0;
+          const amount = Number(expense.amount) || 0;
           acc[department].amount += amount;
           acc[department].count += 1;
 
           return acc;
         }, {} as Record<string, { amount: number; count: number }>);
 
-        const expensesByDepartment = Object.entries(departmentData)
+        const departmentEntries = Object.entries(departmentData) as [
+          string,
+          { amount: number; count: number }
+        ][];
+        const expensesByDepartment = departmentEntries
           .map(([department, data]) => ({
             department,
             amount: data.amount,
@@ -239,26 +254,30 @@ export function useExpenseAnalytics(dateRanges?: DateRange[]) {
           .sort((a, b) => b.amount - a.amount);
 
         // Top payees analysis
-        const payeeData = expenses.reduce((acc, expense) => {
-          const payee = expense.Payee || 'Unknown';
+        const payeeData = expenses.reduce((acc, expense: any) => {
+          const payee = expense.payee || 'Unknown';
           if (!acc[payee]) {
             acc[payee] = { amount: 0, count: 0, categories: new Set() };
           }
 
-          const amount = parseFloat(expense.Total) || 0;
+          const amount = Number(expense.amount) || 0;
           acc[payee].amount += amount;
           acc[payee].count += 1;
-          acc[payee].categories.add(expense.Category || 'other');
+          acc[payee].categories.add(expense.category || 'other');
 
           return acc;
         }, {} as Record<string, { amount: number; count: number; categories: Set<string> }>);
 
-        const topPayees = Object.entries(payeeData)
+        const payeeEntries = Object.entries(payeeData) as [
+          string,
+          { amount: number; count: number; categories: Set<string> }
+        ][];
+        const topPayees = payeeEntries
           .map(([payee, data]) => ({
             payee,
             amount: data.amount,
             count: data.count,
-            categories: Array.from(data.categories),
+            categories: Array.from(data.categories) as string[],
           }))
           .sort((a, b) => b.amount - a.amount)
           .slice(0, 10);

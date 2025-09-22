@@ -53,51 +53,63 @@ export function FinanceExpenses() {
 
   // Filter expenses based on search and filters
   const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = 
-      expense.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.payee.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.category.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCompany = filterCompany === 'all' || expense.company === filterCompany;
-    const matchesCategory = filterCategory === 'all' || expense.category === filterCategory;
+    const company = (expense.company || '').toString();
+    const payee = (expense.payee || '').toString();
+    const category = (expense.category || '').toString();
+
+    const matchesSearch =
+      company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payee.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      category.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCompany = filterCompany === 'all' || company === filterCompany;
+    const matchesCategory = filterCategory === 'all' || category === filterCategory;
     const matchesType = filterType === 'all' || expense.type === filterType;
 
     return matchesSearch && matchesCompany && matchesCategory && matchesType;
   });
 
   // Get unique values for filters
-  const uniqueCompanies = [...new Set(expenses.map(e => e.company))];
-  const uniqueCategories = [...new Set(expenses.map(e => e.category))];
-  const uniqueTypes = [...new Set(expenses.map(e => e.type))];
+  const uniqueCompanies = [...new Set(expenses.map(e => e.company).filter(Boolean))] as string[];
+  const uniqueCategories = [...new Set(expenses.map(e => e.category).filter(Boolean))] as string[];
+  const uniqueTypes = [...new Set(expenses.map(e => e.type).filter(Boolean))] as string[];
 
   // Calculate comprehensive analytics using useMemo for performance
   const analytics = useMemo(() => {
-    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.total, 0);
+    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + Number((expense.total ?? expense.amount) ?? 0), 0);
     const averageExpense = filteredExpenses.length > 0 ? totalExpenses / filteredExpenses.length : 0;
     const expenseCount = filteredExpenses.length;
 
     // Category breakdown
     const categoryBreakdown = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.category] = (acc[expense.category] || 0) + expense.total;
+      const key = (expense.category || 'Uncategorized') as string;
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[key] = (acc[key] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
 
     // Company breakdown
     const companyBreakdown = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.company] = (acc[expense.company] || 0) + expense.total;
+      const key = (expense.company || 'Unassigned') as string;
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[key] = (acc[key] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
 
     // Type breakdown
     const typeBreakdown = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.type] = (acc[expense.type] || 0) + expense.total;
+      const key = (expense.type || 'Unknown') as string;
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[key] = (acc[key] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
 
     // Monthly trend
     const monthlyTrend = filteredExpenses.reduce((acc, expense) => {
-      const month = new Date(expense.date).toISOString().slice(0, 7); // YYYY-MM
-      acc[month] = (acc[month] || 0) + expense.total;
+      const d = expense.date ? new Date(expense.date) : null;
+      const month = d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 7) : 'Unknown';
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[month] = (acc[month] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
 
@@ -111,7 +123,7 @@ export function FinanceExpenses() {
       .slice(0, 5);
 
     // Highest and lowest expenses
-    const sortedExpenses = [...filteredExpenses].sort((a, b) => b.total - a.total);
+    const sortedExpenses = [...filteredExpenses].sort((a, b) => Number((b.total ?? b.amount) ?? 0) - Number((a.total ?? a.amount) ?? 0));
     const highestExpense = sortedExpenses[0];
     const lowestExpense = sortedExpenses[sortedExpenses.length - 1];
 
