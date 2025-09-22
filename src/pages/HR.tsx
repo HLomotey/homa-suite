@@ -28,6 +28,7 @@ import { HROverview } from "@/components/hr/HROverview";
 import { HRDepartments } from "@/components/hr/HRDepartments";
 import { HRDiversity } from "@/components/hr/HRDiversity";
 import { HRRecruitment } from "@/components/hr/HRRecruitment";
+import { TerminationModule } from "@/components/termination/TerminationModule";
 
 export default function HR() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -371,6 +372,7 @@ export default function HR() {
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="diversity">Diversity</TabsTrigger>
           <TabsTrigger value="recruitment">Recruitment</TabsTrigger>
+          <TabsTrigger value="termination">Termination</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -387,6 +389,10 @@ export default function HR() {
 
         <TabsContent value="recruitment" className="space-y-4">
           <HRRecruitment />
+        </TabsContent>
+
+        <TabsContent value="termination" className="space-y-4">
+          <TerminationModule />
         </TabsContent>
       </Tabs>
     </div>
