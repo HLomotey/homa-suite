@@ -4,7 +4,7 @@
  */
 
 import { User, Session } from "@supabase/supabase-js";
-import { supabaseAdmin } from "@/integration/supabase/client";
+import { supabaseAdmin } from "@/integration/supabase";
 import { getUserModules } from "@/hooks/role/modules-api";
 import { NAVIGATION_MODULES } from "@/config/navigation-modules";
 import { 

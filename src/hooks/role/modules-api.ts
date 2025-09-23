@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/integration/supabase/client';
+import { supabaseAdmin } from '@/integration/supabase';
 
 // Get modules assigned to a role
 export const getRoleModules = async (roleId: string | number): Promise<string[]> => {
@@ -13,7 +13,8 @@ export const getRoleModules = async (roleId: string | number): Promise<string[]>
       throw error;
     }
 
-    return data?.map(item => item.module_id) || [];
+    const rows = (data as Array<{ module_id: string }> | null) ?? [];
+    return rows.map((item) => item.module_id);
   } catch (error) {
     console.error('Error in getRoleModules:', error);
     throw error;
@@ -24,7 +25,7 @@ export const getRoleModules = async (roleId: string | number): Promise<string[]>
 export const updateRoleModules = async (roleId: string | number, moduleIds: string[]): Promise<void> => {
   try {
     // Use RPC function to bypass RLS issues
-    const { error } = await supabaseAdmin.rpc('update_role_modules', {
+    const { error } = await (supabaseAdmin as any).rpc('update_role_modules', {
       input_role_id: roleId,
       input_module_ids: moduleIds
     });
@@ -62,11 +63,11 @@ export const getUsersWithModules = async () => {
       throw error;
     }
 
-    return data?.map(user => ({
+    const users = (data as any[]) ?? [];
+    return users.map((user: any) => ({
       ...user,
-      modules: user.roles && 'role_modules' in user.roles ? 
-        (user.roles as any).role_modules?.map((rm: any) => rm.module_id) || [] : []
-    })) || [];
+      modules: user?.roles?.role_modules?.map((rm: any) => rm.module_id) ?? []
+    }));
   } catch (error) {
     console.error('Error in getUsersWithModules:', error);
     throw error;
@@ -105,7 +106,7 @@ export const userHasModuleAccess = async (userId: string, moduleId: string): Pro
 export const getUserModules = async (userId: string): Promise<string[]> => {
   try {
     // Direct SQL query to bypass RLS issues
-    const { data, error } = await supabaseAdmin.rpc('get_user_modules', {
+    const { data, error } = await (supabaseAdmin as any).rpc('get_user_modules', {
       input_user_id: userId
     });
 
@@ -118,7 +119,7 @@ export const getUserModules = async (userId: string): Promise<string[]> => {
         .eq('id', userId)
         .single();
 
-      if (profileError || !profileData?.role_id) {
+      if (profileError || !profileData || !(profileData as any).role_id) {
         console.log('User has no role assigned or profile not found');
         return [];
       }
@@ -127,22 +128,23 @@ export const getUserModules = async (userId: string): Promise<string[]> => {
       const { data: moduleData, error: moduleError } = await supabaseAdmin
         .from('role_modules')
         .select('module_id')
-        .eq('role_id', profileData.role_id);
+        .eq('role_id', (profileData as any).role_id);
 
       if (moduleError) {
         console.error('Error fetching role modules:', moduleError);
         return [];
       }
 
-      const modules = moduleData?.map(rm => rm.module_id) || [];
+      const modules = ((moduleData as Array<{ module_id: string }> | null) ?? []).map((rm) => rm.module_id);
       console.log(`User ${userId} has modules (fallback):`, modules);
       return modules;
     }
 
     console.log(`User ${userId} has modules (RPC):`, data || []);
-    return data || [];
+    return (data as string[]) || [];
   } catch (error) {
     console.error('Error in getUserModules:', error);
     return [];
   }
 };
+

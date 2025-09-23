@@ -2,7 +2,7 @@
  * Batch processing utilities for large Excel uploads
  */
 
-import { supabase, supabaseAdmin } from '@/integration/supabase/client';
+import { supabase } from '@/integration/supabase/client';
 import { FinanceInvoiceData, mapToFinanceInvoice, FinanceExpenseData, mapToFinanceExpense } from './DataMapper';
 
 export interface BatchProcessorOptions {
@@ -32,8 +32,8 @@ export class BatchProcessor {
       // Convert batch data to match finance_expenses table schema
       const expenseBatch: FinanceExpenseData[] = batch.map(mapToFinanceExpense);
       
-      // Insert expense data into finance_expenses table using admin client to bypass RLS
-      const { data, error: insertError } = await supabaseAdmin
+      // Insert expense data into finance_expenses table using regular client
+      const { data, error: insertError } = await supabase
         .from('finance_expenses' as any)
         .insert(expenseBatch as any)
         .select('id');
@@ -77,7 +77,7 @@ export class BatchProcessor {
       const invoiceBatch: FinanceInvoiceData[] = batch.map(mapToFinanceInvoice);
       
       // Use INSERT instead of UPSERT to allow multiple rows with the same invoice number
-      const { data, error: insertError } = await supabaseAdmin
+      const { data, error: insertError } = await supabase
         .from('finance_invoices' as any)
         .insert(invoiceBatch as any)
         .select('id');

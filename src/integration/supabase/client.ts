@@ -29,7 +29,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 });
 
 // Import admin client from dedicated admin-client file to avoid duplicate creation
-export { supabaseAdmin } from './admin-client';
+// Do NOT import or re-export the admin client here to avoid initializing multiple Supabase clients in the browser bundle.
 
 // Helper function to get user session
 export const getSession = async () => {

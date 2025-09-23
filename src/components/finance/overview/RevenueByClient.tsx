@@ -11,7 +11,7 @@ export function RevenueByClient() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
-  const { data: financeData, isLoading, error } = useFinanceAnalytics([{ year: currentYear, month: currentMonth }]);
+  const { data: financeData, isLoading, error } = useFinanceAnalytics(currentYear, currentMonth);
 
   // Process real client data from finance analytics
   const clientData = useMemo(() => {
@@ -20,15 +20,15 @@ export function RevenueByClient() {
     }
 
     const colors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-yellow-500"];
-    const totalRevenue = financeData.topClients.reduce((sum, client) => sum + client.total_revenue, 0);
+    const totalRevenue = financeData.topClients.reduce((sum, client) => sum + client.revenue, 0);
     
     // Calculate percentages and add colors
     const processedClients = financeData.topClients.slice(0, 5).map((client, index) => ({
       client: client.client_name,
-      revenue: client.total_revenue,
-      percentage: totalRevenue > 0 ? (client.total_revenue / totalRevenue) * 100 : 0,
+      revenue: client.revenue,
+      percentage: totalRevenue > 0 ? (client.revenue / totalRevenue) * 100 : 0,
       color: colors[index] || "bg-gray-500",
-      invoiceCount: client.invoice_count
+      invoiceCount: client.invoices
     }));
 
     // Calculate "Others" if there are more clients
@@ -59,13 +59,14 @@ export function RevenueByClient() {
     return clientData[0]?.percentage || 0;
   }, [clientData]);
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
+  const formatCurrency = (value: number | undefined | null) => {
+    const numValue = Number(value) || 0;
+    if (numValue >= 1000000) {
+      return `$${(numValue / 1000000).toFixed(1)}M`;
+    } else if (numValue >= 1000) {
+      return `$${(numValue / 1000).toFixed(0)}K`;
     }
-    return `$${value.toFixed(0)}`;
+    return `$${numValue.toFixed(0)}`;
   };
 
   if (isLoading) {
