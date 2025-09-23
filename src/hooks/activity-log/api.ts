@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from '@/integration/supabase/client';
+import { supabase } from '@/integration/supabase/client';
 
 export interface ActivityLog {
   id: string;
@@ -33,7 +33,7 @@ export interface ActivityLogFilters {
  */
 export const getActivityLogs = async (filters: ActivityLogFilters = {}): Promise<ActivityLog[]> => {
   try {
-    let query = supabaseAdmin
+    let query = supabase
       .from('activity_log')
       .select('*')
       .order('timestamp', { ascending: false });
@@ -128,7 +128,7 @@ export const getActivitySummaryByTable = async (days = 7): Promise<{ table_name:
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('activity_log')
       .select('table_name')
       .gte('timestamp', startDate.toISOString())
@@ -139,14 +139,19 @@ export const getActivitySummaryByTable = async (days = 7): Promise<{ table_name:
       throw error;
     }
 
-    // Count activities per table
-    const summary = (data || []).reduce((acc: { [key: string]: number }, log) => {
-      acc[log.table_name] = (acc[log.table_name] || 0) + 1;
+    // Count activities per table - handle case where activity_log table doesn't exist
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const summary = data.reduce((acc: { [key: string]: number }, log: any) => {
+      const tableName = log.table_name || 'unknown';
+      acc[tableName] = (acc[tableName] || 0) + 1;
       return acc;
     }, {});
 
     return Object.entries(summary)
-      .map(([table_name, count]) => ({ table_name, count }))
+      .map(([table_name, count]) => ({ table_name, count: count as number }))
       .sort((a, b) => b.count - a.count);
   } catch (error) {
     console.error('Error in getActivitySummaryByTable:', error);
@@ -162,7 +167,7 @@ export const getActivitySummaryByUser = async (days = 7): Promise<{ user_email: 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('activity_log')
       .select('user_email')
       .gte('timestamp', startDate.toISOString())
@@ -174,16 +179,21 @@ export const getActivitySummaryByUser = async (days = 7): Promise<{ user_email: 
       throw error;
     }
 
-    // Count activities per user
-    const summary = (data || []).reduce((acc: { [key: string]: number }, log) => {
-      if (log.user_email) {
-        acc[log.user_email] = (acc[log.user_email] || 0) + 1;
+    // Count activities per user - handle case where activity_log table doesn't exist
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const summary = data.reduce((acc: { [key: string]: number }, log: any) => {
+      const userEmail = log.user_email;
+      if (userEmail) {
+        acc[userEmail] = (acc[userEmail] || 0) + 1;
       }
       return acc;
     }, {});
 
     return Object.entries(summary)
-      .map(([user_email, count]) => ({ user_email, count }))
+      .map(([user_email, count]) => ({ user_email, count: count as number }))
       .sort((a, b) => b.count - a.count);
   } catch (error) {
     console.error('Error in getActivitySummaryByUser:', error);

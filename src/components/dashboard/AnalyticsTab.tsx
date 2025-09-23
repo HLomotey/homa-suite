@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, LineChart, PieChart, TrendingUp, DollarSign, Users, Building, CheckCircle } from "lucide-react";
-import { useFinanceAnalytics } from "@/hooks/finance/useFinanceAnalytics";
+import { useFinanceAnalytics } from "@/hooks/analytics/useFinanceAnalytics";
 import { useState } from "react";
 
 export function AnalyticsTab() {

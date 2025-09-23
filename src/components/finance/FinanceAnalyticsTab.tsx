@@ -23,7 +23,10 @@ export interface FinanceMetricsProps {
 
 
 export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
-  const { data: financeData, isLoading } = useFinanceAnalytics(dateRanges);
+  const currentDate = new Date();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth() + 1;
+  const { data: financeData, isLoading } = useFinanceAnalytics(year, month);
   const { data: revenueData, isLoading: isRevenueLoading } = useRevenueMetrics(dateRanges);
   const { data: expenses = [], isLoading: isExpenseLoading } = useFinanceExpenses();
   const { data: forecastData, isLoading: isForecastLoading } = useRevenueForecasting();
@@ -168,7 +171,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
   
   // Calculate P&L data from real expense and revenue data
   const profitLossData = React.useMemo(() => {
-    const revenue = financeData?.totalRevenue || 0;
+    const revenue = financeData?.metrics?.totalRevenue || 0;
     const totalExpenses = expenseData.totalExpenses; // Real expense data from finance_expenses table
     const netProfit = revenue - totalExpenses;
     const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
@@ -255,7 +258,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">
-                  {isLoading ? "Loading..." : formatCurrency(financeData?.totalRevenue)}
+                  {isLoading ? "Loading..." : formatCurrency(financeData?.metrics?.totalRevenue)}
                 </div>
                 <div className="flex items-center mt-1">
                   {isLoading || isRevenueLoading ? null : revenueData?.growthRate && revenueData.growthRate > 0 ? (
@@ -345,19 +348,18 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : financeData?.totalInvoices || 0}
+              {isLoading ? "Loading..." : financeData?.metrics?.totalInvoices || 0}
             </div>
             <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-blue-300">
-                {isLoading ? "Calculating..." : `${formatCurrency(financeData?.averageInvoiceValue)} average value`}
+                {isLoading ? "Calculating..." : `${formatCurrency(financeData?.metrics?.averageInvoiceValue)} average value`}
               </p>
               {!isLoading && financeData && (
                 <div className="text-xs text-blue-200 space-y-0.5">
-                  <div>Paid: {financeData.paidInvoices}</div>
-                  <div>Sent: {financeData.sentInvoices}</div>
-                  <div>Overdue: {financeData.overdueInvoices}</div>
-                  {financeData.pendingInvoices > 0 && <div>Pending: {financeData.pendingInvoices}</div>}
-                  {financeData.cancelledInvoices > 0 && <div>Cancelled: {financeData.cancelledInvoices}</div>}
+                  <div>Paid: {financeData.metrics.paidInvoices}</div>
+                  <div>Sent: {financeData.metrics.pending}</div>
+                  <div>Overdue: {financeData.metrics.overdue}</div>
+                  {financeData.metrics.cancelledInvoices > 0 && <div>Cancelled: {financeData.metrics.cancelledInvoices}</div>}
                 </div>
               )}
             </div>
@@ -371,7 +373,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : formatCurrency(financeData?.averageInvoiceValue)}
+              {isLoading ? "Loading..." : formatCurrency(financeData?.metrics?.averageInvoiceValue)}
             </div>
           </CardContent>
             </Card>
@@ -389,17 +391,17 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : financeData?.paidInvoices || 0}
+              {isLoading ? "Loading..." : financeData?.metrics?.paidInvoices || 0}
             </div>
             <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-emerald-300">
-                {isLoading ? "Calculating..." : financeData && financeData.totalInvoices > 0
-                  ? `${((financeData.paidInvoices / financeData.totalInvoices) * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
+                {isLoading ? "Calculating..." : financeData && financeData.metrics.totalInvoices > 0
+                  ? `${((financeData.metrics.paidInvoices / financeData.metrics.totalInvoices) * 100).toFixed(1)}% of ${financeData.metrics.totalInvoices} total`
                   : "0% of total"}
               </p>
-              {!isLoading && financeData && financeData.paidInvoices > 0 && (
+              {!isLoading && financeData && financeData.metrics.paidInvoices > 0 && (
                 <p className="text-xs text-emerald-200">
-                  Revenue: {formatCurrency((financeData.paidInvoices / financeData.totalInvoices) * financeData.totalRevenue)}
+                  Revenue: {formatCurrency((financeData.metrics.paidInvoices / financeData.metrics.totalInvoices) * financeData.metrics.totalRevenue)}
                 </p>
               )}
             </div>
@@ -416,17 +418,17 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : financeData?.sentInvoices || 0}
+              {isLoading ? "Loading..." : financeData?.metrics?.pending || 0}
             </div>
             <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-yellow-300">
-                {isLoading ? "Calculating..." : financeData && financeData.totalInvoices > 0
-                  ? `${(((financeData.sentInvoices || 0) / financeData.totalInvoices) * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
+                {isLoading ? "Calculating..." : financeData && financeData.metrics.totalInvoices > 0
+                  ? `${(((financeData.metrics.pending || 0) / financeData.metrics.totalInvoices) * 100).toFixed(1)}% of ${financeData.metrics.totalInvoices} total`
                   : "0% of total"}
               </p>
-              {!isLoading && financeData && financeData.sentInvoices > 0 && (
+              {!isLoading && financeData && financeData.metrics.pending > 0 && (
                 <p className="text-xs text-yellow-200">
-                  Awaiting Payment: {formatCurrency(((financeData.sentInvoices || 0) / financeData.totalInvoices) * financeData.totalRevenue)}
+                  Awaiting Payment: {formatCurrency(((financeData.metrics.pending || 0) / financeData.metrics.totalInvoices) * financeData.metrics.totalRevenue)}
                 </p>
               )}
             </div>
@@ -443,17 +445,17 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : financeData?.overdueInvoices || 0}
+              {isLoading ? "Loading..." : financeData?.metrics?.overdue || 0}
             </div>
             <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-red-300">
-                {isLoading ? "Calculating..." : financeData && financeData.totalInvoices > 0
-                  ? `${(((financeData.overdueInvoices || 0) / financeData.totalInvoices) * 100).toFixed(1)}% of ${financeData.totalInvoices} total`
+                {isLoading ? "Calculating..." : financeData && financeData.metrics.totalInvoices > 0
+                  ? `${(((financeData.metrics.overdue || 0) / financeData.metrics.totalInvoices) * 100).toFixed(1)}% of ${financeData.metrics.totalInvoices} total`
                   : "0% of total"}
               </p>
-              {!isLoading && financeData && financeData.overdueInvoices > 0 && (
+              {!isLoading && financeData && financeData.metrics.overdue > 0 && (
                 <p className="text-xs text-red-200">
-                  Outstanding: {formatCurrency(((financeData.overdueInvoices || 0) / financeData.totalInvoices) * financeData.totalRevenue)}
+                  Outstanding: {formatCurrency(((financeData.metrics.overdue || 0) / financeData.metrics.totalInvoices) * financeData.metrics.totalRevenue)}
                 </p>
               )}
             </div>
@@ -461,29 +463,22 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
             </Card>
 
             {/* Additional Status Card - Shows pending/cancelled if they exist */}
-            {!isLoading && financeData && (financeData.pendingInvoices > 0 || financeData.cancelledInvoices > 0) && (
+            {!isLoading && financeData && financeData.metrics.cancelledInvoices > 0 && (
               <Card className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border-gray-800/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-100 flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
-                Other Status
+                Cancelled
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">
-                {(financeData?.pendingInvoices || 0) + (financeData?.cancelledInvoices || 0)}
+                {financeData?.metrics?.cancelledInvoices || 0}
               </div>
               <div className="flex flex-col gap-1 mt-1">
-                {financeData.pendingInvoices > 0 && (
-                  <p className="text-xs text-gray-300">
-                    Pending: {financeData.pendingInvoices}
-                  </p>
-                )}
-                {financeData.cancelledInvoices > 0 && (
-                  <p className="text-xs text-gray-300">
-                    Cancelled: {financeData.cancelledInvoices}
-                  </p>
-                )}
+                <p className="text-xs text-gray-300">
+                  Cancelled: {financeData.metrics.cancelledInvoices}
+                </p>
               </div>
             </CardContent>
               </Card>
@@ -515,7 +510,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {isLoading ? "Loading..." : `${financeData?.collectionRate?.toFixed(1) || 0}%`}
+              {isLoading ? "Loading..." : `${financeData?.metrics?.collectionRate?.toFixed(1) || 0}%`}
             </div>
             <div className="flex items-center mt-1">
               <p className="text-xs text-purple-300">
@@ -784,7 +779,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
                 <CardTitle className="text-sm font-medium">Current Revenue</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(forecastData?.currentRevenue)}</div>
+                <div className="text-2xl font-bold">{formatCurrency(financeData?.metrics?.totalRevenue)}</div>
                 <p className="text-xs text-muted-foreground">Last month actual</p>
               </CardContent>
             </Card>
@@ -819,7 +814,7 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {forecastData?.forecastPeriods.map((period, index) => (
+                {forecastData?.forecastPeriods?.map((period, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <div>
                       <div className="font-medium">{period.period}</div>
@@ -830,11 +825,15 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
                     <div className="text-right">
                       <div className="font-bold">{formatCurrency(period.projected)}</div>
                       <div className="text-sm text-muted-foreground">
-                        {period.factors.slice(0, 2).join(', ')}
+                        {period.factors?.slice(0, 2).join(', ')}
                       </div>
                     </div>
                   </div>
-                ))}
+                )) || (
+                  <div className="p-3 bg-muted rounded-lg text-center text-muted-foreground">
+                    No forecast periods available
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -849,23 +848,31 @@ export function FinanceAnalyticsTab({ dateRanges }: FinanceMetricsProps) {
                 <div>
                   <h4 className="font-medium mb-2">Opportunities</h4>
                   <ul className="space-y-1">
-                    {forecastData?.keyInsights.opportunities.map((opportunity, index) => (
+                    {forecastData?.keyInsights?.opportunities?.map((opportunity, index) => (
                       <li key={index} className="text-sm text-green-600 flex items-center gap-2">
                         <CheckCircle className="h-3 w-3" />
                         {opportunity}
                       </li>
-                    ))}
+                    )) || (
+                      <li className="text-sm text-muted-foreground">
+                        No opportunities identified
+                      </li>
+                    )}
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Risk Factors</h4>
                   <ul className="space-y-1">
-                    {forecastData?.keyInsights.riskFactors.map((risk, index) => (
+                    {forecastData?.keyInsights?.riskFactors?.map((risk, index) => (
                       <li key={index} className="text-sm text-red-600 flex items-center gap-2">
                         <AlertTriangle className="h-3 w-3" />
                         {risk}
                       </li>
-                    ))}
+                    )) || (
+                      <li className="text-sm text-muted-foreground">
+                        No risk factors identified
+                      </li>
+                    )}
                   </ul>
                 </div>
               </div>

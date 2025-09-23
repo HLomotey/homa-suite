@@ -158,30 +158,43 @@ interface CustomSelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  error?: string;
 }
 
 const CustomSelect = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   CustomSelectProps
->(({ value, onChange, onValueChange, options, placeholder, disabled, className, ...props }, ref) => {
+>(({ value, onChange, onValueChange, options, placeholder, disabled, className, error, ...props }, ref) => {
   const handleValueChange = (newValue: string) => {
     onChange?.(newValue);
     onValueChange?.(newValue);
   };
 
   return (
-    <Select value={value} onValueChange={handleValueChange} disabled={disabled}>
-      <SelectTrigger className={className} ref={ref} {...props}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="w-full">
+      <Select value={value} onValueChange={handleValueChange} disabled={disabled}>
+        <SelectTrigger 
+          className={cn(
+            className,
+            error && "border-red-500 focus:ring-red-500"
+          )} 
+          ref={ref} 
+          {...props}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {error && (
+        <p className="mt-1 text-sm text-red-600">{error}</p>
+      )}
+    </div>
   );
 });
 CustomSelect.displayName = "CustomSelect";

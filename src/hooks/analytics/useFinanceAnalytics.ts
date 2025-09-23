@@ -113,7 +113,8 @@ export function useFinanceAnalytics(year: number, month: number) {
           .single();
 
         if (currentError && currentError.code !== 'PGRST116') {
-          throw currentError;
+          console.warn('Finance monthly summary view error:', currentError);
+          // Don't throw - return fallback data instead
         }
 
         // Fetch previous month for comparison
@@ -128,7 +129,7 @@ export function useFinanceAnalytics(year: number, month: number) {
           .single();
 
         if (prevError && prevError.code !== 'PGRST116') {
-          throw prevError;
+          console.warn('Previous month finance summary error:', prevError);
         }
 
         // Fetch last 6 months for trends
@@ -140,7 +141,7 @@ export function useFinanceAnalytics(year: number, month: number) {
           .order('year', { ascending: true })
           .order('month', { ascending: true });
 
-        if (trendError) throw trendError;
+        if (trendError) console.warn('Finance trends error:', trendError);
 
         // Fetch current month invoices for detailed data
         const { data: invoicesData, error: invoicesError } = await supabase
@@ -150,7 +151,7 @@ export function useFinanceAnalytics(year: number, month: number) {
           .eq('issue_month', month)
           .order('date_issued', { ascending: false });
 
-        if (invoicesError) throw invoicesError;
+        if (invoicesError) console.warn('Finance analytics view error:', invoicesError);
 
         // Calculate metrics with comparison
         const current = currentSummary as FinanceMonthlySummary | null;

@@ -13,7 +13,7 @@ import UploadPayroll from "./UploadPayroll";
 import UploadAttendance from "./UploadAttendance";
 import UploadRooms from "./UploadRooms";
 import { UploadComponent } from "@/components/excel-upload/UploadComponent";
-import { FinanceExpenses } from "@/components/finance/FinanceExpenses";
+import { FinanceExpenses } from "@/components/finance/FinanceExpenses_1";
 
 export default function ExcelUploads() {
   const financeConfig = {

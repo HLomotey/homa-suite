@@ -2,7 +2,7 @@
 // Created: 2025-09-17
 
 import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/integration/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { TerminationStatus, getNextStatus } from '../lib/termination';
 
@@ -112,7 +112,7 @@ export const useTermination = () => {
       setLoading(true);
       setError(null);
 
-      let query = supabase
+      let query = (supabase as any)
         .from('termination_requests')
         .select('*')
         .order('created_at', { ascending: false });
@@ -147,7 +147,7 @@ export const useTermination = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('termination_requests')
         .select('*')
         .eq('id', id)
@@ -182,7 +182,7 @@ export const useTermination = () => {
         status: 'draft' as TerminationStatus
       };
 
-      const { data: result, error } = await supabase
+      const { data: result, error } = await (supabase as any)
         .from('termination_requests')
         .insert([terminationData])
         .select()
@@ -209,7 +209,7 @@ export const useTermination = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('termination_requests')
         .update(updates)
         .eq('id', id)
@@ -357,7 +357,7 @@ export const useTermination = () => {
       setLoading(true);
       setError(null);
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('termination_requests')
         .delete()
         .eq('id', id)

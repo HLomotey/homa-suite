@@ -1,308 +1,155 @@
-/**
- * Assignment hooks for Supabase integration
- * These hooks provide data fetching and state management for assignment data
- */
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { supabase } from '@/integration/supabase';
+import { FrontendAssignment } from '@/integration/supabase/types';
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  FrontendAssignment,
-  AssignmentStatus,
-  PaymentStatus
-} from "../../integration/supabase/types";
-import * as assignmentApi from "./api";
+// Map a database row to FrontendAssignment shape
+function mapRowToFrontend(row: any): FrontendAssignment {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id ?? null,
+    tenantName: row.tenant_name ?? null,
+    propertyId: row.property_id ?? '',
+    propertyName: row.property_name ?? '',
+    roomId: row.room_id ?? '',
+    roomName: row.room_name ?? '',
+    status: row.status ?? 'Pending',
+    startDate: row.start_date ?? '',
+    endDate: row.end_date ?? null,
+    rentAmount: row.rent_amount ?? 0,
+  } as FrontendAssignment;
+}
 
-/**
- * Hook for fetching all assignments
- * @returns Object containing assignments data, loading state, error state, and refetch function
- */
-export const useAssignments = () => {
-  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export function useAssignments() {
+  const [assignments, setAssignments] = useState<FrontendAssignment[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchAssignments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignments();
-      setAssignments(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
+      const { data, error } = await (supabase.from('assignments') as any)
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      const mapped = (data ?? []).map(mapRowToFrontend);
+      setAssignments(mapped);
+    } catch (err: any) {
+      setError(err);
+      setAssignments([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchAssignments();
+  }, [fetchAssignments]);
 
-  return { assignments, loading, error, refetch: fetchData };
-};
+  return { assignments, loading, error, refetch: fetchAssignments };
+}
 
-/**
- * Hook for fetching a single assignment by ID
- * @param id Assignment ID
- * @returns Object containing assignment data, loading state, error state, and refetch function
- */
-export const useAssignment = (id: string) => {
-  const [assignment, setAssignment] = useState<FrontendAssignment | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+export function useAssignmentsByStaff(staffId: string) {
+  const { assignments, loading, error, refetch } = useAssignments();
+  const filtered = useMemo(() => {
+    if (!assignments) return [];
+    return assignments.filter((a) => a.tenantId === staffId);
+  }, [assignments, staffId]);
+
+  return { assignments: filtered, loading, error, refetch };
+}
+
+export function useCreateAssignment() {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!id) return;
-
+  const create = useCallback(async (payload: Omit<FrontendAssignment, 'id'>) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignmentById(id);
-      setAssignment(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+      const dbRow = {
+        tenant_id: payload.tenantId,
+        tenant_name: payload.tenantName,
+        property_id: payload.propertyId,
+        property_name: payload.propertyName,
+        room_id: payload.roomId,
+        room_name: payload.roomName,
+        status: payload.status,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        rent_amount: payload.rentAmount,
+      };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { assignment, loading, error, refetch: fetchData };
-};
-
-/**
- * Hook for creating a new assignment
- * @returns Object containing create function, loading state, and error state
- */
-export const useCreateAssignment = () => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [createdAssignment, setCreatedAssignment] = useState<FrontendAssignment | null>(null);
-
-  const create = useCallback(
-    async (assignmentData: Omit<FrontendAssignment, "id">) => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await assignmentApi.createAssignment(assignmentData);
-        setCreatedAssignment(data);
-        return data;
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error("An unknown error occurred")
-        );
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
-  return { create, loading, error, createdAssignment };
-};
-
-/**
- * Hook for updating an assignment
- * @returns Object containing update function, loading state, and error state
- */
-export const useUpdateAssignment = () => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [updatedAssignment, setUpdatedAssignment] = useState<FrontendAssignment | null>(null);
-
-  const update = useCallback(
-    async (
-      id: string,
-      assignmentData: Partial<Omit<FrontendAssignment, "id">>
-    ) => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await assignmentApi.updateAssignment(id, assignmentData);
-        setUpdatedAssignment(data);
-        return data;
-      } catch (err) {
-        setError(
-          err instanceof Error ? err : new Error("An unknown error occurred")
-        );
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
-  return { update, loading, error, updatedAssignment };
-};
-
-/**
- * Hook for deleting an assignment
- * @returns Object containing delete function, loading state, and error state
- */
-export const useDeleteAssignment = () => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [isDeleted, setIsDeleted] = useState<boolean>(false);
-
-  const deleteAssignment = useCallback(async (id: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      await assignmentApi.deleteAssignment(id);
-      setIsDeleted(true);
-      return true;
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
+      const { error } = await (supabase.from('assignments') as any)
+        .insert(dbRow);
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { deleteAssignment, loading, error, isDeleted };
-};
+  return { create, loading, error };
+}
 
-/**
- * Hook for fetching assignments by status
- * @param status Assignment status to filter by
- * @returns Object containing assignments data, loading state, error state, and refetch function
- */
-export const useAssignmentsByStatus = (status: AssignmentStatus) => {
-  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export function useUpdateAssignment() {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const update = useCallback(async (id: string, payload: Omit<FrontendAssignment, 'id'>) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignmentsByStatus(status);
-      setAssignments(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
+      const dbRow = {
+        tenant_id: payload.tenantId,
+        tenant_name: payload.tenantName,
+        property_id: payload.propertyId,
+        property_name: payload.propertyName,
+        room_id: payload.roomId,
+        room_name: payload.roomName,
+        status: payload.status,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        rent_amount: payload.rentAmount,
+      };
+
+      const { error } = await (supabase.from('assignments') as any)
+        .update(dbRow)
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err);
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  return { update, loading, error };
+}
 
-  return { assignments, loading, error, refetch: fetchData };
-};
-
-
-/**
- * Hook for fetching assignments by tenant ID
- * @param tenantId Tenant ID to filter by
- * @returns Object containing assignments data, loading state, error state, and refetch function
- */
-export const useAssignmentsByTenant = (tenantId: string) => {
-  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export function useDeleteAssignment() {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!tenantId) return;
-    
+  const deleteAssignment = useCallback(async (id: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignmentsByTenant(tenantId);
-      setAssignments(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
+      const { error } = await (supabase.from('assignments') as any)
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err);
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, [tenantId]);
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { assignments, loading, error, refetch: fetchData };
-};
-
-/**
- * Hook for fetching assignments by property ID
- * @param propertyId Property ID to filter by
- * @returns Object containing assignments data, loading state, error state, and refetch function
- */
-export const useAssignmentsByProperty = (propertyId: string) => {
-  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchData = useCallback(async () => {
-    if (!propertyId) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignmentsByProperty(propertyId);
-      setAssignments(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [propertyId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { assignments, loading, error, refetch: fetchData };
-};
-
-/**
- * Hook for fetching assignments by staff ID
- * @param staffId Staff ID to filter by
- * @returns Object containing assignments data, loading state, error state, and refetch function
- */
-export const useAssignmentsByStaff = (staffId: string) => {
-  const [assignments, setAssignments] = useState<FrontendAssignment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchData = useCallback(async () => {
-    if (!staffId) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await assignmentApi.fetchAssignmentsByStaff(staffId);
-      setAssignments(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("An unknown error occurred")
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [staffId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { assignments, loading, error, refetch: fetchData };
-};
+  return { deleteAssignment, loading, error };
+}
