@@ -22,21 +22,25 @@ A robust Node.js backend service for handling email notifications with GoDaddy S
 ## Installation
 
 1. Clone the repository and navigate to the backend directory:
+
 ```bash
 cd backend
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Copy the environment configuration:
+
 ```bash
 cp .env.example .env
 ```
 
 4. Configure your environment variables in `.env`:
+
 ```env
 # Server Configuration
 PORT=3001
@@ -73,11 +77,13 @@ REDIS_URL=redis://localhost:6379
 ## Usage
 
 ### Development
+
 ```bash
 npm run dev
 ```
 
 ### Production
+
 ```bash
 npm start
 ```
@@ -87,6 +93,7 @@ npm start
 ### Email Operations
 
 #### Send Single Email
+
 ```http
 POST /api/email/send
 Content-Type: application/json
@@ -100,6 +107,7 @@ Content-Type: application/json
 ```
 
 #### Send Bulk Emails
+
 ```http
 POST /api/email/send-bulk
 Content-Type: application/json
@@ -117,6 +125,7 @@ Content-Type: application/json
 ```
 
 #### Schedule Email
+
 ```http
 POST /api/email/schedule
 Content-Type: application/json
@@ -133,11 +142,13 @@ Content-Type: application/json
 ### Template Management
 
 #### Get Templates
+
 ```http
 GET /api/email/templates?form_type=invoice
 ```
 
 #### Create Template
+
 ```http
 POST /api/email/templates
 Content-Type: application/json
@@ -152,6 +163,7 @@ Content-Type: application/json
 ```
 
 #### Update Template
+
 ```http
 PUT /api/email/templates/:id
 Content-Type: application/json
@@ -163,6 +175,7 @@ Content-Type: application/json
 ```
 
 #### Delete Template
+
 ```http
 DELETE /api/email/templates/:id
 ```
@@ -170,11 +183,13 @@ DELETE /api/email/templates/:id
 ### Analytics and History
 
 #### Get Notification History
+
 ```http
 GET /api/email/history?page=1&limit=20&form_type=invoice&status=sent
 ```
 
 #### Get Email Analytics
+
 ```http
 GET /api/email/analytics?startDate=2024-01-01&endDate=2024-12-31&form_type=invoice
 ```
@@ -182,11 +197,13 @@ GET /api/email/analytics?startDate=2024-01-01&endDate=2024-12-31&form_type=invoi
 ### Testing
 
 #### Test SMTP Connection
+
 ```http
 POST /api/email/test-connection
 ```
 
 #### Send Test Email
+
 ```http
 POST /api/email/test-send
 Content-Type: application/json
@@ -202,11 +219,11 @@ Templates use Handlebars syntax for variable substitution:
 
 ```html
 <html>
-<body>
-  <h1>Hello {{name}}!</h1>
-  <p>Your order #{{order_number}} has been {{status}}.</p>
-  <p>Total amount: ${{amount}}</p>
-</body>
+  <body>
+    <h1>Hello {{name}}!</h1>
+    <p>Your order #{{order_number}} has been {{status}}.</p>
+    <p>Total amount: ${{amount}}</p>
+  </body>
 </html>
 ```
 
@@ -225,6 +242,7 @@ The email queue provides:
 ### Queue Statistics
 
 Monitor queue health:
+
 ```javascript
 const emailQueue = new EmailQueue();
 const stats = await emailQueue.getQueueStats();
@@ -247,6 +265,7 @@ When `EMAIL_TRACKING_ENABLED=true`, emails include:
 - **Unsubscribe links**: Automatic GDPR-compliant unsubscribe
 
 Tracking endpoints:
+
 - `GET /api/email/track/open/:emailId` - Track email opens
 - `GET /api/email/track/click/:emailId/:linkId?url=...` - Track link clicks
 - `GET /unsubscribe?token=...` - Handle unsubscribe requests
@@ -271,6 +290,7 @@ The service includes comprehensive error handling:
 ## Monitoring and Logging
 
 Logs are written to:
+
 - `logs/error.log` - Error-level logs only
 - `logs/combined.log` - All log levels
 - Console output in development
@@ -280,6 +300,7 @@ Log rotation is configured with a 5MB limit and 5 file retention.
 ## Database Schema
 
 The service requires these Supabase tables:
+
 - `notification_history` - Email delivery records
 - `email_templates` - Template definitions
 - `notification_groups` - Recipient groups
@@ -289,6 +310,7 @@ The service requires these Supabase tables:
 - `email_schedules` - Scheduled email jobs
 
 Run the migration file to create these tables:
+
 ```sql
 -- See supabase/migrations/20250906_create_notification_system.sql
 ```
@@ -306,16 +328,19 @@ Run the migration file to create these tables:
 ### Common Issues
 
 1. **SMTP Authentication Failed**
+
    - Verify GoDaddy credentials
    - Check if 2FA is enabled (may need app password)
    - Ensure SMTP is enabled in GoDaddy settings
 
 2. **Redis Connection Failed**
+
    - Check Redis server is running
    - Verify REDIS_URL configuration
    - Service falls back to direct processing if Redis unavailable
 
 3. **Template Rendering Errors**
+
    - Verify Handlebars syntax
    - Check variable names match template
    - Ensure all required variables are provided
@@ -328,6 +353,7 @@ Run the migration file to create these tables:
 ### Debug Mode
 
 Enable debug logging:
+
 ```env
 LOG_LEVEL=debug
 NODE_ENV=development
