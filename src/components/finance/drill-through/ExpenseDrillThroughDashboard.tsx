@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFinanceExpenses } from "@/hooks/finance/useFinanceExpense";
+import { FrontendFinanceExpense } from "@/integration/supabase/types/finance";
 // import { ExpenseCategoryAnalysis } from "./ExpenseCategoryAnalysis";
 // import { ExpenseDetailsList } from "./ExpenseDetailsList";
 // import { ExpenseTrendsAnalysis } from "./ExpenseTrendsAnalysis";
@@ -19,22 +20,11 @@ interface ExpenseDrillThroughDashboardProps {
   dateRanges?: DateRange[];
 }
 
-interface Expense {
-  id: string;
-  company: string;
-  date: string;
-  type: string;
-  payee: string;
-  category: string;
-  total: number;
-  createdAt?: string;
-}
-
 export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboardProps> = ({
   onBack,
   dateRanges
 }) => {
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<FrontendFinanceExpense | null>(null);
   const [activeTab, setActiveTab] = useState('categories');
   
   const { data: expenses = [], isLoading } = useFinanceExpenses();
@@ -56,25 +46,31 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
 
   // Calculate expense analytics
   const expenseAnalytics = React.useMemo(() => {
-    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.total, 0);
+    const totalExpenses = filteredExpenses.reduce((sum, expense: any) => sum + Number((expense.total ?? expense.amount) ?? 0), 0);
     const expenseCount = filteredExpenses.length;
     const averageExpense = expenseCount > 0 ? totalExpenses / expenseCount : 0;
     
     // Category breakdown
-    const categoryTotals = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.category] = (acc[expense.category] || 0) + expense.total;
+    const categoryTotals = filteredExpenses.reduce((acc, expense: any) => {
+      const key = (expense.category || 'Uncategorized') as string;
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[key] = (acc[key] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
     
     // Company breakdown
-    const companyTotals = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.company] = (acc[expense.company] || 0) + expense.total;
+    const companyTotals = filteredExpenses.reduce((acc, expense: any) => {
+      const key = (expense.company || 'Unassigned') as string;
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[key] = (acc[key] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
     
     // Type breakdown
-    const typeTotals = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.type] = (acc[expense.type] || 0) + expense.total;
+    const typeTotals = filteredExpenses.reduce((acc, expense: any) => {
+      const key = (expense.type || 'Unknown') as string;
+      const amt = Number((expense.total ?? expense.amount) ?? 0);
+      acc[key] = (acc[key] || 0) + amt;
       return acc;
     }, {} as Record<string, number>);
     
@@ -93,7 +89,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
     };
   }, [filteredExpenses]);
 
-  const handleExpenseSelect = (expense: Expense) => {
+  const handleExpenseSelect = (expense: FrontendFinanceExpense) => {
     setSelectedExpense(expense);
     console.log('Selected expense:', expense);
   };
@@ -232,7 +228,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                   {expenseAnalytics.topCategory?.[0] || 'N/A'}
                 </p>
                 <p className="text-xs text-blue-400">
-                  {expenseAnalytics.topCategory ? formatCurrency(expenseAnalytics.topCategory[1]) : ''}
+                  {expenseAnalytics.topCategory ? formatCurrency(expenseAnalytics.topCategory[1] || 0) : ''}
                 </p>
               </div>
               <PieChart className="h-6 w-6 text-blue-400" />
@@ -249,7 +245,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                   {expenseAnalytics.topCompany?.[0] || 'N/A'}
                 </p>
                 <p className="text-xs text-indigo-400">
-                  {expenseAnalytics.topCompany ? formatCurrency(expenseAnalytics.topCompany[1]) : ''}
+                  {expenseAnalytics.topCompany ? formatCurrency(expenseAnalytics.topCompany[1] || 0) : ''}
                 </p>
               </div>
               <Building className="h-6 w-6 text-indigo-400" />
@@ -300,7 +296,8 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 8)
                     .map(([category, amount], index) => {
-                      const percentage = (amount / expenseAnalytics.totalExpenses) * 100;
+                      const denominator = expenseAnalytics.totalExpenses || 0;
+                      const percentage = denominator > 0 ? (amount / denominator) * 100 : 0;
                       const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500'];
                       return (
                         <div key={category} className="flex items-center justify-between">
@@ -344,9 +341,9 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                   
                   <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-800/30">
                     <div className="text-yellow-300 text-sm">Average per Category</div>
-                    <div className="text-white font-bold">
-                      {formatCurrency(expenseAnalytics.totalExpenses / expenseAnalytics.categoryCount)}
-                    </div>
+                    <div className="text-white font-bold">{formatCurrency(
+                      expenseAnalytics.categoryCount > 0 ? (expenseAnalytics.totalExpenses / expenseAnalytics.categoryCount) : 0
+                    )}</div>
                     <div className="text-yellow-400 text-sm">Mean spending</div>
                   </div>
                 </div>
@@ -387,7 +384,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-white font-bold">{formatCurrency(expense.total)}</div>
+                          <div className="text-white font-bold">{formatCurrency(Number((expense.total ?? expense.amount ?? 0)))}</div>
                           <div className="text-red-300 text-sm">{expense.type}</div>
                         </div>
                       </div>
@@ -417,7 +414,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
               <CardContent>
                 <div className="space-y-3">
                   {(() => {
-                    const monthlyData = filteredExpenses.reduce((acc, expense) => {
+                    const monthlyData = filteredExpenses.reduce((acc, expense: any) => {
                       const date = new Date(expense.date);
                       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                       const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
@@ -425,7 +422,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                       if (!acc[monthKey]) {
                         acc[monthKey] = { label: monthLabel, total: 0, count: 0 };
                       }
-                      acc[monthKey].total += expense.total;
+                      acc[monthKey].total += Number((expense.total ?? expense.amount) ?? 0);
                       acc[monthKey].count += 1;
                       return acc;
                     }, {} as Record<string, { label: string; total: number; count: number }>);
@@ -523,7 +520,7 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                 <strong>Type:</strong> {selectedExpense.type}
               </div>
               <div className="text-red-300">
-                <strong>Amount:</strong> {formatCurrency(selectedExpense.total)}
+                <strong>Amount:</strong> {formatCurrency(Number((selectedExpense.total ?? selectedExpense.amount ?? 0)))}
               </div>
               <div className="text-red-300">
                 <strong>Date:</strong> {new Date(selectedExpense.date).toLocaleDateString()}

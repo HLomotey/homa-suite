@@ -4,17 +4,17 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import CustomSelect from '../ui/select';
+import { CustomSelect } from '../ui/select';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { TerminationForm } from './TerminationForm';
 import { TerminationList } from './TerminationList';
 import { ApprovalModal } from './ApprovalModal';
 import { useTermination } from '../../hooks/useTermination';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/contexts/AuthContext';
 import { TerminationRequest, CreateTerminationData } from '../../lib/supabase';
 import { TerminationStatus, TERMINATION_STATUS_LABELS } from '../../lib/termination';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -26,7 +26,7 @@ interface FilterState {
 
 export function TerminationModule() {
   const { currentUser } = useAuth();
-  const { toast } = useToast();
+
   const {
     loading,
     error,
@@ -78,11 +78,7 @@ export function TerminationModule() {
       const data = await getTerminations();
       setTerminations(data);
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load termination requests',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load termination requests');
       console.error('Error loading terminations:', err);
     }
   };
@@ -146,11 +142,7 @@ export function TerminationModule() {
         await loadTerminations();
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create termination request',
-        variant: 'destructive'
-      });
+      toast.error('Failed to create termination request');
       console.error('Error creating termination:', err);
     }
   };
@@ -170,11 +162,7 @@ export function TerminationModule() {
         await loadTerminations();
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update termination request',
-        variant: 'destructive'
-      });
+      toast.error('Failed to update termination request');
       console.error('Error updating termination:', err);
     }
   };
@@ -198,19 +186,12 @@ export function TerminationModule() {
         comments
       );
       if (result) {
-        toast({
-          title: 'Success',
-          description: `${approvalModal.role === 'manager' ? 'Manager' : 'HR'} approval completed`
-        });
+        toast.success(`${approvalModal.role === 'manager' ? 'Manager' : 'HR'} approval completed`);
         setApprovalModal(null);
         await loadTerminations();
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to approve termination',
-        variant: 'destructive'
-      });
+      toast.error('Failed to approve termination');
       console.error('Error approving termination:', err);
     }
   };
@@ -219,18 +200,11 @@ export function TerminationModule() {
     try {
       const result = await markADPProcessed(termination.id);
       if (result) {
-        toast({
-          title: 'Success',
-          description: 'Termination marked as ADP processed'
-        });
+        toast.success('Termination marked as ADP processed');
         await loadTerminations();
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to mark termination as ADP processed',
-        variant: 'destructive'
-      });
+      toast.error('Failed to mark termination as ADP processed');
       console.error('Error marking ADP processed:', err);
     }
   };
@@ -241,18 +215,11 @@ export function TerminationModule() {
     try {
       const success = await deleteTermination(termination.id);
       if (success) {
-        toast({
-          title: 'Success',
-          description: 'Termination request deleted'
-        });
+        toast.success('Termination request deleted');
         await loadTerminations();
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete termination request',
-        variant: 'destructive'
-      });
+      toast.error('Failed to delete termination request');
       console.error('Error deleting termination:', err);
     }
   };
@@ -285,7 +252,11 @@ export function TerminationModule() {
         </div>
         
         <TerminationForm
-          onSubmit={handleCreateTermination}
+          onSuccess={(requestId) => {
+            toast.success('Termination request created successfully');
+            setViewMode('list');
+            loadTerminations();
+          }}
           onCancel={() => setViewMode('list')}
         />
       </div>
@@ -309,13 +280,16 @@ export function TerminationModule() {
         </div>
         
         <TerminationForm
-          onSubmit={handleUpdateTermination}
+          onSuccess={(requestId) => {
+            toast.success('Termination request updated successfully');
+            setViewMode('list');
+            setEditingTermination(null);
+            loadTerminations();
+          }}
           onCancel={() => {
             setViewMode('list');
             setEditingTermination(null);
           }}
-          initialData={editingTermination}
-          isEditing={true}
         />
       </div>
     );

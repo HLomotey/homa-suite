@@ -3,7 +3,7 @@
  * Handles validation of external staff and profile access
  */
 
-import { supabaseAdmin } from "@/integration/supabase/client";
+import { supabaseAdmin } from "@/integration/supabase";
 import { ExternalStaffMember, Profile, UserValidationResult } from "./types";
 
 /**

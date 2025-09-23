@@ -3,7 +3,7 @@
  * Handles sign in, sign up, and sign out operations
  */
 
-import { supabase, supabaseAdmin } from "@/integration/supabase/client";
+import { supabase, supabaseAdmin } from "@/integration/supabase";
 import { validateUserAccess, validateExternalStaffEmail } from "./userValidation";
 import { buildAuthUser } from "./authUtils";
 import { AuthUser } from "./types";

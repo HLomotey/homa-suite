@@ -39,9 +39,13 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  // Get token from URL
+  // Get token and other params from URL
   const token = searchParams.get("token");
+  const accessToken = searchParams.get("access_token");
+  const refreshToken = searchParams.get("refresh_token");
+  const type = searchParams.get("type");
 
   // Initialize form
   const form = useForm<ResetPasswordFormValues>({
@@ -52,16 +56,68 @@ export default function ResetPassword() {
     },
   });
 
-  // Check if token exists
+  // Check for valid reset session
   useEffect(() => {
-    if (!token) {
-      setError("Invalid or missing reset token. Please request a new password reset link.");
-    }
-  }, [token]);
+    const checkResetSession = async () => {
+      console.log('URL params:', { token, accessToken, refreshToken, type });
+      
+      // Method 1: Check if we have URL parameters from Supabase
+      if (accessToken && refreshToken && type === 'recovery') {
+        try {
+          // Set the session using the tokens from URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) {
+            console.error('Error setting session:', error);
+            setError("Invalid or expired reset link. Please request a new password reset link.");
+            return;
+          }
+          
+          console.log('Session set successfully:', data);
+          setShowForm(true);
+          return;
+        } catch (err) {
+          console.error('Error setting session:', err);
+          setError("Invalid or expired reset link. Please request a new password reset link.");
+          return;
+        }
+      }
+      
+      // Method 2: Check for existing session (in case user already clicked the link)
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session) {
+        console.log('Found existing session:', session);
+        setShowForm(true);
+        return;
+      }
+      
+      // Method 3: Listen for auth state changes (PASSWORD_RECOVERY event)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth state change:', event, session);
+        if (event === 'PASSWORD_RECOVERY') {
+          setShowForm(true);
+        }
+      });
+      
+      // If no valid session found, show error
+      if (!showForm) {
+        setError("Invalid or missing reset token. Please request a new password reset link.");
+      }
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+    
+    checkResetSession();
+  }, [token, accessToken, refreshToken, type, showForm]);
 
   // Handle form submission
   const onSubmit = async (values: ResetPasswordFormValues) => {
-    if (!token) {
+    if (!showForm) {
       setError("Invalid or missing reset token. Please request a new password reset link.");
       return;
     }
@@ -70,9 +126,15 @@ export default function ResetPassword() {
     setError(null);
 
     try {
-      // Update password using the token from the URL
-      // The token is automatically used by Supabase when it's in the URL
-      // We don't need to pass it explicitly to updateUser
+      // Check if we have a valid session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        throw new Error("No valid reset session found. Please use the reset link from your email again.");
+      }
+
+      console.log('Updating password with session:', sessionData.session);
+
+      // Update password using the current session
       const { error } = await supabase.auth.updateUser({
         password: values.password,
       });
@@ -87,6 +149,9 @@ export default function ResetPassword() {
         title: "Password reset successful",
         description: "Your password has been reset. You can now log in with your new password.",
       });
+
+      // Sign out to clear the reset session
+      await supabase.auth.signOut();
 
       // Redirect to login after a short delay
       setTimeout(() => {
@@ -126,12 +191,19 @@ export default function ResetPassword() {
             </div>
           )}
 
+          {!showForm && !error && (
+            <div className="bg-blue-900/20 border border-blue-500/30 text-blue-200 p-3 rounded-md text-center">
+              <p>Looking for a valid reset session...</p>
+              <p className="text-sm mt-2">If you opened this page directly, please use the password reset link from your email.</p>
+            </div>
+          )}
+
           {success ? (
             <div className="bg-green-900/20 border border-green-500/30 text-green-200 p-3 rounded-md text-center">
               <p className="mb-2 font-medium">Password Reset Successful!</p>
               <p>You will be redirected to the login page shortly.</p>
             </div>
-          ) : (
+          ) : showForm ? (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -213,7 +285,7 @@ export default function ResetPassword() {
                       "w-full bg-blue-600 hover:bg-blue-700 text-white",
                       isSubmitting && "opacity-70 cursor-not-allowed"
                     )}
-                    disabled={isSubmitting || !token}
+                    disabled={isSubmitting || !showForm}
                   >
                     {isSubmitting ? (
                       <>
@@ -227,7 +299,7 @@ export default function ResetPassword() {
                 </div>
               </form>
             </Form>
-          )}
+          ) : null}
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-white/60 text-center">
