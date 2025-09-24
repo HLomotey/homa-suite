@@ -21,6 +21,7 @@ import { ExternalStaffSlideForm } from "@/components/external-staff/ExternalStaf
 import { ExternalStaffExcelUpload } from "@/components/external-staff/ExternalStaffExcelUpload";
 import { ExternalStaffStats } from "@/components/external-staff/ExternalStaffStats";
 import { HistoricalExternalStaff } from "@/components/external-staff/HistoricalExternalStaff";
+import { ExternalStaffExportDialog } from "@/components/external-staff/ExternalStaffExportDialog";
 import { FrontendExternalStaff } from "@/integration/supabase/types/external-staff";
 import { Plus, Search, Edit, Trash2, Upload, Download, CheckSquare, Square, Calendar, Filter } from "lucide-react";
 import { toast } from "sonner";
@@ -61,6 +62,7 @@ export default function ExternalStaff() {
     bulkDeleteExternalStaff,
     fetchStats,
     exportToExcel,
+    exportData,
   } = useExternalStaff();
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -75,6 +77,7 @@ export default function ExternalStaff() {
   const [dateRangeFilter, setDateRangeFilter] = useState<string>("all");
   const [terminationPeriodFilter, setTerminationPeriodFilter] = useState<string>("all");
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -290,9 +293,24 @@ export default function ExternalStaff() {
   };
 
   const handleExportToExcel = () => {
-    // Export filtered data if there's a search term, otherwise export all current data
-    exportToExcel(searchTerm ? filteredStaff : undefined);
+    // Export filtered data if there's a search term or filters applied, otherwise export all current data
+    const hasFilters = searchTerm || dateRangeFilter !== "all" || terminationPeriodFilter !== "all" || selectedDepartment;
+    
+    if (hasFilters) {
+      // Export only the filtered data visible to the user
+      exportToExcel(filteredStaff);
+    } else {
+      // Export all data for the current status tab
+      exportToExcel();
+    }
   };
+
+  const handleAdvancedExport = (data: FrontendExternalStaff[], format: string, fields: string[]) => {
+    exportData(data, format, fields);
+  };
+
+  // Get selected staff records for export dialog
+  const selectedStaffRecords = externalStaff.filter(staff => selectedStaffIds.includes(staff.id));
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
@@ -321,14 +339,26 @@ export default function ExternalStaff() {
             <Upload className="h-4 w-4" />
             Import Excel
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleExportToExcel}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              onClick={handleExportToExcel}
+              className="flex items-center gap-2"
+              disabled={loading || filteredStaff.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              Quick Export
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowExportDialog(true)}
+              className="flex items-center gap-2"
+              disabled={loading || externalStaff.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              Advanced Export
+            </Button>
+          </div>
           {selectedStaffIds.length > 0 && (
             <Button
               variant="destructive"
@@ -743,6 +773,16 @@ export default function ExternalStaff() {
           onClose={() => setShowExcelUpload(false)}
         />
       )}
+
+      <ExternalStaffExportDialog
+        open={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        allStaff={externalStaff}
+        filteredStaff={filteredStaff}
+        selectedStaff={selectedStaffRecords}
+        onExport={handleAdvancedExport}
+        currentStatus={status}
+      />
 
       <ConfirmationDialog
         open={confirmDialog.open}

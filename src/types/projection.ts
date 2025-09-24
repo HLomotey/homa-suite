@@ -76,6 +76,7 @@ export interface ProjectionMetrics {
   underReviewProjections: number;
   totalExpectedRevenue: number;
   totalActualRevenue: number;
+  totalOperatingCosts: number;
   totalExpectedHours: number;
   totalActualHours: number;
   avgVariancePercentage: number;

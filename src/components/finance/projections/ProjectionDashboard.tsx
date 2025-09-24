@@ -71,7 +71,7 @@ const ProjectionDashboard = () => {
         />
         <StatsCard 
           title="Profit Margin" 
-          value={`${metrics.totalActualRevenue > 0 ? (((metrics.totalActualRevenue - (metrics.totalExpectedHours * 50)) / metrics.totalActualRevenue * 100).toFixed(1)) : '0.0'}%`} 
+          value={`${metrics.totalActualRevenue > 0 ? (((metrics.totalActualRevenue - metrics.totalOperatingCosts) / metrics.totalActualRevenue * 100).toFixed(1)) : '0.0'}%`} 
           trend={metrics.revenueTrend}
           icon={<Percent className="h-5 w-5" />}
           color="green"
@@ -114,10 +114,10 @@ const ProjectionDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              ${(metrics.totalExpectedHours * 50).toLocaleString('en-US')}
+              ${metrics.totalOperatingCosts.toLocaleString('en-US')}
             </div>
             <p className="text-xs text-white/60">
-              Estimated operational costs at $50/hour
+              Actual operational costs from approved expenses
             </p>
           </CardContent>
         </Card>
@@ -128,10 +128,10 @@ const ProjectionDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              ${(metrics.totalActualRevenue - (metrics.totalExpectedHours * 50)).toLocaleString('en-US')}
+              ${(metrics.totalActualRevenue - metrics.totalOperatingCosts).toLocaleString('en-US')}
             </div>
             <p className="text-xs text-white/60">
-              Projected net profit after operational costs
+              Actual net profit after operational costs
             </p>
           </CardContent>
         </Card>
@@ -142,7 +142,7 @@ const ProjectionDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {metrics.totalExpectedHours > 0 ? (((metrics.totalActualRevenue - (metrics.totalExpectedHours * 50)) / (metrics.totalExpectedHours * 50)) * 100).toFixed(1) : '0.0'}%
+              {metrics.totalOperatingCosts > 0 ? (((metrics.totalActualRevenue - metrics.totalOperatingCosts) / metrics.totalOperatingCosts) * 100).toFixed(1) : '0.0'}%
             </div>
             <p className="text-xs text-white/60">
               Return on investment percentage
