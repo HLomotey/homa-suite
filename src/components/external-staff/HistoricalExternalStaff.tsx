@@ -42,6 +42,8 @@ export function HistoricalExternalStaff() {
     pagination,
     setPagination,
     deleteHistoricalStaff,
+    exportToExcel,
+    exportData,
   } = useHistoricalExternalStaff();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,71 +61,10 @@ export function HistoricalExternalStaff() {
     onConfirm: () => {},
   });
 
-  // Export function for historical data
-  const exportHistoricalToExcel = async (filteredData?: FrontendHistoryExternalStaff[]) => {
-    try {
-      // Use filtered data if provided, otherwise use all current data
-      const dataToExport = filteredData || historicalStaff;
-      
-      if (dataToExport.length === 0) {
-        toast.warning("No historical data to export");
-        return;
-      }
-
-      // Create worksheet data with clean column headers
-      const worksheetData = dataToExport.map(staff => ({
-        'Payroll Last Name': staff["PAYROLL LAST NAME"] || '',
-        'Payroll First Name': staff["PAYROLL FIRST NAME"] || '',
-        'Payroll Middle Name': staff["PAYROLL MIDDLE NAME"] || '',
-        'Generation Suffix': staff["GENERATION SUFFIX"] || '',
-        'Gender (Self-ID)': staff["GENDER (SELF-ID)"] || '',
-        'Birth Date': staff["BIRTH DATE"] || '',
-        'Primary Address Line 1': staff["PRIMARY ADDRESS LINE 1"] || '',
-        'Primary Address Line 2': staff["PRIMARY ADDRESS LINE 2"] || '',
-        'Primary Address Line 3': staff["PRIMARY ADDRESS LINE 3"] || '',
-        'Lived-In State': staff["LIVED-IN STATE"] || '',
-        'Worked In State': staff["WORKED IN STATE"] || '',
-        'Personal E-Mail': staff["PERSONAL E-MAIL"] || '',
-        'Work E-Mail': staff["WORK E-MAIL"] || '',
-        'Home Phone': staff["HOME PHONE"] || '',
-        'Work Phone': staff["WORK PHONE"] || '',
-        'Position ID': staff["POSITION ID"] || '',
-        'Associate ID': staff["ASSOCIATE ID"] || '',
-        'File Number': staff["FILE NUMBER"] || '',
-        'Company Code': staff["COMPANY CODE"] || '',
-        'Job Title': staff["JOB TITLE"] || '',
-        'Business Unit': staff["BUSINESS UNIT"] || '',
-        'Home Department': staff["HOME DEPARTMENT"] || '',
-        'Location': staff["LOCATION"] || '',
-        'Worker Category': staff["WORKER CATEGORY"] || '',
-        'Position Status': staff["POSITION STATUS"] || '',
-        'Hire Date': staff["HIRE DATE"] || '',
-        'Rehire Date': staff["REHIRE DATE"] || '',
-        'Termination Date': staff["TERMINATION DATE"] || '',
-        'Years of Service': staff["YEARS OF SERVICE"] || '',
-        'Reports To Name': staff["REPORTS TO NAME"] || '',
-        'Job Class': staff["JOB CLASS"] || '',
-        'Created At': staff.created_at || '',
-        'Updated At': staff.updated_at || ''
-      }));
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split('T')[0];
-      const filename = `historical_staff_information_${currentDate}.xlsx`;
-
-      // Download the file using ExcelJS
-      await downloadExcelFile(worksheetData, filename, 'Historical Staff Information');
-      
-      toast.success(`Exported ${dataToExport.length} historical records to ${filename}`);
-    } catch (error) {
-      console.error('Historical export error:', error);
-      toast.error('Failed to export historical data to Excel');
-    }
-  };
-
-  const exportToExcel = async () => {
+  const handleExportToExcel = () => {
     // Export filtered data if there's a search term, otherwise export all current data
-    exportHistoricalToExcel(searchTerm ? filteredHistoricalStaff : undefined);
+    const dataToExport = searchTerm ? filteredHistoricalStaff : undefined;
+    exportToExcel(dataToExport);
   };
 
   // Client-side filtering for search
@@ -240,11 +181,12 @@ export function HistoricalExternalStaff() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={exportToExcel}
+                onClick={handleExportToExcel}
                 className="flex items-center gap-2"
+                disabled={loading || filteredHistoricalStaff.length === 0}
               >
                 <Download className="h-4 w-4" />
-                Export
+                Export ({filteredHistoricalStaff.length} records)
               </Button>
               {selectedHistoricalIds.length > 0 && (
                 <Button
