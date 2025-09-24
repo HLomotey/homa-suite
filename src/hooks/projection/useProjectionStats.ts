@@ -44,6 +44,22 @@ export const useProjectionStats = () => {
         console.warn('Error fetching invoice data:', invoicesError);
       }
 
+      // Fetch actual operating costs from finance expenses
+      const { data: financeExpenses, error: expensesError } = await supabase
+        .from('finance_expenses')
+        .select(`
+          amount,
+          date,
+          category,
+          type,
+          approval_status
+        `)
+        .eq('approval_status', 'approved') as { data: any[] | null; error: any };
+
+      if (expensesError) {
+        console.warn('Error fetching expense data:', expensesError);
+      }
+
       // Fetch staff locations for mapping
       const { data: staffLocations, error: locationsError } = await supabase
         .from('staff_locations')
@@ -61,6 +77,7 @@ export const useProjectionStats = () => {
           underReviewProjections: 0,
           totalExpectedRevenue: 0,
           totalActualRevenue: 0,
+          totalOperatingCosts: 0,
           totalExpectedHours: 0,
           totalActualHours: 0,
           avgVariancePercentage: 0,
@@ -95,6 +112,12 @@ export const useProjectionStats = () => {
       }, 0);
       
       const totalActualRevenue = actualRevenueFromInvoices;
+      
+      // Calculate actual operating costs from finance expenses
+      const totalOperatingCosts = (financeExpenses || []).reduce((sum: number, expense: any) => {
+        return sum + (parseFloat(expense.amount) || 0);
+      }, 0);
+      
       const totalExpectedHours = projections.reduce((sum: number, p: any) => sum + (p.expected_hours || 0), 0);
       const totalActualHours = projections.reduce((sum: number, p: any) => sum + (p.actual_hours || 0), 0);
 
@@ -146,6 +169,7 @@ export const useProjectionStats = () => {
         underReviewProjections,
         totalExpectedRevenue,
         totalActualRevenue,
+        totalOperatingCosts,
         totalExpectedHours,
         totalActualHours,
         avgVariancePercentage,
