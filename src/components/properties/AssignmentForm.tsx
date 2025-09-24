@@ -21,6 +21,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FrontendRoom } from "@/integration/supabase/types/room";
 import { useFlightAgreements } from "@/hooks/flight-agreements/useFlightAgreements";
 import { CreateFlightAgreementData, CreateDeductionData } from "@/integration/supabase/api/flight-agreements";
+import { useStaffBenefits } from "@/hooks/staff-benefits/useStaffBenefits";
+import { FrontendStaffBenefit, BenefitType } from "@/integration/supabase/types/staff-benefits";
 
 export interface AssignmentFormProps {
   assignment?: FrontendAssignment;
@@ -50,6 +52,9 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   // Flight agreements hook
   const { createAgreement: createFlightAgreement } = useFlightAgreements();
+
+  // Staff benefits hook
+  const { fetchBenefits, benefits } = useStaffBenefits();
 
   const [formData, setFormData] = React.useState<
     Omit<FrontendAssignment, "id">
@@ -117,6 +122,11 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
   // Flight agreement specific state
   const [flightAgreementAmount, setFlightAgreementAmount] = React.useState<number>((assignment as any)?.flightAgreementAmount || 0);
   const [flightAgreementNotes, setFlightAgreementNotes] = React.useState<string>((assignment as any)?.flightAgreementNotes || "");
+
+  // Staff benefits state
+  const [staffBenefits, setStaffBenefits] = React.useState<FrontendStaffBenefit[]>([]);
+  const [benefitsLoading, setBenefitsLoading] = React.useState(false);
+  const [autoPopulatedBenefits, setAutoPopulatedBenefits] = React.useState<Set<string>>(new Set());
 
   // Helper function to create a new security deposit with default amounts
   const createSecurityDeposit = (benefitType: 'housing' | 'transportation' | 'flight_agreement' | 'bus_card'): SecurityDeposit => {
@@ -205,6 +215,98 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     }
 
     return deductions;
+  };
+
+  // Function to fetch and auto-populate staff benefits
+  const fetchStaffBenefitsAndPopulate = async (staffId: string) => {
+    console.log('🔍 Auto-populating benefits for staff ID:', staffId);
+    
+    if (!staffId) {
+      setStaffBenefits([]);
+      setAutoPopulatedBenefits(new Set());
+      return;
+    }
+
+    try {
+      setBenefitsLoading(true);
+      
+      // Fetch benefits for the selected staff member from the staff_benefits table
+      await fetchBenefits({ staff_id: staffId, status: 'active' });
+      
+      // Wait a moment for the benefits state to update
+      setTimeout(() => {
+        // Filter benefits for the selected staff member that are active
+        const staffActiveBenefits = benefits.filter(benefit => 
+          benefit.staff_id === staffId && benefit.status === 'active'
+        );
+        
+        setStaffBenefits(staffActiveBenefits);
+        
+        if (staffActiveBenefits.length > 0) {
+          // Auto-populate agreements based on active benefits from database
+          const newAutoPopulated = new Set<string>();
+          
+          // Check for housing benefits
+          const hasHousingBenefit = staffActiveBenefits.some(benefit => benefit.benefit_type === 'housing');
+          if (hasHousingBenefit && !housingAgreement) {
+            setHousingAgreement(true);
+            newAutoPopulated.add('housing');
+          }
+          
+          // Check for transportation benefits
+          const hasTransportBenefit = staffActiveBenefits.some(benefit => benefit.benefit_type === 'transportation');
+          if (hasTransportBenefit && !transportationAgreement) {
+            setTransportationAgreement(true);
+            newAutoPopulated.add('transportation');
+          }
+          
+          // Check for flight agreement benefits
+          const hasFlightBenefit = staffActiveBenefits.some(benefit => benefit.benefit_type === 'flight_agreement');
+          if (hasFlightBenefit && !flightAgreement) {
+            setFlightAgreement(true);
+            newAutoPopulated.add('flight');
+          }
+          
+          // Check for bus card benefits
+          const hasBusCardBenefit = staffActiveBenefits.some(benefit => benefit.benefit_type === 'bus_card');
+          if (hasBusCardBenefit && !busCardAgreement) {
+            setBusCardAgreement(true);
+            newAutoPopulated.add('bus_card');
+          }
+          
+          // Update auto-populated benefits tracking
+          setAutoPopulatedBenefits(newAutoPopulated);
+          
+          // Show notifications for detected benefits
+          const detectedBenefits = [];
+          if (hasHousingBenefit) detectedBenefits.push('Housing');
+          if (hasTransportBenefit) detectedBenefits.push('Transportation');
+          if (hasFlightBenefit) detectedBenefits.push('Flight');
+          if (hasBusCardBenefit) detectedBenefits.push('Bus Card');
+          
+          if (detectedBenefits.length > 0) {
+            toast({
+              title: `${detectedBenefits.length} Active Benefit${detectedBenefits.length > 1 ? 's' : ''} Found`,
+              description: `Automatically enabled: ${detectedBenefits.join(', ')} agreement${detectedBenefits.length > 1 ? 's' : ''}.`,
+            });
+          }
+        } else {
+          // No active benefits found
+          console.log('No active benefits found for staff member:', staffId);
+        }
+        
+        setBenefitsLoading(false);
+      }, 500); // Small delay to allow benefits state to update
+      
+    } catch (error) {
+      console.error('Error fetching staff benefits:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch staff benefits. Please check manually.",
+        variant: "destructive",
+      });
+      setBenefitsLoading(false);
+    }
   };
 
   // Update deduction schedules when amounts or start date change
@@ -423,6 +525,9 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
         tenantId: matchingStaff.id
       }));
       setIsValidTenant(true);
+      
+      // Auto-populate staff benefits when a staff member is matched
+      fetchStaffBenefitsAndPopulate(matchingStaff.id);
     } else {
       // Clear tenant ID if no exact match
       setFormData((prev) => ({
@@ -447,6 +552,9 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     }));
     setShowTenantSuggestions(false);
     setIsValidTenant(true);
+
+    // Auto-populate staff benefits when a staff member is selected
+    fetchStaffBenefitsAndPopulate(staff.id);
   };
 
   const handleChange = (
@@ -710,7 +818,11 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     className="pr-8"
                     autoComplete="off"
                   />
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  {benefitsLoading ? (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+                  ) : (
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  )}
 
                   {showTenantSuggestions && (
                     <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
@@ -1001,9 +1113,14 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     <div>
                       <Label
                         htmlFor="housing_agreement"
-                        className="text-sm font-medium cursor-pointer"
+                        className="text-sm font-medium cursor-pointer flex items-center gap-2"
                       >
                         Housing Agreement
+                        {autoPopulatedBenefits.has('housing') && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Auto
+                          </span>
+                        )}
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Agree to housing terms and conditions
@@ -1023,9 +1140,14 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     <div>
                       <Label
                         htmlFor="transportation_agreement"
-                        className="text-sm font-medium cursor-pointer"
+                        className="text-sm font-medium cursor-pointer flex items-center gap-2"
                       >
                         Transportation Agreement
+                        {autoPopulatedBenefits.has('transportation') && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Auto
+                          </span>
+                        )}
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Agree to transportation terms and conditions
@@ -1045,9 +1167,14 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     <div>
                       <Label
                         htmlFor="flight_agreement"
-                        className="text-sm font-medium cursor-pointer"
+                        className="text-sm font-medium cursor-pointer flex items-center gap-2"
                       >
                         Flight Agreement
+                        {autoPopulatedBenefits.has('flight') && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Auto
+                          </span>
+                        )}
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Agree to flight benefit terms and conditions
@@ -1067,9 +1194,14 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                     <div>
                       <Label
                         htmlFor="bus_card_agreement"
-                        className="text-sm font-medium cursor-pointer"
+                        className="text-sm font-medium cursor-pointer flex items-center gap-2"
                       >
                         Bus Card Agreement
+                        {autoPopulatedBenefits.has('bus_card') && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Auto
+                          </span>
+                        )}
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Agree to bus card benefit terms and conditions
