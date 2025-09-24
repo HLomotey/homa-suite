@@ -226,14 +226,12 @@ export function useFinanceAnalytics(year: number, month: number) {
 
         const topClients: TopClientData[] = Array.from(clientMap.entries())
           .map(([client_name, data]) => ({ client_name, ...data }))
-          .sort((a, b) => b.revenue - a.revenue)
-          .slice(0, 5);
+          .sort((a, b) => b.revenue - a.revenue);
 
         // Generate recent payments
         const recentPayments: RecentPaymentData[] = (invoicesData as FinanceAnalyticsRecord[] || [])
           .filter(invoice => invoice.invoice_status === 'paid' && invoice.date_paid)
           .sort((a, b) => new Date(b.date_paid!).getTime() - new Date(a.date_paid!).getTime())
-          .slice(0, 10)
           .map(invoice => ({
             id: invoice.id,
             client_name: invoice.client_name,
