@@ -85,10 +85,12 @@ export const mapDatabasePropertyToFrontend = (dbProperty: any): FrontendProperty
     };
   }
 
-  // Handle the joined manager data from billing_staff
+  // Handle the joined manager data from external_staff
   let managerName = null;
-  if (dbProperty.billing_staff) {
-    managerName = dbProperty.billing_staff.legal_name;
+  if (dbProperty.external_staff) {
+    const firstName = dbProperty.external_staff['PAYROLL FIRST NAME'] || '';
+    const lastName = dbProperty.external_staff['PAYROLL LAST NAME'] || '';
+    managerName = `${firstName} ${lastName}`.trim() || null;
   }
 
   return {

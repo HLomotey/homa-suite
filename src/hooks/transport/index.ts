@@ -50,3 +50,6 @@ export {
 // Re-export billing hooks
 export { useBillingPeriod } from './useBillingPeriod';
 export { useTransportBilling } from './useTransportBilling';
+
+// Re-export route hooks
+export { useRoute } from './useRoute';

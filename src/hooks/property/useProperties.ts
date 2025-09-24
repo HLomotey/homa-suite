@@ -17,7 +17,7 @@ export const useProperties = () => {
         .select(`
           *,
           company_locations(*),
-          billing_staff(legal_name)
+          external_staff("PAYROLL FIRST NAME", "PAYROLL LAST NAME")
         `)
         .order("title");
 
