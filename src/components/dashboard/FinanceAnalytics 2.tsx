@@ -291,6 +291,8 @@ export function FinanceAnalytics() {
             value={selectedMonth} 
             onChange={(e) => setSelectedMonth(Number(e.target.value))}
             className="text-xs border rounded px-2 py-1 bg-background"
+            title="Select month for financial analytics"
+            aria-label="Select month for financial analytics"
           >
             {Array.from({length: 12}, (_, i) => (
               <option key={i+1} value={i+1}>
@@ -302,6 +304,8 @@ export function FinanceAnalytics() {
             value={selectedYear} 
             onChange={(e) => setSelectedYear(Number(e.target.value))}
             className="text-xs border rounded px-2 py-1 bg-background"
+            title="Select year for financial analytics"
+            aria-label="Select year for financial analytics"
           >
             {Array.from({length: 5}, (_, i) => (
               <option key={2020 + i} value={2020 + i}>

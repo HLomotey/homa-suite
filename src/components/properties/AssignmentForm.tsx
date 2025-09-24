@@ -1251,6 +1251,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                           value={deposit?.paymentMethod || 'cash'}
                           onChange={(e) => updateDeposit({ paymentMethod: e.target.value as SecurityDeposit['paymentMethod'] })}
                           className="flex h-10 w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm mt-2 text-white"
+                          title="Select payment method for security deposit"
+                          aria-label="Select payment method for security deposit"
                         >
                           <option value="cash">Cash</option>
                           <option value="check">Check</option>
