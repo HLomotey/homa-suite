@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integration/supabase/client';
 
+// Hook for uploading finance transactions from CSV files
+
 export interface FrontendFinanceTransaction {
   id?: string;
   client_name: string;

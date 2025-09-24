@@ -3,7 +3,7 @@
  */
 
 import { supabase } from '@/integration/supabase/client';
-import { supabaseAdmin } from '@/integration/supabase/adminClient'; // add admin client if needed
+// Note: Removed admin client import to avoid Multiple GoTrueClient instances warning
 import { FinanceInvoiceData, mapToFinanceInvoice, FinanceExpenseData, mapToFinanceExpense } from './DataMapper';
 
 export interface BatchProcessorOptions {
@@ -84,8 +84,8 @@ export class BatchProcessor {
         // Upsert/update mode
         for (const invoiceData of invoiceBatch) {
           try {
-            const { data: existingInvoice, error: selectError } = await supabaseAdmin
-              .from('finance_invoices')
+            const { data: existingInvoice, error: selectError } = await supabase
+              .from('finance_invoices' as any)
               .select('id, invoice_status, date_paid')
               .eq('invoice_number', invoiceData.invoice_number)
               .eq('client_name', invoiceData.client_name)
@@ -97,20 +97,21 @@ export class BatchProcessor {
             }
 
             if (existingInvoice) {
+              const invoice = existingInvoice as any;
               const shouldUpdate =
-                existingInvoice.invoice_status !== invoiceData.invoice_status ||
-                existingInvoice.date_paid !== invoiceData.date_paid ||
-                (invoiceData.invoice_status === 'paid' && existingInvoice.invoice_status !== 'paid');
+                invoice.invoice_status !== invoiceData.invoice_status ||
+                invoice.date_paid !== invoiceData.date_paid ||
+                (invoiceData.invoice_status === 'paid' && invoice.invoice_status !== 'paid');
 
               if (shouldUpdate) {
                 const updateData = {
                   ...invoiceData,
                   updated_at: new Date().toISOString(),
                 };
-                const { error: updateError } = await supabaseAdmin
+                const { error: updateError } = await (supabase as any)
                   .from('finance_invoices')
                   .update(updateData)
-                  .eq('id', existingInvoice.id);
+                  .eq('id', invoice.id);
 
                 if (updateError) {
                   throw updateError;
@@ -118,8 +119,8 @@ export class BatchProcessor {
                 updated++;
               }
             } else {
-              const { error: insertError } = await supabaseAdmin
-                .from('finance_invoices')
+              const { error: insertError } = await supabase
+                .from('finance_invoices' as any)
                 .insert(invoiceData as any);
 
               if (insertError) {
