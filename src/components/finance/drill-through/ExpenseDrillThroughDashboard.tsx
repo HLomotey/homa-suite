@@ -365,7 +365,6 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                 <div className="space-y-2">
                   {filteredExpenses
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .slice(0, 50)
                     .map((expense, index) => (
                       <div 
                         key={expense.id || index}
@@ -390,9 +389,9 @@ export const ExpenseDrillThroughDashboard: React.FC<ExpenseDrillThroughDashboard
                       </div>
                     ))
                   }
-                  {filteredExpenses.length > 50 && (
+                  {filteredExpenses.length > 0 && (
                     <div className="text-center p-4 text-red-300 text-sm">
-                      Showing first 50 of {filteredExpenses.length} expenses
+                      Showing all {filteredExpenses.length} expenses
                     </div>
                   )}
                 </div>

@@ -38,7 +38,12 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [activeTab, setActiveTab] = useState('aging');
   
-  const { data: financeData, isLoading } = useFinanceAnalytics(dateRanges);
+  // Extract year and month from dateRanges or use current date
+  const currentDate = new Date();
+  const year = dateRanges && dateRanges.length > 0 ? dateRanges[0].year : currentDate.getFullYear();
+  const month = dateRanges && dateRanges.length > 0 ? dateRanges[0].month : currentDate.getMonth() + 1;
+  
+  const { data: financeData, isLoading } = useFinanceAnalytics(year, month);
 
   // Transform finance data to invoice format for drill-through components
   const invoices: Invoice[] = React.useMemo(() => {
@@ -53,14 +58,14 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
     // For demonstration, we'll create representative data based on actual data distribution
     const statuses = ['paid', 'sent', 'overdue'];
     const statusWeights = {
-      'paid': financeData.paidInvoices || 1325,
-      'sent': financeData.sentInvoices || 112, 
-      'overdue': financeData.overdueInvoices || 74
+      'paid': financeData.metrics.paidInvoices || 1325,
+      'sent': financeData.metrics.pending || 112, 
+      'overdue': financeData.metrics.overdue || 74
     };
     const totalWeight = statusWeights.paid + statusWeights.sent + statusWeights.overdue;
     const clients = ['Acme Corp', 'TechStart Inc', 'Global Solutions', 'Innovation Labs', 'Future Systems'];
     
-    for (let i = 0; i < Math.min(financeData.totalInvoices, 100); i++) {
+    for (let i = 0; i < financeData.metrics.totalInvoices; i++) {
       // Weighted random selection based on actual data distribution
       const rand = Math.random() * totalWeight;
       let randomStatus = 'paid';
@@ -147,7 +152,7 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
               <div>
                 <p className="text-sm text-blue-300">Total Invoices</p>
                 <p className="text-2xl font-bold text-white">
-                  {financeData?.totalInvoices || 0}
+                  {financeData?.metrics.totalInvoices || 0}
                 </p>
               </div>
             </div>
@@ -161,7 +166,7 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
               <div>
                 <p className="text-sm text-green-300">Paid Invoices</p>
                 <p className="text-2xl font-bold text-white">
-                  {financeData?.paidInvoices || 0}
+                  {financeData?.metrics.paidInvoices || 0}
                 </p>
               </div>
             </div>
@@ -175,7 +180,7 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
               <div>
                 <p className="text-sm text-yellow-300">Sent</p>
                 <p className="text-2xl font-bold text-white">
-                  {financeData?.sentInvoices || 0}
+                  {financeData?.metrics.pending || 0}
                 </p>
               </div>
             </div>
@@ -189,7 +194,7 @@ export const FinanceDrillThroughDashboard: React.FC<FinanceDrillThroughDashboard
               <div>
                 <p className="text-sm text-red-300">Overdue</p>
                 <p className="text-2xl font-bold text-white">
-                  {financeData?.overdueInvoices || 0}
+                  {financeData?.metrics.overdue || 0}
                 </p>
               </div>
             </div>

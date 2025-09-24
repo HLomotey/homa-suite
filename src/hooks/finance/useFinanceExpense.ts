@@ -12,18 +12,46 @@ export function useFinanceExpenses() {
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: async (): Promise<FrontendFinanceExpense[]> => {
-      const { data, error } = await supabase
+      // First get the count to determine if we need pagination
+      const { count } = await supabase
         .from('finance_expenses' as any)
-        .select('*')
-        .order('date', { ascending: false });
+        .select('*', { count: 'exact', head: true });
 
-      if (error) {
-        console.error('Error fetching finance expenses:', error);
-        throw new Error(error.message || 'Failed to fetch finance expenses');
+      // If we have more than 1000 records, we need to fetch all pages
+      if (count && count > 1000) {
+        const allData: any[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        
+        while (from < count) {
+          const { data: pageData, error: pageError } = await supabase
+            .from('finance_expenses' as any)
+            .select('*')
+            .order('date', { ascending: false })
+            .range(from, from + pageSize - 1);
+            
+          if (pageError) throw pageError;
+          if (pageData) allData.push(...pageData);
+          from += pageSize;
+        }
+        
+        const rows = allData as unknown as FinanceExpense[];
+        return rows.map(mapDatabaseFinanceExpenseToFrontend);
+      } else {
+        // For smaller datasets, fetch normally
+        const { data, error } = await supabase
+          .from('finance_expenses' as any)
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching finance expenses:', error);
+          throw new Error(error.message || 'Failed to fetch finance expenses');
+        }
+
+        const rows = (data || []) as unknown as FinanceExpense[];
+        return rows.map(mapDatabaseFinanceExpenseToFrontend);
       }
-
-      const rows = (data || []) as unknown as FinanceExpense[];
-      return rows.map(mapDatabaseFinanceExpenseToFrontend);
     },
   });
 }
