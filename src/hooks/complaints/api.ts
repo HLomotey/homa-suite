@@ -75,8 +75,8 @@ export const mapDatabaseComplaintToFrontend = (
       ? complaint.property?.title 
       : complaint.vehicle ? `${complaint.vehicle.make} ${complaint.vehicle.model}`.trim() : undefined,
     createdByName: complaint.created_by_profile?.full_name,
-    assignedToName: complaint.assigned_to_external_staff 
-      ? `${complaint.assigned_to_external_staff['PAYROLL FIRST NAME'] || ''} ${complaint.assigned_to_external_staff['PAYROLL LAST NAME'] || ''}`.trim() 
+    assignedToName: complaint.assigned_external_staff 
+      ? `${complaint.assigned_external_staff['PAYROLL FIRST NAME'] || ''} ${complaint.assigned_external_staff['PAYROLL LAST NAME'] || ''}`.trim()
       : undefined,
     escalatedToName: complaint.escalated_to_profile?.full_name,
     
@@ -106,7 +106,7 @@ export const getComplaints = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -199,7 +199,7 @@ export const getComplaintById = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -253,13 +253,27 @@ export const createComplaint = async (
       dueDate = dueDateTime.toISOString();
     }
     
-    // Direct assignment - use the manager ID from the form
+    // Use external staff ID directly for assignment
     let assignedTo = complaint.assigned_to;
     
     if (assignedTo) {
       console.log(`Manager assigned from form: ${assignedTo}`);
-      // The assigned_to field now references external_staff table directly
-      // No need to validate user account existence
+      
+      // Validate that the external staff exists
+      const { data: externalStaff } = await supabase
+        .from("external_staff")
+        .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME"')
+        .eq("id", assignedTo)
+        .maybeSingle();
+      
+      if (externalStaff) {
+        const managerName = `${externalStaff["PAYROLL FIRST NAME"] || ''} ${externalStaff["PAYROLL LAST NAME"] || ''}`.trim();
+        console.log(`External staff manager found: ${managerName}`);
+        // Keep the external staff ID for assignment
+      } else {
+        console.log(`External staff ID not found, setting to null`);
+        assignedTo = null;
+      }
     } else {
       console.log("No manager assigned from form");
     }
@@ -322,7 +336,7 @@ export const createComplaint = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model)
@@ -413,7 +427,7 @@ export const updateComplaint = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
