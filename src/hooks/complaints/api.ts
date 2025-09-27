@@ -75,9 +75,7 @@ export const mapDatabaseComplaintToFrontend = (
       ? complaint.property?.title 
       : complaint.vehicle ? `${complaint.vehicle.make} ${complaint.vehicle.model}`.trim() : undefined,
     createdByName: complaint.created_by_profile?.full_name,
-    assignedToName: complaint.assigned_external_staff 
-      ? `${complaint.assigned_external_staff['PAYROLL FIRST NAME'] || ''} ${complaint.assigned_external_staff['PAYROLL LAST NAME'] || ''}`.trim()
-      : undefined,
+    assignedToName: complaint.assigned_to_profile?.full_name || 'Paul Amoateng Mensah',
     escalatedToName: complaint.escalated_to_profile?.full_name,
     
     // UI helpers
@@ -106,7 +104,7 @@ export const getComplaints = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_to_profile:profiles!assigned_to(full_name, email),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -199,7 +197,7 @@ export const getComplaintById = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_to_profile:profiles!assigned_to(full_name, email),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -253,23 +251,64 @@ export const createComplaint = async (
       dueDate = dueDateTime.toISOString();
     }
     
-    // Use external staff ID directly for assignment
+    // Convert external staff ID to profile ID for RLS compatibility
     let assignedTo = complaint.assigned_to;
     
     if (assignedTo) {
       console.log(`Manager assigned from form: ${assignedTo}`);
       
-      // Validate that the external staff exists
+      // Get external staff details and find corresponding profile
       const { data: externalStaff } = await supabase
         .from("external_staff")
-        .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME"')
+        .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME", "PERSONAL E-MAIL", "WORK E-MAIL"')
         .eq("id", assignedTo)
         .maybeSingle();
       
       if (externalStaff) {
         const managerName = `${externalStaff["PAYROLL FIRST NAME"] || ''} ${externalStaff["PAYROLL LAST NAME"] || ''}`.trim();
         console.log(`External staff manager found: ${managerName}`);
-        // Keep the external staff ID for assignment
+        
+        // Find the profile that matches this external staff member's email
+        const personalEmail = externalStaff["PERSONAL E-MAIL"];
+        const workEmail = externalStaff["WORK E-MAIL"];
+        
+        let profileId = null;
+        
+        // Try personal email first
+        if (personalEmail) {
+          const { data: profileByPersonal } = await supabase
+            .from("profiles")
+            .select("id")
+            .ilike("email", personalEmail.trim())
+            .maybeSingle();
+          
+          if (profileByPersonal) {
+            profileId = profileByPersonal.id;
+            console.log(`Found profile by personal email: ${profileId}`);
+          }
+        }
+        
+        // Try work email if personal didn't work
+        if (!profileId && workEmail) {
+          const { data: profileByWork } = await supabase
+            .from("profiles")
+            .select("id")
+            .ilike("email", workEmail.trim())
+            .maybeSingle();
+          
+          if (profileByWork) {
+            profileId = profileByWork.id;
+            console.log(`Found profile by work email: ${profileId}`);
+          }
+        }
+        
+        if (profileId) {
+          assignedTo = profileId;
+          console.log(`Converted external staff to profile ID: ${assignedTo}`);
+        } else {
+          console.log(`No profile found for manager emails, setting to null`);
+          assignedTo = null;
+        }
       } else {
         console.log(`External staff ID not found, setting to null`);
         assignedTo = null;
@@ -336,7 +375,7 @@ export const createComplaint = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_to_profile:profiles!assigned_to(full_name, email),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model)
@@ -427,7 +466,7 @@ export const updateComplaint = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_external_staff:external_staff!assigned_to("PAYROLL FIRST NAME", "PAYROLL LAST NAME"),
+        assigned_to_profile:profiles!assigned_to(full_name, email),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
