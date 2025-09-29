@@ -192,9 +192,26 @@ export const AssignmentsList = () => {
       refetchAssignments();
     } catch (error) {
       console.error("Error deleting assignment:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = "Failed to delete assignment";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle Supabase error format
+        const supabaseError = error as any;
+        if (supabaseError.message) {
+          errorMessage = supabaseError.message;
+        } else if (supabaseError.error_description) {
+          errorMessage = supabaseError.error_description;
+        } else if (supabaseError.details) {
+          errorMessage = supabaseError.details;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to delete assignment",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -221,9 +238,26 @@ export const AssignmentsList = () => {
       setIsFormOpen(false);
     } catch (error) {
       console.error("Error saving assignment:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = "Failed to save assignment";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle Supabase error format
+        const supabaseError = error as any;
+        if (supabaseError.message) {
+          errorMessage = supabaseError.message;
+        } else if (supabaseError.error_description) {
+          errorMessage = supabaseError.error_description;
+        } else if (supabaseError.details) {
+          errorMessage = supabaseError.details;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to save assignment",
+        description: errorMessage,
         variant: "destructive",
       });
     }
