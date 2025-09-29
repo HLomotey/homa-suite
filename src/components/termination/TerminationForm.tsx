@@ -54,9 +54,8 @@ export function TerminationForm({
     activeOnly: false,
   });
 
-  // Debug logging
+  // Debug logging (moved employeeOptions log below its declaration)
   console.log('Staff data count:', staffList?.length || 0);
-  console.log('Employee options count:', employeeOptions.length);
   if (staffError) console.log('Staff error:', staffError);
 
 
@@ -152,6 +151,9 @@ export function TerminationForm({
     label: `${staff.full_name} (${staff.work_email || staff.personal_email || 'No email'})`,
   }));
 
+  // Debug logging after employeeOptions is declared
+  console.log('Employee options count:', employeeOptions.length);
+
   const managerOptions = staffList
     .filter(staff => staff.manager_id && staff.manager_full_name)
     .reduce((acc, staff) => {
@@ -164,7 +166,7 @@ export function TerminationForm({
       return acc;
     }, [] as { value: string; label: string }[]);
 
-  const isHRUser = currentUser?.role === 'admin' || currentUser?.role === 'hr';
+  const isHRUser = currentUser?.role?.name === 'admin' || currentUser?.role?.name === 'hr';
   const canEditEmployee = true; // Allow all users to select employees for now
 
   return (
