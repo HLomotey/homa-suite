@@ -75,6 +75,7 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
     "all"
   );
   const [typeFilter, setTypeFilter] = useState<BenefitType | "all">("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string | "all">("all");
 
   // Group benefits by staff member and filter
   const groupedBenefits = benefits.reduce(
@@ -118,6 +119,20 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
     >
   );
 
+  // Get unique departments for filter
+  const departmentOptions = [
+    { value: "all", label: "All Departments" },
+    ...Array.from(
+      new Set(
+        Object.values(groupedBenefits)
+          .map(staff => staff.staff_department)
+          .filter(Boolean)
+      )
+    )
+      .sort()
+      .map(dept => ({ value: dept, label: dept }))
+  ];
+
   const filteredBenefits = Object.values(groupedBenefits).filter(
     (staffBenefits) => {
       const matchesSearch =
@@ -137,8 +152,10 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
       const matchesType =
         typeFilter === "all" ||
         staffBenefits.benefit_types.includes(typeFilter);
+      const matchesDepartment =
+        departmentFilter === "all" || staffBenefits.staff_department === departmentFilter;
 
-      return matchesSearch && matchesStatus && matchesType;
+      return matchesSearch && matchesStatus && matchesType && matchesDepartment;
     }
   );
 
@@ -290,6 +307,22 @@ export const StaffBenefitsList: React.FC<StaffBenefitsListProps> = ({
                 className="pl-10"
               />
             </div>
+
+            <Select
+              value={departmentFilter}
+              onValueChange={(value) => setDepartmentFilter(value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departmentOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select
               value={statusFilter}

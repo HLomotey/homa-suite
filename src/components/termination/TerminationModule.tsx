@@ -10,9 +10,9 @@ import { Badge } from '../ui/badge';
 import { TerminationForm } from './TerminationForm';
 import { TerminationList } from './TerminationList';
 import { ApprovalModal } from './ApprovalModal';
-import { useTermination } from '../../hooks/useTermination';
+import { useTermination, TerminationRequest } from '../../hooks/useTermination';
 import { useAuth } from '@/contexts/AuthContext';
-import { TerminationRequest, CreateTerminationData } from '../../lib/supabase';
+import { CreateTerminationData } from '../../lib/supabase';
 import { TerminationStatus, TERMINATION_STATUS_LABELS } from '../../lib/termination';
 import { toast } from 'sonner';
 
@@ -22,6 +22,7 @@ interface FilterState {
   status: TerminationStatus | 'all';
   search: string;
   dateRange: 'all' | 'upcoming' | 'overdue';
+  department: string | 'all';
 }
 
 export function TerminationModule() {
@@ -51,7 +52,8 @@ export function TerminationModule() {
   const [filters, setFilters] = useState<FilterState>({
     status: 'all',
     search: '',
-    dateRange: 'all'
+    dateRange: 'all',
+    department: 'all'
   });
 
   const [stats, setStats] = useState({
@@ -89,6 +91,11 @@ export function TerminationModule() {
     // Status filter
     if (filters.status !== 'all') {
       filtered = filtered.filter(t => t.status === filters.status);
+    }
+
+    // Department filter
+    if (filters.department !== 'all') {
+      filtered = filtered.filter(t => t.employee_department === filters.department);
     }
 
     // Search filter
@@ -134,10 +141,7 @@ export function TerminationModule() {
     try {
       const result = await createTermination(data);
       if (result) {
-        toast({
-          title: 'Success',
-          description: 'Termination request created successfully'
-        });
+        toast.success('Termination request created successfully');
         setViewMode('list');
         await loadTerminations();
       }
@@ -153,10 +157,7 @@ export function TerminationModule() {
     try {
       const result = await updateTermination(editingTermination.id, data);
       if (result) {
-        toast({
-          title: 'Success',
-          description: 'Termination request updated successfully'
-        });
+        toast.success('Termination request updated successfully');
         setViewMode('list');
         setEditingTermination(null);
         await loadTerminations();
@@ -236,6 +237,14 @@ export function TerminationModule() {
     { value: 'all', label: 'All Dates' },
     { value: 'upcoming', label: 'Upcoming (14 days)' },
     { value: 'overdue', label: 'Overdue' }
+  ];
+
+  // Get unique departments for filter
+  const departmentOptions = [
+    { value: 'all', label: 'All Departments' },
+    ...Array.from(new Set(terminations.map(t => t.employee_department).filter(Boolean)))
+      .sort()
+      .map(dept => ({ value: dept, label: dept }))
   ];
 
   if (viewMode === 'create') {
@@ -341,7 +350,7 @@ export function TerminationModule() {
 
       {/* Filters */}
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search
@@ -361,6 +370,16 @@ export function TerminationModule() {
               value={filters.status}
               onChange={(value) => setFilters(prev => ({ ...prev, status: value as TerminationStatus | 'all' }))}
               options={statusOptions}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Department
+            </label>
+            <CustomSelect
+              value={filters.department}
+              onChange={(value) => setFilters(prev => ({ ...prev, department: value }))}
+              options={departmentOptions}
             />
           </div>
           <div>
