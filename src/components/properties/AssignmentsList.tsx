@@ -22,6 +22,8 @@ export const AssignmentsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [propertyFilter, setPropertyFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [companyCodeFilter, setCompanyCodeFilter] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<FrontendAssignment | undefined>();
 
@@ -91,7 +93,25 @@ export const AssignmentsList = () => {
     return assignment.status;
   };
 
-  // Filter assignments based on search query, status filter, and property filter
+  // Get unique departments for filter
+  const uniqueDepartments = externalStaff ? Array.from(
+    new Set(
+      externalStaff
+        .map(staff => staff["HOME DEPARTMENT"])
+        .filter(Boolean)
+    )
+  ).sort() : [];
+
+  // Get unique company codes for filter
+  const uniqueCompanyCodes = externalStaff ? Array.from(
+    new Set(
+      externalStaff
+        .map(staff => staff["COMPANY CODE"])
+        .filter(Boolean)
+    )
+  ).sort() : [];
+
+  // Filter assignments based on search query, status filter, property filter, and department filter
   const filteredAssignments = assignments ? assignments.filter((assignment) => {
     const matchesSearch =
       (assignment.tenantName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -114,7 +134,15 @@ export const AssignmentsList = () => {
       propertyFilter === "all" ||
       assignment.propertyId === propertyFilter;
 
-    return matchesSearch && matchesStatus && matchesProperty;
+    const matchesDepartment =
+      departmentFilter === "all" ||
+      (staffMember && staffMember["HOME DEPARTMENT"] === departmentFilter);
+
+    const matchesCompanyCode =
+      companyCodeFilter === "all" ||
+      (staffMember && staffMember["COMPANY CODE"] === companyCodeFilter);
+
+    return matchesSearch && matchesStatus && matchesProperty && matchesDepartment && matchesCompanyCode;
   }) : [];
 
   // Get unique properties for the filter dropdown
@@ -274,6 +302,30 @@ export const AssignmentsList = () => {
           <Filter className="h-4 w-4 text-muted-foreground" />
           <select
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            aria-label="Filter by department"
+            title="Filter by department"
+          >
+            <option value="all">All Departments</option>
+            {uniqueDepartments.map(department => (
+              <option key={department} value={department}>{department}</option>
+            ))}
+          </select>
+          <select
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
+            value={companyCodeFilter}
+            onChange={(e) => setCompanyCodeFilter(e.target.value)}
+            aria-label="Filter by company code"
+            title="Filter by company code"
+          >
+            <option value="all">All Companies</option>
+            {uniqueCompanyCodes.map(companyCode => (
+              <option key={companyCode} value={companyCode}>{companyCode}</option>
+            ))}
+          </select>
+          <select
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by status"
@@ -306,7 +358,7 @@ export const AssignmentsList = () => {
           <div className="p-8 text-center text-muted-foreground">Loading assignments...</div>
         ) : filteredAssignments.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            {searchQuery || statusFilter !== "all" || propertyFilter !== "all"
+            {searchQuery || statusFilter !== "all" || propertyFilter !== "all" || departmentFilter !== "all" || companyCodeFilter !== "all"
               ? "No assignments match your filters"
               : "No assignments found. Create your first assignment!"}
           </div>

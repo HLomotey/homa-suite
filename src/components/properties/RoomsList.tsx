@@ -15,6 +15,7 @@ import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, useBulkDeleteRoo
 import { useProperties } from "@/hooks/property";
 import { useAssignments } from "@/hooks/assignment/useAssignment";
 import { FrontendAssignment } from "@/integration/supabase/types";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 
 
 
@@ -23,6 +24,8 @@ export const RoomsList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [propertyFilter, setPropertyFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [companyCodeFilter, setCompanyCodeFilter] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<FrontendRoom | undefined>();
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
@@ -44,6 +47,9 @@ export const RoomsList = () => {
   
   // Fetch assignments to calculate terminated assignments
   const { assignments, loading: assignmentsLoading, error: assignmentsError } = useAssignments();
+  
+  // Fetch external staff for department and company code filtering
+  const { externalStaff } = useExternalStaff();
   
   // Helper function to check if assignment should be terminated based on end date
   const getAssignmentStatus = (assignment: FrontendAssignment) => {
@@ -75,7 +81,41 @@ export const RoomsList = () => {
     console.log("RoomsList - Properties error:", propertiesError);
   }, [properties, propertiesLoading, propertiesError]);
 
-  // Filter rooms based on search query, status filter, and property filter
+  // Get unique departments and company codes from room occupants
+  const getOccupantInfo = (roomId: string) => {
+    const roomAssignments = assignments?.filter(assignment => 
+      assignment.roomId === roomId && 
+      getAssignmentStatus(assignment) === 'Active'
+    ) || [];
+    
+    return roomAssignments.map(assignment => {
+      const staffMember = externalStaff?.find(staff => staff.id === assignment.tenantId);
+      return {
+        department: staffMember?.["HOME DEPARTMENT"],
+        companyCode: staffMember?.["COMPANY CODE"]
+      };
+    });
+  };
+
+  // Get unique departments for filter
+  const uniqueDepartments = rooms ? Array.from(
+    new Set(
+      rooms.flatMap(room => 
+        getOccupantInfo(room.id).map(info => info.department)
+      ).filter(Boolean)
+    )
+  ).sort() : [];
+
+  // Get unique company codes for filter
+  const uniqueCompanyCodes = rooms ? Array.from(
+    new Set(
+      rooms.flatMap(room => 
+        getOccupantInfo(room.id).map(info => info.companyCode)
+      ).filter(Boolean)
+    )
+  ).sort() : [];
+
+  // Filter rooms based on search query, status filter, property filter, department filter, and company code filter
   const filteredRooms = rooms ? rooms.filter((room) => {
     const matchesSearch = 
       room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -90,7 +130,17 @@ export const RoomsList = () => {
       propertyFilter === "all" || 
       room.propertyId === propertyFilter;
     
-    return matchesSearch && matchesStatus && matchesProperty;
+    const occupantInfo = getOccupantInfo(room.id);
+    
+    const matchesDepartment = 
+      departmentFilter === "all" || 
+      occupantInfo.some(info => info.department === departmentFilter);
+    
+    const matchesCompanyCode = 
+      companyCodeFilter === "all" || 
+      occupantInfo.some(info => info.companyCode === companyCodeFilter);
+    
+    return matchesSearch && matchesStatus && matchesProperty && matchesDepartment && matchesCompanyCode;
   }) : [];
 
   // Get unique properties for the filter dropdown
@@ -290,6 +340,30 @@ export const RoomsList = () => {
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
+          <select
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            aria-label="Filter by occupant department"
+            title="Filter by occupant department"
+          >
+            <option value="all">All Departments</option>
+            {uniqueDepartments.map(department => (
+              <option key={department} value={department}>{department}</option>
+            ))}
+          </select>
+          <select
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
+            value={companyCodeFilter}
+            onChange={(e) => setCompanyCodeFilter(e.target.value)}
+            aria-label="Filter by occupant company"
+            title="Filter by occupant company"
+          >
+            <option value="all">All Companies</option>
+            {uniqueCompanyCodes.map(companyCode => (
+              <option key={companyCode} value={companyCode}>{companyCode}</option>
+            ))}
+          </select>
           <select
             className="bg-background border border-input rounded-md px-3 py-2 text-sm"
             value={statusFilter}
