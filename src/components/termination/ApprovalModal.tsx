@@ -3,18 +3,8 @@ import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
-// Import types and utilities - these should be available from the termination module
-type TerminationRequest = {
-  id: string;
-  employee_name: string;
-  effective_date: string;
-  last_work_date: string;
-  separation_type: string;
-  reason_for_leaving: string;
-  rehire_eligible: string;
-  status: string;
-  [key: string]: any;
-};
+// Import types and utilities from the termination hook
+import { TerminationRequest } from '../../hooks/useTermination';
 
 // Utility function for date formatting
 const formatDate = (date: string | Date) => {
@@ -100,12 +90,12 @@ export function ApprovalModal({
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Name</label>
                   <p className="text-sm text-gray-900">
-                    {termination.employee?.first_name} {termination.employee?.last_name}
+                    {termination.employee_name}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Email</label>
-                  <p className="text-sm text-gray-900">{termination.employee?.email}</p>
+                  <p className="text-sm text-gray-900">{termination.employee_email}</p>
                 </div>
               </div>
             </div>
