@@ -146,7 +146,7 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
                   )}
                 </div>
                 
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                <div className="flex items-center space-x-4 text-sm text-white mb-3">
                   <div className="flex items-center gap-1">
                     <Globe className="h-4 w-4" />
                     {participant.country}
@@ -168,8 +168,8 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Program Progress</span>
-                    <span className="text-sm text-gray-600">{participant.progress_percentage}%</span>
+                    <span className="text-sm font-medium text-white">Program Progress</span>
+                    <span className="text-sm text-white">{participant.progress_percentage}%</span>
                   </div>
                   <Progress value={participant.progress_percentage} className="h-2" />
                 </div>
@@ -200,34 +200,34 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
             {/* Key Dates Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <label className="block text-xs font-medium text-white uppercase tracking-wide">
                   DS-2019 Period
                 </label>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-white">
                   {formatDate(participant.ds2019_start_date)} - {formatDate(participant.ds2019_end_date)}
                 </p>
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <label className="block text-xs font-medium text-white uppercase tracking-wide">
                   Arrival Date
                 </label>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-white">
                   {formatDate(participant.arrival_date)}
                 </p>
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <label className="block text-xs font-medium text-white uppercase tracking-wide">
                   Employment Start
                 </label>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 text-sm text-white">
                   {formatDate(participant.actual_start_date)}
                 </p>
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <label className="block text-xs font-medium text-white uppercase tracking-wide">
                   Onboarding Status
                 </label>
                 <Badge className="bg-white text-gray-800 border border-gray-300" size="sm">
