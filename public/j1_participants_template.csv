@@ -1,0 +1,6 @@
+first_name,last_name,ds2019_start_date,ds2019_end_date,embassy_appointment_date,arrival_date,onboarding_status,estimated_start_date,actual_start_date,estimated_end_date,actual_end_date,move_out_date,completion_status,notes,employer,middle_name,country,gender,age
+John,Doe,2024-01-15,2024-12-15,2023-12-01,2024-01-20,completed,2024-02-01,2024-02-01,2024-11-30,,2024-12-20,in_progress,Exchange student from State University,Sunset Resort,Michael,United States,Male,22
+Maria,Rodriguez,2024-02-01,2025-01-01,2024-01-15,2024-02-05,scheduled,2024-02-15,,,,,in_progress,Hospitality program participant,Ocean View Hotel,,Spain,Female,21
+Ahmed,Hassan,2024-03-01,2025-02-01,2024-02-15,,pending,2024-03-15,,,,,in_progress,Engineering intern,Mountain Lodge,Ali,Egypt,Male,24
+Yuki,Tanaka,2024-04-01,2025-03-01,2024-03-15,,pending,2024-04-15,,,,,in_progress,Cultural exchange student,City Center Inn,,Japan,Female,20
+Pierre,Dubois,2024-05-01,2025-04-01,2024-04-15,,pending,2024-05-15,,,,,in_progress,Business administration trainee,Beachside Resort,Jean,France,Male,23

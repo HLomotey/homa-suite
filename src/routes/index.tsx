@@ -52,6 +52,13 @@ const TerminationModule = lazy(() =>
   }))
 );
 
+// Lazy load J-1 Tracking Module
+const J1TrackingModule = lazy(() =>
+  import("@/components/j1-tracking/J1TrackingModule").then((module) => ({
+    default: module.J1TrackingModule,
+  }))
+);
+
 // Lazy load HR components
 const HRRecruitment = lazy(() =>
   import("@/components/hr/HRRecruitment").then((module) => ({
@@ -336,6 +343,16 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <ModuleRouteGuard module="termination">
               <TerminationModule />
+            </ModuleRouteGuard>
+          </LazyWrapper>
+        ),
+      },
+      {
+        path: "j1-tracking",
+        element: (
+          <LazyWrapper>
+            <ModuleRouteGuard module="j1-tracking">
+              <J1TrackingModule />
             </ModuleRouteGuard>
           </LazyWrapper>
         ),
