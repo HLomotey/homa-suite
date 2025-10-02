@@ -430,6 +430,7 @@ export function TerminationModule() {
         onEdit={handleEditTermination}
         onApprove={handleApproveTermination}
         onMarkADPProcessed={handleMarkADPProcessed}
+        onDelete={handleDeleteTermination}
         loading={loading}
       />
 
