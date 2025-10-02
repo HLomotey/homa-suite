@@ -2,7 +2,8 @@
  * API functions for the complaints management module
  */
 
-import { supabase, supabaseAdmin } from "@/integration/supabase";
+import { supabase } from "@/integration/supabase";
+import { supabaseAdmin } from "@/integration/supabase/admin-client";
 import { Database } from "@/integration/supabase/types/database";
 import { 
   Complaint, 

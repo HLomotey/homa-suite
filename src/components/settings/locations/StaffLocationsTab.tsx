@@ -47,7 +47,7 @@ import {
   FrontendStaffLocation,
   StaffLocationFormData,
 } from "@/integration/supabase/types/staffLocation";
-import { supabaseAdmin } from "@/integration/supabase";
+import { supabaseAdmin } from "@/integration/supabase/admin-client";
 import {
   Dialog,
   DialogContent,

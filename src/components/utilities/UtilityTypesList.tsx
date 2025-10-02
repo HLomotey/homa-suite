@@ -5,6 +5,7 @@ import {
   useUpdateUtilityType,
   useDeleteUtilityType,
 } from "@/hooks/utility";
+import { testUtilityTypesAccess } from "@/hooks/utility/api";
 import { FrontendUtilityType } from "@/integration/supabase/types/utility";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +60,14 @@ export function UtilityTypesList() {
   const createUtilityType = useCreateUtilityType();
   const updateUtilityType = useUpdateUtilityType();
   const deleteUtilityType = useDeleteUtilityType();
+
+  // Debug logging to check utility types data
+  React.useEffect(() => {
+    console.log('UtilityTypesList - Raw data:', utilityTypes);
+    console.log('UtilityTypesList - Count:', utilityTypes?.length || 0);
+    console.log('UtilityTypesList - Error:', error);
+    console.log('UtilityTypesList - Loading:', isLoading);
+  }, [utilityTypes, error, isLoading]);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -165,9 +174,16 @@ export function UtilityTypesList() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
+        <div className="mb-4 flex gap-2">
           <Button onClick={handleCreateDialogOpen}>
             <Plus className="mr-2 h-4 w-4" /> Add Utility Type
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => testUtilityTypesAccess()}
+            className="text-xs"
+          >
+            🔍 Test DB Access
           </Button>
         </div>
 

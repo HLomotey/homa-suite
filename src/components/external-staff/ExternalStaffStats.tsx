@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StaffStats } from "@/hooks/external-staff/useExternalStaff";
 import { Users, UserCheck, UserX, Calendar, Building2 } from "lucide-react";
+import styles from "./ExternalStaffStats.module.css";
 
 interface ExternalStaffStatsProps {
   stats: StaffStats;
@@ -213,9 +214,8 @@ const DepartmentCard: React.FC<DepartmentCardProps> = ({
       {/* Progress bar */}
       <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
         <div
-          className={`h-1.5 rounded-full transition-all duration-300 ${isSelected ? 'bg-blue-400' : isAllCard ? 'bg-green-400' : 'bg-gray-500'
+          className={`${styles.progressBar} ${styles[`width${Math.min(percentage, 100)}`]} ${isSelected ? 'bg-blue-400' : isAllCard ? 'bg-green-400' : 'bg-gray-500'
             }`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
     </div>

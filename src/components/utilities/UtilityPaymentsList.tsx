@@ -39,24 +39,29 @@ import { useBillingPeriods } from "@/hooks/utility/useBillingPeriod";
 import { useProperties } from "@/hooks/property";
 import { useUtilityTypes } from "@/hooks/utility";
 
-// Bill Form Data interface
-interface BillFormData {
-  propertyId: string;
+// Utility Type Selection interface
+interface UtilityTypeSelection {
   utilityTypeId: string;
+  selected: boolean;
+  amount: number;
+}
+
+// Bill Form Data interface for multiple utility types
+interface MultiBillFormData {
+  propertyId: string;
   billingPeriodId: string;
   billingDate: string;
-  billingAmount: number;
   notes: string;
+  utilityTypes: UtilityTypeSelection[];
 }
 
 // Default form data
-const defaultFormData: BillFormData = {
+const defaultMultiFormData: MultiBillFormData = {
   propertyId: "",
-  utilityTypeId: "",
   billingPeriodId: "",
   billingDate: format(new Date(), "yyyy-MM-dd"),
-  billingAmount: 0,
   notes: "",
+  utilityTypes: [],
 };
 
 // Utility Payments List Component Props
@@ -89,6 +94,21 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     }
   }, [apiError]);
 
+  // Debug utility types loading
+  useEffect(() => {
+    if (utilityTypes) {
+      console.log('Utility types loaded:', utilityTypes.length, 'total,', utilityTypes.filter(t => t.isActive).length, 'active');
+      console.log('All utility types with status:');
+      utilityTypes.forEach(type => {
+        console.log(`- ${type.name}: ${type.isActive ? 'ACTIVE' : 'INACTIVE'}`);
+      });
+      console.log('Active utility types that will show in form:');
+      utilityTypes.filter(t => t.isActive).forEach(type => {
+        console.log(`- ${type.name}`);
+      });
+    }
+  }, [utilityTypes]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
@@ -97,28 +117,75 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<FrontendUtilitySetup | null>(null);
-  const [formData, setFormData] = useState<BillFormData>(defaultFormData);
+  const [formData, setFormData] = useState<MultiBillFormData>(defaultMultiFormData);
   
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === "billingAmount" ? parseFloat(value) : value
+      [name]: value
+    }));
+  };
+
+  // Handle property selection and initialize utility types
+  const handlePropertyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const propertyId = e.target.value;
+    
+    // Initialize utility types when property is selected (temporarily showing ALL types for debugging)
+    console.log('🔍 DEBUG: All utility types before filtering:', utilityTypes);
+    const activeUtilityTypes = utilityTypes?.filter(type => type.isActive) || [];
+    console.log('🔍 DEBUG: Active utility types after filtering:', activeUtilityTypes);
+    console.log('🔍 DEBUG: Filtered out utility types:', utilityTypes?.filter(type => !type.isActive) || []);
+    
+    // TEMPORARY: Show all utility types regardless of active status
+    const allUtilityTypes = utilityTypes || [];
+    const initialUtilityTypes = allUtilityTypes.map(type => ({
+      utilityTypeId: type.id,
+      selected: false,
+      amount: 0
+    }));
+    
+    console.log('🔍 DEBUG: Initial utility types for form:', initialUtilityTypes);
+    
+    setFormData(prev => ({
+      ...prev,
+      propertyId,
+      utilityTypes: initialUtilityTypes
+    }));
+  };
+
+  // Handle utility type checkbox changes
+  const handleUtilityTypeChange = (utilityTypeId: string, field: 'selected' | 'amount', value: boolean | number) => {
+    setFormData(prev => ({
+      ...prev,
+      utilityTypes: prev.utilityTypes.map(ut => 
+        ut.utilityTypeId === utilityTypeId 
+          ? { ...ut, [field]: value }
+          : ut
+      )
     }));
   };
   
   // Handle opening edit dialog
   const handleEditDialogOpen = (bill: FrontendUtilitySetup) => {
     setSelectedBill(bill);
-    setFormData({
+    // For edit mode, we'll use the old single-bill form data structure
+    // This is a temporary solution - ideally we'd have a separate edit form
+    // TEMPORARY: Show all utility types for edit mode (debugging)
+    const allUtilityTypes = utilityTypes || [];
+    const editFormData = {
       propertyId: bill.propertyId,
-      utilityTypeId: bill.utilityTypeId,
       billingPeriodId: bill.billingPeriodId || "",
       billingDate: bill.billingDate || format(new Date(), "yyyy-MM-dd"),
-      billingAmount: bill.billingAmount || 0,
-      notes: bill.notes || ""
-    });
+      notes: bill.notes || "",
+      utilityTypes: allUtilityTypes.map(type => ({
+        utilityTypeId: type.id,
+        selected: type.id === bill.utilityTypeId,
+        amount: type.id === bill.utilityTypeId ? (bill.billingAmount || 0) : 0
+      }))
+    };
+    setFormData(editFormData);
     setIsEditDialogOpen(true);
   };
   
@@ -149,42 +216,57 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     });
   }, [utilityBills, properties, utilityTypes, searchQuery, statusFilter]);
 
-  // Handle form submission for creating a new bill
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  // Handle form submission for creating multiple bills
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.propertyId || !formData.utilityTypeId || !formData.billingPeriodId || !formData.billingDate) {
+    if (!formData.propertyId || !formData.billingPeriodId || !formData.billingDate) {
       toast.error("Please fill in all required fields");
       return;
     }
     
-    // Create new bill
-    createBill.mutate({
-      ...formData,
-      isActive: true,
-      meterNumber: null,
-      accountNumber: null,
-      providerName: null,
-      providerContact: null
-    }, {
-      onSuccess: () => {
-        // Reset form and close dialog
-        setFormData({
-          propertyId: "",
-          utilityTypeId: "",
-          billingPeriodId: "",
-          billingDate: "",
-          billingAmount: 0,
-          notes: "",
-        });
-        setIsDialogOpen(false);
-        toast.success("Bill added successfully");
-      },
-      onError: (error: Error) => {
-        toast.error(`Error adding bill: ${error.message}`);
-      }
-    });
+    // Get selected utility types with amounts
+    const selectedUtilities = formData.utilityTypes.filter(ut => ut.selected && ut.amount > 0);
+    
+    if (selectedUtilities.length === 0) {
+      toast.error("Please select at least one utility type with an amount");
+      return;
+    }
+    
+    try {
+      // Create bills for each selected utility type
+      const billPromises = selectedUtilities.map(utility => 
+        new Promise((resolve, reject) => {
+          createBill.mutate({
+            propertyId: formData.propertyId,
+            utilityTypeId: utility.utilityTypeId,
+            billingPeriodId: formData.billingPeriodId,
+            billingDate: formData.billingDate,
+            billingAmount: utility.amount,
+            notes: formData.notes,
+            isActive: true,
+            meterNumber: null,
+            accountNumber: null,
+            providerName: null,
+            providerContact: null
+          }, {
+            onSuccess: resolve,
+            onError: reject
+          });
+        })
+      );
+      
+      await Promise.all(billPromises);
+      
+      // Reset form and close dialog
+      setFormData(defaultMultiFormData);
+      setIsDialogOpen(false);
+      toast.success(`${selectedUtilities.length} utility bill(s) added successfully`);
+      
+    } catch (error) {
+      toast.error(`Error adding bills: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
   
   // Handle form submission for editing an existing bill
@@ -192,8 +274,15 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.propertyId || !formData.utilityTypeId || !formData.billingPeriodId || !formData.billingDate) {
+    if (!formData.propertyId || !formData.billingPeriodId || !formData.billingDate) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    // Get the selected utility type for edit mode
+    const selectedUtility = formData.utilityTypes.find(ut => ut.selected);
+    if (!selectedUtility || selectedUtility.amount <= 0) {
+      toast.error("Please select a utility type with an amount");
       return;
     }
     
@@ -203,10 +292,10 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
         id: selectedBill.id,
         billData: {
           propertyId: formData.propertyId,
-          utilityTypeId: formData.utilityTypeId,
+          utilityTypeId: selectedUtility.utilityTypeId,
           billingPeriodId: formData.billingPeriodId,
           billingDate: formData.billingDate,
-          billingAmount: formData.billingAmount,
+          billingAmount: selectedUtility.amount,
           notes: formData.notes,
           isActive: true,
           meterNumber: selectedBill.meterNumber,
@@ -446,7 +535,7 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
               id="propertyId"
               name="propertyId"
               value={formData.propertyId}
-              onChange={handleInputChange}
+              onChange={handlePropertyChange}
               className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
               required
               aria-label="Select Property"
@@ -461,87 +550,143 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
             </select>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="utilityTypeId" className="text-white">Utility Type *</Label>
-            <select
-              id="utilityTypeId"
-              name="utilityTypeId"
-              value={formData.utilityTypeId}
-              onChange={handleInputChange}
-              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
-              required
-              aria-label="Select Utility Type"
-              title="Select Utility Type"
-            >
-              <option value="">Select a utility type</option>
-              {utilityTypes?.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="billingPeriodId" className="text-white">Billing Period *</Label>
-            <select
-              id="billingPeriodId"
-              name="billingPeriodId"
-              value={formData.billingPeriodId}
-              onChange={handleInputChange}
-              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
-              required
-              aria-label="Select Billing Period"
-              title="Select Billing Period"
-            >
-              <option value="">Select a billing period</option>
-              {billingPeriods?.map((period) => (
-                <option key={period.id} value={period.id}>
-                  {period.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="billingDate" className="text-white">Billing Date *</Label>
-            <Input
-              id="billingDate"
-              name="billingDate"
-              type="date"
-              value={formData.billingDate}
-              onChange={handleInputChange}
-              className="bg-gray-800 border-gray-600 text-white"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="billingAmount" className="text-white">Amount *</Label>
-            <Input
-              id="billingAmount"
-              name="billingAmount"
-              type="number"
-              step="0.01"
-              value={formData.billingAmount}
-              onChange={handleInputChange}
-              placeholder="0.00"
-              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-white">Notes</Label>
-            <Input
-              id="notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
-              placeholder="Optional notes"
-              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-            />
-          </div>
+          {/* Show utility types as checkboxes only after property is selected */}
+          {formData.propertyId && (
+            <>
+              <div className="space-y-4">
+                <Label className="text-white text-lg font-semibold">Utility Types *</Label>
+                <p className="text-sm text-gray-400">Select the utility types and enter amounts for this billing period</p>
+                
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {formData.utilityTypes.length === 0 ? (
+                    <div className="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                      <p className="text-yellow-200 text-sm">
+                        No active utility types found. Please create utility types first in the Utility Types management section.
+                      </p>
+                    </div>
+                  ) : (
+                    formData.utilityTypes.map((utilityType) => {
+                      const typeInfo = utilityTypes?.find(t => t.id === utilityType.utilityTypeId);
+                      if (!typeInfo) return null;
+                      
+                      return (
+                        <div key={utilityType.utilityTypeId} className="flex items-center space-x-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <input
+                              type="checkbox"
+                              id={`utility-${utilityType.utilityTypeId}`}
+                              checked={utilityType.selected}
+                              onChange={(e) => handleUtilityTypeChange(utilityType.utilityTypeId, 'selected', e.target.checked)}
+                              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                            />
+                            <Label htmlFor={`utility-${utilityType.utilityTypeId}`} className="text-white font-medium cursor-pointer">
+                              {typeInfo.name}
+                            </Label>
+                            {/* Icon placeholder - utility types don't have icons in current schema */}
+                            <Zap className="h-4 w-4 text-gray-400" />
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-400 text-sm">$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={utilityType.amount || ''}
+                              onChange={(e) => handleUtilityTypeChange(utilityType.utilityTypeId, 'amount', parseFloat(e.target.value) || 0)}
+                              placeholder="0.00"
+                              disabled={!utilityType.selected}
+                              className={`w-24 bg-gray-800 border-gray-600 text-white placeholder:text-gray-500 ${
+                                !utilityType.selected ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                
+                {/* Summary of selected utilities */}
+                {formData.utilityTypes.some(ut => ut.selected) && (
+                  <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                    <p className="text-blue-200 text-sm font-medium mb-2">Selected Utilities:</p>
+                    <div className="space-y-1">
+                      {formData.utilityTypes
+                        .filter(ut => ut.selected && ut.amount > 0)
+                        .map(ut => {
+                          const typeInfo = utilityTypes?.find(t => t.id === ut.utilityTypeId);
+                          return (
+                            <div key={ut.utilityTypeId} className="flex justify-between text-sm">
+                              <span className="text-blue-100">{typeInfo?.name}</span>
+                              <span className="text-blue-100 font-medium">${ut.amount.toFixed(2)}</span>
+                            </div>
+                          );
+                        })}
+                      <div className="border-t border-blue-500/30 pt-2 mt-2">
+                        <div className="flex justify-between text-sm font-semibold">
+                          <span className="text-blue-100">Total:</span>
+                          <span className="text-blue-100">
+                            ${formData.utilityTypes
+                              .filter(ut => ut.selected)
+                              .reduce((sum, ut) => sum + (ut.amount || 0), 0)
+                              .toFixed(2)
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="billingPeriodId" className="text-white">Billing Period *</Label>
+                <select
+                  id="billingPeriodId"
+                  name="billingPeriodId"
+                  value={formData.billingPeriodId}
+                  onChange={handleInputChange}
+                  className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+                  required
+                  aria-label="Select Billing Period"
+                  title="Select Billing Period"
+                >
+                  <option value="">Select a billing period</option>
+                  {billingPeriods?.map((period) => (
+                    <option key={period.id} value={period.id}>
+                      {period.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="billingDate" className="text-white">Billing Date *</Label>
+                <Input
+                  id="billingDate"
+                  name="billingDate"
+                  type="date"
+                  value={formData.billingDate}
+                  onChange={handleInputChange}
+                  className="bg-gray-800 border-gray-600 text-white"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-white">Notes</Label>
+                <Input
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  placeholder="Optional notes for all bills"
+                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                />
+              </div>
+            </>
+          )}
         </div>
       </SlideInFormWithActions>
 
@@ -576,7 +721,7 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
               id="edit-propertyId"
               name="propertyId"
               value={formData.propertyId}
-              onChange={handleInputChange}
+              onChange={handlePropertyChange}
               className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
               required
               aria-label="Select Property"
@@ -591,87 +736,102 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
             </select>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="edit-utilityTypeId" className="text-white">Utility Type *</Label>
-            <select
-              id="edit-utilityTypeId"
-              name="utilityTypeId"
-              value={formData.utilityTypeId}
-              onChange={handleInputChange}
-              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
-              required
-              aria-label="Select Utility Type"
-              title="Select Utility Type"
-            >
-              <option value="">Select a utility type</option>
-              {utilityTypes?.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="edit-billingPeriodId" className="text-white">Billing Period *</Label>
-            <select
-              id="edit-billingPeriodId"
-              name="billingPeriodId"
-              value={formData.billingPeriodId}
-              onChange={handleInputChange}
-              className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
-              required
-              aria-label="Select Billing Period"
-              title="Select Billing Period"
-            >
-              <option value="">Select a billing period</option>
-              {billingPeriods?.map((period) => (
-                <option key={period.id} value={period.id}>
-                  {period.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="edit-billingDate" className="text-white">Billing Date *</Label>
-            <Input
-              id="edit-billingDate"
-              name="billingDate"
-              type="date"
-              value={formData.billingDate}
-              onChange={handleInputChange}
-              className="bg-gray-800 border-gray-600 text-white"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="edit-billingAmount" className="text-white">Amount *</Label>
-            <Input
-              id="edit-billingAmount"
-              name="billingAmount"
-              type="number"
-              step="0.01"
-              value={formData.billingAmount}
-              onChange={handleInputChange}
-              placeholder="0.00"
-              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="edit-notes" className="text-white">Notes</Label>
-            <Input
-              id="edit-notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
-              placeholder="Optional notes"
-              className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-            />
-          </div>
+          {/* Show utility types as checkboxes for edit mode */}
+          {formData.propertyId && (
+            <>
+              <div className="space-y-4">
+                <Label className="text-white text-lg font-semibold">Utility Type *</Label>
+                <p className="text-sm text-gray-400">Select the utility type and enter amount</p>
+                
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {formData.utilityTypes.map((utilityType) => {
+                    const typeInfo = utilityTypes?.find(t => t.id === utilityType.utilityTypeId);
+                    if (!typeInfo) return null;
+                    
+                    return (
+                      <div key={utilityType.utilityTypeId} className="flex items-center space-x-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <input
+                            type="checkbox"
+                            id={`edit-utility-${utilityType.utilityTypeId}`}
+                            checked={utilityType.selected}
+                            onChange={(e) => handleUtilityTypeChange(utilityType.utilityTypeId, 'selected', e.target.checked)}
+                            className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                          <Label htmlFor={`edit-utility-${utilityType.utilityTypeId}`} className="text-white font-medium cursor-pointer">
+                            {typeInfo.name}
+                          </Label>
+                          <Zap className="h-4 w-4 text-gray-400" />
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <span className="text-gray-400 text-sm">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={utilityType.amount || ''}
+                            onChange={(e) => handleUtilityTypeChange(utilityType.utilityTypeId, 'amount', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            disabled={!utilityType.selected}
+                            className={`w-24 bg-gray-800 border-gray-600 text-white placeholder:text-gray-500 ${
+                              !utilityType.selected ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-billingPeriodId" className="text-white">Billing Period *</Label>
+                <select
+                  id="edit-billingPeriodId"
+                  name="billingPeriodId"
+                  value={formData.billingPeriodId}
+                  onChange={handleInputChange}
+                  className="w-full flex h-10 rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm"
+                  required
+                  aria-label="Select Billing Period"
+                  title="Select Billing Period"
+                >
+                  <option value="">Select a billing period</option>
+                  {billingPeriods?.map((period) => (
+                    <option key={period.id} value={period.id}>
+                      {period.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-billingDate" className="text-white">Billing Date *</Label>
+                <Input
+                  id="edit-billingDate"
+                  name="billingDate"
+                  type="date"
+                  value={formData.billingDate}
+                  onChange={handleInputChange}
+                  className="bg-gray-800 border-gray-600 text-white"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes" className="text-white">Notes</Label>
+                <Input
+                  id="edit-notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  placeholder="Optional notes"
+                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                />
+              </div>
+            </>
+          )}
         </div>
       </SlideInFormWithActions>
 
