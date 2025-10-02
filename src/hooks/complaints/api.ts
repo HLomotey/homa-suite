@@ -1,10 +1,10 @@
 /**
  * API functions for the complaints management module
+ * @ts-nocheck - Suppressing TypeScript errors due to database schema type mismatches
  */
+// @ts-nocheck
 
-
-// @ts-nocheck - Bypassing TypeScript errors due to corrupted database types
-import { supabase, supabaseAdmin } from "@/integration/supabase";
+import { supabase } from "@/integration/supabase";
 import { Database } from "@/integration/supabase/types/database";
 import { 
   Complaint, 
@@ -76,7 +76,7 @@ export const mapDatabaseComplaintToFrontend = (
       ? complaint.property?.title 
       : complaint.vehicle ? `${complaint.vehicle.make} ${complaint.vehicle.model}`.trim() : undefined,
     createdByName: complaint.created_by_profile?.full_name,
-    assignedToName: complaint.assigned_to_profile?.full_name || 'Paul Amoateng Mensah',
+    assignedToName: complaint.assigned_to_profile?.full_name,
     escalatedToName: complaint.escalated_to_profile?.full_name,
     
     // UI helpers
@@ -105,7 +105,7 @@ export const getComplaints = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name, email),
+        assigned_to_profile:profiles!assigned_to(full_name),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -198,7 +198,7 @@ export const getComplaintById = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name, email),
+        assigned_to_profile:profiles!assigned_to(full_name),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -247,78 +247,12 @@ export const createComplaint = async (
     let dueDate = null;
     if (slaConfig) {
       const now = new Date();
-      // @ts-ignore - TypeScript database types issue
       const dueDateTime = new Date(now.getTime() + slaConfig.hours_to_resolve * 60 * 60 * 1000);
       dueDate = dueDateTime.toISOString();
     }
     
-    // Convert external staff ID to profile ID for RLS compatibility
+    // Find routing rule to auto-assign
     let assignedTo = complaint.assigned_to;
-    
-    if (assignedTo) {
-      console.log(`Manager assigned from form: ${assignedTo}`);
-      
-      // Get external staff details and find corresponding profile
-      const { data: externalStaff } = await supabase
-        .from("external_staff")
-        .select('"PAYROLL FIRST NAME", "PAYROLL LAST NAME", "PERSONAL E-MAIL", "WORK E-MAIL"')
-        .eq("id", assignedTo)
-        .maybeSingle();
-      
-      if (externalStaff) {
-        const managerName = `${externalStaff["PAYROLL FIRST NAME"] || ''} ${externalStaff["PAYROLL LAST NAME"] || ''}`.trim();
-        console.log(`External staff manager found: ${managerName}`);
-        
-        // Find the profile that matches this external staff member's email
-        const personalEmail = externalStaff["PERSONAL E-MAIL"];
-        const workEmail = externalStaff["WORK E-MAIL"];
-        
-        let profileId = null;
-        
-        // Try personal email first
-        if (personalEmail) {
-          const { data: profileByPersonal } = await supabase
-            .from("profiles")
-            .select("id")
-            .ilike("email", personalEmail.trim())
-            .maybeSingle();
-          
-          if (profileByPersonal) {
-            profileId = profileByPersonal.id;
-            console.log(`Found profile by personal email: ${profileId}`);
-          }
-        }
-        
-        // Try work email if personal didn't work
-        if (!profileId && workEmail) {
-          const { data: profileByWork } = await supabase
-            .from("profiles")
-            .select("id")
-            .ilike("email", workEmail.trim())
-            .maybeSingle();
-          
-          if (profileByWork) {
-            profileId = profileByWork.id;
-            console.log(`Found profile by work email: ${profileId}`);
-          }
-        }
-        
-        if (profileId) {
-          assignedTo = profileId;
-          console.log(`Converted external staff to profile ID: ${assignedTo}`);
-        } else {
-          console.log(`No profile found for manager emails, setting to null`);
-          assignedTo = null;
-        }
-      } else {
-        console.log(`External staff ID not found, setting to null`);
-        assignedTo = null;
-      }
-    } else {
-      console.log("No manager assigned from form");
-    }
-    
-    // Step 3: If still no valid assignment, try routing rules
     if (!assignedTo) {
       const { data: routingRule } = await supabase
         .from("complaint_routing_rules")
@@ -331,37 +265,12 @@ export const createComplaint = async (
         .maybeSingle();
       
       if (routingRule) {
-        // Validate routing rule assignment as well
-        const { data: routingUserExists } = await supabase
-          .from("users")
-          .select("id")
-          // @ts-ignore - TypeScript database types issue
-          .eq("id", routingRule.assigned_to)
-          .maybeSingle();
-        
-        if (routingUserExists) {
-          // @ts-ignore - TypeScript database types issue
-          assignedTo = routingRule.assigned_to;
-          console.log(`Assigned via routing rule: ${assignedTo}`);
-        } else {
-          // @ts-ignore - TypeScript database types issue
-          console.warn(`Routing rule assigned user ${routingRule.assigned_to} does not exist in users table.`);
-        }
+        assignedTo = routingRule.assigned_to;
       }
     }
     
-    // No hardcoded fallback - let the system handle unassigned complaints
-    
-    // Final result logging
-    if (assignedTo) {
-      console.log(`Final assignment: ${assignedTo}`);
-    } else {
-      console.log("No valid user found for assignment - complaint will be unassigned");
-    }
-    
     // Insert the complaint
-    // @ts-ignore - TypeScript database types issue
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("complaints")
       .insert({
         ...complaint,
@@ -376,7 +285,7 @@ export const createComplaint = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name, email),
+        assigned_to_profile:profiles!assigned_to(full_name),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model)
@@ -389,8 +298,7 @@ export const createComplaint = async (
     }
 
     // Create history entry for complaint creation
-    // @ts-ignore - TypeScript database types issue
-    await supabaseAdmin
+    await supabase
       .from("complaint_history")
       .insert({
         complaint_id: complaintId,
@@ -399,7 +307,6 @@ export const createComplaint = async (
         new_value: "new"
       });
 
-    // @ts-ignore - TypeScript database types issue
     const frontendComplaint = mapDatabaseComplaintToFrontend({
       ...data,
       complaint_comments_count: 0,
@@ -447,7 +354,7 @@ export const updateComplaint = async (
     
     // Update the complaint - first do the update without select to avoid complex joins
     console.log('📝 Updating complaint in database...');
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabase
       .from("complaints")
       .update(updates)
       .eq("id", id);
@@ -460,14 +367,14 @@ export const updateComplaint = async (
     console.log('✅ Database update successful, fetching updated data...');
     
     // Then fetch the updated complaint with all relations
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("complaints")
       .select(`
         *,
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name, email),
+        assigned_to_profile:profiles!assigned_to(full_name),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -527,7 +434,7 @@ export const updateComplaint = async (
     
     // Insert history entries if any
     if (historyEntries.length > 0) {
-      const { error: historyError } = await supabaseAdmin
+      const { error: historyError } = await supabase
         .from("complaint_history")
         .insert(historyEntries);
       
@@ -556,12 +463,12 @@ export const deleteComplaint = async (
 ): Promise<{ success: boolean; error: PostgrestError | null }> => {
   try {
     // Delete related records first (comments, attachments, history)
-    await supabaseAdmin.from("complaint_comments").delete().eq("complaint_id", id);
-    await supabaseAdmin.from("complaint_attachments").delete().eq("complaint_id", id);
-    await supabaseAdmin.from("complaint_history").delete().eq("complaint_id", id);
+    await supabase.from("complaint_comments").delete().eq("complaint_id", id);
+    await supabase.from("complaint_attachments").delete().eq("complaint_id", id);
+    await supabase.from("complaint_history").delete().eq("complaint_id", id);
     
     // Delete the complaint
-    const { error } = await supabaseAdmin.from("complaints").delete().eq("id", id);
+    const { error } = await supabase.from("complaints").delete().eq("id", id);
 
     if (error) {
       console.error(`Error deleting complaint with ID ${id}:`, error);
@@ -609,7 +516,7 @@ export const createComplaintCategory = async (
   category: Omit<ComplaintCategory, "id" | "created_at" | "updated_at">
 ): Promise<{ data: ComplaintCategory | null; error: PostgrestError | null }> => {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("complaint_categories")
       .insert(category)
       .select()
@@ -686,7 +593,7 @@ export const addComplaintComment = async (
   comment: Omit<ComplaintComment, "id" | "created_at" | "updated_at">
 ): Promise<{ data: ComplaintComment | null; error: PostgrestError | null }> => {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("complaint_comments")
       .insert(comment)
       .select(`
@@ -701,7 +608,7 @@ export const addComplaintComment = async (
     }
 
     // Create history entry for comment
-    await supabaseAdmin
+    await supabase
       .from("complaint_history")
       .insert({
         complaint_id: comment.complaint_id,
@@ -765,7 +672,7 @@ export const uploadComplaintAttachment = async (
   try {
     // Upload file to storage
     const fileName = `${complaintId}/${uuidv4()}-${file.name}`;
-    const { data: fileData, error: uploadError } = await supabaseAdmin
+    const { data: fileData, error: uploadError } = await supabase
       .storage
       .from("complaint-attachments")
       .upload(fileName, file);
@@ -783,7 +690,7 @@ export const uploadComplaintAttachment = async (
     }
 
     // Get public URL for the file
-    const { data: publicUrlData } = supabaseAdmin
+    const { data: publicUrlData } = supabase
       .storage
       .from("complaint-attachments")
       .getPublicUrl(fileName);
@@ -799,7 +706,7 @@ export const uploadComplaintAttachment = async (
       is_internal: isInternal
     };
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("complaint_attachments")
       .insert(attachmentData)
       .select()
@@ -811,7 +718,7 @@ export const uploadComplaintAttachment = async (
     }
 
     // Create history entry for attachment
-    await supabaseAdmin
+    await supabase
       .from("complaint_history")
       .insert({
         complaint_id: complaintId,
@@ -883,7 +790,7 @@ export const checkAndUpdateSLAs = async (): Promise<{ updated: number; error: Po
     
     // Update breached complaints
     const breachedIds = breachedComplaints.map(c => c.id);
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabase
       .from("complaints")
       .update({ sla_breach: true })
       .in("id", breachedIds);
@@ -901,7 +808,7 @@ export const checkAndUpdateSLAs = async (): Promise<{ updated: number; error: Po
       old_value: complaint.due_date
     }));
     
-    await supabaseAdmin
+    await supabase
       .from("complaint_history")
       .insert(historyEntries);
     
@@ -917,13 +824,13 @@ export const checkAndUpdateSLAs = async (): Promise<{ updated: number; error: Po
         .maybeSingle();
       
       if (slaConfig?.escalation_user_id) {
-        await supabaseAdmin
+        await supabase
           .from("complaints")
           .update({ escalated_to: slaConfig.escalation_user_id })
           .eq("id", complaint.id);
         
         // Create history entry for escalation
-        await supabaseAdmin
+        await supabase
           .from("complaint_history")
           .insert({
             complaint_id: complaint.id,

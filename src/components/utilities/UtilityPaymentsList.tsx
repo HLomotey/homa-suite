@@ -94,20 +94,6 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     }
   }, [apiError]);
 
-  // Debug utility types loading
-  useEffect(() => {
-    if (utilityTypes) {
-      console.log('Utility types loaded:', utilityTypes.length, 'total,', utilityTypes.filter(t => t.isActive).length, 'active');
-      console.log('All utility types with status:');
-      utilityTypes.forEach(type => {
-        console.log(`- ${type.name}: ${type.isActive ? 'ACTIVE' : 'INACTIVE'}`);
-      });
-      console.log('Active utility types that will show in form:');
-      utilityTypes.filter(t => t.isActive).forEach(type => {
-        console.log(`- ${type.name}`);
-      });
-    }
-  }, [utilityTypes]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -132,21 +118,13 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
   const handlePropertyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const propertyId = e.target.value;
     
-    // Initialize utility types when property is selected (temporarily showing ALL types for debugging)
-    console.log('🔍 DEBUG: All utility types before filtering:', utilityTypes);
+    // Initialize utility types when property is selected (only active ones)
     const activeUtilityTypes = utilityTypes?.filter(type => type.isActive) || [];
-    console.log('🔍 DEBUG: Active utility types after filtering:', activeUtilityTypes);
-    console.log('🔍 DEBUG: Filtered out utility types:', utilityTypes?.filter(type => !type.isActive) || []);
-    
-    // TEMPORARY: Show all utility types regardless of active status
-    const allUtilityTypes = utilityTypes || [];
-    const initialUtilityTypes = allUtilityTypes.map(type => ({
+    const initialUtilityTypes = activeUtilityTypes.map(type => ({
       utilityTypeId: type.id,
       selected: false,
       amount: 0
     }));
-    
-    console.log('🔍 DEBUG: Initial utility types for form:', initialUtilityTypes);
     
     setFormData(prev => ({
       ...prev,
@@ -172,14 +150,14 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     setSelectedBill(bill);
     // For edit mode, we'll use the old single-bill form data structure
     // This is a temporary solution - ideally we'd have a separate edit form
-    // TEMPORARY: Show all utility types for edit mode (debugging)
-    const allUtilityTypes = utilityTypes || [];
+    // Filter to only active utility types for edit mode
+    const activeUtilityTypes = utilityTypes?.filter(type => type.isActive) || [];
     const editFormData = {
       propertyId: bill.propertyId,
       billingPeriodId: bill.billingPeriodId || "",
       billingDate: bill.billingDate || format(new Date(), "yyyy-MM-dd"),
       notes: bill.notes || "",
-      utilityTypes: allUtilityTypes.map(type => ({
+      utilityTypes: activeUtilityTypes.map(type => ({
         utilityTypeId: type.id,
         selected: type.id === bill.utilityTypeId,
         amount: type.id === bill.utilityTypeId ? (bill.billingAmount || 0) : 0
