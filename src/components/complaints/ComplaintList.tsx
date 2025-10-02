@@ -49,11 +49,11 @@ import { ComplaintForm } from "./ComplaintForm";
 
 // Status badge colors
 const statusColors: Record<ComplaintStatus, string> = {
-  new: "bg-blue-500",
+  open: "bg-blue-500",
   in_progress: "bg-yellow-500",
-  waiting_on_user: "bg-purple-500",
   resolved: "bg-green-500",
   closed: "bg-gray-500",
+  escalated: "bg-red-500",
 };
 
 // Extended status colors for UI display (includes non-standard statuses)
@@ -82,7 +82,7 @@ interface ComplaintListProps {
 }
 
 export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps) {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   
   // Sheet state for slide-in form
@@ -120,9 +120,9 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
     
     // If user is not an admin, only show their complaints
     // Check for admin role in user metadata
-    const isAdmin = user?.app_metadata?.role === 'admin' || user?.user_metadata?.isAdmin;
-    if (user && !isAdmin) {
-      filters.createdBy = user.id;
+    const isAdmin = currentUser?.user?.app_metadata?.role === 'admin' || currentUser?.user?.user_metadata?.isAdmin;
+    if (currentUser && !isAdmin) {
+      filters.createdBy = currentUser.user.id;
     }
     
     return filters;
@@ -297,12 +297,11 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="waiting_on_user">Waiting on User</SelectItem>
                 <SelectItem value="resolved">Resolved</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="reopened">Reopened</SelectItem>
+                <SelectItem value="escalated">Escalated</SelectItem>
               </SelectContent>
             </Select>
             
@@ -358,6 +357,7 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
                   <TableHead>Priority</TableHead>
                   <TableHead>Asset</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Manager</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Due Date</TableHead>
                 </TableRow>
@@ -394,6 +394,9 @@ export function ComplaintList({ onCreateNew, onViewDetail }: ComplaintListProps)
                       </div>
                     </TableCell>
                     <TableCell>{complaint.categoryName}</TableCell>
+                    <TableCell>
+                      {complaint.assignedToName || 'Unassigned'}
+                    </TableCell>
                     <TableCell>
                       {complaint.createdAt ? format(new Date(complaint.createdAt), 'MMM d, yyyy') : 'N/A'}
                     </TableCell>

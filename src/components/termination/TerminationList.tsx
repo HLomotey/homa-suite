@@ -2,20 +2,8 @@ import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
-// Import types and utilities - these should be available from the termination module
-type TerminationRequest = {
-  id: string;
-  employee_name: string;
-  effective_date: string;
-  last_work_date: string;
-  separation_type: string;
-  reason_for_leaving: string;
-  rehire_eligible: string;
-  status: string;
-  manager_id?: string;
-  initiated_by?: string;
-  [key: string]: any;
-};
+// Import types and utilities from the termination hook
+import { TerminationRequest } from '../../hooks/useTermination';
 
 // Utility functions and constants
 const formatDate = (date: string | Date) => {
@@ -101,12 +89,12 @@ export function TerminationList({
     if (role === 'manager') {
       return isManager && 
              !termination.manager_approved_at && 
-             (termination.manager_id === currentUser?.user?.id || termination.initiated_by === currentUser?.user?.id);
+             (termination.manager_associate_id === currentUser?.user?.id || termination.initiated_by === currentUser?.user?.id);
     }
     if (role === 'hr') {
       return isHRUser && 
              !termination.hr_approved_at && 
-             termination.status === 'pending_approval';
+             termination.status === 'pending_hr_approval';
     }
     return false;
   };
@@ -168,7 +156,7 @@ export function TerminationList({
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {termination.employee?.first_name} {termination.employee?.last_name}
+                  {termination.employee_name}
                 </h3>
                 <Badge className={TERMINATION_STATUS_COLORS[termination.status]}>
                   {TERMINATION_STATUS_LABELS[termination.status]}
@@ -176,10 +164,10 @@ export function TerminationList({
                 {getUrgencyBadge(termination.effective_date)}
               </div>
               <p className="text-sm text-gray-600 mb-1">
-                {termination.employee?.email}
+                {termination.employee_email}
               </p>
               <p className="text-sm text-gray-500">
-                Initiated by: {termination.initiated_by_user?.first_name} {termination.initiated_by_user?.last_name}
+                Initiated by: {termination.initiated_by_name}
               </p>
             </div>
             

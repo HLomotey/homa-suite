@@ -16,6 +16,12 @@ function mapRowToFrontend(row: any): FrontendAssignment {
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? null,
     rentAmount: row.rent_amount ?? 0,
+    agreements: {
+      housing: row.housing_agreement ?? false,
+      transportation: row.transportation_agreement ?? false,
+      flight_agreement: row.flight_agreement ?? false,
+      bus_card: row.bus_card_agreement ?? false,
+    },
   } as FrontendAssignment;
 }
 
@@ -69,21 +75,28 @@ export function useCreateAssignment() {
     setError(null);
     try {
       const dbRow = {
-        tenant_id: payload.tenantId,
-        tenant_name: payload.tenantName,
-        property_id: payload.propertyId,
-        property_name: payload.propertyName,
-        room_id: payload.roomId,
-        room_name: payload.roomName,
-        status: payload.status,
-        start_date: payload.startDate,
-        end_date: payload.endDate,
-        rent_amount: payload.rentAmount,
+        tenant_id: payload.tenantId || null,
+        tenant_name: payload.tenantName || null,
+        property_id: payload.propertyId || null,
+        property_name: payload.propertyName || null,
+        room_id: payload.roomId || null,
+        room_name: payload.roomName || null,
+        status: payload.status || 'Pending',
+        start_date: payload.startDate && payload.startDate.trim() !== '' ? payload.startDate : null,
+        end_date: payload.endDate && payload.endDate.trim() !== '' ? payload.endDate : null,
+        rent_amount: payload.rentAmount || 0,
+        housing_agreement: payload.agreements?.housing || false,
+        transportation_agreement: payload.agreements?.transportation || false,
+        flight_agreement: payload.agreements?.flight_agreement || false,
+        bus_card_agreement: payload.agreements?.bus_card || false,
       };
 
       const { error } = await (supabase.from('assignments') as any)
         .insert(dbRow);
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
     } catch (err: any) {
       setError(err);
       throw err;
@@ -104,22 +117,29 @@ export function useUpdateAssignment() {
     setError(null);
     try {
       const dbRow = {
-        tenant_id: payload.tenantId,
-        tenant_name: payload.tenantName,
-        property_id: payload.propertyId,
-        property_name: payload.propertyName,
-        room_id: payload.roomId,
-        room_name: payload.roomName,
-        status: payload.status,
-        start_date: payload.startDate,
-        end_date: payload.endDate,
-        rent_amount: payload.rentAmount,
+        tenant_id: payload.tenantId || null,
+        tenant_name: payload.tenantName || null,
+        property_id: payload.propertyId || null,
+        property_name: payload.propertyName || null,
+        room_id: payload.roomId || null,
+        room_name: payload.roomName || null,
+        status: payload.status || 'Pending',
+        start_date: payload.startDate && payload.startDate.trim() !== '' ? payload.startDate : null,
+        end_date: payload.endDate && payload.endDate.trim() !== '' ? payload.endDate : null,
+        rent_amount: payload.rentAmount || 0,
+        housing_agreement: payload.agreements?.housing || false,
+        transportation_agreement: payload.agreements?.transportation || false,
+        flight_agreement: payload.agreements?.flight_agreement || false,
+        bus_card_agreement: payload.agreements?.bus_card || false,
       };
 
       const { error } = await (supabase.from('assignments') as any)
         .update(dbRow)
         .eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
     } catch (err: any) {
       setError(err);
       throw err;

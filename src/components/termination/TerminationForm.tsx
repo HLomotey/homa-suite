@@ -62,10 +62,7 @@ export function TerminationForm({
 
   // Debug logging
   console.log('Staff data count:', staffList?.length || 0);
-  console.log('Employee options count:', employeeOptions.length);
   if (staffError) console.log('Staff error:', staffError);
-
-
 
   // Submit termination request mutation
   const submitTerminationMutation = useSubmitTerminationRequest();
@@ -183,9 +180,6 @@ export function TerminationForm({
               <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Employee <span className="text-red-500">*</span>
               </Label>
-
-
-
               <CustomSelect
                 value={formData.staff_id}
                 onChange={(value) => handleInputChange('staff_id', value)}
