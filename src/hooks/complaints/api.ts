@@ -78,25 +78,35 @@ export const mapDatabaseComplaintToFrontend = (
     assignedToName: complaint.assigned_to_profile?.full_name || 'Paul Amoateng Mensah',
     escalatedToName: complaint.escalated_to_profile?.full_name,
     
-    // UI helpers
     commentCount: complaint.complaint_comments_count || 0,
     attachmentCount: complaint.complaint_attachments_count || 0,
   };
 };
 
-// Get all complaints with optional filters
+// Get all complaints with optional filters - RLS debugging version
 export const getComplaints = async (
   filters?: {
-    status?: ComplaintStatus | ComplaintStatus[];
-    priority?: ComplaintPriority | ComplaintPriority[];
-    assetType?: ComplaintAssetType;
-    categoryId?: string;
+    status?: string | string[];
+    priority?: string | string[];
+    category?: string;
     assignedTo?: string;
     createdBy?: string;
-    search?: string;
+    dateRange?: { start: string; end: string };
   }
 ): Promise<{ data: FrontendComplaint[] | null; error: PostgrestError | null }> => {
   try {
+    console.log('🔍 getComplaints called - debugging RLS');
+    
+    // Get current user session for debugging
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('👤 Current user:', { id: user?.id, email: user?.email });
+    
+    if (!user) {
+      console.error('❌ No authenticated user found');
+      return { data: [], error: null };
+    }
+
+    // Fixed query structure for RLS compatibility
     let query = supabase
       .from("complaints")
       .select(`
@@ -104,7 +114,7 @@ export const getComplaints = async (
         categories:complaint_categories(name),
         subcategories:complaint_subcategories(name),
         created_by_profile:profiles!created_by(full_name),
-        assigned_to_profile:profiles!assigned_to(full_name, email),
+        assigned_to_profile:profiles!assigned_to(full_name),
         escalated_to_profile:profiles!escalated_to(full_name),
         property:properties(title),
         vehicle:vehicles(make,model),
@@ -550,6 +560,56 @@ export const updateComplaint = async (
 };
 
 // Delete a complaint
+// Test function to debug RLS authentication context
+export const testRLSContext = async () => {
+  try {
+    console.log('🔍 Testing RLS authentication context...');
+    
+    // Test 1: Get current session info
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    console.log('📋 Session info:', {
+      hasSession: !!session,
+      userId: user?.id,
+      userEmail: user?.email
+    });
+    
+    // Test 2: Call diagnostic function to see RLS context
+    const { data: rlsData, error: rlsError } = await supabase
+      .rpc('debug_rls_context');
+    
+    if (rlsError) {
+      console.error('❌ RLS diagnostic failed:', rlsError);
+      return { success: false, error: rlsError.message };
+    }
+    
+    console.log('🎯 RLS Context Results:', rlsData);
+    
+    // Test 3: Try to fetch complaints directly
+    const { data: complaints, error: complaintsError } = await supabase
+      .from('complaints')
+      .select('id, title, created_by, assigned_to');
+    
+    console.log('📊 Direct complaints query:', {
+      error: complaintsError,
+      count: complaints?.length || 0,
+      complaints: complaints
+    });
+    
+    return { 
+      success: true, 
+      session: session,
+      user: user,
+      rlsContext: rlsData,
+      complaints: complaints
+    };
+  } catch (error) {
+    console.error('❌ RLS test error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+};
+
 export const deleteComplaint = async (
   id: string
 ): Promise<{ success: boolean; error: PostgrestError | null }> => {

@@ -9,22 +9,18 @@ const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase URL or Anonymous Key is missing. Please check your environment variables.');
+} else {
+  console.log('✅ Supabase config loaded:', { 
+    hasUrl: !!supabaseUrl, 
+    hasAnonKey: !!supabaseAnonKey,
+    urlPreview: supabaseUrl?.substring(0, 30) + '...'
+  });
 }
 
-// Create Supabase client with debugging and unique storage key
+// Create Supabase client with unique storage key (removed custom fetch for debugging)
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storageKey: 'supabase-main-auth-token' // Unique storage key for main client
-  },
-  global: {
-    fetch: (url, options) => {
-      // Log requests to help debug malformed queries
-      if (url.includes('staff_benefits') && url.includes('columns=')) {
-        console.warn('Detected malformed query with columns parameter:', url);
-        console.warn('Request options:', options);
-      }
-      return fetch(url, options);
-    }
   }
 });
 
