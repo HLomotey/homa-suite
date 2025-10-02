@@ -127,9 +127,29 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
 
     dateFields.forEach(field => {
       if (participant[field] && participant[field].trim()) {
-        const date = new Date(participant[field]);
+        const dateStr = participant[field].trim();
+        
+        // Try to parse the date
+        const date = new Date(dateStr);
+        
+        // Check if it's a valid date
         if (isNaN(date.getTime())) {
-          errors.push({ row, field, message: `${field.replace(/_/g, ' ')} must be a valid date (YYYY-MM-DD)` });
+          // Try alternative date formats before marking as error
+          const datePatterns = [
+            /^\d{4}-\d{2}-\d{2}$/,  // YYYY-MM-DD
+            /^\d{2}\/\d{2}\/\d{4}$/,  // MM/DD/YYYY
+            /^\d{2}-\d{2}-\d{4}$/,    // MM-DD-YYYY
+          ];
+          
+          const matchesPattern = datePatterns.some(pattern => pattern.test(dateStr));
+          
+          if (!matchesPattern) {
+            errors.push({ 
+              row, 
+              field, 
+              message: `${field.replace(/_/g, ' ')} must be a valid date (YYYY-MM-DD) - got: "${dateStr}"` 
+            });
+          }
         }
       }
     });
@@ -250,7 +270,7 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
 
             // Convert Excel values to strings and handle dates
             const getValue = (index: number) => {
-              if (index === -1 || !row[index]) return '';
+              if (index === -1 || row[index] === undefined || row[index] === null || row[index] === '') return '';
               let value = row[index];
               
               // Handle Excel date serial numbers (between 1900 and 2100)
@@ -264,7 +284,23 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
                 }
               }
               
-              return String(value).trim();
+              // Convert to string and trim
+              const strValue = String(value).trim();
+              
+              // Handle common date string formats and convert to YYYY-MM-DD
+              if (strValue && /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(strValue)) {
+                try {
+                  const parts = strValue.split(/[\/\-]/);
+                  const month = parts[0].padStart(2, '0');
+                  const day = parts[1].padStart(2, '0');
+                  const year = parts[2];
+                  return `${year}-${month}-${day}`;
+                } catch (e) {
+                  console.warn(`Failed to convert date format: ${strValue}`);
+                }
+              }
+              
+              return strValue;
             };
 
             // Normalize enum values during parsing with mapping
@@ -392,12 +428,20 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
 
             // Validate participant (after normalization)
             const participantErrors = validateParticipant(participant, i + 1);
-            errors.push(...participantErrors);
-
-            if (participantErrors.length === 0) {
-              participants.push(participant);
+            
+            // Only add to errors list if there are validation issues
+            if (participantErrors.length > 0) {
+              errors.push(...participantErrors);
+              
+              // Mark participant with error status
+              participants.push({ 
+                ...participant, 
+                status: 'error', 
+                error: `${participantErrors.length} validation error(s): ${participantErrors.map(e => `${e.field}`).join(', ')}` 
+              });
             } else {
-              participants.push({ ...participant, status: 'error', error: participantErrors.map(e => e.message).join(', ') });
+              // Valid participant
+              participants.push(participant);
             }
           }
 
@@ -839,6 +883,12 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Rows with validation errors will be skipped during upload. 
+                You can proceed to upload the {validCount} valid participant(s), or fix the errors in your Excel file and re-upload.
+              </p>
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {validationErrors.map((error, index) => (
                 <div key={index} className="flex items-center gap-2 text-sm">
