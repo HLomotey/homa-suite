@@ -134,7 +134,7 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{participant.full_name}</h3>
+                  <h3 className="text-lg font-semibold text-white">{participant.full_name}</h3>
                   <Badge className="bg-white text-gray-800 border border-gray-300">
                     {participant.current_stage}
                   </Badge>

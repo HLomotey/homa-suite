@@ -8,7 +8,6 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { supabase } from '@/integration/supabase';
 import { History, Clock, User, FileText, X } from 'lucide-react';
-import { format } from 'date-fns';
 
 interface J1ParticipantHistoryProps {
   participantId: string;
@@ -101,7 +100,14 @@ export function J1ParticipantHistory({ participantId, participantName, onClose }
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     try {
-      return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } catch {
       return dateString;
     }
