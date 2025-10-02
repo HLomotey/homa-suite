@@ -101,12 +101,20 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
     }
 
     // Optional field validations
-    if (participant.age && (isNaN(participant.age) || participant.age < 16 || participant.age > 65)) {
-      errors.push({ row, field: 'age', message: 'Age must be between 16 and 65' });
+    if (participant.age !== undefined && participant.age !== null) {
+      const age = Number(participant.age);
+      if (isNaN(age) || age < 16 || age > 100) {
+        errors.push({ row, field: 'age', message: `Age must be between 16 and 100 (got: ${participant.age})` });
+      }
     }
 
-    if (participant.gender && !['Male', 'Female', 'Other', 'Prefer not to say'].includes(participant.gender)) {
-      errors.push({ row, field: 'gender', message: 'Gender must be: Male, Female, Other, or Prefer not to say' });
+    // Normalize and validate gender
+    if (participant.gender && participant.gender.trim()) {
+      const normalizedGender = participant.gender.toLowerCase().trim();
+      const validGenders = ['male', 'female', 'other', 'prefer not to say', 'm', 'f'];
+      if (!validGenders.includes(normalizedGender)) {
+        errors.push({ row, field: 'gender', message: 'Gender must be: Male, Female, Other, or Prefer not to say' });
+      }
     }
 
     // Date validations
@@ -187,13 +195,13 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
           // Expected headers mapping
           const headerMap = {
             // Personal Information
-            'first_name': ['first_name', 'firstname', 'first name'],
-            'middle_name': ['middle_name', 'middlename', 'middle name'],
-            'last_name': ['last_name', 'lastname', 'last name'],
-            'country': ['country', 'nationality'],
+            'first_name': ['first_name', 'firstname', 'first name', 'first'],
+            'middle_name': ['middle_name', 'middlename', 'middle name', 'middle'],
+            'last_name': ['last_name', 'lastname', 'last name', 'last'],
+            'country': ['country', 'nationality', 'nation'],
             'gender': ['gender', 'sex'],
-            'age': ['age'],
-            'employer': ['employer', 'company', 'host company'],
+            'age': ['age', 'years', 'years old', 'age (years)'],
+            'employer': ['employer', 'company', 'host company', 'organization'],
             
             // Visa & Documentation
             'ds2019_start_date': ['ds2019_start_date', 'ds2019 start date', 'program start date'],
@@ -227,6 +235,14 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
             if (index !== -1) columnIndexes[key] = index;
           });
 
+          // Debug: Log column mapping
+          console.log('Column mapping:', {
+            headers,
+            columnIndexes,
+            ageColumnIndex: columnIndexes.age,
+            ageColumnHeader: headers[columnIndexes.age]
+          });
+
           // Process data rows
           for (let i = 1; i < jsonData.length; i++) {
             const row = jsonData[i] as any[];
@@ -237,21 +253,103 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
               if (index === -1 || !row[index]) return '';
               let value = row[index];
               
-              // Handle Excel date serial numbers
-              if (typeof value === 'number' && value > 40000 && value < 50000) {
-                const date = XLSX.SSF.parse_date_code(value);
-                return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+              // Handle Excel date serial numbers (between 1900 and 2100)
+              if (typeof value === 'number' && value > 1 && value < 73050) {
+                try {
+                  const date = XLSX.SSF.parse_date_code(value);
+                  return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+                } catch (e) {
+                  console.warn(`Failed to parse date serial: ${value}`);
+                  return String(value).trim();
+                }
               }
               
               return String(value).trim();
             };
 
-            // Normalize enum values during parsing
+            // Normalize enum values during parsing with mapping
             const rawOnboardingStatus = getValue(columnIndexes.onboarding_status);
-            const normalizedOnboarding = rawOnboardingStatus ? rawOnboardingStatus.toLowerCase().trim() : '';
+            const normalizedOnboarding = (() => {
+              if (!rawOnboardingStatus) return '';
+              const status = rawOnboardingStatus.toLowerCase().trim();
+              // Map common variations to valid enum values
+              const onboardingMap: Record<string, string> = {
+                'pending': 'pending',
+                'scheduled': 'scheduled',
+                'completed': 'completed',
+                'complete': 'completed',
+                'started': 'scheduled',
+                'applied': 'pending',
+                'accepted': 'scheduled',
+                'in progress': 'scheduled',
+                'in-progress': 'scheduled'
+              };
+              return onboardingMap[status] || status;
+            })();
             
             const rawCompletionStatus = getValue(columnIndexes.completion_status);
-            const normalizedCompletion = rawCompletionStatus ? rawCompletionStatus.toLowerCase().trim() : '';
+            const normalizedCompletion = (() => {
+              if (!rawCompletionStatus) return '';
+              const status = rawCompletionStatus.toLowerCase().trim();
+              // Map common variations to valid enum values
+              const completionMap: Record<string, string> = {
+                'in_progress': 'in_progress',
+                'in progress': 'in_progress',
+                'in-progress': 'in_progress',
+                'ongoing': 'in_progress',
+                'active': 'in_progress',
+                'completed': 'completed',
+                'complete': 'completed',
+                'finished': 'completed',
+                'early_exit': 'early_exit',
+                'early exit': 'early_exit',
+                'terminated': 'early_exit',
+                'cancelled': 'early_exit'
+              };
+              return completionMap[status] || status;
+            })();
+
+            // Normalize gender values
+            const rawGender = getValue(columnIndexes.gender);
+            const normalizedGender = (() => {
+              if (!rawGender) return '';
+              const gender = rawGender.toLowerCase().trim();
+              const genderMap: Record<string, string> = {
+                'male': 'Male',
+                'm': 'Male',
+                'female': 'Female',
+                'f': 'Female',
+                'other': 'Other',
+                'prefer not to say': 'Prefer not to say',
+                'prefer not to answer': 'Prefer not to say',
+                'non-binary': 'Other',
+                'nonbinary': 'Other'
+              };
+              return genderMap[gender] || rawGender;
+            })();
+
+            // Parse age more robustly
+            const rawAge = getValue(columnIndexes.age);
+            let parsedAge: number | undefined = undefined;
+            if (rawAge) {
+              const ageNum = parseInt(rawAge, 10);
+              if (!isNaN(ageNum) && ageNum > 0 && ageNum < 150) {
+                parsedAge = ageNum;
+              } else {
+                console.warn(`Row ${i + 1}: Invalid age value "${rawAge}" (type: ${typeof row[columnIndexes.age]}, raw: ${row[columnIndexes.age]})`);
+              }
+            }
+            
+            // Debug first few rows
+            if (i <= 5) {
+              console.log(`Row ${i + 1} age debug:`, {
+                rawAge,
+                parsedAge,
+                columnIndex: columnIndexes.age,
+                rawValue: row[columnIndexes.age],
+                valueType: typeof row[columnIndexes.age]
+              });
+            }
 
             const participant: UploadedParticipant = {
               // Personal Information
@@ -259,8 +357,8 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
               middle_name: getValue(columnIndexes.middle_name),
               last_name: getValue(columnIndexes.last_name),
               country: getValue(columnIndexes.country),
-              gender: getValue(columnIndexes.gender),
-              age: getValue(columnIndexes.age) ? parseInt(getValue(columnIndexes.age)) : undefined,
+              gender: normalizedGender,
+              age: parsedAge,
               employer: getValue(columnIndexes.employer),
               
               // Visa & Documentation
@@ -578,9 +676,10 @@ export function J1ParticipantUpload({ onUploadComplete, onClose }: J1Participant
               <p><strong>Required columns:</strong> first_name, last_name, country</p>
               <p><strong>Personal Info:</strong> middle_name, gender, age, employer</p>
               <p><strong>Dates:</strong> ds2019_start_date, ds2019_end_date, embassy_appointment_date, arrival_date, etc.</p>
-              <p><strong>Status:</strong> onboarding_status (pending/scheduled/completed), completion_status (in_progress/completed/early_exit)</p>
-              <p><strong>Date format:</strong> YYYY-MM-DD (e.g., 2024-01-15) - Excel dates auto-converted</p>
-              <p><strong>Gender values:</strong> Male, Female, Other, Prefer not to say</p>
+              <p><strong>Onboarding Status:</strong> pending, scheduled, completed (also accepts: started→scheduled, applied→pending, accepted→scheduled, complete→completed)</p>
+              <p><strong>Completion Status:</strong> in_progress, completed, early_exit (also accepts: active/ongoing→in_progress, complete/finished→completed)</p>
+              <p><strong>Date format:</strong> YYYY-MM-DD (e.g., 2024-01-15) - Excel date serials auto-converted</p>
+              <p><strong>Gender values:</strong> Male, Female, Other, Prefer not to say (also accepts: M/F, male/female)</p>
             </div>
           </div>
         </CardContent>
