@@ -90,33 +90,42 @@ export const useJ1Tracking = () => {
     }
   }, []);
 
-  // Create new J-1 participant
+  // Create new J-1 participant (with upsert support using business_key)
   const createJ1Participant = useCallback(async (data: J1CreateData): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
 
-      // First create the participant
+      // Generate business_key for upsert
+      const businessKey = `${data.first_name?.toLowerCase() || ''}_${data.last_name?.toLowerCase() || ''}_${data.country?.toLowerCase() || ''}_${data.employer?.toLowerCase() || 'no_employer'}_${data.ds2019_start_date?.replace(/-/g, '') || 'no_date'}`;
+
+      console.log('Creating/Updating J-1 participant with business_key:', businessKey);
+
+      // Upsert participant (insert or update if business_key exists)
       const { data: participant, error: participantError } = await supabase
         .from('j1_participants')
-        .insert({
+        .upsert({
           first_name: data.first_name,
           middle_name: data.middle_name,
           last_name: data.last_name,
           country: data.country,
           gender: data.gender,
           age: data.age,
-          employer: data.employer
+          employer: data.employer,
+          business_key: businessKey
+        }, {
+          onConflict: 'business_key',
+          ignoreDuplicates: false
         })
         .select()
         .single();
 
       if (participantError) throw participantError;
 
-      // Then create the flow status
+      // Upsert flow status (update if exists, insert if new)
       const { error: flowError } = await supabase
         .from('j1_flow_status')
-        .insert({
+        .upsert({
           participant_id: participant.id,
           // Visa & Documentation
           ds2019_start_date: data.ds2019_start_date || null,
@@ -137,13 +146,18 @@ export const useJ1Tracking = () => {
           completion_status: data.completion_status || 'in_progress',
           // Notes
           notes: data.notes || null
+        }, {
+          onConflict: 'participant_id',
+          ignoreDuplicates: false
         });
 
       if (flowError) throw flowError;
       
-      console.log('J1 Participant created successfully:', {
+      console.log('J1 Participant created/updated successfully:', {
         participant_id: participant.id,
-        name: `${participant.first_name} ${participant.last_name}`
+        name: `${participant.first_name} ${participant.last_name}`,
+        business_key: businessKey,
+        operation: 'upsert'
       });
       
       return true;
