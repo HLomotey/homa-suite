@@ -2,7 +2,8 @@
  * API functions for complaint comments and attachments
  */
 
-import { supabase, supabaseAdmin } from "@/integration/supabase";
+import { supabase } from "@/integration/supabase";
+import { supabaseAdmin } from "@/integration/supabase/admin-client";
 import { 
   ComplaintComment, 
   ComplaintAttachment

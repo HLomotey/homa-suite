@@ -736,38 +736,122 @@ export type Database = {
       }
 
       // ---- Permissions & RBAC (main-compatible) ----
-      permissions: {
+      modules: {
         Row: {
           id: string
           name: string
-          display_name: string | null
+          display_name: string
           description: string | null
-          is_system_permission: boolean
           is_active: boolean
+          sort_order: number
           created_at: string
           updated_at: string
         }
         Insert: {
           name: string
-          display_name?: string | null
+          display_name: string
           description?: string | null
-          is_system_permission?: boolean
           is_active?: boolean
+          sort_order?: number
           id?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           name?: string
-          display_name?: string | null
+          display_name?: string
           description?: string | null
-          is_system_permission?: boolean
           is_active?: boolean
+          sort_order?: number
           id?: string
           created_at?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      actions: {
+        Row: {
+          id: string
+          name: string
+          display_name: string
+          description: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          display_name: string
+          description?: string | null
+          is_active?: boolean
+          sort_order?: number
+          id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          display_name?: string
+          description?: string | null
+          is_active?: boolean
+          sort_order?: number
+          id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          id: string
+          module_id: string
+          action_id: string
+          permission_key: string
+          display_name: string
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          module_id: string
+          action_id: string
+          permission_key: string
+          display_name: string
+          description?: string | null
+          is_active?: boolean
+          id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          module_id?: string
+          action_id?: string
+          permission_key?: string
+          display_name?: string
+          description?: string | null
+          is_active?: boolean
+          id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'permissions_module_id_fkey'
+            columns: ['module_id']
+            isOneToOne: false
+            referencedRelation: 'modules'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'permissions_action_id_fkey'
+            columns: ['action_id']
+            isOneToOne: false
+            referencedRelation: 'actions'
+            referencedColumns: ['id']
+          }
+        ]
       }
       role_permissions: {
         Row: {
@@ -810,17 +894,26 @@ export type Database = {
           id: string
           user_id: string
           role_id: string
+          is_primary: boolean
+          assigned_at: string
+          assigned_by: string | null
           created_at: string
         }
         Insert: {
           user_id: string
           role_id: string
+          is_primary?: boolean
+          assigned_at?: string
+          assigned_by?: string | null
           id?: string
           created_at?: string
         }
         Update: {
           user_id?: string
           role_id?: string
+          is_primary?: boolean
+          assigned_at?: string
+          assigned_by?: string | null
           id?: string
           created_at?: string
         }
@@ -837,6 +930,51 @@ export type Database = {
             columns: ['user_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      user_permissions: {
+        Row: {
+          id: string
+          user_id: string
+          permission_id: string
+          is_granted: boolean
+          granted_at: string
+          granted_by: string | null
+          expires_at: string | null
+        }
+        Insert: {
+          user_id: string
+          permission_id: string
+          is_granted: boolean
+          granted_at?: string
+          granted_by?: string | null
+          expires_at?: string | null
+          id?: string
+        }
+        Update: {
+          user_id?: string
+          permission_id?: string
+          is_granted?: boolean
+          granted_at?: string
+          granted_by?: string | null
+          expires_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'user_permissions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'user_permissions_permission_id_fkey'
+            columns: ['permission_id']
+            isOneToOne: false
+            referencedRelation: 'permissions'
             referencedColumns: ['id']
           }
         ]

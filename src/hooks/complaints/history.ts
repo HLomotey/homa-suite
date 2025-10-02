@@ -2,7 +2,8 @@
  * API functions for complaint history and tracking
  */
 
-import { supabase, supabaseAdmin } from "@/integration/supabase";
+import { supabase } from "@/integration/supabase";
+import { supabaseAdmin } from "@/integration/supabase/admin-client";
 import { ComplaintHistory } from "@/integration/supabase/types/complaints";
 import { PostgrestError } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";

@@ -54,11 +54,15 @@ export function TerminationForm({
     activeOnly: false,
   });
 
-  // Debug logging (moved employeeOptions log below its declaration)
+  // Create employee options from staff list
+  const employeeOptions = staffList.map(staff => ({
+    value: staff.staff_id,
+    label: `${staff.full_name} (${staff.work_email || staff.personal_email || 'No email'})`,
+  }));
+
+  // Debug logging
   console.log('Staff data count:', staffList?.length || 0);
   if (staffError) console.log('Staff error:', staffError);
-
-
 
   // Submit termination request mutation
   const submitTerminationMutation = useSubmitTerminationRequest();
@@ -146,14 +150,6 @@ export function TerminationForm({
     label,
   }));
 
-  const employeeOptions = staffList.map(staff => ({
-    value: staff.staff_id,
-    label: `${staff.full_name} (${staff.work_email || staff.personal_email || 'No email'})`,
-  }));
-
-  // Debug logging after employeeOptions is declared
-  console.log('Employee options count:', employeeOptions.length);
-
   const managerOptions = staffList
     .filter(staff => staff.manager_id && staff.manager_full_name)
     .reduce((acc, staff) => {
@@ -184,9 +180,6 @@ export function TerminationForm({
               <Label className="block text-sm font-medium text-gray-700 mb-2">
                 Employee <span className="text-red-500">*</span>
               </Label>
-
-
-
               <CustomSelect
                 value={formData.staff_id}
                 onChange={(value) => handleInputChange('staff_id', value)}

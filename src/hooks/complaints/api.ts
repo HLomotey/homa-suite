@@ -2,6 +2,7 @@
  * API functions for the complaints management module
  */
 
+
 // @ts-nocheck - Bypassing TypeScript errors due to corrupted database types
 import { supabase, supabaseAdmin } from "@/integration/supabase";
 import { Database } from "@/integration/supabase/types/database";
