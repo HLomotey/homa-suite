@@ -31,6 +31,7 @@ import {
   LineChart,
   Mail,
   UserX,
+  Plane,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/routes/constants";
@@ -107,6 +108,12 @@ const navigationItems = [
     icon: UserX,
     href: "/termination",
     module: "termination",
+  },
+  {
+    label: "J-1 Tracking",
+    icon: Plane,
+    href: "/j1-tracking",
+    module: "j1-tracking",
   },
   {
     label: "Transport",
@@ -243,10 +250,10 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
             </div>
             {!collapsed && (
               <div className="ml-3 min-w-0 flex-1">
-                <h1 className="text-lg font-semibold text-foreground truncate">
+                <h1 className="text-lg font-semibold text-white truncate">
                   BOH Concepts
                 </h1>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-xs text-white truncate">
                   Operations Management
                 </p>
               </div>
@@ -266,7 +273,7 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
                     collapsed ? "justify-center px-2" : "px-3",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      : "text-white hover:bg-accent hover:text-white"
                   )}
                   onClick={() => setIsOpen(false)}
                   title={collapsed ? item.label : undefined}
@@ -304,10 +311,10 @@ export const Sidebar = ({ collapsed = false }: SidebarProps) => {
                     {currentUser?.user?.email?.[0]?.toUpperCase() || "U"}
                   </div>
                   <div className="ml-3 flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-sm font-medium text-white">
                       {currentUser?.userType === 'management' ? 'Management' : 'Staff'}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-xs text-white truncate">
                       {currentUser?.user?.email}
                     </p>
                   </div>

@@ -136,6 +136,14 @@ export const NAVIGATION_MODULES: NavigationModule[] = [
     description: 'Email notifications and templates management',
     icon: 'Mail',
     routes: ['/notifications', '/notifications/*']
+  },
+  {
+    id: 'j1-tracking',
+    name: 'j1-tracking',
+    displayName: 'J-1 Tracking',
+    description: 'J-1 participant program tracking and monitoring',
+    icon: 'Plane',
+    routes: ['/j1-tracking', '/j1-tracking/*']
   }
 ];
 
