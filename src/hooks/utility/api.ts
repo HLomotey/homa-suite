@@ -26,58 +26,18 @@ import {
 
 // Utility Types API functions
 export const fetchUtilityTypes = async (): Promise<FrontendUtilityType[]> => {
-  console.log('Fetching utility types from database...');
-  
-  // First, let's try to get the count to see if there's a filtering issue
-  const { count, error: countError } = await supabase
-    .from("utility_types")
-    .select("*", { count: 'exact', head: true });
-    
-  console.log('Total count in database:', count, 'Count error:', countError);
-  
   const { data, error } = await supabase
     .from("utility_types")
     .select("*")
     .order("name");
 
-  console.log('Raw database response:', { data, error, count: data?.length });
-  console.log('Individual records:', data);
-
   if (error) {
-    console.error('Database error:', error);
     throw new Error(`Error fetching utility types: ${error.message}`);
   }
 
-  const mappedData = (data as UtilityType[]).map(mapDatabaseUtilityTypeToFrontend);
-  console.log('Mapped utility types:', mappedData);
-  
-  return mappedData;
+  return (data as UtilityType[]).map(mapDatabaseUtilityTypeToFrontend);
 };
 
-// Test function to check raw database access
-export const testUtilityTypesAccess = async () => {
-  console.log('Testing direct database access...');
-  
-  // Test 1: Simple select without any filters
-  const { data: rawData, error: rawError } = await supabase
-    .from("utility_types")
-    .select("*");
-    
-  console.log('Test 1 - Raw select:', { rawData, rawError, count: rawData?.length });
-  
-  // Test 2: Check if user is authenticated
-  const { data: user, error: userError } = await supabase.auth.getUser();
-  console.log('Test 2 - User auth:', { user: user?.user?.id, userError });
-  
-  // Test 3: Try with specific columns
-  const { data: specificData, error: specificError } = await supabase
-    .from("utility_types")
-    .select("id, name, is_active");
-    
-  console.log('Test 3 - Specific columns:', { specificData, specificError, count: specificData?.length });
-  
-  return { rawData, specificData, user };
-};
 
 export const fetchUtilityTypeById = async (id: string): Promise<FrontendUtilityType> => {
   const { data, error } = await supabase
