@@ -267,36 +267,36 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
               <div className="border-t pt-4 mt-4 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Employment Period</h4>
+                    <h4 className="text-sm font-medium text-white mb-2">Employment Period</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Start Date:</span>
-                        <span>{formatDate(participant.actual_start_date)}</span>
+                        <span className="text-white">Start Date:</span>
+                        <span className="text-white">{formatDate(participant.actual_start_date)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">End Date:</span>
-                        <span>{formatDate(participant.actual_end_date)}</span>
+                        <span className="text-white">End Date:</span>
+                        <span className="text-white">{formatDate(participant.actual_end_date)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Move Out:</span>
-                        <span>{formatDate(participant.move_out_date)}</span>
+                        <span className="text-white">Move Out:</span>
+                        <span className="text-white">{formatDate(participant.move_out_date)}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Timing Metrics</h4>
+                    <h4 className="text-sm font-medium text-white mb-2">Timing Metrics</h4>
                     <div className="space-y-2 text-sm">
                       {participant.days_arrival_to_start && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Days to Start:</span>
-                          <span>{participant.days_arrival_to_start} days</span>
+                          <span className="text-white">Days to Start:</span>
+                          <span className="text-white">{participant.days_arrival_to_start} days</span>
                         </div>
                       )}
                       {participant.days_until_visa_expiry && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Visa Expires In:</span>
-                          <span className={participant.days_until_visa_expiry <= 30 ? 'text-red-600 font-medium' : ''}>
+                          <span className="text-white">Visa Expires In:</span>
+                          <span className={participant.days_until_visa_expiry <= 30 ? 'text-red-400 font-medium' : 'text-white'}>
                             {participant.days_until_visa_expiry} days
                           </span>
                         </div>
