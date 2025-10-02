@@ -69,6 +69,7 @@ interface TerminationListProps {
   onEdit: (termination: TerminationRequest) => void;
   onApprove: (termination: TerminationRequest, role: 'manager' | 'hr') => void;
   onMarkADPProcessed: (termination: TerminationRequest) => void;
+  onDelete: (termination: TerminationRequest) => void;
   loading?: boolean;
 }
 
@@ -77,6 +78,7 @@ export function TerminationList({
   onEdit, 
   onApprove, 
   onMarkADPProcessed,
+  onDelete,
   loading = false 
 }: TerminationListProps) {
   const { currentUser } = useAuth();
@@ -163,6 +165,17 @@ export function TerminationList({
               >
                 Edit
               </Button>
+              
+              {/* Delete Button - Only for draft terminations */}
+              {termination.status === 'draft' && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onDelete(termination)}
+                >
+                  Delete
+                </Button>
+              )}
             </div>
           </div>
           
