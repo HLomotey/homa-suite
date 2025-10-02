@@ -60,6 +60,7 @@ export function UtilityTypesList() {
   const updateUtilityType = useUpdateUtilityType();
   const deleteUtilityType = useDeleteUtilityType();
 
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);

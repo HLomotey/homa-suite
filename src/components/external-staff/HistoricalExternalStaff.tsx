@@ -47,6 +47,7 @@ export function HistoricalExternalStaff() {
   } = useHistoricalExternalStaff();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [selectedHistoricalIds, setSelectedHistoricalIds] = useState<string[]>([]);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -62,24 +63,46 @@ export function HistoricalExternalStaff() {
   });
 
   const handleExportToExcel = () => {
-    // Export filtered data if there's a search term, otherwise export all current data
-    const dataToExport = searchTerm ? filteredHistoricalStaff : undefined;
+    // Export filtered data if there's a search term or department filter, otherwise export all current data
+    const dataToExport = (searchTerm || (departmentFilter && departmentFilter !== "all")) ? filteredHistoricalStaff : undefined;
     exportToExcel(dataToExport);
   };
 
-  // Client-side filtering for search
+  // Client-side filtering for search and department
   const filteredHistoricalStaff = useMemo(() => {
-    if (!searchTerm) return historicalStaff;
+    let filtered = historicalStaff;
 
-    const searchLower = searchTerm.toLowerCase();
-    return historicalStaff.filter((staff) =>
-      staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
-      staff["PAYROLL LAST NAME"]?.toLowerCase().includes(searchLower) ||
-      staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
-      staff["COMPANY"]?.toLowerCase().includes(searchLower) ||
-      staff["LOCATION"]?.toLowerCase().includes(searchLower)
-    );
-  }, [historicalStaff, searchTerm]);
+    // Apply department filter
+    if (departmentFilter && departmentFilter !== "all") {
+      filtered = filtered.filter((staff) =>
+        staff["HOME DEPARTMENT"]?.toLowerCase() === departmentFilter.toLowerCase()
+      );
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter((staff) =>
+        staff["PAYROLL FIRST NAME"]?.toLowerCase().includes(searchLower) ||
+        staff["PAYROLL LAST NAME"]?.toLowerCase().includes(searchLower) ||
+        staff["JOB TITLE"]?.toLowerCase().includes(searchLower) ||
+        staff["COMPANY"]?.toLowerCase().includes(searchLower) ||
+        staff["LOCATION"]?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  }, [historicalStaff, searchTerm, departmentFilter]);
+
+  // Get unique departments for filter dropdown
+  const uniqueDepartments = useMemo(() => {
+    const departments = historicalStaff
+      .map(staff => staff["HOME DEPARTMENT"])
+      .filter(dept => dept && dept.trim() !== "")
+      .filter((dept, index, array) => array.indexOf(dept) === index)
+      .sort();
+    return departments;
+  }, [historicalStaff]);
 
   // Handle individual checkbox selection
   const handleHistoricalSelect = (staffId: string, checked: boolean) => {
@@ -199,14 +222,32 @@ export function HistoricalExternalStaff() {
                   Delete ({selectedHistoricalIds.length})
                 </Button>
               )}
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search historical records..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+              <div className="flex items-center gap-2">
+                <Select
+                  value={departmentFilter}
+                  onValueChange={setDepartmentFilter}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filter by Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {uniqueDepartments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="relative w-64">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search historical records..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -253,8 +294,8 @@ export function HistoricalExternalStaff() {
                         colSpan={10}
                         className="text-center py-8 text-muted-foreground"
                       >
-                        {searchTerm
-                          ? "No historical records found matching your search."
+                        {searchTerm || (departmentFilter && departmentFilter !== "all")
+                          ? "No historical records found matching your filters."
                           : "No historical external staff records found."}
                       </TableCell>
                     </TableRow>

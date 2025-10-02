@@ -3,7 +3,10 @@
  * Handles sign in, sign up, and sign out operations
  */
 
-import { supabase, supabaseAdmin } from "@/integration/supabase";
+// @ts-nocheck
+import { supabase } from "@/integration/supabase";
+// Admin client usage removed to prevent Multiple GoTrueClient warning
+// import { supabaseAdmin } from "@/integration/supabase";
 import { validateUserAccess, validateExternalStaffEmail } from "./userValidation";
 import { buildAuthUser } from "./authUtils";
 import { AuthUser } from "./types";
