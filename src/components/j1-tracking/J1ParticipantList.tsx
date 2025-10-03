@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
 import { Progress } from '../ui/progress';
+import { J1ParticipantHistory } from './J1ParticipantHistory';
 import {
   J1DashboardView,
   ONBOARDING_STATUS_LABELS,
@@ -22,7 +23,8 @@ import {
   CheckCircle,
   XCircle,
   Flag,
-  MapPin
+  MapPin,
+  History
 } from 'lucide-react';
 
 interface J1ParticipantListProps {
@@ -34,6 +36,7 @@ interface J1ParticipantListProps {
 
 export function J1ParticipantList({ participants, onEdit, onDelete, loading = false }: J1ParticipantListProps) {
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
+  const [historyParticipant, setHistoryParticipant] = useState<J1DashboardView | null>(null);
 
   if (loading) {
     return <div className="text-center py-8">Loading participants...</div>;
@@ -131,7 +134,7 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{participant.full_name}</h3>
+                  <h3 className="text-lg font-semibold text-white">{participant.full_name}</h3>
                   <Badge className="bg-white text-gray-800 border border-gray-300">
                     {participant.current_stage}
                   </Badge>
@@ -176,6 +179,16 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
               </div>
               
               <div className="flex space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHistoryParticipant(participant)}
+                  className="flex items-center gap-1"
+                  title="View change history"
+                >
+                  <History className="h-4 w-4" />
+                  History
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -323,6 +336,15 @@ export function J1ParticipantList({ participants, onEdit, onDelete, loading = fa
           </Card>
         );
       })}
+
+      {/* History Modal */}
+      {historyParticipant && (
+        <J1ParticipantHistory
+          participantId={historyParticipant.id}
+          participantName={historyParticipant.full_name}
+          onClose={() => setHistoryParticipant(null)}
+        />
+      )}
     </div>
   );
 }
