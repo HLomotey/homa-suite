@@ -249,6 +249,30 @@ export function J1TrackingModule() {
     setViewMode("edit");
   };
 
+  const handleUpdateParticipant = async (data: J1UpdateData) => {
+    if (!editingParticipant) return;
+
+    try {
+      const result = await updateJ1Participant(editingParticipant.id, data);
+      if (result) {
+        toast({
+          title: 'Success',
+          description: 'J-1 participant updated successfully'
+        });
+        setViewMode('list');
+        setEditingParticipant(null);
+        await loadParticipants();
+        await loadStatistics();
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update J-1 participant",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteParticipant = async (participant: J1DashboardView) => {
     if (
       !confirm(
@@ -287,6 +311,46 @@ export function J1TrackingModule() {
       description: `${successCount} participants uploaded successfully${
         errorCount > 0 ? `, ${errorCount} failed` : ""
       }`,
+    });
+  };
+
+  const handleCardClick = (cardType: string) => {
+    // Reset filters first
+    const baseFilters = {
+      search: '',
+      country: 'all',
+      employer: 'all',
+      completion_status: undefined,
+      onboarding_status: undefined,
+      current_stage: 'all',
+      has_alerts: false
+    };
+
+    // Apply specific filter based on card type
+    switch (cardType) {
+      case 'total':
+        setFilters(baseFilters);
+        break;
+      case 'active':
+        setFilters({ ...baseFilters, completion_status: 'active' });
+        break;
+      case 'completed':
+        setFilters({ ...baseFilters, completion_status: 'completed' });
+        break;
+      case 'pending_onboarding':
+        setFilters({ ...baseFilters, onboarding_status: 'pending' });
+        break;
+      case 'alerts':
+        setFilters({ ...baseFilters, has_alerts: true });
+        break;
+    }
+
+    // Switch to list view to show filtered results
+    setViewMode('list');
+    
+    toast({
+      title: "Filter Applied",
+      description: `Showing ${cardType === 'total' ? 'all' : cardType.replace('_', ' ')} participants`,
     });
   };
 
@@ -377,7 +441,10 @@ export function J1TrackingModule() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="p-4">
+        <Card 
+          className="p-4 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 hover:bg-blue-50"
+          onClick={() => handleCardClick('total')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">
