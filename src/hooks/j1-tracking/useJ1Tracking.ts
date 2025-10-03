@@ -21,6 +21,7 @@ export const useJ1Tracking = () => {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 Fetching J1 participants from j1_dashboard_view...');
       let query = supabase.from('j1_dashboard_view').select('*');
 
       // Apply filters
@@ -54,7 +55,74 @@ export const useJ1Tracking = () => {
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching from j1_dashboard_view:', error);
+        console.log('🔄 Falling back to base tables...');
+        
+        // Fallback to querying base tables if view doesn't exist
+        const fallbackQuery = supabase
+          .from('j1_participants')
+          .select(`
+            *,
+            j1_flow_status (*)
+          `)
+          .order('created_at', { ascending: false });
+        
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+        
+        if (fallbackError) {
+          throw fallbackError;
+        }
+        
+        // Transform fallback data
+        const transformedData: J1DashboardView[] = (fallbackData || []).map((participant: any) => {
+          const flowStatus = participant.j1_flow_status?.[0] || {};
+          
+          return {
+            id: participant.id,
+            full_name: `${participant.first_name || ''} ${participant.last_name || ''}`.trim(),
+            first_name: participant.first_name,
+            last_name: participant.last_name,
+            country: participant.country,
+            gender: participant.gender,
+            age: participant.age,
+            employer: participant.employer,
+            
+            // Flow status fields
+            ds2019_start_date: flowStatus.ds2019_start_date,
+            ds2019_end_date: flowStatus.ds2019_end_date,
+            embassy_appointment_date: flowStatus.embassy_appointment_date,
+            arrival_date: flowStatus.arrival_date,
+            onboarding_status: flowStatus.onboarding_status || 'pending',
+            onboarding_scheduled_date: flowStatus.onboarding_scheduled_date,
+            onboarding_completed_date: flowStatus.onboarding_completed_date,
+            estimated_start_date: flowStatus.estimated_start_date,
+            actual_start_date: flowStatus.actual_start_date,
+            estimated_end_date: flowStatus.estimated_end_date,
+            actual_end_date: flowStatus.actual_end_date,
+            move_out_date: flowStatus.move_out_date,
+            completion_status: flowStatus.completion_status || 'in_progress',
+            notes: flowStatus.notes,
+            
+            // Computed fields
+            current_stage: flowStatus.onboarding_status === 'completed' ? 'employment' : 'onboarding',
+            
+            // Alert flags (simplified for now)
+            early_arrival_flag: false,
+            delayed_onboarding_flag: false,
+            missing_moveout_flag: !flowStatus.move_out_date && flowStatus.completion_status === 'completed',
+            visa_expiring_flag: false,
+            
+            created_at: participant.created_at,
+            updated_at: participant.updated_at
+          };
+        });
+        
+        console.log(`✅ Fallback successful: Found ${transformedData.length} participants`);
+        return transformedData;
+      }
+      
+      console.log(`✅ Successfully fetched ${data?.length || 0} participants from view`);
       return data || [];
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch J-1 participants';
