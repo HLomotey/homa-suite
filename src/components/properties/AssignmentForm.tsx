@@ -81,8 +81,6 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       propertyName: assignment?.propertyName || properties[0]?.title || "",
       roomId: assignment?.roomId || "",
       roomName: assignment?.roomName || "",
-      staffId: assignment?.staffId || "",
-      staffName: assignment?.staffName || "",
       status: assignment?.status || ("Active" as AssignmentStatus),
       startDate: assignment?.startDate || new Date().toISOString().split("T")[0],
       endDate: assignment?.endDate || "",
@@ -99,7 +97,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   // Track if current selections are valid
   const [isValidTenant, setIsValidTenant] = React.useState(!!assignment?.tenantId);
-  const [isValidStaff, setIsValidStaff] = React.useState(!!assignment?.staffId);
+  // isValidStaff removed - staff assignment is now display-only
 
   // Benefit agreement states
   const [housingAgreement, setHousingAgreement] = React.useState(assignment?.agreements?.housing || false);
@@ -416,6 +414,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       });
   }, [setStatus, fetchAllExternalStaff]);
 
+
   // Optimized client-side filtering for large datasets
   React.useEffect(() => {
     console.log(`Filtering ${externalStaff.length} staff records...`);
@@ -612,14 +611,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       return;
     }
 
-    if (!formData.staffId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a staff member.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Staff assignment is optional and display-only
+    // No validation required for staffId
 
     if (!formData.propertyId) {
       toast({
@@ -706,18 +699,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
       }
     }
 
-    // Final validation: ensure staff exists in external staff list (if provided)
-    if (formData.staffId) {
-      const staffExists = externalStaff.some(staff => staff.id === formData.staffId);
-      if (!staffExists) {
-        toast({
-          title: "Validation Error",
-          description: "Selected staff member is not valid. Please select from the available list.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    // Staff validation removed - staff assignment is display-only
 
 
     try {
@@ -856,59 +838,6 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                       )}
                     </div>
                   )}
-                </div>
-              )}
-            </div>
-
-            {/* Assigned Staff (optional) */}
-            <div>
-              <label htmlFor="staffId" className="text-sm font-medium leading-none">
-                Assigned Staff (Optional)
-              </label>
-              {loading ? (
-                <div className="flex items-center space-x-2 mt-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Loading external staff...</span>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <SearchableSelect
-                    options={externalStaff.map((staff): SearchableSelectOption => {
-                      const firstName = staff["PAYROLL FIRST NAME"] || "";
-                      const lastName = staff["PAYROLL LAST NAME"] || "";
-                      const jobTitle = staff["JOB TITLE"] || "";
-                      const email = staff["WORK E-MAIL"] || "";
-                      const department = staff["HOME DEPARTMENT"] || "";
-                      const employeeId = staff["EMPLOYEE ID"] || "";
-                      const location = staff["LOCATION"] || "";
-                      const manager = staff["MANAGER"] || "";
-                      const fullName = `${firstName} ${lastName}`.trim();
-                      const reverseName = `${lastName} ${firstName}`.trim();
-                      const firstInitialLastName = firstName ? `${firstName[0]}. ${lastName}`.trim() : "";
-                      const lastInitialFirstName = lastName ? `${lastName[0]}. ${firstName}`.trim() : "";
-                      const initials = firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : "";
-
-                      return {
-                        value: staff.id,
-                        label: `${fullName}${jobTitle ? ` - ${jobTitle}` : ""}${department ? ` (${department})` : ""}`,
-                        searchText: `${firstName} ${lastName} ${fullName} ${reverseName} ${firstInitialLastName} ${lastInitialFirstName} ${initials} ${jobTitle} ${email} ${department} ${employeeId} ${location} ${manager}`,
-                      };
-                    })}
-                    value={formData.staffId}
-                    placeholder="Search and select external staff member..."
-                    emptyMessage="No external staff members found."
-                    onValueChange={(value) => {
-                      const selectedStaff = externalStaff.find((s) => s.id === value);
-                      setFormData((prev) => ({
-                        ...prev,
-                        staffId: value,
-                        staffName: selectedStaff
-                          ? `${selectedStaff["PAYROLL FIRST NAME"] || ""} ${selectedStaff["PAYROLL LAST NAME"] || ""}`.trim()
-                          : "",
-                      }));
-                      setIsValidStaff(!!selectedStaff);
-                    }}
-                  />
                 </div>
               )}
             </div>
