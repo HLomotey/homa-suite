@@ -7,10 +7,19 @@ import { EthnicityBreakdown } from "./EthnicityBreakdown";
 import { DiversityTrends } from "./DiversityTrends";
 import { DiversityPrograms } from "./DiversityPrograms";
 import { DiversityGoals } from "./DiversityGoals";
+import { useDiversityAnalytics } from "@/hooks/diversity/useDiversityAnalytics";
+import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 
 export function DiversityOverview() {
   const [timeRange, setTimeRange] = useState("6m");
   const [department, setDepartment] = useState("all");
+  
+  // Get real data from hooks
+  const { metrics, loading } = useDiversityAnalytics(timeRange, department);
+  const { stats } = useExternalStaff();
+
+  // Get unique departments from external staff data
+  const departments = stats.topDepartments.map(dept => dept.department).slice(0, 7);
   
   return (
     <div className="space-y-6">
@@ -28,13 +37,11 @@ export function DiversityOverview() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              <SelectItem value="engineering">Engineering</SelectItem>
-              <SelectItem value="sales">Sales</SelectItem>
-              <SelectItem value="marketing">Marketing</SelectItem>
-              <SelectItem value="hr">HR</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-              <SelectItem value="operations">Operations</SelectItem>
-              <SelectItem value="support">Support</SelectItem>
+              {departments.map((dept) => (
+                <SelectItem key={dept} value={dept.toLowerCase()}>
+                  {dept}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Tabs value={timeRange} onValueChange={setTimeRange}>
@@ -48,17 +55,17 @@ export function DiversityOverview() {
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <GenderDistribution />
-        <AgeDemographics />
-        <EthnicityBreakdown />
+        <GenderDistribution timeRange={timeRange} department={department} />
+        <AgeDemographics timeRange={timeRange} department={department} />
+        <EthnicityBreakdown timeRange={timeRange} department={department} />
       </div>
       
       <div className="grid gap-4 md:grid-cols-2">
-        <DiversityTrends />
-        <DiversityPrograms />
+        <DiversityTrends timeRange={timeRange} department={department} />
+        <DiversityPrograms timeRange={timeRange} department={department} />
       </div>
       
-      <DiversityGoals />
+      <DiversityGoals timeRange={timeRange} department={department} />
     </div>
   );
 }

@@ -1,8 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { useDiversityAnalytics } from "@/hooks/diversity/useDiversityAnalytics";
 
-export function DiversityPrograms() {
+interface DiversityProgramsProps {
+  timeRange?: string;
+  department?: string;
+}
+
+export function DiversityPrograms({ timeRange = "6m", department = "all" }: DiversityProgramsProps) {
+  const { programs, loading } = useDiversityAnalytics(timeRange, department);
   return (
     <Card className="bg-background border-border">
       <CardHeader>
@@ -17,58 +24,47 @@ export function DiversityPrograms() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="border rounded-md p-4">
-            <div className="flex justify-between items-center">
-              <h4 className="font-medium">Women in Leadership</h4>
-              <div className="text-sm text-green-500">+12% YoY</div>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Program to increase female representation in leadership positions
-            </p>
-            <div className="mt-2 w-full bg-muted rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{ width: '35%' }}></div>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span>Target: 40%</span>
-              <span>Current: 35%</span>
-            </div>
+        {loading ? (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">Loading program data...</div>
           </div>
-          
-          <div className="border rounded-md p-4">
-            <div className="flex justify-between items-center">
-              <h4 className="font-medium">Inclusive Hiring</h4>
-              <div className="text-sm text-green-500">+8% YoY</div>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Initiative to reduce bias in hiring processes
-            </p>
-            <div className="mt-2 w-full bg-muted rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span>Target: 100%</span>
-              <span>Current: 75%</span>
-            </div>
+        ) : (
+          <div className="space-y-4">
+            {programs.map((program, index) => {
+              const progressPercentage = (program.current / program.target) * 100;
+              const statusColor = program.status === 'on-track' ? 'text-green-500' : 
+                                program.status === 'ahead' ? 'text-blue-500' : 'text-amber-500';
+              const barColor = program.status === 'on-track' ? 'bg-green-500' : 
+                             program.status === 'ahead' ? 'bg-blue-500' : 'bg-amber-500';
+              const TrendIcon = program.yoyChange > 0 ? TrendingUp : TrendingDown;
+              
+              return (
+                <div key={index} className="border rounded-md p-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-medium">{program.name}</h4>
+                    <div className={`text-sm ${statusColor} flex items-center`}>
+                      <TrendIcon className="h-3 w-3 mr-1" />
+                      {program.yoyChange > 0 ? '+' : ''}{program.yoyChange}% YoY
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {program.description}
+                  </p>
+                  <div className="mt-2 w-full bg-muted rounded-full h-2">
+                    <div 
+                      className={`${barColor} h-2 rounded-full`} 
+                      style={{ width: `${Math.min(100, progressPercentage)}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs mt-1">
+                    <span>Target: {program.target}%</span>
+                    <span>Current: {program.current}%</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          
-          <div className="border rounded-md p-4">
-            <div className="flex justify-between items-center">
-              <h4 className="font-medium">Mentorship Program</h4>
-              <div className="text-sm text-amber-500">+3% YoY</div>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Cross-cultural mentorship for career development
-            </p>
-            <div className="mt-2 w-full bg-muted rounded-full h-2">
-              <div className="bg-amber-500 h-2 rounded-full" style={{ width: '60%' }}></div>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span>Target: 80%</span>
-              <span>Current: 60%</span>
-            </div>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

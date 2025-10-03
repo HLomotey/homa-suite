@@ -1,38 +1,17 @@
 import { useState, useEffect } from "react";
 import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
+import { useDiversityAnalytics } from "@/hooks/diversity/useDiversityAnalytics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
 
-export function GenderDistribution() {
-  const { externalStaff, statsLoading } = useExternalStaff();
-  const [genderData, setGenderData] = useState<{male: number, female: number, other: number}>({male: 0, female: 0, other: 0});
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    if (!statsLoading && externalStaff.length > 0) {
-      setLoading(true);
-      
-      // Count staff by gender
-      let maleCount = 0;
-      let femaleCount = 0;
-      let otherCount = 0;
-      
-      externalStaff.forEach(staff => {
-        const gender = staff["GENDER (SELF-ID)"]?.toLowerCase();
-        if (gender === "male") {
-          maleCount++;
-        } else if (gender === "female") {
-          femaleCount++;
-        } else {
-          otherCount++;
-        }
-      });
-      
-      setGenderData({ male: maleCount, female: femaleCount, other: otherCount });
-      setLoading(false);
-    }
-  }, [externalStaff, statsLoading]);
+interface GenderDistributionProps {
+  timeRange?: string;
+  department?: string;
+}
+
+export function GenderDistribution({ timeRange = "6m", department = "all" }: GenderDistributionProps) {
+  const { genderData, loading } = useDiversityAnalytics(timeRange, department);
   
   // Calculate percentages
   const total = genderData.male + genderData.female + genderData.other;
