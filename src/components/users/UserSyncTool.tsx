@@ -67,11 +67,11 @@ export function UserSyncTool() {
         return;
       }
 
-      const profileIds = new Set(profiles?.map(p => p.id) || []);
-      const missing = authUsers.filter((user: any) => user.email && !profileIds.has(user.id));
+      const profileIds = new Set(profiles?.map((p: any) => p.id) || []);
+      const missing = (authUsers || []).filter((user: any) => user.email && !profileIds.has(user.id));
 
       const newStats = {
-        totalAuthUsers: authUsers.length,
+        totalAuthUsers: authUsers?.length || 0,
         existingProfiles: profiles?.length || 0,
         missingProfiles: missing.length,
         syncedUsers: stats.syncedUsers

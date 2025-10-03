@@ -250,30 +250,6 @@ export function J1TrackingModule() {
     setViewMode("edit");
   };
 
-  const handleUpdateParticipant = async (data: J1UpdateData) => {
-    if (!editingParticipant) return;
-
-    try {
-      const result = await updateJ1Participant(editingParticipant.id, data);
-      if (result) {
-        toast({
-          title: 'Success',
-          description: 'J-1 participant updated successfully'
-        });
-        setViewMode('list');
-        setEditingParticipant(null);
-        await loadParticipants();
-        await loadStatistics();
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to update J-1 participant",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleDeleteParticipant = async (participant: J1DashboardView) => {
     if (
       !confirm(
