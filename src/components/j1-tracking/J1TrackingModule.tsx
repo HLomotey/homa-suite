@@ -207,12 +207,8 @@ export function J1TrackingModule() {
           title: "Success",
           description: "J-1 participant created successfully",
         });
-<<<<<<< HEAD
-        setViewMode('list');
-        setShowForm(false);
-=======
         setViewMode("list");
->>>>>>> 8bbbf282d6f92a706a1ffb5e16368af2db841a40
+        setShowForm(false);
         await loadParticipants();
         await loadStatistics();
       }
@@ -427,11 +423,7 @@ export function J1TrackingModule() {
             List View
           </Button>
           <Button
-<<<<<<< HEAD
-            onClick={() => setViewMode('create')}
-=======
-            onClick={() => setViewMode("add")}
->>>>>>> 8bbbf282d6f92a706a1ffb5e16368af2db841a40
+            onClick={() => setViewMode("create")}
             className="flex items-center gap-2"
           >
             <UserPlus className="h-4 w-4" />
@@ -464,16 +456,11 @@ export function J1TrackingModule() {
             <Users className="h-8 w-8 text-blue-500" />
           </div>
         </Card>
-<<<<<<< HEAD
         
         <Card 
           className="p-4 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 hover:bg-green-50"
           onClick={() => handleCardClick('active')}
         >
-=======
-
-        <Card className="p-4">
->>>>>>> 8bbbf282d6f92a706a1ffb5e16368af2db841a40
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">
@@ -486,16 +473,11 @@ export function J1TrackingModule() {
             <CheckCircle className="h-8 w-8 text-green-500" />
           </div>
         </Card>
-<<<<<<< HEAD
         
         <Card 
           className="p-4 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 hover:bg-purple-50"
           onClick={() => handleCardClick('completed')}
         >
-=======
-
-        <Card className="p-4">
->>>>>>> 8bbbf282d6f92a706a1ffb5e16368af2db841a40
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Completed</p>
@@ -506,16 +488,11 @@ export function J1TrackingModule() {
             <BarChart3 className="h-8 w-8 text-purple-500" />
           </div>
         </Card>
-<<<<<<< HEAD
         
         <Card 
           className="p-4 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 hover:bg-orange-50"
           onClick={() => handleCardClick('pending_onboarding')}
         >
-=======
-
-        <Card className="p-4">
->>>>>>> 8bbbf282d6f92a706a1ffb5e16368af2db841a40
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">
@@ -528,16 +505,11 @@ export function J1TrackingModule() {
             <Clock className="h-8 w-8 text-orange-500" />
           </div>
         </Card>
-<<<<<<< HEAD
         
         <Card 
           className="p-4 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 hover:bg-red-50"
           onClick={() => handleCardClick('alerts')}
         >
-=======
-
-        <Card className="p-4">
->>>>>>> 8bbbf282d6f92a706a1ffb5e16368af2db841a40
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Alerts</p>
