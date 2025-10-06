@@ -56,8 +56,77 @@ export function useReports() {
   const [error, setError] = useState<string | null>(null);
 
   const generateHousingReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
-    const { dateRange, status } = filters;
+    const { dateRange, status, reportType } = filters;
     
+    // Check if this is the comprehensive housing report
+    if (reportType === 'comprehensive_housing') {
+      // Use the housing report view for comprehensive data
+      let query = supabase
+        .from('housing_report_view')
+        .select('*');
+
+      // Filter by date range (year and month)
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      
+      query = query
+        .gte('report_year', startDate.getFullYear())
+        .lte('report_year', endDate.getFullYear());
+
+      if (startDate.getFullYear() === endDate.getFullYear()) {
+        query = query
+          .gte('report_month_num', startDate.getMonth() + 1)
+          .lte('report_month_num', endDate.getMonth() + 1);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Comprehensive housing report query error:', error);
+        throw new Error(`Failed to fetch comprehensive housing data: ${error.message}`);
+      }
+
+      const reportData = (data as any[])?.map((row: any) => ({
+        'State': row.state || '',
+        'Housing Capacity': row.housing_capacity || 0,
+        'Housing Occupancy': row.housing_occupancy || 0,
+        'Rent Per Employee': `$${(row.rent_per_employee || 0).toFixed(2)}`,
+        'Property': row.property || '',
+        'Propane': `$${(row.propane || 0).toFixed(2)}`,
+        'Water/Sewer & Disposal': `$${(row.water_sewer_disposal || 0).toFixed(2)}`,
+        'Electricity': `$${(row.electricity || 0).toFixed(2)}`,
+        'Total Utilities': `$${(row.total_utilities || 0).toFixed(2)}`,
+        'Monthly Rent Charges': `$${(row.monthly_rent_charges || 0).toFixed(2)}`,
+        'Housing Maintenance': `$${(row.housing_maintenance || 0).toFixed(2)}`,
+        'Total Cost (TC)': `$${(row.total_cost || 0).toFixed(2)}`,
+        'Expected Rent - Occupancy (RTC)': `$${(row.expected_rent_occupancy || 0).toFixed(2)}`,
+        'Expected Rent - Capacity (RRO)': `$${(row.expected_rent_capacity || 0).toFixed(2)}`,
+        'Actual Payroll Deductions (APD)': `$${(row.actual_payroll_deductions || 0).toFixed(2)}`,
+        'Variance - APD vs RTC': `$${(row.variance_apd_rtc || 0).toFixed(2)}`,
+        'Variance - APD vs RRO': `$${(row.variance_apd_rro || 0).toFixed(2)}`
+      })) || [];
+
+      return {
+        title: 'Comprehensive Housing Report with Billing & Utilities',
+        data: reportData,
+        columns: [
+          'State', 'Housing Capacity', 'Housing Occupancy', 'Rent Per Employee', 'Property',
+          'Propane', 'Water/Sewer & Disposal', 'Electricity', 'Total Utilities',
+          'Monthly Rent Charges', 'Housing Maintenance', 'Total Cost (TC)',
+          'Expected Rent - Occupancy (RTC)', 'Expected Rent - Capacity (RRO)',
+          'Actual Payroll Deductions (APD)', 'Variance - APD vs RTC', 'Variance - APD vs RRO'
+        ],
+        summary: {
+          totalProperties: reportData.length,
+          totalCapacity: reportData.reduce((sum, item) => sum + (parseInt(item['Housing Capacity']) || 0), 0),
+          totalOccupancy: reportData.reduce((sum, item) => sum + (parseInt(item['Housing Occupancy']) || 0), 0),
+          totalUtilities: reportData.reduce((sum, item) => sum + (parseFloat(item['Total Utilities'].replace('$', '')) || 0), 0),
+          totalRentCharges: reportData.reduce((sum, item) => sum + (parseFloat(item['Monthly Rent Charges'].replace('$', '')) || 0), 0)
+        }
+      };
+    }
+
+    // Default assignment-based housing report
     let query = supabase
       .from('assignments')
       .select(`
