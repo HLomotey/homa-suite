@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integration/supabase';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -51,7 +51,7 @@ interface ReportData {
   summary?: Record<string, any>;
 }
 
-export function useReports() {
+export function useReportsSecure() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,10 +62,27 @@ export function useReports() {
       .from('assignments')
       .select(`
         *,
+        properties!inner(
+          id,
+          title,
+          address,
+          rent_amount
+        ),
+        rooms!inner(
+          id,
+          name,
+          rent_amount
+        ),
         security_deposits(
           id,
           total_amount,
-          payment_status
+          payment_status,
+          security_deposit_deductions(
+            id,
+            amount,
+            status,
+            scheduled_date
+          )
         )
       `)
       .gte('start_date', dateRange.startDate)
@@ -77,15 +94,12 @@ export function useReports() {
 
     const { data, error } = await query;
     
-    if (error) {
-      console.error('Housing report query error:', error);
-      throw new Error(`Failed to fetch housing data: ${error.message}`);
-    }
+    if (error) throw error;
 
     const reportData = (data as any[])?.map((assignment: any) => ({
       'Tenant Name': assignment.tenant_name || '',
-      'Property': assignment.property_name || '',
-      'Room': assignment.room_name || '',
+      'Property': assignment.properties?.title || '',
+      'Room': assignment.rooms?.name || '',
       'Status': assignment.status || '',
       'Start Date': assignment.start_date || '',
       'End Date': assignment.end_date || 'Current',
@@ -111,7 +125,10 @@ export function useReports() {
     
     const { data, error } = await supabase
       .from('assignments')
-      .select('*')
+      .select(`
+        *,
+        properties!inner(title)
+      `)
       .eq('transportation_agreement', true)
       .gte('start_date', dateRange.startDate)
       .lte('start_date', dateRange.endDate);
@@ -120,7 +137,7 @@ export function useReports() {
 
     const reportData = (data as any[])?.map((assignment: any) => ({
       'Staff Name': assignment.staff_name || assignment.tenant_name || '',
-      'Property': assignment.property_name || '',
+      'Property': assignment.properties?.title || '',
       'Transport Amount': assignment.transport_amount || 0,
       'Bus Card Amount': assignment.bus_card_amount || 0,
       'Status': assignment.status || '',
@@ -244,24 +261,68 @@ export function useReports() {
     };
   }, []);
 
-  const exportToExcel = useCallback((reportData: ReportData, filename: string) => {
-    const workbook = XLSX.utils.book_new();
+  const exportToExcelSecure = useCallback(async (reportData: ReportData, filename: string) => {
+    const workbook = new ExcelJS.Workbook();
     
     // Create main data sheet
-    const worksheet = XLSX.utils.json_to_sheet(reportData.data);
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+    const worksheet = workbook.addWorksheet('Data');
+    
+    // Add headers
+    const headers = reportData.columns;
+    worksheet.addRow(headers);
+    
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    
+    // Add data rows
+    reportData.data.forEach(row => {
+      const values = headers.map(header => row[header] || '');
+      worksheet.addRow(values);
+    });
+    
+    // Auto-fit columns
+    worksheet.columns.forEach(column => {
+      column.width = 15;
+    });
     
     // Create summary sheet if available
     if (reportData.summary) {
-      const summaryData = Object.entries(reportData.summary).map(([key, value]) => ({
-        Metric: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
-        Value: value
-      }));
-      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+      const summarySheet = workbook.addWorksheet('Summary');
+      summarySheet.addRow(['Metric', 'Value']);
+      
+      const summaryHeaderRow = summarySheet.getRow(1);
+      summaryHeaderRow.font = { bold: true };
+      summaryHeaderRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      
+      Object.entries(reportData.summary).forEach(([key, value]) => {
+        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        summarySheet.addRow([label, value]);
+      });
+      
+      summarySheet.columns.forEach(column => {
+        column.width = 20;
+      });
     }
     
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
+    // Generate buffer and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filename}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }, []);
 
   const exportToPDF = useCallback((reportData: ReportData, filename: string) => {
@@ -333,7 +394,7 @@ export function useReports() {
       const filename = `${module}_${reportType}_${new Date().toISOString().split('T')[0]}`;
       
       if (filters.exportFormat === 'excel') {
-        exportToExcel(reportData, filename);
+        await exportToExcelSecure(reportData, filename);
       } else {
         exportToPDF(reportData, filename);
       }
@@ -346,7 +407,7 @@ export function useReports() {
     } finally {
       setIsGenerating(false);
     }
-  }, [generateHousingReport, generateTransportationReport, generateFinanceReport, generateHRReport, generateOperationsReport, exportToExcel, exportToPDF]);
+  }, [generateHousingReport, generateTransportationReport, generateFinanceReport, generateHRReport, generateOperationsReport, exportToExcelSecure, exportToPDF]);
 
   return {
     generateReport,

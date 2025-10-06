@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/hooks/reports/useReports';
+import { useLocations } from '@/hooks/reports/useLocations';
 import { 
   FileText, 
   Download, 
@@ -31,10 +32,39 @@ interface ReportFilters {
     startDate: string;
     endDate: string;
   };
-  properties: string[];
+  // Common filters
   status: string[];
+  location: string[];
   reportType: string;
   exportFormat: 'excel' | 'pdf';
+  
+  // Housing-specific filters
+  housingAgreement?: boolean;
+  transportationAgreement?: boolean;
+  flightAgreement?: boolean;
+  busCardAgreement?: boolean;
+  rentAmountRange?: { min: number; max: number };
+  
+  // Transportation-specific filters
+  maintenanceCategory?: string[];
+  vehicleStatus?: string[];
+  routeStatus?: string[];
+  
+  // HR-specific filters
+  positionStatus?: string[];
+  department?: string[];
+  jobTitle?: string[];
+  workerCategory?: string[];
+  
+  // Finance-specific filters
+  paymentStatus?: string[];
+  billingType?: string[];
+  amountRange?: { min: number; max: number };
+  
+  // Operations-specific filters
+  jobOrderStatus?: string[];
+  priority?: string[];
+  assignedTo?: string[];
 }
 
 interface ReportModule {
@@ -54,14 +84,15 @@ interface ReportModule {
 export function Reports() {
   const { toast } = useToast();
   const { generateReport, isGenerating, error, clearError } = useReports();
+  const { locations, isLoading: locationsLoading } = useLocations();
   const [selectedModule, setSelectedModule] = useState<string>('housing');
   const [filters, setFilters] = useState<ReportFilters>({
     dateRange: {
       startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0]
     },
-    properties: [],
     status: [],
+    location: [],
     reportType: '',
     exportFormat: 'excel'
   });
@@ -328,22 +359,281 @@ export function Reports() {
                     </div>
                   </div>
 
-                  {/* Status Filter */}
-                  <div className="space-y-2">
-                    <Label>Status Filter</Label>
-                    <Select onValueChange={(value) => handleFilterChange('status', [value])}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status filter (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="active">Active Only</SelectItem>
-                        <SelectItem value="inactive">Inactive Only</SelectItem>
-                        <SelectItem value="pending">Pending Only</SelectItem>
-                        <SelectItem value="completed">Completed Only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Dynamic Filters Based on Selected Module */}
+                  {selectedModule === 'housing' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Assignment Status</Label>
+                          <Select onValueChange={(value) => handleFilterChange('status', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Statuses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="Pending">Pending</SelectItem>
+                              <SelectItem value="Active">Active</SelectItem>
+                              <SelectItem value="Inactive">Inactive</SelectItem>
+                              <SelectItem value="Terminated">Terminated</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Location</Label>
+                          <Select onValueChange={(value) => handleFilterChange('location', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder={locationsLoading ? "Loading locations..." : "All Locations"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Locations</SelectItem>
+                              {locations.map((location) => (
+                                <SelectItem key={location.value} value={location.value}>
+                                  {location.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="housingAgreement"
+                            checked={filters.housingAgreement || false}
+                            onChange={(e) => handleFilterChange('housingAgreement', e.target.checked)}
+                            className="rounded border-gray-300"
+                            aria-label="Filter by housing agreement"
+                            title="Include only assignments with housing agreements"
+                          />
+                          <Label htmlFor="housingAgreement" className="text-sm">Housing Agreement</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="transportationAgreement"
+                            checked={filters.transportationAgreement || false}
+                            onChange={(e) => handleFilterChange('transportationAgreement', e.target.checked)}
+                            className="rounded border-gray-300"
+                            aria-label="Filter by transportation agreement"
+                            title="Include only assignments with transportation agreements"
+                          />
+                          <Label htmlFor="transportationAgreement" className="text-sm">Transportation</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="flightAgreement"
+                            checked={filters.flightAgreement || false}
+                            onChange={(e) => handleFilterChange('flightAgreement', e.target.checked)}
+                            className="rounded border-gray-300"
+                            aria-label="Filter by flight agreement"
+                            title="Include only assignments with flight agreements"
+                          />
+                          <Label htmlFor="flightAgreement" className="text-sm">Flight Agreement</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="busCardAgreement"
+                            checked={filters.busCardAgreement || false}
+                            onChange={(e) => handleFilterChange('busCardAgreement', e.target.checked)}
+                            className="rounded border-gray-300"
+                            aria-label="Filter by bus card agreement"
+                            title="Include only assignments with bus card agreements"
+                          />
+                          <Label htmlFor="busCardAgreement" className="text-sm">Bus Card</Label>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Rent Amount Range</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min amount"
+                            value={filters.rentAmountRange?.min || ''}
+                            onChange={(e) => handleFilterChange('rentAmountRange', {
+                              ...filters.rentAmountRange,
+                              min: Number(e.target.value)
+                            })}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Max amount"
+                            value={filters.rentAmountRange?.max || ''}
+                            onChange={(e) => handleFilterChange('rentAmountRange', {
+                              ...filters.rentAmountRange,
+                              max: Number(e.target.value)
+                            })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedModule === 'transportation' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Maintenance Category</Label>
+                          <Select onValueChange={(value) => handleFilterChange('maintenanceCategory', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Categories</SelectItem>
+                              <SelectItem value="Preventive">Preventive</SelectItem>
+                              <SelectItem value="Corrective">Corrective</SelectItem>
+                              <SelectItem value="Predictive">Predictive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Route Status</Label>
+                          <Select onValueChange={(value) => handleFilterChange('routeStatus', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Routes" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Routes</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedModule === 'hr' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Position Status</Label>
+                          <Select onValueChange={(value) => handleFilterChange('positionStatus', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Positions" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Positions</SelectItem>
+                              <SelectItem value="Active">Active</SelectItem>
+                              <SelectItem value="Inactive">Inactive</SelectItem>
+                              <SelectItem value="Terminated">Terminated</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Department</Label>
+                          <Select onValueChange={(value) => handleFilterChange('department', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Departments" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Departments</SelectItem>
+                              <SelectItem value="Operations">Operations</SelectItem>
+                              <SelectItem value="Guest Services">Guest Services</SelectItem>
+                              <SelectItem value="Food & Beverage">Food & Beverage</SelectItem>
+                              <SelectItem value="Housekeeping">Housekeeping</SelectItem>
+                              <SelectItem value="Maintenance">Maintenance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Worker Category</Label>
+                          <Select onValueChange={(value) => handleFilterChange('workerCategory', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Categories</SelectItem>
+                              <SelectItem value="Full Time">Full Time</SelectItem>
+                              <SelectItem value="Part Time">Part Time</SelectItem>
+                              <SelectItem value="Seasonal">Seasonal</SelectItem>
+                              <SelectItem value="Contract">Contract</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedModule === 'finance' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Payment Status</Label>
+                          <Select onValueChange={(value) => handleFilterChange('paymentStatus', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Payment Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Status</SelectItem>
+                              <SelectItem value="unpaid">Unpaid</SelectItem>
+                              <SelectItem value="partial">Partial</SelectItem>
+                              <SelectItem value="paid">Paid</SelectItem>
+                              <SelectItem value="waived">Waived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Billing Type</Label>
+                          <Select onValueChange={(value) => handleFilterChange('billingType', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Types" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Types</SelectItem>
+                              <SelectItem value="housing">Housing</SelectItem>
+                              <SelectItem value="transportation">Transportation</SelectItem>
+                              <SelectItem value="security_deposit">Security Deposit</SelectItem>
+                              <SelectItem value="bus_card">Bus Card</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedModule === 'operations' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Job Order Status</Label>
+                          <Select onValueChange={(value) => handleFilterChange('jobOrderStatus', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Status</SelectItem>
+                              <SelectItem value="DRAFT">Draft</SelectItem>
+                              <SelectItem value="SUBMITTED">Submitted</SelectItem>
+                              <SelectItem value="APPROVED">Approved</SelectItem>
+                              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                              <SelectItem value="COMPLETED">Completed</SelectItem>
+                              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Priority</Label>
+                          <Select onValueChange={(value) => handleFilterChange('priority', [value])}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Priorities" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Priorities</SelectItem>
+                              <SelectItem value="LOW">Low</SelectItem>
+                              <SelectItem value="MEDIUM">Medium</SelectItem>
+                              <SelectItem value="HIGH">High</SelectItem>
+                              <SelectItem value="URGENT">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Export Format */}
                   <div className="space-y-2">
