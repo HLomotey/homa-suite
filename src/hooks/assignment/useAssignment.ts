@@ -4,6 +4,10 @@ import { FrontendAssignment } from '@/integration/supabase/types';
 
 // Map a database row to FrontendAssignment shape
 function mapRowToFrontend(row: any): FrontendAssignment {
+  // Get security deposit amount from security_deposits table if available
+  const securityDeposit = row.security_deposits?.[0]; // Get first security deposit
+  const securityDepositAmount = securityDeposit?.total_amount ?? row.rent_deposit_amount ?? null;
+  
   return {
     id: row.id,
     tenantId: row.tenant_id ?? null,
@@ -18,13 +22,15 @@ function mapRowToFrontend(row: any): FrontendAssignment {
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? null,
     rentAmount: row.rent_amount ?? 0,
-    rentDepositAmount: row.rent_deposit_amount ?? null,
+    rentDepositAmount: securityDepositAmount,
     transportAmount: row.transport_amount ?? null,
     busCardAmount: row.bus_card_amount ?? null,
     housingAgreement: row.housing_agreement ?? false,
     transportationAgreement: row.transportation_agreement ?? false,
     busCardAgreement: row.bus_card_agreement ?? false,
     flightAgreement: row.flight_agreement ?? false,
+    securityDepositStatus: securityDeposit?.payment_status ?? null,
+    securityDepositId: securityDeposit?.id ?? null,
     agreements: {
       housing: row.housing_agreement ?? false,
       transportation: row.transportation_agreement ?? false,
@@ -44,7 +50,19 @@ export function useAssignments() {
     setError(null);
     try {
       const { data, error } = await (supabase.from('assignments') as any)
-        .select('*')
+        .select(`
+          *,
+          security_deposits(
+            id,
+            total_amount,
+            payment_status,
+            security_deposit_deductions(
+              id,
+              amount,
+              status
+            )
+          )
+        `)
         .order('start_date', { ascending: false });
 
       if (error) throw error;

@@ -103,6 +103,8 @@ export interface FrontendAssignment {
   busCardAgreement?: boolean;
   flightAgreement?: boolean;
   securityDeposits?: SecurityDeposit[] | null;
+  securityDepositStatus?: 'pending' | 'partial' | 'paid' | 'refunded' | null;
+  securityDepositId?: string | null;
   flightAgreementAmount?: number;
   flightAgreementNotes?: string;
 }
