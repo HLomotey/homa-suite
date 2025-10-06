@@ -270,7 +270,7 @@ export const BillingLog: React.FC<BillingLogProps> = ({
                 Generate Billing
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-black/95 border-white/20 max-w-3xl">
+            <DialogContent className="bg-black/95 border-white/20 max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-white">Generate Billing Records</DialogTitle>
               </DialogHeader>

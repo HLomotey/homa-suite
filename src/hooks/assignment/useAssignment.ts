@@ -18,6 +18,13 @@ function mapRowToFrontend(row: any): FrontendAssignment {
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? null,
     rentAmount: row.rent_amount ?? 0,
+    rentDepositAmount: row.rent_deposit_amount ?? null,
+    transportAmount: row.transport_amount ?? null,
+    busCardAmount: row.bus_card_amount ?? null,
+    housingAgreement: row.housing_agreement ?? false,
+    transportationAgreement: row.transportation_agreement ?? false,
+    busCardAgreement: row.bus_card_agreement ?? false,
+    flightAgreement: row.flight_agreement ?? false,
     agreements: {
       housing: row.housing_agreement ?? false,
       transportation: row.transportation_agreement ?? false,
@@ -89,10 +96,13 @@ export function useCreateAssignment() {
         start_date: payload.startDate && payload.startDate.trim() !== '' ? payload.startDate : null,
         end_date: payload.endDate && payload.endDate.trim() !== '' ? payload.endDate : null,
         rent_amount: payload.rentAmount || 0,
-        housing_agreement: payload.agreements?.housing || false,
-        transportation_agreement: payload.agreements?.transportation || false,
-        flight_agreement: payload.agreements?.flight_agreement || false,
-        bus_card_agreement: payload.agreements?.bus_card || false,
+        rent_deposit_amount: payload.rentDepositAmount || null,
+        transport_amount: payload.transportAmount || null,
+        bus_card_amount: payload.busCardAmount || null,
+        housing_agreement: payload.housingAgreement ?? payload.agreements?.housing ?? false,
+        transportation_agreement: payload.transportationAgreement ?? payload.agreements?.transportation ?? false,
+        flight_agreement: payload.flightAgreement ?? payload.agreements?.flight_agreement ?? false,
+        bus_card_agreement: payload.busCardAgreement ?? payload.agreements?.bus_card ?? false,
       };
 
       const { error } = await (supabase.from('assignments') as any)
@@ -133,10 +143,13 @@ export function useUpdateAssignment() {
         start_date: payload.startDate && payload.startDate.trim() !== '' ? payload.startDate : null,
         end_date: payload.endDate && payload.endDate.trim() !== '' ? payload.endDate : null,
         rent_amount: payload.rentAmount || 0,
-        housing_agreement: payload.agreements?.housing || false,
-        transportation_agreement: payload.agreements?.transportation || false,
-        flight_agreement: payload.agreements?.flight_agreement || false,
-        bus_card_agreement: payload.agreements?.bus_card || false,
+        rent_deposit_amount: payload.rentDepositAmount || null,
+        transport_amount: payload.transportAmount || null,
+        bus_card_amount: payload.busCardAmount || null,
+        housing_agreement: payload.housingAgreement ?? payload.agreements?.housing ?? false,
+        transportation_agreement: payload.transportationAgreement ?? payload.agreements?.transportation ?? false,
+        flight_agreement: payload.flightAgreement ?? payload.agreements?.flight_agreement ?? false,
+        bus_card_agreement: payload.busCardAgreement ?? payload.agreements?.bus_card ?? false,
       };
 
       const { error } = await (supabase.from('assignments') as any)
