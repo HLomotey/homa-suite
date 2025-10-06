@@ -30,13 +30,7 @@ export async function getActiveStaffWithTransportation(year: number, month: numb
         rent_amount,
         start_date,
         end_date,
-        transportation_agreement,
-        external_staff!inner (
-          id,
-          "HIRE DATE",
-          "TERMINATION DATE", 
-          "POSITION STATUS"
-        )
+        transportation_agreement
       `)
       .eq('transportation_agreement', true)
       .not('tenant_id', 'is', null);
@@ -52,9 +46,31 @@ export async function getActiveStaffWithTransportation(year: number, month: numb
       return [];
     }
 
+    // Get external staff data for employment validation
+    const tenantIds = assignments.map((a: any) => a.tenant_id).filter(Boolean);
+    console.log(`👥 Checking employment status for ${tenantIds.length} staff members`);
+    
+    const { data: staffData, error: staffError } = await (supabase
+      .from('external_staff') as any)
+      .select('id, "HIRE DATE", "TERMINATION DATE", "POSITION STATUS"')
+      .in('id', tenantIds);
+
+    if (staffError) {
+      console.error('Error fetching external staff:', staffError);
+      throw new Error(`Failed to fetch external staff: ${staffError.message}`);
+    }
+
+    console.log(`👤 External staff records found: ${staffData?.length || 0}`);
+
+    // Create staff lookup map
+    const staffMap = new Map();
+    (staffData || []).forEach((staff: any) => {
+      staffMap.set(staff.id, staff);
+    });
+
     // Filter based on employment status and date overlap
     const validAssignments = assignments.filter((assignment: any) => {
-      const staff = assignment.external_staff;
+      const staff = staffMap.get(assignment.tenant_id);
       if (!staff) return false;
 
       // Check if staff is active
@@ -76,6 +92,8 @@ export async function getActiveStaffWithTransportation(year: number, month: numb
       if (hireDate && hireDate > monthEnd) return false;
       if (termDate && termDate < monthStart) return false;
 
+      // Add staff data to assignment for later use
+      assignment.external_staff = staff;
       return true;
     });
 
