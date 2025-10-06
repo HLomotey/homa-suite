@@ -62,27 +62,10 @@ export function useReports() {
       .from('assignments')
       .select(`
         *,
-        properties!inner(
-          id,
-          title,
-          address,
-          rent_amount
-        ),
-        rooms!inner(
-          id,
-          name,
-          rent_amount
-        ),
         security_deposits(
           id,
           total_amount,
-          payment_status,
-          security_deposit_deductions(
-            id,
-            amount,
-            status,
-            scheduled_date
-          )
+          payment_status
         )
       `)
       .gte('start_date', dateRange.startDate)
@@ -94,12 +77,15 @@ export function useReports() {
 
     const { data, error } = await query;
     
-    if (error) throw error;
+    if (error) {
+      console.error('Housing report query error:', error);
+      throw new Error(`Failed to fetch housing data: ${error.message}`);
+    }
 
     const reportData = (data as any[])?.map((assignment: any) => ({
       'Tenant Name': assignment.tenant_name || '',
-      'Property': assignment.properties?.title || '',
-      'Room': assignment.rooms?.name || '',
+      'Property': assignment.property_name || '',
+      'Room': assignment.room_name || '',
       'Status': assignment.status || '',
       'Start Date': assignment.start_date || '',
       'End Date': assignment.end_date || 'Current',
@@ -125,10 +111,7 @@ export function useReports() {
     
     const { data, error } = await supabase
       .from('assignments')
-      .select(`
-        *,
-        properties!inner(title)
-      `)
+      .select('*')
       .eq('transportation_agreement', true)
       .gte('start_date', dateRange.startDate)
       .lte('start_date', dateRange.endDate);
@@ -137,7 +120,7 @@ export function useReports() {
 
     const reportData = (data as any[])?.map((assignment: any) => ({
       'Staff Name': assignment.staff_name || assignment.tenant_name || '',
-      'Property': assignment.properties?.title || '',
+      'Property': assignment.property_name || '',
       'Transport Amount': assignment.transport_amount || 0,
       'Bus Card Amount': assignment.bus_card_amount || 0,
       'Status': assignment.status || '',
