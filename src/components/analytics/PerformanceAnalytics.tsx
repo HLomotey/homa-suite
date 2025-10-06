@@ -81,8 +81,8 @@ const PerformanceAnalytics: React.FC = () => {
     performanceScore: 0,
     totalProjectedRevenue: 0,
     totalActualRevenue: 0,
-    overallVariancePercentage: 0,
     overallVariance: 0,
+    overallVariancePercentage: 0,
     companiesOverPerforming: 0,
     companiesUnderPerforming: 0,
     topPerformers: [],
@@ -239,7 +239,7 @@ const PerformanceAnalytics: React.FC = () => {
                   <Award className="h-4 w-4 text-muted-foreground" />
                   <h4 className="text-sm font-medium">Top Performer</h4>
                 </div>
-                {insights.topPerformers.length > 0 ? (
+                {insights.topPerformers && insights.topPerformers.length > 0 ? (
                   <div>
                     <p className="font-medium text-gray-900">{insights.topPerformers[0].company_name}</p>
                     <p className="text-lg font-bold text-green-600">
@@ -260,7 +260,7 @@ const PerformanceAnalytics: React.FC = () => {
         {/* Companies Tab */}
         <TabsContent value="companies" className="space-y-4">
           <div className="grid gap-4">
-            {insights.companyPerformances.map((company, index) => (
+            {(insights.companyPerformances || []).map((company, index) => (
               <Card key={index} className="bg-background border-border">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -325,7 +325,7 @@ const PerformanceAnalytics: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {insights.monthlyPerformance.map((month, index) => (
+                {(insights.monthlyPerformance || []).map((month, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded">
                     <div className="flex items-center gap-4">
                       <div className="w-16">
@@ -367,7 +367,7 @@ const PerformanceAnalytics: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {insights.topPerformers.slice(0, 5).map((company, index) => (
+                  {(insights.topPerformers || []).slice(0, 5).map((company, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${
@@ -399,7 +399,7 @@ const PerformanceAnalytics: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {insights.underPerformers.slice(0, 5).map((company, index) => (
+                  {(insights.underPerformers || []).slice(0, 5).map((company, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -411,7 +411,7 @@ const PerformanceAnalytics: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {insights.underPerformers.length === 0 && (
+                  {(insights.underPerformers || []).length === 0 && (
                     <p className="text-muted-foreground text-center py-4">
                       🎉 All companies are meeting or exceeding expectations!
                     </p>
