@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integration/supabase';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface ReportFilters {
   dateRange: {
@@ -56,8 +56,77 @@ export function useReports() {
   const [error, setError] = useState<string | null>(null);
 
   const generateHousingReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
-    const { dateRange, status } = filters;
+    const { dateRange, status, reportType } = filters;
     
+    // Check if this is the comprehensive housing report
+    if (reportType === 'comprehensive_housing') {
+      // Use the housing report view for comprehensive data
+      let query = supabase
+        .from('housing_report_view')
+        .select('*');
+
+      // Filter by date range (year and month)
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      
+      query = query
+        .gte('report_year', startDate.getFullYear())
+        .lte('report_year', endDate.getFullYear());
+
+      if (startDate.getFullYear() === endDate.getFullYear()) {
+        query = query
+          .gte('report_month_num', startDate.getMonth() + 1)
+          .lte('report_month_num', endDate.getMonth() + 1);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Comprehensive housing report query error:', error);
+        throw new Error(`Failed to fetch comprehensive housing data: ${error.message}`);
+      }
+
+      const reportData = (data as any[])?.map((row: any) => ({
+        'State': row.state || '',
+        'Housing Capacity': row.housing_capacity || 0,
+        'Housing Occupancy': row.housing_occupancy || 0,
+        'Rent Per Employee': `$${(row.rent_per_employee || 0).toFixed(2)}`,
+        'Property': row.property || '',
+        'Propane': `$${(row.propane || 0).toFixed(2)}`,
+        'Water/Sewer & Disposal': `$${(row.water_sewer_disposal || 0).toFixed(2)}`,
+        'Electricity': `$${(row.electricity || 0).toFixed(2)}`,
+        'Total Utilities': `$${(row.total_utilities || 0).toFixed(2)}`,
+        'Monthly Rent Charges': `$${(row.monthly_rent_charges || 0).toFixed(2)}`,
+        'Housing Maintenance': `$${(row.housing_maintenance || 0).toFixed(2)}`,
+        'Total Cost (TC)': `$${(row.total_cost || 0).toFixed(2)}`,
+        'Expected Rent - Occupancy (RTC)': `$${(row.expected_rent_occupancy || 0).toFixed(2)}`,
+        'Expected Rent - Capacity (RRO)': `$${(row.expected_rent_capacity || 0).toFixed(2)}`,
+        'Actual Payroll Deductions (APD)': `$${(row.actual_payroll_deductions || 0).toFixed(2)}`,
+        'Variance - APD vs RTC': `$${(row.variance_apd_rtc || 0).toFixed(2)}`,
+        'Variance - APD vs RRO': `$${(row.variance_apd_rro || 0).toFixed(2)}`
+      })) || [];
+
+      return {
+        title: 'Comprehensive Housing Report with Billing & Utilities',
+        data: reportData,
+        columns: [
+          'State', 'Housing Capacity', 'Housing Occupancy', 'Rent Per Employee', 'Property',
+          'Propane', 'Water/Sewer & Disposal', 'Electricity', 'Total Utilities',
+          'Monthly Rent Charges', 'Housing Maintenance', 'Total Cost (TC)',
+          'Expected Rent - Occupancy (RTC)', 'Expected Rent - Capacity (RRO)',
+          'Actual Payroll Deductions (APD)', 'Variance - APD vs RTC', 'Variance - APD vs RRO'
+        ],
+        summary: {
+          totalProperties: reportData.length,
+          totalCapacity: reportData.reduce((sum, item) => sum + (parseInt(item['Housing Capacity']) || 0), 0),
+          totalOccupancy: reportData.reduce((sum, item) => sum + (parseInt(item['Housing Occupancy']) || 0), 0),
+          totalUtilities: reportData.reduce((sum, item) => sum + (parseFloat(item['Total Utilities'].replace('$', '')) || 0), 0),
+          totalRentCharges: reportData.reduce((sum, item) => sum + (parseFloat(item['Monthly Rent Charges'].replace('$', '')) || 0), 0)
+        }
+      };
+    }
+
+    // Default assignment-based housing report
     let query = supabase
       .from('assignments')
       .select(`
@@ -265,42 +334,48 @@ export function useReports() {
   }, []);
 
   const exportToPDF = useCallback((reportData: ReportData, filename: string) => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(16);
-    doc.text(reportData.title, 20, 20);
-    
-    // Add generation date
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-    
-    // Add summary if available
-    let yPosition = 40;
-    if (reportData.summary) {
-      doc.setFontSize(12);
-      doc.text('Summary:', 20, yPosition);
-      yPosition += 10;
+    try {
+      const doc = new jsPDF();
       
-      Object.entries(reportData.summary).forEach(([key, value]) => {
-        doc.setFontSize(10);
-        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        doc.text(`${label}: ${value}`, 20, yPosition);
-        yPosition += 6;
+      // Add title
+      doc.setFontSize(16);
+      doc.text(reportData.title, 20, 20);
+      
+      // Add generation date
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      // Add summary if available
+      let yPosition = 40;
+      if (reportData.summary) {
+        doc.setFontSize(12);
+        doc.text('Summary:', 20, yPosition);
+        yPosition += 10;
+        
+        Object.entries(reportData.summary).forEach(([key, value]) => {
+          doc.setFontSize(10);
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          doc.text(`${label}: ${value}`, 20, yPosition);
+          yPosition += 6;
+        });
+        yPosition += 10;
+      }
+      
+      // Add table
+      autoTable(doc, {
+        head: [reportData.columns],
+        body: reportData.data.map(row => reportData.columns.map(col => row[col] || '')),
+        startY: yPosition,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 139, 202] },
+        theme: 'striped'
       });
-      yPosition += 10;
+      
+      doc.save(`${filename}.pdf`);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      throw new Error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    // Add table
-    (doc as any).autoTable({
-      head: [reportData.columns],
-      body: reportData.data.map(row => reportData.columns.map(col => row[col] || '')),
-      startY: yPosition,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 139, 202] }
-    });
-    
-    doc.save(`${filename}.pdf`);
   }, []);
 
   const generateReport = useCallback(async (module: string, reportType: string, filters: ReportFilters) => {
