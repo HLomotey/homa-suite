@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { useDiversityAnalytics } from "@/hooks/diversity/useDiversityAnalytics";
 
 interface DiversityGoalsProps {
@@ -30,12 +31,12 @@ export function DiversityGoals({ timeRange = "6m", department = "all" }: Diversi
                 <h4 className="font-medium">Gender Balance</h4>
                 <span className="text-sm font-medium">{metrics.genderDiversity.toFixed(1)}% / 50%</span>
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min(100, (metrics.genderDiversity / 50) * 100)}%` }}
-                ></div>
-              </div>
+              <ProgressBar 
+                value={metrics.genderDiversity} 
+                max={50} 
+                color="blue" 
+                label="Gender Balance Progress"
+              />
               <p className="text-xs text-muted-foreground">
                 Target: 50% non-male representation by 2025
               </p>
@@ -46,12 +47,12 @@ export function DiversityGoals({ timeRange = "6m", department = "all" }: Diversi
                 <h4 className="font-medium">Leadership Diversity</h4>
                 <span className="text-sm font-medium">{metrics.leadershipDiversity.toFixed(1)}% / 40%</span>
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className="bg-purple-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min(100, (metrics.leadershipDiversity / 40) * 100)}%` }}
-                ></div>
-              </div>
+              <ProgressBar 
+                value={metrics.leadershipDiversity} 
+                max={40} 
+                color="purple" 
+                label="Leadership Diversity Progress"
+              />
               <p className="text-xs text-muted-foreground">
                 Target: 40% diverse leadership by 2025
               </p>
@@ -62,12 +63,12 @@ export function DiversityGoals({ timeRange = "6m", department = "all" }: Diversi
                 <h4 className="font-medium">Pay Equity</h4>
                 <span className="text-sm font-medium">{metrics.payEquityScore}% / 100%</span>
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full" 
-                  style={{ width: `${metrics.payEquityScore}%` }}
-                ></div>
-              </div>
+              <ProgressBar 
+                value={metrics.payEquityScore} 
+                max={100} 
+                color="green" 
+                label="Pay Equity Progress"
+              />
               <p className="text-xs text-muted-foreground">
                 Target: 100% pay equity across all demographics
               </p>
