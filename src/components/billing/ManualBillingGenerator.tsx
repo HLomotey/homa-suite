@@ -10,6 +10,7 @@ import { generateBillingForDateRange, generateAugust16To31 } from '@/lib/billing
 import { generateAllBillingForMonth } from '@/lib/billing/generateTransportationBilling';
 import { generateAllBillingTypesForMonth } from '@/lib/billing/generateDeductionBilling';
 import { IndividualBillingGenerators } from './IndividualBillingGenerators';
+import { BillingPeriodManager } from './BillingPeriodManager';
 
 interface ManualBillingGeneratorProps {
   onBillingGenerated?: (count: number) => void;
@@ -293,6 +294,18 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
 
       </CardContent>
     </Card>
+
+    {/* Billing Period Manager */}
+    <BillingPeriodManager 
+      onPeriodDeleted={(count) => {
+        toast.success(`Deleted ${count} billing records`);
+        onBillingGenerated?.(0); // Trigger refresh
+      }}
+      onPeriodRegenerated={(count) => {
+        toast.success(`Regenerated ${count} billing records`);
+        onBillingGenerated?.(count);
+      }}
+    />
     </div>
   );
 }

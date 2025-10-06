@@ -44,7 +44,6 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
   const [busYear, setBusYear] = useState(new Date().getFullYear().toString());
   const [busMonth, setBusMonth] = useState((new Date().getMonth() + 1).toString());
   const [busPeriod, setBusPeriod] = useState('both');
-  const [busAmount, setBusAmount] = useState('50');
   const [busAssignments, setBusAssignments] = useState<any[]>([]);
 
   // Load assignment data for housing
@@ -91,16 +90,11 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       const { data, error } = await supabase
         .from('assignments')
         .select('*')
-        .eq('bus_card_agreement', true);
+        .eq('bus_card_agreement', true)
+        .not('bus_card_amount', 'is', null);
       
       if (error) throw error;
       setBusAssignments(data || []);
-      
-      // Set default bus card amount if assignments found
-      if (data && data.length > 0) {
-        const avgAmount = data.reduce((sum: number, a: any) => sum + (a.bus_card_amount || 50), 0) / data.length;
-        setBusAmount(avgAmount.toString());
-      }
     } catch (error) {
       console.error('Error loading bus card assignments:', error);
     }
@@ -251,8 +245,8 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
   };
 
   const handleBusCardGeneration = async () => {
-    if (!busYear || !busMonth || !busAmount) {
-      toast.error('Please enter year, month, and amount for bus card billing');
+    if (!busYear || !busMonth) {
+      toast.error('Please enter year and month for bus card billing');
       return;
     }
 
@@ -260,19 +254,19 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
     try {
       const year = parseInt(busYear);
       const month = parseInt(busMonth);
-      const amount = parseFloat(busAmount);
       
       // Show the billing periods that will be generated
       const [w1, w2] = getBillingWindowsForMonth(year, month);
       const period1 = `${w1.start.toFormat('MMM dd')} - ${w1.end.toFormat('MMM dd')}`;
       const period2 = `${w2.start.toFormat('MMM dd')} - ${w2.end.toFormat('MMM dd, yyyy')}`;
       
-      const count = await generateBusCardBillingForMonth(year, month, amount);
+      // Use bus card amounts from assignments instead of a fixed amount
+      const count = await generateBusCardBillingForMonth(year, month);
       
       const result = { count, timestamp: new Date().toLocaleString() };
       setLastResults(prev => ({ ...prev, bus: result }));
       
-      toast.success(`Generated ${count} bus card billing records for ${month}/${year} - Periods: ${period1} & ${period2} (1 deduction of $${amount})`);
+      toast.success(`Generated ${count} bus card billing records for ${month}/${year} - Periods: ${period1} & ${period2} (using assignment amounts)`);
       onBillingGenerated?.(count, 'Bus Card');
     } catch (error) {
       console.error('Bus card billing generation error:', error);
@@ -620,24 +614,17 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bus-amount">Bus Card Amount ($)</Label>
-            <Input
-              id="bus-amount"
-              type="number"
-              value={busAmount}
-              onChange={(e) => setBusAmount(e.target.value)}
-              disabled={isGenerating === 'bus'}
-              min="0"
-              step="0.01"
-            />
-          </div>
 
           {/* Show assignment data summary */}
           {busAssignments.length > 0 && (
             <Alert className="bg-orange-500/20 border-orange-500/30">
               <AlertDescription className="text-xs">
-                <strong>Found {busAssignments.length} bus card assignments</strong> from assignment table.
+                <strong>Found {busAssignments.length} bus card assignments</strong> with bus card amounts from assignment table.
+                {busAssignments.length > 0 && (
+                  <span className="block mt-1">
+                    Average amount: ${(busAssignments.reduce((sum: number, a: any) => sum + (a.bus_card_amount || 0), 0) / busAssignments.length).toFixed(2)} per period
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -671,7 +658,7 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
 
           <Alert className="bg-orange-500/20 border-orange-500/30">
             <AlertDescription className="text-xs">
-              <strong>Bi-weekly periods:</strong> 1st-15th & 16th-end of month. Uses assignment table data for staff with bus_card_agreement = true. Creates 1 deduction on 7th/22nd schedule.
+              <strong>Bi-weekly periods:</strong> 1st-15th & 16th-end of month. Uses bus_card_amount from assignment table for staff with bus_card_agreement = true. Creates 1 deduction on 7th/22nd schedule.
             </AlertDescription>
           </Alert>
         </CardContent>
