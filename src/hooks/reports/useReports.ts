@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integration/supabase';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface ReportFilters {
   dateRange: {
@@ -265,42 +265,48 @@ export function useReports() {
   }, []);
 
   const exportToPDF = useCallback((reportData: ReportData, filename: string) => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(16);
-    doc.text(reportData.title, 20, 20);
-    
-    // Add generation date
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-    
-    // Add summary if available
-    let yPosition = 40;
-    if (reportData.summary) {
-      doc.setFontSize(12);
-      doc.text('Summary:', 20, yPosition);
-      yPosition += 10;
+    try {
+      const doc = new jsPDF();
       
-      Object.entries(reportData.summary).forEach(([key, value]) => {
-        doc.setFontSize(10);
-        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        doc.text(`${label}: ${value}`, 20, yPosition);
-        yPosition += 6;
+      // Add title
+      doc.setFontSize(16);
+      doc.text(reportData.title, 20, 20);
+      
+      // Add generation date
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      // Add summary if available
+      let yPosition = 40;
+      if (reportData.summary) {
+        doc.setFontSize(12);
+        doc.text('Summary:', 20, yPosition);
+        yPosition += 10;
+        
+        Object.entries(reportData.summary).forEach(([key, value]) => {
+          doc.setFontSize(10);
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          doc.text(`${label}: ${value}`, 20, yPosition);
+          yPosition += 6;
+        });
+        yPosition += 10;
+      }
+      
+      // Add table
+      autoTable(doc, {
+        head: [reportData.columns],
+        body: reportData.data.map(row => reportData.columns.map(col => row[col] || '')),
+        startY: yPosition,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 139, 202] },
+        theme: 'striped'
       });
-      yPosition += 10;
+      
+      doc.save(`${filename}.pdf`);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      throw new Error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    // Add table
-    (doc as any).autoTable({
-      head: [reportData.columns],
-      body: reportData.data.map(row => reportData.columns.map(col => row[col] || '')),
-      startY: yPosition,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 139, 202] }
-    });
-    
-    doc.save(`${filename}.pdf`);
   }, []);
 
   const generateReport = useCallback(async (module: string, reportType: string, filters: ReportFilters) => {
