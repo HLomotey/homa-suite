@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar, Play, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateBillingForDateRange, generateAugust16To31 } from '@/lib/billing/generateForDateRange';
+import { generateAllBillingForMonth } from '@/lib/billing/generateTransportationBilling';
+import { generateAllBillingTypesForMonth } from '@/lib/billing/generateDeductionBilling';
 import { BillingDebugger } from './BillingDebugger';
 import { AssignmentDataChecker } from './AssignmentDataChecker';
 import { AssignmentAnalyzer } from './AssignmentAnalyzer';
@@ -67,6 +69,60 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
     } catch (error) {
       console.error('Billing generation error:', error);
       toast.error(`Failed to generate billing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateTransportation = async () => {
+    setIsGenerating(true);
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      
+      const transportCount = await generateAllBillingForMonth(year, month);
+      
+      setLastResult({
+        count: transportCount,
+        period: `${now.toLocaleString('default', { month: 'long', year: 'numeric' })} (Housing + Transportation)`,
+        timestamp: new Date().toLocaleString()
+      });
+
+      toast.success(`Generated billing records including ${transportCount} transportation records for current month`);
+      onBillingGenerated?.(transportCount);
+    } catch (error) {
+      console.error('Transportation billing generation error:', error);
+      toast.error(`Failed to generate transportation billing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateAllBillingTypes = async () => {
+    setIsGenerating(true);
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      
+      const result = await generateAllBillingTypesForMonth(year, month, {
+        transportRate: 200,
+        securityDepositAmount: 500,
+        busCardAmount: 50
+      });
+      
+      setLastResult({
+        count: result.totalDeductionRecords + result.transportCount,
+        period: `${now.toLocaleString('default', { month: 'long', year: 'numeric' })} (All Billing Types + Deductions)`,
+        timestamp: new Date().toLocaleString()
+      });
+
+      toast.success(`Generated all billing types: ${result.transportCount} transportation, ${result.securityDepositCount} security deposits, ${result.busCardCount} bus cards`);
+      onBillingGenerated?.(result.totalDeductionRecords + result.transportCount);
+    } catch (error) {
+      console.error('All billing types generation error:', error);
+      toast.error(`Failed to generate all billing types: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
@@ -141,6 +197,24 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
               disabled={isGenerating}
             >
               Current Month
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateTransportation}
+              disabled={isGenerating}
+              className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+            >
+              🚌 Housing + Transportation
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateAllBillingTypes}
+              disabled={isGenerating}
+              className="bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+            >
+              💰 All Types + Deductions
             </Button>
           </div>
         </div>

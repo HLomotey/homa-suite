@@ -27,6 +27,7 @@ export async function generateBillingForMonth(
         room_id: s.room_id,
         rent_amount: s.rent_amount / 2, // Convert monthly to biweekly
         payment_status: "unpaid",
+        billing_type: "housing",
         period_start: w1.start.toISODate()!,
         period_end: w1.end.toISODate()!,
         start_date: s.start_date,
@@ -40,6 +41,7 @@ export async function generateBillingForMonth(
         room_id: s.room_id,
         rent_amount: s.rent_amount / 2, // Convert monthly to biweekly
         payment_status: "unpaid",
+        billing_type: "housing",
         period_start: w2.start.toISODate()!,
         period_end: w2.end.toISODate()!,
         start_date: s.start_date,

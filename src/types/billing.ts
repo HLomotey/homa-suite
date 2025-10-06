@@ -1,4 +1,5 @@
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "waived";
+export type BillingType = "housing" | "transportation" | "security_deposit" | "bus_card";
 
 export interface Billing {
   id: string;
@@ -7,6 +8,7 @@ export interface Billing {
   room_id: string;
   rent_amount: number;
   payment_status: PaymentStatus;
+  billing_type: BillingType;
   period_start: string; // date
   period_end: string;   // date
   start_date: string;
@@ -25,6 +27,7 @@ export type BillingRow = {
   roomName: string;
   rentAmount: number;
   paymentStatus: PaymentStatus;
+  billingType: BillingType;
   periodStart: string; // YYYY-MM-DD
   periodEnd: string;   // YYYY-MM-DD
   assignmentStatus?: string; // Active, Pending, Expired, Terminated

@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Search, Download, RefreshCw, Activity, DollarSign, Users, TrendingUp, Calendar, Filter, AlertCircle, Plus } from "lucide-react";
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from "date-fns";
 import { useBillingLogs, useStaffWithBillingLogs } from "@/hooks/billing/useBillingLog";
-import { BillingRow, PaymentStatus } from "@/types/billing";
+import { BillingRow, PaymentStatus, BillingType } from "@/types/billing";
 import { generateBillingForMonth } from "@/lib/billing/generateForMonth";
 import { ManualBillingGenerator } from "@/components/billing/ManualBillingGenerator";
 import { EditableBillingRow } from "@/components/billing/EditableBillingRow";
+import { getBillingWindowsForMonth } from "@/lib/billing/semimonthly";
 
 interface BillingLogProps {
   selectedStaffId?: string;
@@ -27,6 +28,8 @@ export const BillingLog: React.FC<BillingLogProps> = ({
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("all");
+  const [billingPeriodFilter, setBillingPeriodFilter] = useState<string>("all");
+  const [billingTypeFilter, setBillingTypeFilter] = useState<string>("all");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [filters, setFilters] = useState({ searchQuery: "", tenantName: "" });
   const [terminationPeriodFilter, setTerminationPeriodFilter] = useState<string>("all");
@@ -88,6 +91,41 @@ export const BillingLog: React.FC<BillingLogProps> = ({
 
   const monthOptions = generateMonthOptions();
 
+  // Generate billing period options for the last 12 months
+  const generateBillingPeriodOptions = () => {
+    const options = [];
+    const currentDate = new Date();
+    
+    for (let i = -12; i <= 0; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      // Generate first half (1st-15th)
+      options.push({
+        value: `${year}-${month.toString().padStart(2, '0')}-1`,
+        label: `${monthName} (1st - 15th)`,
+        year,
+        month,
+        period: 1
+      });
+      
+      // Generate second half (16th-end)
+      options.push({
+        value: `${year}-${month.toString().padStart(2, '0')}-2`,
+        label: `${monthName} (16th - End)`,
+        year,
+        month,
+        period: 2
+      });
+    }
+    
+    return options.reverse(); // Show most recent first
+  };
+
+  const billingPeriodOptions = generateBillingPeriodOptions();
+
   // Get date range bounds
   const getDateRangeBounds = (range: string) => {
     const now = new Date();
@@ -147,12 +185,38 @@ export const BillingLog: React.FC<BillingLogProps> = ({
         }
       }
       
+      // Billing period filter
+      let matchesBillingPeriod = true;
+      if (billingPeriodFilter !== "all") {
+        const [year, month, period] = billingPeriodFilter.split('-');
+        const billingYear = parseInt(year);
+        const billingMonth = parseInt(month);
+        const billingPeriodNum = parseInt(period);
+        
+        // Get the billing windows for the selected month
+        const [firstWindow, secondWindow] = getBillingWindowsForMonth(billingYear, billingMonth);
+        const selectedWindow = billingPeriodNum === 1 ? firstWindow : secondWindow;
+        
+        // Check if the row's period overlaps with the selected billing period
+        const rowPeriodStart = new Date(row.periodStart);
+        const rowPeriodEnd = new Date(row.periodEnd);
+        const windowStart = selectedWindow.start.toJSDate();
+        const windowEnd = selectedWindow.end.toJSDate();
+        
+        // Check for overlap: periods overlap if start1 <= end2 && start2 <= end1
+        matchesBillingPeriod = 
+          rowPeriodStart <= windowEnd && windowStart <= rowPeriodEnd;
+      }
+      
+      // Billing type filter
+      const matchesBillingType = billingTypeFilter === "all" || row.billingType === billingTypeFilter;
+      
       // Termination period filter (placeholder for future implementation)
       const matchesTermination = terminationPeriodFilter === "all"; // TODO: Implement termination filtering
       
-      return matchesSearch && matchesStatus && matchesDateRange && matchesTermination;
+      return matchesSearch && matchesStatus && matchesDateRange && matchesBillingPeriod && matchesBillingType && matchesTermination;
     });
-  }, [billingRows, searchQuery, typeFilter, dateRange, terminationPeriodFilter]);
+  }, [billingRows, searchQuery, typeFilter, dateRange, billingPeriodFilter, billingTypeFilter, terminationPeriodFilter]);
 
   // Calculate total amount
   const totalAmount = useMemo(() => {
@@ -161,12 +225,13 @@ export const BillingLog: React.FC<BillingLogProps> = ({
 
   const handleExport = () => {
     const csvContent = [
-      ["Tenant Name", "Property", "Room", "Rent Amount", "Payment Status", "Assignment Status", "End Date", "Period Start", "Period End"].join(","),
+      ["Tenant Name", "Property", "Room", "Amount", "Billing Type", "Payment Status", "Assignment Status", "End Date", "Period Start", "Period End"].join(","),
       ...filteredBillingRows.map(billingRow => [
         billingRow.tenantName,
         billingRow.propertyName,
         billingRow.roomName || "",
         billingRow.rentAmount,
+        billingRow.billingType,
         billingRow.paymentStatus,
         billingRow.assignmentStatus || "Unknown",
         (billingRow.assignmentEndDate && 
@@ -297,7 +362,7 @@ export const BillingLog: React.FC<BillingLogProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -367,6 +432,35 @@ export const BillingLog: React.FC<BillingLogProps> = ({
                 <SelectItem value="current-month">Current Month</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Billing Period Filter */}
+            <Select value={billingPeriodFilter} onValueChange={(value) => setBillingPeriodFilter(value)}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="All Billing Periods" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="all">All Billing Periods</SelectItem>
+                {billingPeriodOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Billing Type Filter */}
+            <Select value={billingTypeFilter} onValueChange={(value) => setBillingTypeFilter(value)}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="housing">Housing</SelectItem>
+                <SelectItem value="transportation">Transportation</SelectItem>
+                <SelectItem value="security_deposit">Security Deposit</SelectItem>
+                <SelectItem value="bus_card">Bus Card</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -404,7 +498,8 @@ export const BillingLog: React.FC<BillingLogProps> = ({
                     <TableHead className="text-white/80">Tenant Name</TableHead>
                     <TableHead className="text-white/80">Property</TableHead>
                     <TableHead className="text-white/80">Room</TableHead>
-                    <TableHead className="text-white/80">Rent Amount</TableHead>
+                    <TableHead className="text-white/80">Amount</TableHead>
+                    <TableHead className="text-white/80">Type</TableHead>
                     <TableHead className="text-white/80">Payment Status</TableHead>
                     <TableHead className="text-white/80">Assignment Status</TableHead>
                     <TableHead className="text-white/80">End Date</TableHead>

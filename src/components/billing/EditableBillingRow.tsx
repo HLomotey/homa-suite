@@ -82,6 +82,24 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
         )}
       </TableCell>
       <TableCell>
+        <Badge 
+          variant="outline"
+          className={
+            billingRow.billingType === "housing" ? "bg-blue-500/20 text-blue-400 border-blue-500/30" :
+            billingRow.billingType === "transportation" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+            billingRow.billingType === "security_deposit" ? "bg-purple-500/20 text-purple-400 border-purple-500/30" :
+            billingRow.billingType === "bus_card" ? "bg-orange-500/20 text-orange-400 border-orange-500/30" :
+            "bg-gray-500/20 text-gray-400 border-gray-500/30"
+          }
+        >
+          {billingRow.billingType === "housing" ? "Housing" :
+           billingRow.billingType === "transportation" ? "Transportation" :
+           billingRow.billingType === "security_deposit" ? "Security Deposit" :
+           billingRow.billingType === "bus_card" ? "Bus Card" :
+           billingRow.billingType}
+        </Badge>
+      </TableCell>
+      <TableCell>
         {isEditing ? (
           <Select value={editedStatus} onValueChange={(value: PaymentStatus) => setEditedStatus(value)}>
             <SelectTrigger className="w-32 h-8">
