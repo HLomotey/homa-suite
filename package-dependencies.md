@@ -23,4 +23,15 @@ These packages provide:
 - `@types/jspdf`: TypeScript types for jsPDF
 
 ## Migration to ExcelJS
-If switching to ExcelJS, update the useReports hook to use ExcelJS API instead of xlsx.
+A secure implementation is available in `useReportsSecure.ts` that uses ExcelJS instead of xlsx.
+
+### To use the secure version:
+1. Install ExcelJS: `npm install exceljs`
+2. Update Reports component to import `useReportsSecure` instead of `useReports`
+3. Remove xlsx dependency: `npm uninstall xlsx`
+
+### Key differences in ExcelJS implementation:
+- Better security (no known vulnerabilities)
+- Enhanced Excel formatting capabilities
+- Styled headers and auto-fit columns
+- More robust file generation
