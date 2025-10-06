@@ -9,16 +9,7 @@ import { toast } from 'sonner';
 import { generateBillingForDateRange, generateAugust16To31 } from '@/lib/billing/generateForDateRange';
 import { generateAllBillingForMonth } from '@/lib/billing/generateTransportationBilling';
 import { generateAllBillingTypesForMonth } from '@/lib/billing/generateDeductionBilling';
-import { BillingDebugger } from './BillingDebugger';
-import { AssignmentDataChecker } from './AssignmentDataChecker';
-import { AssignmentAnalyzer } from './AssignmentAnalyzer';
-import { SimpleAssignmentTest } from './SimpleAssignmentTest';
-import { PropertyDataChecker } from './PropertyDataChecker';
-import { PropertySeeder } from './PropertySeeder';
-import { QuickPropertyFix } from './QuickPropertyFix';
-import { DatabaseDiagnostic } from './DatabaseDiagnostic';
-import { BillingTracer } from './BillingTracer';
-import { BiweeklyAmountUpdater } from './BiweeklyAmountUpdater';
+import { IndividualBillingGenerators } from './IndividualBillingGenerators';
 
 interface ManualBillingGeneratorProps {
   onBillingGenerated?: (count: number) => void;
@@ -164,23 +155,32 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
   };
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Manual Billing Generator
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
+      {/* Individual Billing Generators */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Individual Billing Generators
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <IndividualBillingGenerators onBillingGenerated={onBillingGenerated} />
+        </CardContent>
+      </Card>
+
+      {/* Combined Billing Generator */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Combined Billing Generator
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
         {/* Quick Actions */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Quick Actions</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <BiweeklyAmountUpdater />
-            <QuickPropertyFix />
-            <DatabaseDiagnostic />
-            <BillingTracer />
-          </div>
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
@@ -223,7 +223,7 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
         <div className="space-y-4">
           <Label className="text-sm font-medium">Custom Date Range</Label>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start-date">Start Date</Label>
               <Input
@@ -245,25 +245,28 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
                 disabled={isGenerating}
               />
             </div>
-          </div>
 
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || !startDate || !endDate}
-            className="w-full"
-          >
-            {isGenerating ? (
-              <>
-                <Play className="h-4 w-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-2" />
-                Generate Billing
-              </>
-            )}
-          </Button>
+            <div className="space-y-2">
+              <Label className="invisible">Generate</Label>
+              <Button
+                onClick={handleGenerate}
+                disabled={isGenerating || !startDate || !endDate}
+                className="w-full"
+              >
+                {isGenerating ? (
+                  <>
+                    <Play className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Generate Billing
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Last Result */}
@@ -288,14 +291,9 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
           </AlertDescription>
         </Alert>
 
-        {/* Debug Section */}
-        <BillingTracer />
-        <DatabaseDiagnostic />
-        <QuickPropertyFix />
-        <PropertyDataChecker />
-        <SimpleAssignmentTest />
       </CardContent>
     </Card>
+    </div>
   );
 }
 
