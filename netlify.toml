@@ -4,8 +4,14 @@
 [build]
   # Directory to publish (relative to root of your repo)
   publish = "dist"
-  # Default build command
-  command = "npm run build"
+  # Clean install and build command to fix Rollup dependency issues
+  command = "rm -rf node_modules && npm install --force && npm run build"
+  
+[build.environment]
+  # Use Node.js 18 for better compatibility
+  NODE_VERSION = "18"
+  # Ensure npm uses latest version
+  NPM_FLAGS = "--legacy-peer-deps"
 
 # The following redirect is intended for use with single-page applications (SPA)
 # where the app handles routing internally.
