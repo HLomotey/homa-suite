@@ -4,8 +4,14 @@
 [build]
   # Directory to publish (relative to root of your repo)
   publish = "dist"
-  # Default build command
-  command = "npm run build"
+  # Clean install with explicit Rollup dependency fix
+  command = "rm -rf node_modules package-lock.json && npm install && npm run build:netlify"
+  
+[build.environment]
+  # Use Node.js 18 for better compatibility
+  NODE_VERSION = "18.20.4"
+  # Ensure clean npm cache
+  NPM_CONFIG_CACHE = "/opt/build/cache/npm"
 
 # The following redirect is intended for use with single-page applications (SPA)
 # where the app handles routing internally.
