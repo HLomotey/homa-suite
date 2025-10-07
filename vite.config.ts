@@ -17,4 +17,21 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Use esbuild for faster builds and better compatibility
+    target: 'esnext',
+    minify: 'esbuild',
+    // Increase chunk size limit to avoid warnings
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      // Ensure external dependencies are handled correctly
+      external: [],
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+        },
+      },
+    },
+  },
 }));
