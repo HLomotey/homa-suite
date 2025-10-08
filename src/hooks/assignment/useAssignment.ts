@@ -4,6 +4,10 @@ import { FrontendAssignment } from '@/integration/supabase/types';
 
 // Map a database row to FrontendAssignment shape
 function mapRowToFrontend(row: any): FrontendAssignment {
+  // Get security deposit amount from security_deposits table if available
+  const securityDeposit = row.security_deposits?.[0]; // Get first security deposit
+  const securityDepositAmount = securityDeposit?.total_amount ?? row.rent_deposit_amount ?? null;
+  
   return {
     id: row.id,
     tenantId: row.tenant_id ?? null,
@@ -18,6 +22,15 @@ function mapRowToFrontend(row: any): FrontendAssignment {
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? null,
     rentAmount: row.rent_amount ?? 0,
+    rentDepositAmount: securityDepositAmount,
+    transportAmount: row.transport_amount ?? null,
+    busCardAmount: row.bus_card_amount ?? null,
+    housingAgreement: row.housing_agreement ?? false,
+    transportationAgreement: row.transportation_agreement ?? false,
+    busCardAgreement: row.bus_card_agreement ?? false,
+    flightAgreement: row.flight_agreement ?? false,
+    securityDepositStatus: securityDeposit?.payment_status ?? null,
+    securityDepositId: securityDeposit?.id ?? null,
     agreements: {
       housing: row.housing_agreement ?? false,
       transportation: row.transportation_agreement ?? false,
@@ -37,7 +50,19 @@ export function useAssignments() {
     setError(null);
     try {
       const { data, error } = await (supabase.from('assignments') as any)
-        .select('*')
+        .select(`
+          *,
+          security_deposits(
+            id,
+            total_amount,
+            payment_status,
+            security_deposit_deductions(
+              id,
+              amount,
+              status
+            )
+          )
+        `)
         .order('start_date', { ascending: false });
 
       if (error) throw error;
@@ -89,10 +114,13 @@ export function useCreateAssignment() {
         start_date: payload.startDate && payload.startDate.trim() !== '' ? payload.startDate : null,
         end_date: payload.endDate && payload.endDate.trim() !== '' ? payload.endDate : null,
         rent_amount: payload.rentAmount || 0,
-        housing_agreement: payload.agreements?.housing || false,
-        transportation_agreement: payload.agreements?.transportation || false,
-        flight_agreement: payload.agreements?.flight_agreement || false,
-        bus_card_agreement: payload.agreements?.bus_card || false,
+        rent_deposit_amount: payload.rentDepositAmount || null,
+        transport_amount: payload.transportAmount || null,
+        bus_card_amount: payload.busCardAmount || null,
+        housing_agreement: payload.housingAgreement ?? payload.agreements?.housing ?? false,
+        transportation_agreement: payload.transportationAgreement ?? payload.agreements?.transportation ?? false,
+        flight_agreement: payload.flightAgreement ?? payload.agreements?.flight_agreement ?? false,
+        bus_card_agreement: payload.busCardAgreement ?? payload.agreements?.bus_card ?? false,
       };
 
       const { error } = await (supabase.from('assignments') as any)
@@ -133,10 +161,13 @@ export function useUpdateAssignment() {
         start_date: payload.startDate && payload.startDate.trim() !== '' ? payload.startDate : null,
         end_date: payload.endDate && payload.endDate.trim() !== '' ? payload.endDate : null,
         rent_amount: payload.rentAmount || 0,
-        housing_agreement: payload.agreements?.housing || false,
-        transportation_agreement: payload.agreements?.transportation || false,
-        flight_agreement: payload.agreements?.flight_agreement || false,
-        bus_card_agreement: payload.agreements?.bus_card || false,
+        rent_deposit_amount: payload.rentDepositAmount || null,
+        transport_amount: payload.transportAmount || null,
+        bus_card_amount: payload.busCardAmount || null,
+        housing_agreement: payload.housingAgreement ?? payload.agreements?.housing ?? false,
+        transportation_agreement: payload.transportationAgreement ?? payload.agreements?.transportation ?? false,
+        flight_agreement: payload.flightAgreement ?? payload.agreements?.flight_agreement ?? false,
+        bus_card_agreement: payload.busCardAgreement ?? payload.agreements?.bus_card ?? false,
       };
 
       const { error } = await (supabase.from('assignments') as any)
