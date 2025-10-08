@@ -83,7 +83,60 @@ export function useReports() {
       
       if (error) {
         console.error('Comprehensive housing report query error:', error);
+        
+        // Check if the error is due to missing view
+        if (error.message.includes('relation "housing_report_view" does not exist')) {
+          throw new Error('Housing report view not found. Please run the housing report migration first.');
+        }
+        
         throw new Error(`Failed to fetch comprehensive housing data: ${error.message}`);
+      }
+
+      // Check if we got any data
+      if (!data || data.length === 0) {
+        console.warn('Housing report view returned no data. This might indicate:');
+        console.warn('1. No properties exist in the database');
+        console.warn('2. Properties exist but have no rooms or assignments');
+        console.warn('3. No data matches the selected date range');
+        
+        // Return empty report with helpful message
+        return {
+          title: 'Comprehensive Housing Report with Billing & Utilities',
+          data: [{
+            'State': 'No Data Available',
+            'Housing Capacity': 0,
+            'Housing Occupancy': 0,
+            'Rent Per Employee': '0.00',
+            'Property': 'No properties found or no data matches the selected criteria',
+            'Propane': '0.00',
+            'Water/Sewer & Disposal': '0.00',
+            'Electricity': '0.00',
+            'Total Utilities': '0.00',
+            'Monthly Rent Charges': '0.00',
+            'Housing Maintenance': '0.00',
+            'Total Cost (TC)': '0.00',
+            'Expected Rent - Occupancy (RTC)': '0.00',
+            'Expected Rent - Capacity (RRO)': '0.00',
+            'Actual Payroll Deductions (APD)': '0.00',
+            'Variance - APD vs RTC': '0.00',
+            'Variance - APD vs RRO': '0.00'
+          }],
+          columns: [
+            'State', 'Housing Capacity', 'Housing Occupancy', 'Rent Per Employee', 'Property',
+            'Propane', 'Water/Sewer & Disposal', 'Electricity', 'Total Utilities',
+            'Monthly Rent Charges', 'Housing Maintenance', 'Total Cost (TC)',
+            'Expected Rent - Occupancy (RTC)', 'Expected Rent - Capacity (RRO)',
+            'Actual Payroll Deductions (APD)', 'Variance - APD vs RTC', 'Variance - APD vs RRO'
+          ],
+          summary: {
+            totalProperties: 0,
+            totalCapacity: 0,
+            totalOccupancy: 0,
+            totalUtilities: 0,
+            totalRentCharges: 0,
+            message: 'No data available. Please check if properties and assignments exist in the database.'
+          }
+        };
       }
 
       const reportData = (data as any[])?.map((row: any) => ({
