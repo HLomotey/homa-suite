@@ -15,25 +15,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { RecruitmentMetrics } from "./recruitment/RecruitmentMetrics";
 import { CandidatePipeline } from "./recruitment/CandidatePipeline";
 import { JobListings } from "./recruitment/JobListings";
 import { RecruitmentAnalytics } from "./recruitment/RecruitmentAnalytics";
-import { useRecruitmentAnalytics } from "@/hooks/recruitment/useRecruitmentAnalytics";
-import { useExternalStaff } from "@/hooks/external-staff/useExternalStaff";
 
 export function HRRecruitment() {
   const [timeRange, setTimeRange] = useState("6m");
   const [department, setDepartment] = useState("all");
   const [activeTab, setActiveTab] = useState("metrics");
-  
-  // Get real data from hooks
-  const { metrics, loading, error } = useRecruitmentAnalytics(timeRange, department);
-  const { stats } = useExternalStaff();
-
-  // Get unique departments from external staff data
-  const departments = stats.topDepartments.map(dept => dept.department).slice(0, 7);
 
   return (
     <div className="space-y-6">
@@ -51,11 +42,13 @@ export function HRRecruitment() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept} value={dept.toLowerCase()}>
-                  {dept}
-                </SelectItem>
-              ))}
+              <SelectItem value="engineering">Engineering</SelectItem>
+              <SelectItem value="sales">Sales</SelectItem>
+              <SelectItem value="marketing">Marketing</SelectItem>
+              <SelectItem value="hr">HR</SelectItem>
+              <SelectItem value="finance">Finance</SelectItem>
+              <SelectItem value="operations">Operations</SelectItem>
+              <SelectItem value="support">Support</SelectItem>
             </SelectContent>
           </Select>
           <Tabs value={timeRange} onValueChange={setTimeRange}>
@@ -75,56 +68,44 @@ export function HRRecruitment() {
             <CardTitle className="text-sm font-medium">
               Open Positions
             </CardTitle>
-            <div className="h-4 w-4 text-blue-500">{loading ? "..." : metrics.openPositions}</div>
+            <div className="h-4 w-4 text-blue-500">35</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : metrics.openPositions}</div>
-            <p className="text-xs text-green-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +{Math.floor(metrics.openPositions * 0.2)} from last month
-            </p>
+            <div className="text-2xl font-bold">35</div>
+            <p className="text-xs text-green-500">+8 from last month</p>
           </CardContent>
         </Card>
 
         <Card className="bg-background border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Applications</CardTitle>
-            <div className="h-4 w-4 text-green-500">{loading ? "..." : metrics.applications}</div>
+            <div className="h-4 w-4 text-green-500">428</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : metrics.applications}</div>
-            <p className="text-xs text-green-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +{Math.floor(metrics.applications * 0.15)} from last month
-            </p>
+            <div className="text-2xl font-bold">428</div>
+            <p className="text-xs text-green-500">+64 from last month</p>
           </CardContent>
         </Card>
 
         <Card className="bg-background border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Interviews</CardTitle>
-            <div className="h-4 w-4 text-amber-500">{loading ? "..." : metrics.interviews}</div>
+            <div className="h-4 w-4 text-amber-500">92</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : metrics.interviews}</div>
-            <p className="text-xs text-amber-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +{Math.floor(metrics.interviews * 0.13)} from last month
-            </p>
+            <div className="text-2xl font-bold">92</div>
+            <p className="text-xs text-amber-500">+12 from last month</p>
           </CardContent>
         </Card>
 
         <Card className="bg-background border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Offers Made</CardTitle>
-            <div className="h-4 w-4 text-purple-500">{loading ? "..." : metrics.offersMade}</div>
+            <div className="h-4 w-4 text-purple-500">18</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? "..." : metrics.offersMade}</div>
-            <p className="text-xs text-purple-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +{Math.floor(metrics.offersMade * 0.28)} from last month
-            </p>
+            <div className="text-2xl font-bold">18</div>
+            <p className="text-xs text-purple-500">+5 from last month</p>
           </CardContent>
         </Card>
       </div>

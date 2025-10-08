@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Plus, Search, Filter, Users, Calendar, Edit, Trash2, DoorOpen, Building2, Clock, Home, Car, CreditCard, Shield } from "lucide-react";
+import { Plus, Search, Filter, Users, Calendar, Edit, Trash2, DoorOpen, Building2, Clock } from "lucide-react";
 import AssignmentForm from "./AssignmentForm";
 import { useToast } from "@/components/ui/use-toast";
 import { useAssignments, useCreateAssignment, useUpdateAssignment, useDeleteAssignment } from "@/hooks/assignment/useAssignment";
@@ -407,9 +407,6 @@ export const AssignmentsList = () => {
                 <TableHead>Start Date</TableHead>
                 <TableHead>End Date</TableHead>
                 <TableHead>Rent</TableHead>
-                <TableHead>Deposit</TableHead>
-                <TableHead>Transport</TableHead>
-                <TableHead>Bus Card</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -440,85 +437,7 @@ export const AssignmentsList = () => {
                       <span className="text-muted-foreground italic">No end date</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {assignment.rentAmount ? (
-                      <div className="flex items-center gap-1">
-                        <Home className="h-3 w-3 text-green-400" />
-                        <span className="text-green-400 font-medium">${assignment.rentAmount}/mo</span>
-                        {assignment.housingAgreement && (
-                          <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {assignment.rentDepositAmount ? (
-                      <div className="flex items-center gap-1">
-                        <Shield className="h-3 w-3 text-blue-400" />
-                        <span className="text-blue-400 font-medium">${assignment.rentDepositAmount}</span>
-                        {assignment.securityDepositStatus && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${
-                              assignment.securityDepositStatus === 'paid' 
-                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                : assignment.securityDepositStatus === 'pending'
-                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                : assignment.securityDepositStatus === 'partial'
-                                ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                                : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                            }`}
-                          >
-                            {assignment.securityDepositStatus === 'paid' ? 'Paid' :
-                             assignment.securityDepositStatus === 'pending' ? 'Pending' :
-                             assignment.securityDepositStatus === 'partial' ? 'Partial' :
-                             assignment.securityDepositStatus === 'refunded' ? 'Refunded' : 'Active'}
-                          </Badge>
-                        )}
-                        {assignment.housingAgreement && !assignment.securityDepositStatus && (
-                          <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {assignment.transportAmount ? (
-                      <div className="flex items-center gap-1">
-                        <Car className="h-3 w-3 text-purple-400" />
-                        <span className="text-purple-400 font-medium">${assignment.transportAmount}/mo</span>
-                        {assignment.transportationAgreement && (
-                          <Badge variant="outline" className="text-xs bg-purple-500/20 text-purple-400 border-purple-500/30">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {assignment.busCardAmount ? (
-                      <div className="flex items-center gap-1">
-                        <CreditCard className="h-3 w-3 text-orange-400" />
-                        <span className="text-orange-400 font-medium">${assignment.busCardAmount}</span>
-                        {assignment.busCardAgreement && (
-                          <Badge variant="outline" className="text-xs bg-orange-500/20 text-orange-400 border-orange-500/30">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </TableCell>
+                  <TableCell>${assignment.rentAmount}/mo</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button

@@ -117,39 +117,6 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
     bus_card?: SecurityDeposit;
   }>({});
 
-  // Initialize security deposits with assignment amounts when editing
-  React.useEffect(() => {
-    if (assignment) {
-      const initialDeposits: typeof securityDeposits = {};
-      
-      // Initialize housing deposit if amount exists
-      if (assignment.rentDepositAmount && assignment.rentDepositAmount > 0) {
-        initialDeposits.housing = {
-          ...createSecurityDeposit('housing'),
-          totalAmount: assignment.rentDepositAmount,
-        };
-      }
-      
-      // Initialize transportation deposit if amount exists
-      if (assignment.transportAmount && assignment.transportAmount > 0) {
-        initialDeposits.transportation = {
-          ...createSecurityDeposit('transportation'),
-          totalAmount: assignment.transportAmount,
-        };
-      }
-      
-      // Initialize bus card deposit if amount exists
-      if (assignment.busCardAmount && assignment.busCardAmount > 0) {
-        initialDeposits.bus_card = {
-          ...createSecurityDeposit('bus_card'),
-          totalAmount: assignment.busCardAmount,
-        };
-      }
-      
-      setSecurityDeposits(initialDeposits);
-    }
-  }, [assignment]);
-
   // Flight agreement specific state
   const [flightAgreementAmount, setFlightAgreementAmount] = React.useState<number>((assignment as any)?.flightAgreementAmount || 0);
   const [flightAgreementNotes, setFlightAgreementNotes] = React.useState<string>((assignment as any)?.flightAgreementNotes || "");
@@ -780,10 +747,6 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
           flight_agreement: flightAgreement,
           bus_card: busCardAgreement,
         },
-        // Include individual amounts from security deposits
-        rentDepositAmount: securityDeposits.housing?.totalAmount || null,
-        transportAmount: securityDeposits.transportation?.totalAmount || null,
-        busCardAmount: securityDeposits.bus_card?.totalAmount || null,
         securityDeposits: Object.values(securityDeposits).filter(deposit => deposit && deposit.totalAmount > 0),
         flightAgreementAmount: flightAgreement ? flightAgreementAmount : 0,
         flightAgreementNotes: flightAgreement ? flightAgreementNotes : ""
@@ -1324,7 +1287,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                       Enter the {isDeposit ? 'security deposit details' : 'charge amount details'} for the {label.toLowerCase()} agreement.
                     </p>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="text-sm font-medium leading-none text-white">
                           {isDeposit ? 'Deposit Amount ($) *' : 'Charge Amount ($) *'}
@@ -1338,6 +1301,40 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({
                           step="0.01"
                           placeholder="0.00"
                           required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium leading-none text-white">
+                          Payment Method
+                        </label>
+                        <select
+                          value={deposit?.paymentMethod || 'cash'}
+                          onChange={(e) => updateDeposit({ paymentMethod: e.target.value as SecurityDeposit['paymentMethod'] })}
+                          className="flex h-10 w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm mt-2 text-white"
+                          title="Select payment method for security deposit"
+                          aria-label="Select payment method for security deposit"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="check">Check</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="credit_card">Credit Card</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium leading-none text-white">
+                          Payment Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={deposit?.paidDate || ""}
+                          onChange={(e) => updateDeposit({
+                            paidDate: e.target.value,
+                            paymentStatus: e.target.value !== "" ? 'paid' : 'pending'
+                          })}
+                          className="mt-2 bg-gray-700 border-gray-600 text-white"
                         />
                       </div>
                     </div>

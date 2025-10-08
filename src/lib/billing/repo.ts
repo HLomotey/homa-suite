@@ -188,7 +188,6 @@ export async function upsertBillingRow(billingData: {
   room_id: string;
   rent_amount: number;
   payment_status: string;
-  billing_type: string;
   period_start: string;
   period_end: string;
   start_date: string;

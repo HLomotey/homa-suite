@@ -1,9 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, Download, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import { useState } from "react";
-import { useRecruitmentAnalytics } from "@/hooks/recruitment/useRecruitmentAnalytics";
 
 interface RecruitmentAnalyticsProps {
   timeRange: string;
@@ -12,7 +11,6 @@ interface RecruitmentAnalyticsProps {
 
 export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnalyticsProps) {
   const [chartType, setChartType] = useState("monthly");
-  const { metrics, loading } = useRecruitmentAnalytics(timeRange, department);
   
   return (
     <div className="space-y-6">
@@ -47,11 +45,8 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
             <CardTitle className="text-sm font-medium">Avg. Time to Hire</CardTitle>
           </CardHeader>
           <CardContent className="py-0">
-            <div className="text-2xl font-bold">{loading ? "..." : `${metrics.avgTimeToHire} days`}</div>
-            <p className="text-xs text-green-500 flex items-center">
-              <TrendingDown className="h-3 w-3 mr-1" />
-              -{Math.floor(metrics.avgTimeToHire * 0.12)} days from last {chartType}
-            </p>
+            <div className="text-2xl font-bold">42 days</div>
+            <p className="text-xs text-green-500">-5 days from last {chartType}</p>
           </CardContent>
         </Card>
         
@@ -60,11 +55,8 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
             <CardTitle className="text-sm font-medium">Cost per Hire</CardTitle>
           </CardHeader>
           <CardContent className="py-0">
-            <div className="text-2xl font-bold">{loading ? "..." : `$${metrics.costPerHire.toLocaleString()}`}</div>
-            <p className="text-xs text-red-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +$250 from last {chartType}
-            </p>
+            <div className="text-2xl font-bold">$4,250</div>
+            <p className="text-xs text-red-500">+$250 from last {chartType}</p>
           </CardContent>
         </Card>
         
@@ -73,11 +65,8 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
             <CardTitle className="text-sm font-medium">Offer Acceptance</CardTitle>
           </CardHeader>
           <CardContent className="py-0">
-            <div className="text-2xl font-bold">{loading ? "..." : `${metrics.offerAcceptanceRate}%`}</div>
-            <p className="text-xs text-green-500 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +3% from last {chartType}
-            </p>
+            <div className="text-2xl font-bold">85%</div>
+            <p className="text-xs text-green-500">+3% from last {chartType}</p>
           </CardContent>
         </Card>
         
@@ -86,11 +75,8 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
             <CardTitle className="text-sm font-medium">Qualified Candidates</CardTitle>
           </CardHeader>
           <CardContent className="py-0">
-            <div className="text-2xl font-bold">{loading ? "..." : `${metrics.qualifiedCandidateRate}%`}</div>
-            <p className="text-xs text-red-500 flex items-center">
-              <TrendingDown className="h-3 w-3 mr-1" />
-              -2% from last {chartType}
-            </p>
+            <div className="text-2xl font-bold">32%</div>
+            <p className="text-xs text-red-500">-2% from last {chartType}</p>
           </CardContent>
         </Card>
       </div>
@@ -429,15 +415,12 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
                   <div className="text-xs text-muted-foreground">Days from job posting to acceptance</div>
                 </div>
                 <div className="text-sm">
-                  <span className="font-medium">{loading ? "..." : `${metrics.avgTimeToHire} days`}</span>
+                  <span className="font-medium">42 days</span>
                   <span className="text-muted-foreground ml-2">(Industry: 45 days)</span>
                 </div>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full ${metrics.avgTimeToHire <= 45 ? 'bg-green-500' : 'bg-amber-500'}`} 
-                  style={{ width: `${Math.min(100, (45 / Math.max(metrics.avgTimeToHire, 45)) * 100)}%` }}
-                ></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: '52%' }}></div>
               </div>
             </div>
             
@@ -448,15 +431,12 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
                   <div className="text-xs text-muted-foreground">Average cost to fill a position</div>
                 </div>
                 <div className="text-sm">
-                  <span className="font-medium">{loading ? "..." : `$${metrics.costPerHire.toLocaleString()}`}</span>
+                  <span className="font-medium">$4,250</span>
                   <span className="text-muted-foreground ml-2">(Industry: $4,000)</span>
                 </div>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full ${metrics.costPerHire <= 4000 ? 'bg-green-500' : 'bg-amber-500'}`} 
-                  style={{ width: `${Math.min(100, (4000 / Math.max(metrics.costPerHire, 4000)) * 100)}%` }}
-                ></div>
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: '48%' }}></div>
               </div>
             </div>
             
@@ -467,34 +447,28 @@ export function RecruitmentAnalytics({ timeRange, department }: RecruitmentAnaly
                   <div className="text-xs text-muted-foreground">Percentage of offers accepted</div>
                 </div>
                 <div className="text-sm">
-                  <span className="font-medium">{loading ? "..." : `${metrics.offerAcceptanceRate}%`}</span>
+                  <span className="font-medium">85%</span>
                   <span className="text-muted-foreground ml-2">(Industry: 76%)</span>
                 </div>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full ${metrics.offerAcceptanceRate >= 76 ? 'bg-green-500' : 'bg-amber-500'}`} 
-                  style={{ width: `${Math.min(100, metrics.offerAcceptanceRate)}%` }}
-                ></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: '85%' }}></div>
               </div>
             </div>
             
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <div className="space-y-0.5">
-                  <div className="text-sm font-medium">Qualified Candidate Rate</div>
-                  <div className="text-xs text-muted-foreground">Percentage of qualified candidates</div>
+                  <div className="text-sm font-medium">Application Completion Rate</div>
+                  <div className="text-xs text-muted-foreground">Percentage of started applications completed</div>
                 </div>
                 <div className="text-sm">
-                  <span className="font-medium">{loading ? "..." : `${metrics.qualifiedCandidateRate}%`}</span>
-                  <span className="text-muted-foreground ml-2">(Industry: 35%)</span>
+                  <span className="font-medium">62%</span>
+                  <span className="text-muted-foreground ml-2">(Industry: 70%)</span>
                 </div>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full ${metrics.qualifiedCandidateRate >= 35 ? 'bg-green-500' : 'bg-red-500'}`} 
-                  style={{ width: `${Math.min(100, metrics.qualifiedCandidateRate)}%` }}
-                ></div>
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: '62%' }}></div>
               </div>
             </div>
           </div>

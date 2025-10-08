@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
-import { useRecruitmentAnalytics } from "@/hooks/recruitment/useRecruitmentAnalytics";
 
 interface RecruitmentMetricsProps {
   timeRange: string;
@@ -9,7 +8,6 @@ interface RecruitmentMetricsProps {
 }
 
 export function RecruitmentMetrics({ timeRange, department }: RecruitmentMetricsProps) {
-  const { departmentData, hiringTrends, sourceOfHire, funnelData, loading } = useRecruitmentAnalytics(timeRange, department);
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -30,30 +28,34 @@ export function RecruitmentMetrics({ timeRange, department }: RecruitmentMetrics
               {/* Bar chart visualization */}
               <div className="w-full h-full bg-background border-border rounded-md flex flex-col">
                 <div className="flex-1 flex items-end px-4 pt-6 pb-2 space-x-6">
-                  {loading ? (
-                    <div className="flex items-center justify-center w-full h-full">
-                      <div className="text-sm text-muted-foreground">Loading department data...</div>
-                    </div>
-                  ) : (
-                    departmentData.slice(0, 7).map((dept, index) => {
-                      const maxHeight = 200;
-                      const maxTime = Math.max(...departmentData.map(d => d.avgTimeToHire));
-                      const height = Math.max(60, (dept.avgTimeToHire / maxTime) * maxHeight);
-                      
-                      return (
-                        <div key={dept.department} className="flex flex-col items-center">
-                          <div 
-                            className="bg-blue-500 w-12 rounded-t-md" 
-                            style={{ height: `${height}px` }}
-                            title={`${dept.department}: ${dept.avgTimeToHire} days`}
-                          ></div>
-                          <span className="text-xs mt-1 text-center max-w-[60px] truncate" title={dept.department}>
-                            {dept.department.length > 8 ? dept.department.substring(0, 8) + '...' : dept.department}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '200px' }}></div>
+                    <span className="text-xs mt-1">Engineering</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '120px' }}></div>
+                    <span className="text-xs mt-1">Sales</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '150px' }}></div>
+                    <span className="text-xs mt-1">Marketing</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '100px' }}></div>
+                    <span className="text-xs mt-1">HR</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '180px' }}></div>
+                    <span className="text-xs mt-1">Finance</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '160px' }}></div>
+                    <span className="text-xs mt-1">Operations</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-500 w-12 rounded-t-md" style={{ height: '130px' }}></div>
+                    <span className="text-xs mt-1">Support</span>
+                  </div>
                 </div>
                 <div className="h-8 flex items-center px-4 text-xs text-muted-foreground">
                   <div className="flex-1">Departments</div>
@@ -137,19 +139,22 @@ export function RecruitmentMetrics({ timeRange, department }: RecruitmentMetrics
                   </svg>
                 </div>
                 <div className="flex flex-col space-y-2 ml-4">
-                  {loading ? (
-                    <div className="text-sm text-muted-foreground">Loading source data...</div>
-                  ) : (
-                    sourceOfHire.map((source, index) => {
-                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-purple-500'];
-                      return (
-                        <div key={source.source} className="flex items-center">
-                          <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]} mr-2`}></div>
-                          <span className="text-xs">{source.source} ({source.percentage}%)</span>
-                        </div>
-                      );
-                    })
-                  )}
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                    <span className="text-xs">Job Boards (35%)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                    <span className="text-xs">Referrals (25%)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
+                    <span className="text-xs">LinkedIn (20%)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
+                    <span className="text-xs">Other (20%)</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -177,13 +182,12 @@ export function RecruitmentMetrics({ timeRange, department }: RecruitmentMetrics
                 <div className="flex-1 flex items-end px-4 pt-6 pb-2 relative">
                   {/* X-axis months */}
                   <div className="absolute bottom-0 left-0 right-0 flex justify-between px-4 text-xs text-muted-foreground">
-                    {loading ? (
-                      <span>Loading...</span>
-                    ) : (
-                      hiringTrends.map((trend, index) => (
-                        <span key={index}>{trend.month}</span>
-                      ))
-                    )}
+                    <span>Jan</span>
+                    <span>Feb</span>
+                    <span>Mar</span>
+                    <span>Apr</span>
+                    <span>May</span>
+                    <span>Jun</span>
                   </div>
                   
                   {/* Line chart path - simplified representation */}
@@ -229,22 +233,45 @@ export function RecruitmentMetrics({ timeRange, department }: RecruitmentMetrics
             <div className="h-[250px] flex items-center justify-center">
               {/* Funnel visualization */}
               <div className="w-full max-w-md space-y-4">
-                {loading ? (
-                  <div className="text-sm text-muted-foreground">Loading funnel data...</div>
-                ) : (
-                  funnelData.map((stage, index) => (
-                    <div key={stage.stage} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>{stage.stage}</span>
-                        <span>{stage.count} ({stage.percentage}%)</span>
-                      </div>
-                      <div 
-                        className="mx-auto bg-blue-500 h-8 rounded-sm" 
-                        style={{ width: `${Math.max(15, stage.percentage)}%` }}
-                      ></div>
-                    </div>
-                  ))
-                )}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Applications</span>
+                    <span>428</span>
+                  </div>
+                  <div className="w-full bg-blue-500 h-8 rounded-sm"></div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Screened</span>
+                    <span>214 (50%)</span>
+                  </div>
+                  <div className="w-[75%] mx-auto bg-blue-500 h-8 rounded-sm"></div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Interviewed</span>
+                    <span>92 (21.5%)</span>
+                  </div>
+                  <div className="w-[50%] mx-auto bg-blue-500 h-8 rounded-sm"></div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Offers</span>
+                    <span>18 (4.2%)</span>
+                  </div>
+                  <div className="w-[25%] mx-auto bg-blue-500 h-8 rounded-sm"></div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Hired</span>
+                    <span>15 (3.5%)</span>
+                  </div>
+                  <div className="w-[15%] mx-auto bg-blue-500 h-8 rounded-sm"></div>
+                </div>
               </div>
             </div>
           </CardContent>

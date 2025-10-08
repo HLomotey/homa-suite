@@ -22,9 +22,6 @@ export interface Assignment {
   start_date: string;
   end_date: string | null;
   rent_amount: number;
-  rent_deposit_amount: number | null;
-  transport_amount: number | null;
-  bus_card_amount: number | null;
   // payment_status removed - no longer used in assignments table
   housing_agreement: boolean;
   transportation_agreement: boolean;
@@ -89,22 +86,13 @@ export interface FrontendAssignment {
   startDate: string;
   endDate: string;
   rentAmount: number;
-  rentDepositAmount?: number | null;
-  transportAmount?: number | null;
-  busCardAmount?: number | null;
   agreements?: {
     housing?: boolean;
     transportation?: boolean;
     flight_agreement?: boolean;
     bus_card?: boolean;
   };
-  housingAgreement?: boolean;
-  transportationAgreement?: boolean;
-  busCardAgreement?: boolean;
-  flightAgreement?: boolean;
   securityDeposits?: SecurityDeposit[] | null;
-  securityDepositStatus?: 'pending' | 'partial' | 'paid' | 'refunded' | null;
-  securityDepositId?: string | null;
   flightAgreementAmount?: number;
   flightAgreementNotes?: string;
 }
@@ -127,13 +115,6 @@ export const mapDatabaseAssignmentToFrontend = (dbAssignment: Assignment): Front
     startDate: dbAssignment.start_date,
     endDate: dbAssignment.end_date || '',
     rentAmount: dbAssignment.rent_amount,
-    rentDepositAmount: dbAssignment.rent_deposit_amount,
-    transportAmount: dbAssignment.transport_amount,
-    busCardAmount: dbAssignment.bus_card_amount,
-    housingAgreement: dbAssignment.housing_agreement,
-    transportationAgreement: dbAssignment.transportation_agreement,
-    busCardAgreement: dbAssignment.bus_card_agreement,
-    flightAgreement: dbAssignment.flight_agreement,
     agreements: {
       housing: dbAssignment.housing_agreement,
       transportation: dbAssignment.transportation_agreement,

@@ -7,10 +7,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar, Play, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateBillingForDateRange, generateAugust16To31 } from '@/lib/billing/generateForDateRange';
-import { generateAllBillingForMonth } from '@/lib/billing/generateTransportationBilling';
-import { generateAllBillingTypesForMonth } from '@/lib/billing/generateDeductionBilling';
-import { IndividualBillingGenerators } from './IndividualBillingGenerators';
-import { BillingPeriodManager } from './BillingPeriodManager';
+import { BillingDebugger } from './BillingDebugger';
+import { AssignmentDataChecker } from './AssignmentDataChecker';
+import { AssignmentAnalyzer } from './AssignmentAnalyzer';
+import { SimpleAssignmentTest } from './SimpleAssignmentTest';
+import { PropertyDataChecker } from './PropertyDataChecker';
+import { PropertySeeder } from './PropertySeeder';
+import { QuickPropertyFix } from './QuickPropertyFix';
+import { DatabaseDiagnostic } from './DatabaseDiagnostic';
+import { BillingTracer } from './BillingTracer';
+import { BiweeklyAmountUpdater } from './BiweeklyAmountUpdater';
 
 interface ManualBillingGeneratorProps {
   onBillingGenerated?: (count: number) => void;
@@ -66,60 +72,6 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
     }
   };
 
-  const handleGenerateTransportation = async () => {
-    setIsGenerating(true);
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      
-      const transportCount = await generateAllBillingForMonth(year, month);
-      
-      setLastResult({
-        count: transportCount,
-        period: `${now.toLocaleString('default', { month: 'long', year: 'numeric' })} (Housing + Transportation)`,
-        timestamp: new Date().toLocaleString()
-      });
-
-      toast.success(`Generated billing records including ${transportCount} transportation records for current month`);
-      onBillingGenerated?.(transportCount);
-    } catch (error) {
-      console.error('Transportation billing generation error:', error);
-      toast.error(`Failed to generate transportation billing: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleGenerateAllBillingTypes = async () => {
-    setIsGenerating(true);
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      
-      const result = await generateAllBillingTypesForMonth(year, month, {
-        transportRate: 200,
-        securityDepositAmount: 500,
-        busCardAmount: 50
-      });
-      
-      setLastResult({
-        count: result.totalDeductionRecords + result.transportCount,
-        period: `${now.toLocaleString('default', { month: 'long', year: 'numeric' })} (All Billing Types + Deductions)`,
-        timestamp: new Date().toLocaleString()
-      });
-
-      toast.success(`Generated all billing types: ${result.transportCount} transportation, ${result.securityDepositCount} security deposits, ${result.busCardCount} bus cards`);
-      onBillingGenerated?.(result.totalDeductionRecords + result.transportCount);
-    } catch (error) {
-      console.error('All billing types generation error:', error);
-      toast.error(`Failed to generate all billing types: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleQuickGenerate = async (type: 'august16-31' | 'current-month') => {
     setIsGenerating(true);
     try {
@@ -156,32 +108,23 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
   };
 
   return (
-    <div className="space-y-6">
-      {/* Individual Billing Generators */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Individual Billing Generators
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <IndividualBillingGenerators onBillingGenerated={onBillingGenerated} />
-        </CardContent>
-      </Card>
-
-      {/* Combined Billing Generator */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Combined Billing Generator
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Manual Billing Generator
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
         {/* Quick Actions */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Quick Actions</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <BiweeklyAmountUpdater />
+            <QuickPropertyFix />
+            <DatabaseDiagnostic />
+            <BillingTracer />
+          </div>
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
@@ -199,24 +142,6 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
             >
               Current Month
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateTransportation}
-              disabled={isGenerating}
-              className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
-            >
-              🚌 Housing + Transportation
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateAllBillingTypes}
-              disabled={isGenerating}
-              className="bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
-            >
-              💰 All Types + Deductions
-            </Button>
           </div>
         </div>
 
@@ -224,7 +149,7 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
         <div className="space-y-4">
           <Label className="text-sm font-medium">Custom Date Range</Label>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="start-date">Start Date</Label>
               <Input
@@ -246,28 +171,25 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
                 disabled={isGenerating}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label className="invisible">Generate</Label>
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || !startDate || !endDate}
-                className="w-full"
-              >
-                {isGenerating ? (
-                  <>
-                    <Play className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Generate Billing
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
+
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || !startDate || !endDate}
+            className="w-full"
+          >
+            {isGenerating ? (
+              <>
+                <Play className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-2" />
+                Generate Billing
+              </>
+            )}
+          </Button>
         </div>
 
         {/* Last Result */}
@@ -292,21 +214,14 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
           </AlertDescription>
         </Alert>
 
+        {/* Debug Section */}
+        <BillingTracer />
+        <DatabaseDiagnostic />
+        <QuickPropertyFix />
+        <PropertyDataChecker />
+        <SimpleAssignmentTest />
       </CardContent>
     </Card>
-
-    {/* Billing Period Manager */}
-    <BillingPeriodManager 
-      onPeriodDeleted={(count) => {
-        toast.success(`Deleted ${count} billing records`);
-        onBillingGenerated?.(0); // Trigger refresh
-      }}
-      onPeriodRegenerated={(count) => {
-        toast.success(`Regenerated ${count} billing records`);
-        onBillingGenerated?.(count);
-      }}
-    />
-    </div>
   );
 }
 

@@ -43,7 +43,6 @@ const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const StaffBenefits = lazy(() => import("@/pages/StaffBenefits"));
 const JobOrders = lazy(() => import("@/pages/JobOrders"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
-const Reports = lazy(() => import("@/pages/Reports"));
 const Login = lazy(() => import("@/pages/Login"));
 
 // Lazy load Termination Module
@@ -795,16 +794,6 @@ export const routes: RouteObject[] = [
           <LazyWrapper>
             <ModuleRouteGuard module="job-orders">
               <JobOrders />
-            </ModuleRouteGuard>
-          </LazyWrapper>
-        ),
-      },
-      {
-        path: "reports",
-        element: (
-          <LazyWrapper>
-            <ModuleRouteGuard module="reports">
-              <Reports />
             </ModuleRouteGuard>
           </LazyWrapper>
         ),
