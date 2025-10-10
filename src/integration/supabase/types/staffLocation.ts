@@ -7,6 +7,8 @@ export interface StaffLocation {
   external_staff_id?: string;
   manager_id?: string;
   company_account_id?: number;
+  state?: string;
+  company_account_name?: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -24,6 +26,8 @@ export interface FrontendStaffLocation {
   managerName?: string;
   companyAccountId?: number;
   companyAccountName?: string;
+  state?: string;
+  derivedCompanyAccountName?: string;
 }
 
 export interface StaffLocationFormData {
