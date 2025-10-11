@@ -1,28 +1,13 @@
--- Create comprehensive housing billing view based on the provided base view
--- This view integrates assignments, billing, utilities, and deductions data
--- Logic: List all Properties -> Check staff assignments -> Check billing table -> Check utilities -> Check states
+-- Create comprehensive housing billing view with improved structure and billing periods
+-- This view integrates assignments, billing, utilities, and deductions data with proper time-based aggregation
 
--- Drop existing view if it exists to allow column structure changes
-DROP VIEW IF EXISTS comprehensive_housing_billing_view;
+-- Drop existing views first to avoid conflicts
+DROP VIEW IF EXISTS comprehensive_housing_billing_view CASCADE;
+DROP VIEW IF EXISTS comprehensive_housing_billing_test CASCADE;
 
--- Create a simple test view first to debug data issues
-CREATE OR REPLACE VIEW comprehensive_housing_billing_test AS
-SELECT 
-    p.id as property_id,
-    p.title as property_name,
-    p.address as property_address,
-    p.status as property_status,
-    COUNT(a.id) as assignment_count,
-    COUNT(r.id) as room_count
-FROM properties p
-LEFT JOIN assignments a ON p.id = a.property_id
-LEFT JOIN rooms r ON p.id = r.property_id
-GROUP BY p.id, p.title, p.address, p.status
-ORDER BY p.title;
-
--- Grant permissions on test view
-GRANT SELECT ON comprehensive_housing_billing_test TO authenticated;
-GRANT SELECT ON comprehensive_housing_billing_test TO service_role;
+-- Create the comprehensive housing billing view with improved structure
+CREATE OR REPLACE VIEW comprehensive_housing_billing_view AS
+WITH numberofrooms AS (
     SELECT
         r.property_id,
         COUNT(*) FILTER (WHERE r.status = 'Available')   AS available_rooms,
@@ -109,8 +94,29 @@ LEFT JOIN property_with_accounts pwa
 GROUP BY bs.property_id, bs.billing_month, bs.billing_year, bs.period_start, bs.period_end
 ORDER BY bs.property_id, bs.billing_year, bs.billing_month;
 
--- Grant permissions on the view
+-- Create a simple test view for debugging
+CREATE OR REPLACE VIEW comprehensive_housing_billing_test AS
+SELECT 
+    p.id as property_id,
+    p.title as property_name,
+    p.address as property_address,
+    p.status as property_status,
+    COUNT(a.id) as assignment_count,
+    COUNT(r.id) as room_count
+FROM properties p
+LEFT JOIN assignments a ON p.id = a.property_id
+LEFT JOIN rooms r ON p.id = r.property_id
+GROUP BY p.id, p.title, p.address, p.status
+ORDER BY p.title;
+
+-- Grant permissions on both views
 GRANT SELECT ON comprehensive_housing_billing_view TO authenticated;
 GRANT SELECT ON comprehensive_housing_billing_view TO service_role;
+GRANT SELECT ON comprehensive_housing_billing_test TO authenticated;
+GRANT SELECT ON comprehensive_housing_billing_test TO service_role;
+
+-- Add comments for documentation
 COMMENT ON VIEW comprehensive_housing_billing_view IS 
-'Comprehensive housing view with billing, utilities, and deductions data integrated from multiple tables';
+'Comprehensive housing view with billing periods, room status tracking, utility pivoting, and state/company account integration';
+COMMENT ON VIEW comprehensive_housing_billing_test IS 
+'Simple test view for debugging property, assignment, and room relationships';
