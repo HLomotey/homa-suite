@@ -13,6 +13,16 @@ export async function generateBillingForMonth(
   // Pull staff with hire/termination, property/room, and rent info
   const staff = await getActiveStaffForMonth(year, month);
 
+  if (staff.length === 0) {
+    console.warn(`No active staff found for ${year}-${month}. This could be because:`);
+    console.warn('1. No assignments exist in the assignments table');
+    console.warn('2. No external_staff records match the assignment tenant_ids');
+    console.warn('3. All staff have termination dates before the billing period');
+    throw new Error(`No active staff assignments found for ${year}-${month.toString().padStart(2, '0')}. Please ensure staff are properly assigned to properties.`);
+  }
+
+  console.log(`Processing billing for ${staff.length} staff members`);
+
   for (const s of staff) {
     // Use hire_date and termination_date from external_staff for billing logic
     // If external_staff fields are available, use them; otherwise fall back to assignment dates

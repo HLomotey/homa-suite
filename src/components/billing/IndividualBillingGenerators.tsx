@@ -104,10 +104,9 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
   const loadSecurityDeductions = async (year: number, month: number) => {
     try {
       const { data, error } = await supabase
-        .from('billing_deductions')
+        .from('security_deposit_deductions')
         .select('*')
-        .eq('billing_type', 'security_deposit')
-        .eq('status', 'pending');
+        .eq('status', 'scheduled');
       
       if (error) throw error;
       setSecurityDeductions(data || []);
@@ -174,7 +173,20 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       onBillingGenerated?.(result.count, 'Housing');
     } catch (error) {
       console.error('Housing billing generation error:', error);
-      toast.error(`Failed to generate housing billing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        if (error.message.includes('foreign key constraint')) {
+          errorMessage = 'No valid staff assignments found. Please ensure staff are properly assigned to properties with valid external staff records.';
+        } else if (error.message.includes('billing_tenant_fk')) {
+          errorMessage = 'Staff assignment references invalid external staff records. Please check staff data integrity.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(`Failed to generate housing billing: ${errorMessage}`);
     } finally {
       setIsGenerating(null);
     }

@@ -689,6 +689,8 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
                               checked={utilityType.selected}
                               onChange={(e) => handleUtilityTypeChange(utilityType.utilityTypeId, 'selected', e.target.checked)}
                               className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                              aria-describedby={`utility-desc-${utilityType.utilityTypeId}`}
+                              title={`Select ${typeInfo.name} utility type`}
                             />
                             <Label htmlFor={`utility-${utilityType.utilityTypeId}`} className="text-white font-medium cursor-pointer">
                               {typeInfo.name}
@@ -868,6 +870,8 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
                             checked={utilityType.selected}
                             onChange={(e) => handleUtilityTypeChange(utilityType.utilityTypeId, 'selected', e.target.checked)}
                             className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                            aria-describedby={`edit-utility-desc-${utilityType.utilityTypeId}`}
+                            title={`Select ${typeInfo.name} utility type`}
                           />
                           <Label htmlFor={`edit-utility-${utilityType.utilityTypeId}`} className="text-white font-medium cursor-pointer">
                             {typeInfo.name}
