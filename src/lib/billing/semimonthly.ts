@@ -55,13 +55,20 @@ export function inclusionForMonth(
 ): { firstWindow: boolean; secondWindow: boolean } {
   const zone = monthStart.zoneName || "America/Los_Angeles";
   const [_w1, _w2] = getBillingWindowsForMonth(monthStart.year, monthStart.month, zone);
+  const startOfMonth = _w1.start;
   const endOfMonth = _w2.end;
 
-  // Guard: start date must be provided and in or before this month
+  // Guard: start date must be provided
   if (!startDate) return { firstWindow: false, secondWindow: false };
   
   const start = DateTime.fromISO(startDate).startOf("day");
+  const end = endDate ? DateTime.fromISO(endDate).startOf("day") : null;
+  
+  // Only exclude if they start AFTER this billing month (future hires)
   if (start > endOfMonth) return { firstWindow: false, secondWindow: false };
+  
+  // Only exclude if they terminated BEFORE this billing month
+  if (end && end < startOfMonth) return { firstWindow: false, secondWindow: false };
 
   const firstWindow = overlapsEmploymentWindow(startDate, endDate, _w1);
   const secondWindow = overlapsEmploymentWindow(startDate, endDate, _w2);

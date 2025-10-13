@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Home, Bus, Shield, Plane, Play, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { generateBillingForMonth } from '@/lib/billing/generateForMonth';
-import { generateTransportationBillingForMonth } from '@/lib/billing/generateTransportationBilling';
+import { generateBillingForMonth, generateTransportationBillingForMonth } from '@/lib/billing/generateForMonth';
 import { generateSecurityDepositBillingForMonth, generateBusCardBillingForMonth } from '@/lib/billing/generateDeductionBilling';
 import { getBillingWindowsForMonth } from '@/lib/billing/semimonthly';
 import { FlightAgreementGenerator } from './FlightAgreementGenerator';
@@ -164,12 +163,26 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       const period1 = `${w1.start.toFormat('MMM dd')} - ${w1.end.toFormat('MMM dd')}`;
       const period2 = `${w2.start.toFormat('MMM dd')} - ${w2.end.toFormat('MMM dd, yyyy')}`;
       
-      await generateBillingForMonth(year, month);
+      await generateBillingForMonth(year, month, housingPeriod as 'first' | 'second' | 'both');
       
-      const result = { count: 2, timestamp: new Date().toLocaleString() }; // 2 semi-monthly periods
+      // Determine which periods were generated based on selection
+      let periodsGenerated = '';
+      let expectedCount = 0;
+      if (housingPeriod === 'first') {
+        periodsGenerated = period1;
+        expectedCount = 1;
+      } else if (housingPeriod === 'second') {
+        periodsGenerated = period2;
+        expectedCount = 1;
+      } else {
+        periodsGenerated = `${period1} & ${period2}`;
+        expectedCount = 2;
+      }
+      
+      const result = { count: expectedCount, timestamp: new Date().toLocaleString() };
       setLastResults(prev => ({ ...prev, housing: result }));
       
-      toast.success(`Generated housing billing for ${month}/${year} - Periods: ${period1} & ${period2}`);
+      toast.success(`Generated housing billing for ${month}/${year} - Period(s): ${periodsGenerated}`);
       onBillingGenerated?.(result.count, 'Housing');
     } catch (error) {
       console.error('Housing billing generation error:', error);
@@ -177,8 +190,10 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       // Provide more specific error messages
       let errorMessage = 'Unknown error';
       if (error instanceof Error) {
-        if (error.message.includes('foreign key constraint')) {
-          errorMessage = 'No valid staff assignments found. Please ensure staff are properly assigned to properties with valid external staff records.';
+        if (error.message.includes('No staff assignments found')) {
+          errorMessage = 'No staff assignments found. Please create staff assignments in the assignments table before generating billing. Go to Properties → Assignments to set up staff housing assignments.';
+        } else if (error.message.includes('foreign key constraint')) {
+          errorMessage = 'Invalid staff assignment data. Please ensure all assigned staff exist in the external staff table.';
         } else if (error.message.includes('billing_tenant_fk')) {
           errorMessage = 'Staff assignment references invalid external staff records. Please check staff data integrity.';
         } else {
@@ -209,16 +224,39 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       const period2 = `${w2.start.toFormat('MMM dd')} - ${w2.end.toFormat('MMM dd, yyyy')}`;
       
       // Use transport amounts from assignments instead of a fixed rate
-      const count = await generateTransportationBillingForMonth(year, month);
+      const count = await generateTransportationBillingForMonth(year, month, transportPeriod as 'first' | 'second' | 'both');
+      
+      // Determine which periods were generated based on selection
+      let periodsGenerated = '';
+      if (transportPeriod === 'first') {
+        periodsGenerated = period1;
+      } else if (transportPeriod === 'second') {
+        periodsGenerated = period2;
+      } else {
+        periodsGenerated = `${period1} & ${period2}`;
+      }
       
       const result = { count, timestamp: new Date().toLocaleString() };
       setLastResults(prev => ({ ...prev, transportation: result }));
       
-      toast.success(`Generated ${count} transportation billing records for ${month}/${year} - Periods: ${period1} & ${period2} (using assignment amounts)`);
+      toast.success(`Generated ${count} transportation billing records for ${month}/${year} - Period(s): ${periodsGenerated} (using assignment amounts)`);
       onBillingGenerated?.(count, 'Transportation');
     } catch (error) {
       console.error('Transportation billing generation error:', error);
-      toast.error(`Failed to generate transportation billing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        if (error.message.includes('No staff with transportation assignments found')) {
+          errorMessage = 'No staff with transportation assignments found. Please create staff assignments with transportation enabled in the assignments table. Go to Properties → Assignments to set up transportation agreements.';
+        } else if (error.message.includes('foreign key constraint')) {
+          errorMessage = 'Invalid staff assignment data. Please ensure all assigned staff exist in the external staff table.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(`Failed to generate transportation billing: ${errorMessage}`);
     } finally {
       setIsGenerating(null);
     }
