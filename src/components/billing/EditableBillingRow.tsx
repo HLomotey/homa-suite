@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Edit2, Save, X, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Edit2, Save, X, Trash2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { BillingRow, PaymentStatus } from '@/types/billing';
 import { useBillingMutations } from '@/hooks/billing/useBillingMutations';
@@ -19,6 +20,7 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
   const [isEditing, setIsEditing] = useState(false);
   const [editedAmount, setEditedAmount] = useState(billingRow.rentAmount.toString());
   const [editedStatus, setEditedStatus] = useState(billingRow.paymentStatus);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const { 
     updateBillingRecord, 
@@ -45,21 +47,26 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
     setIsEditing(false);
   };
 
-  const handleDelete = async () => {
-    const confirmMessage = `Are you sure you want to delete this billing record?\n\nTenant: ${billingRow.tenantName}\nAmount: $${billingRow.rentAmount.toFixed(2)}\nType: ${billingRow.billingType}\nPeriod: ${format(new Date(billingRow.periodStart), "MMM dd")} → ${format(new Date(billingRow.periodEnd), "MMM dd, yyyy")}\n\nThis action cannot be undone.`;
-    
-    if (window.confirm(confirmMessage)) {
-      console.log('🗑️ User confirmed deletion of billing record:', billingRow.id);
-      const success = await deleteBillingRecord(billingRow.id);
-      if (success) {
-        console.log('✅ Delete successful, calling onDelete callback');
-        onDelete();
-      } else {
-        console.log('❌ Delete failed');
-      }
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    console.log('🗑️ User confirmed deletion of billing record:', billingRow.id);
+    const success = await deleteBillingRecord(billingRow.id);
+    if (success) {
+      console.log('✅ Delete successful, calling onDelete callback');
+      setShowDeleteDialog(false);
+      onDelete();
     } else {
-      console.log('❌ User cancelled deletion');
+      console.log('❌ Delete failed');
+      setShowDeleteDialog(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    console.log('❌ User cancelled deletion');
+    setShowDeleteDialog(false);
   };
 
 
@@ -197,7 +204,7 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 disabled={isDeleting}
                 className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
               >
@@ -207,6 +214,73 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
           )}
         </div>
       </TableCell>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="h-5 w-5" />
+              Confirm Deletion
+            </DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Are you sure you want to delete this billing record? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            <div className="bg-gray-800 p-3 rounded-lg space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Tenant:</span>
+                <span className="text-white font-medium">{billingRow.tenantName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Amount:</span>
+                <span className="text-white font-medium">${billingRow.rentAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Type:</span>
+                <span className="text-white font-medium capitalize">{billingRow.billingType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Period:</span>
+                <span className="text-white font-medium">
+                  {format(new Date(billingRow.periodStart), "MMM dd")} → {format(new Date(billingRow.periodEnd), "MMM dd, yyyy")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDeleteCancel}
+              disabled={isDeleting}
+              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Record
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TableRow>
   );
 }

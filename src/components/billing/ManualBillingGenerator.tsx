@@ -11,6 +11,7 @@ import { generateAllBillingForMonth } from '@/lib/billing/generateTransportation
 import { generateAllBillingTypesForMonth } from '@/lib/billing/generateDeductionBilling';
 import { IndividualBillingGenerators } from './IndividualBillingGenerators';
 import { BillingPeriodManager } from './BillingPeriodManager';
+import { BillingDeleteTest } from './BillingDeleteTest';
 
 interface ManualBillingGeneratorProps {
   onBillingGenerated?: (count: number) => void;
@@ -306,6 +307,9 @@ export function ManualBillingGenerator({ onBillingGenerated }: ManualBillingGene
         onBillingGenerated?.(count);
       }}
     />
+
+    {/* Delete Test Component */}
+    <BillingDeleteTest />
     </div>
   );
 }
