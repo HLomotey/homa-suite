@@ -336,9 +336,9 @@ export async function getActiveStaffWithTransportationForMonth(year: number, mon
           return {
             tenant_id: assignment.tenant_id,
             property_id: assignment.property_id,
-            property_name: property?.title || 'Unknown Property',
-            room_id: assignment.room_id,
-            room_name: room?.name || 'Unknown Room',
+            property_name: property?.title || 'Transportation Service',
+            room_id: assignment.room_id || null, // Allow null for transportation-only staff
+            room_name: room?.name || null, // Allow null for transportation-only staff
             rent_amount: assignment.rent_amount || 0,
             transport_amount: assignment.transport_amount || 150.00, // Default transportation rate
             start_date: assignment.start_date,
@@ -375,7 +375,9 @@ export async function getActiveStaffWithTransportationForMonth(year: number, mon
 export async function upsertBillingRow(billingData: {
   tenant_id: string;
   property_id: string;
-  room_id: string;
+  property_name?: string;
+  room_id: string | null;
+  room_name?: string | null;
   rent_amount: number;
   payment_status: string;
   billing_type: string;
@@ -407,8 +409,14 @@ export async function upsertBillingRow(billingData: {
     console.log(`✅ tenant_id ${billingData.tenant_id} exists in external_staff table`);
   }
 
-  // Check if room_id exists in rooms table (if room_id is provided)
-  if (billingData.room_id) {
+  // Check room_id requirements based on billing type
+  if (billingData.billing_type === 'housing') {
+    // Housing billing requires room_id
+    if (!billingData.room_id) {
+      console.error(`❌ room_id is required for housing billing but not provided`);
+      throw new Error(`room_id is required for housing billing records`);
+    }
+
     const { data: roomCheck, error: roomCheckError } = await supabase
       .from('rooms')
       .select('id')
@@ -417,10 +425,28 @@ export async function upsertBillingRow(billingData: {
 
     if (roomCheckError || !roomCheck) {
       console.error(`❌ room_id ${billingData.room_id} does NOT exist in rooms table`);
-      console.log(`🔧 Setting room_id to null to avoid foreign key constraint`);
-      billingData.room_id = null; // Set to null instead of failing
+      throw new Error(`Invalid room_id: ${billingData.room_id} not found in rooms table. Cannot create housing billing record.`);
     } else {
       console.log(`✅ room_id ${billingData.room_id} exists in rooms table`);
+    }
+  } else if (billingData.billing_type === 'transportation') {
+    // Transportation billing doesn't require room_id
+    if (billingData.room_id) {
+      // If room_id is provided for transportation, validate it exists
+      const { data: roomCheck, error: roomCheckError } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('id', billingData.room_id)
+        .single();
+
+      if (roomCheckError || !roomCheck) {
+        console.warn(`⚠️ room_id ${billingData.room_id} provided for transportation billing but doesn't exist. Setting to null.`);
+        billingData.room_id = null;
+      } else {
+        console.log(`✅ room_id ${billingData.room_id} exists in rooms table (optional for transportation)`);
+      }
+    } else {
+      console.log(`ℹ️ No room_id provided for transportation billing (not required)`);
     }
   }
 

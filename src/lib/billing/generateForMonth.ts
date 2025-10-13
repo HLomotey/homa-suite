@@ -112,12 +112,12 @@ export async function generateTransportationBillingForMonth(
       billingMonth: `${year}-${month}`
     });
     
-    // Simple active check: if they have a transportation agreement and transport_amount, bill them
-    // This matches the housing billing logic which is working
-    const include = {
-      firstWindow: billingPeriod === 'first' || billingPeriod === 'both',
-      secondWindow: billingPeriod === 'second' || billingPeriod === 'both'
-    };
+    // Use hire_date and termination_date from external_staff for billing logic
+    // If external_staff fields are available, use them; otherwise fall back to assignment dates
+    const hireDate = s.hire_date || s.start_date;
+    const terminationDate = s.termination_date || s.end_date;
+    
+    const include = inclusionForMonth(now, hireDate, terminationDate);
     
     console.log(`📅 Billing periods for ${s.tenant_id}:`, include);
     
@@ -126,34 +126,48 @@ export async function generateTransportationBillingForMonth(
     
     // Generate billing based on selected period
     if ((billingPeriod === 'first' || billingPeriod === 'both') && include.firstWindow) {
-      await upsertBillingRow({
-        tenant_id: s.tenant_id,
-        property_id: s.property_id,
-        room_id: s.room_id,
-        rent_amount: transportAmount / 2, // Convert monthly to bi-weekly
-        payment_status: "unpaid",
-        billing_type: "transportation",
-        period_start: w1.start.toISODate()!,
-        period_end: w1.end.toISODate()!,
-        start_date: s.start_date,
-        end_date: s.end_date,
-      });
-      billingRecordsCreated++;
+      try {
+        await upsertBillingRow({
+          tenant_id: s.tenant_id,
+          property_id: s.property_id,
+          property_name: s.property_name || 'Transportation Service',
+          room_id: s.room_id, // Can be null for transportation-only staff
+          room_name: s.room_name, // Can be null for transportation-only staff
+          rent_amount: transportAmount / 2, // Convert monthly to bi-weekly
+          payment_status: "unpaid",
+          billing_type: "transportation",
+          period_start: w1.start.toISODate()!,
+          period_end: w1.end.toISODate()!,
+          start_date: s.start_date,
+          end_date: s.end_date,
+        });
+        billingRecordsCreated++;
+      } catch (error) {
+        console.error(`❌ Failed to create first period billing for staff ${s.tenant_id}:`, error);
+        // Continue processing other staff members
+      }
     }
     if ((billingPeriod === 'second' || billingPeriod === 'both') && include.secondWindow) {
-      await upsertBillingRow({
-        tenant_id: s.tenant_id,
-        property_id: s.property_id,
-        room_id: s.room_id,
-        rent_amount: transportAmount / 2, // Convert monthly to bi-weekly
-        payment_status: "unpaid",
-        billing_type: "transportation",
-        period_start: w2.start.toISODate()!,
-        period_end: w2.end.toISODate()!,
-        start_date: s.start_date,
-        end_date: s.end_date,
-      });
-      billingRecordsCreated++;
+      try {
+        await upsertBillingRow({
+          tenant_id: s.tenant_id,
+          property_id: s.property_id,
+          property_name: s.property_name || 'Transportation Service',
+          room_id: s.room_id, // Can be null for transportation-only staff
+          room_name: s.room_name, // Can be null for transportation-only staff
+          rent_amount: transportAmount / 2, // Convert monthly to bi-weekly
+          payment_status: "unpaid",
+          billing_type: "transportation",
+          period_start: w2.start.toISODate()!,
+          period_end: w2.end.toISODate()!,
+          start_date: s.start_date,
+          end_date: s.end_date,
+        });
+        billingRecordsCreated++;
+      } catch (error) {
+        console.error(`❌ Failed to create second period billing for staff ${s.tenant_id}:`, error);
+        // Continue processing other staff members
+      }
     }
   }
 
