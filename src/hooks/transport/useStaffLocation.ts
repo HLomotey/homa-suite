@@ -19,7 +19,8 @@ export default function useStaffLocation() {
         .select(`
           *,
           company_locations (
-            name
+            name,
+            state
           ),
           manager:external_staff (
             id,
@@ -52,7 +53,9 @@ export default function useStaffLocation() {
             managerId: item.manager_id,
             managerName: item.manager ? `${item.manager["PAYROLL FIRST NAME"]} ${item.manager["PAYROLL LAST NAME"]}` : undefined,
             companyAccountId: item.company_account_id || undefined,
-            companyAccountName: item.company_accounts?.name
+            companyAccountName: item.company_accounts?.name,
+            state: item.state || item.company_locations?.state,
+            derivedCompanyAccountName: item.company_account_name
           }))
         : [];
         
@@ -88,7 +91,8 @@ export default function useStaffLocation() {
         .select(`
           *,
           company_locations (
-            name
+            name,
+            state
           )
         `)
         .single();
@@ -108,6 +112,8 @@ export default function useStaffLocation() {
         managerName: data.managerName,
         companyAccountId: newLocation.company_account_id || undefined,
         companyAccountName: newLocation.company_accounts?.name,
+        state: newLocation.state || newLocation.company_locations?.state,
+        derivedCompanyAccountName: newLocation.company_account_name,
       };
 
       setStaffLocations(prev => [...prev, frontendLocation]);
@@ -141,7 +147,8 @@ export default function useStaffLocation() {
         .select(`
           *,
           company_locations (
-            name
+            name,
+            state
           ),
           company_accounts (
             id,
@@ -165,6 +172,8 @@ export default function useStaffLocation() {
         managerName: data.managerName,
         companyAccountId: updatedLocation.company_account_id || undefined,
         companyAccountName: updatedLocation.company_accounts?.name,
+        state: updatedLocation.state || updatedLocation.company_locations?.state,
+        derivedCompanyAccountName: updatedLocation.company_account_name,
       };
 
       setStaffLocations(prev => 

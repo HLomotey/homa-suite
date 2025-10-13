@@ -260,13 +260,13 @@ export const fetchBillingPeriods = async (): Promise<FrontendBillingPeriod[]> =>
   const { data, error } = await supabase
     .from("billing_periods")
     .select("*")
-    .order("start_date", { ascending: false });
+    .order("start_date", { ascending: false }); // Order by start_date for flexible periods
 
   if (error) {
     throw new Error(`Error fetching billing periods: ${error.message}`);
   }
 
-  return (data as BillingPeriod[]).map(mapDatabaseBillingPeriodToFrontend);
+  return (data as any[]).map(mapDatabaseBillingPeriodToFrontend);
 };
 
 export const fetchBillingPeriodById = async (id: string): Promise<FrontendBillingPeriod> => {
@@ -296,10 +296,13 @@ export const createBillingPeriod = async (
     .from("billing_periods")
     .insert({
       name: billingPeriodData.name,
+      description: billingPeriodData.description,
       start_date: billingPeriodData.startDate,
       end_date: billingPeriodData.endDate,
       status: billingPeriodData.status,
-      created_by: userData.user.id
+      is_recurring: billingPeriodData.isRecurring,
+      recurrence_type: billingPeriodData.recurrenceType,
+      created_by: userData.user?.id
     })
     .select()
     .single();
@@ -308,7 +311,7 @@ export const createBillingPeriod = async (
     throw new Error(`Error creating billing period: ${error.message}`);
   }
 
-  return mapDatabaseBillingPeriodToFrontend(data as BillingPeriod);
+  return mapDatabaseBillingPeriodToFrontend(data as any);
 };
 
 export const updateBillingPeriod = async (
@@ -318,9 +321,12 @@ export const updateBillingPeriod = async (
   const updateData: any = {};
   
   if (billingPeriodData.name !== undefined) updateData.name = billingPeriodData.name;
+  if (billingPeriodData.description !== undefined) updateData.description = billingPeriodData.description;
   if (billingPeriodData.startDate !== undefined) updateData.start_date = billingPeriodData.startDate;
   if (billingPeriodData.endDate !== undefined) updateData.end_date = billingPeriodData.endDate;
   if (billingPeriodData.status !== undefined) updateData.status = billingPeriodData.status;
+  if (billingPeriodData.isRecurring !== undefined) updateData.is_recurring = billingPeriodData.isRecurring;
+  if (billingPeriodData.recurrenceType !== undefined) updateData.recurrence_type = billingPeriodData.recurrenceType;
 
   const { data, error } = await supabase
     .from("billing_periods")
@@ -333,7 +339,7 @@ export const updateBillingPeriod = async (
     throw new Error(`Error updating billing period: ${error.message}`);
   }
 
-  return mapDatabaseBillingPeriodToFrontend(data as BillingPeriod);
+  return mapDatabaseBillingPeriodToFrontend(data as any);
 };
 
 export const deleteBillingPeriod = async (id: string): Promise<void> => {

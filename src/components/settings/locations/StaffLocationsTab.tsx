@@ -293,6 +293,7 @@ export function StaffLocationsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Company Location</TableHead>
+              <TableHead>State</TableHead>
               <TableHead>Company Account</TableHead>
               <TableHead>Location Code</TableHead>
               <TableHead>Description</TableHead>
@@ -308,8 +309,19 @@ export function StaffLocationsTab() {
                   {location.companyLocationName}
                 </TableCell>
                 <TableCell>
-                  {location.companyAccountName ? (
-                    <span>{location.companyAccountName}</span>
+                  {location.state ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {location.state}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">
+                      No state
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {location.derivedCompanyAccountName || location.companyAccountName ? (
+                    <span>{location.derivedCompanyAccountName || location.companyAccountName}</span>
                   ) : (
                     <span className="text-muted-foreground text-sm">
                       No account assigned

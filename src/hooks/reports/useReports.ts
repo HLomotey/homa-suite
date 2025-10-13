@@ -4,45 +4,55 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-interface ReportFilters {
-  dateRange: {
-    startDate: string;
-    endDate: string;
-  };
-  // Common filters
-  status: string[];
-  location: string[];
-  reportType: string;
+// Industry standard: Separate interfaces for each report type
+interface BaseReportParams {
+  startDate: string;
+  endDate: string;
   exportFormat: 'excel' | 'pdf';
-  
-  // Housing-specific filters
+}
+
+interface HousingReportParams extends BaseReportParams {
+  reportType: 'assignment_summary' | 'occupancy_report' | 'rent_collection' | 'comprehensive_housing';
+  status?: string[];
+  locations?: string[];
   housingAgreement?: boolean;
   transportationAgreement?: boolean;
   flightAgreement?: boolean;
   busCardAgreement?: boolean;
   rentAmountRange?: { min: number; max: number };
-  
-  // Transportation-specific filters
+}
+
+interface TransportationReportParams extends BaseReportParams {
+  reportType: 'fleet_summary' | 'maintenance_schedule' | 'route_efficiency' | 'transport_billing';
   maintenanceCategory?: string[];
   vehicleStatus?: string[];
   routeStatus?: string[];
-  
-  // HR-specific filters
+}
+
+interface HRReportParams extends BaseReportParams {
+  reportType: 'staff_roster' | 'benefits_enrollment' | 'termination_summary' | 'diversity_metrics';
   positionStatus?: string[];
-  department?: string[];
-  jobTitle?: string[];
-  workerCategory?: string[];
-  
-  // Finance-specific filters
+  departments?: string[];
+  jobTitles?: string[];
+  workerCategories?: string[];
+}
+
+interface FinanceReportParams extends BaseReportParams {
+  reportType: 'financial_summary' | 'budget_variance' | 'cash_flow' | 'cost_analysis';
   paymentStatus?: string[];
-  billingType?: string[];
+  billingTypes?: string[];
   amountRange?: { min: number; max: number };
-  
-  // Operations-specific filters
+}
+
+interface OperationsReportParams extends BaseReportParams {
+  reportType: 'job_orders' | 'performance_metrics' | 'productivity_analysis';
   jobOrderStatus?: string[];
-  priority?: string[];
+  priorities?: string[];
   assignedTo?: string[];
 }
+
+// Union type for all report parameters
+type ReportParams = HousingReportParams | TransportationReportParams | HRReportParams | FinanceReportParams | OperationsReportParams;
 
 interface ReportData {
   title: string;
@@ -55,31 +65,25 @@ export function useReports() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateHousingReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
-    const { dateRange, status, reportType } = filters;
+  const generateHousingReport = useCallback(async (params: HousingReportParams): Promise<ReportData> => {
+    const { startDate, endDate, status, reportType } = params;
     
     // Check if this is the comprehensive housing report
     if (reportType === 'comprehensive_housing') {
-      // Use the housing report view for comprehensive data
-      let query = supabase
-        .from('housing_report_view')
-        .select('*');
-
-      // Filter by date range (year and month)
-      const startDate = new Date(dateRange.startDate);
-      const endDate = new Date(dateRange.endDate);
+      // First try the test view to debug data issues
+      console.log('Testing basic data availability...');
+      const { data: testData, error: testError } = await supabase
+        .from('comprehensive_housing_billing_test')
+        .select('*')
+        .limit(5);
       
-      query = query
-        .gte('report_year', startDate.getFullYear())
-        .lte('report_year', endDate.getFullYear());
-
-      if (startDate.getFullYear() === endDate.getFullYear()) {
-        query = query
-          .gte('report_month_num', startDate.getMonth() + 1)
-          .lte('report_month_num', endDate.getMonth() + 1);
-      }
-
-      const { data, error } = await query;
+      console.log('Test data:', testData);
+      console.log('Test error:', testError);
+      
+      // Use the new base view with billing integration
+      const { data, error } = await supabase
+        .from('comprehensive_housing_billing_view')
+        .select('*');
       
       if (error) {
         console.error('Comprehensive housing report query error:', error);
@@ -87,41 +91,48 @@ export function useReports() {
       }
 
       const reportData = (data as any[])?.map((row: any) => ({
-        'State': row.state || '',
+        'State': row.state_name || '',
+        'Property': row.property_name || '',
+        'Property Address': row.property_address || '',
+        'Total Assignments': row.total_assignments || 0,
         'Housing Capacity': row.housing_capacity || 0,
         'Housing Occupancy': row.housing_occupancy || 0,
-        'Rent Per Employee': `$${(row.rent_per_employee || 0).toFixed(2)}`,
-        'Property': row.property || '',
-        'Propane': `$${(row.propane || 0).toFixed(2)}`,
-        'Water/Sewer & Disposal': `$${(row.water_sewer_disposal || 0).toFixed(2)}`,
-        'Electricity': `$${(row.electricity || 0).toFixed(2)}`,
+        'Avg Rent Per Employee': `$${(row.avg_rent_amount || 0).toFixed(2)}`,
+        'Total Monthly Rent': `$${(row.total_rent_amount || 0).toFixed(2)}`,
+        'Propane': `$${(row.propane_cost || 0).toFixed(2)}`,
+        'Water/Sewer & Disposal': `$${(row.water_sewer_cost || 0).toFixed(2)}`,
+        'Electricity': `$${(row.electricity_cost || 0).toFixed(2)}`,
         'Total Utilities': `$${(row.total_utilities || 0).toFixed(2)}`,
-        'Monthly Rent Charges': `$${(row.monthly_rent_charges || 0).toFixed(2)}`,
-        'Housing Maintenance': `$${(row.housing_maintenance || 0).toFixed(2)}`,
+        'Housing Maintenance': `$${(row.maintenance_cost || 0).toFixed(2)}`,
         'Total Cost (TC)': `$${(row.total_cost || 0).toFixed(2)}`,
         'Expected Rent - Occupancy (RTC)': `$${(row.expected_rent_occupancy || 0).toFixed(2)}`,
         'Expected Rent - Capacity (RRO)': `$${(row.expected_rent_capacity || 0).toFixed(2)}`,
         'Actual Payroll Deductions (APD)': `$${(row.actual_payroll_deductions || 0).toFixed(2)}`,
         'Variance - APD vs RTC': `$${(row.variance_apd_rtc || 0).toFixed(2)}`,
-        'Variance - APD vs RRO': `$${(row.variance_apd_rro || 0).toFixed(2)}`
+        'Variance - APD vs RRO': `$${(row.variance_apd_rro || 0).toFixed(2)}`,
+        'Billing Period': row.billing_period || '',
+        'Payment Status': row.payment_status || 'N/A'
       })) || [];
 
       return {
-        title: 'Comprehensive Housing Report with Billing & Utilities',
+        title: 'Comprehensive Housing Report with Billing & Deductions',
         data: reportData,
         columns: [
-          'State', 'Housing Capacity', 'Housing Occupancy', 'Rent Per Employee', 'Property',
-          'Propane', 'Water/Sewer & Disposal', 'Electricity', 'Total Utilities',
-          'Monthly Rent Charges', 'Housing Maintenance', 'Total Cost (TC)',
+          'State', 'Property', 'Property Address', 'Total Assignments', 'Housing Capacity', 'Housing Occupancy', 
+          'Avg Rent Per Employee', 'Total Monthly Rent', 'Propane', 'Water/Sewer & Disposal', 
+          'Electricity', 'Total Utilities', 'Housing Maintenance', 'Total Cost (TC)',
           'Expected Rent - Occupancy (RTC)', 'Expected Rent - Capacity (RRO)',
-          'Actual Payroll Deductions (APD)', 'Variance - APD vs RTC', 'Variance - APD vs RRO'
+          'Actual Payroll Deductions (APD)', 'Variance - APD vs RTC', 'Variance - APD vs RRO',
+          'Billing Period', 'Payment Status'
         ],
         summary: {
           totalProperties: reportData.length,
           totalCapacity: reportData.reduce((sum, item) => sum + (parseInt(item['Housing Capacity']) || 0), 0),
           totalOccupancy: reportData.reduce((sum, item) => sum + (parseInt(item['Housing Occupancy']) || 0), 0),
           totalUtilities: reportData.reduce((sum, item) => sum + (parseFloat(item['Total Utilities'].replace('$', '')) || 0), 0),
-          totalRentCharges: reportData.reduce((sum, item) => sum + (parseFloat(item['Monthly Rent Charges'].replace('$', '')) || 0), 0)
+          totalRentCharges: reportData.reduce((sum, item) => sum + (parseFloat(item['Total Monthly Rent'].replace('$', '')) || 0), 0),
+          totalPayrollDeductions: reportData.reduce((sum, item) => sum + (parseFloat(item['Actual Payroll Deductions (APD)'].replace('$', '')) || 0), 0),
+          averageVarianceRTC: reportData.length > 0 ? reportData.reduce((sum, item) => sum + (parseFloat(item['Variance - APD vs RTC'].replace('$', '')) || 0), 0) / reportData.length : 0
         }
       };
     }
@@ -137,10 +148,10 @@ export function useReports() {
           payment_status
         )
       `)
-      .gte('start_date', dateRange.startDate)
-      .lte('start_date', dateRange.endDate);
+      .gte('start_date', startDate)
+      .lte('start_date', endDate);
 
-    if (status.length > 0 && !status.includes('all')) {
+    if (status && status.length > 0 && !status.includes('all')) {
       query = query.in('status', status);
     }
 
@@ -175,15 +186,15 @@ export function useReports() {
     };
   }, []);
 
-  const generateTransportationReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
-    const { dateRange } = filters;
+  const generateTransportationReport = useCallback(async (params: TransportationReportParams): Promise<ReportData> => {
+    const { startDate, endDate } = params;
     
     const { data, error } = await supabase
       .from('assignments')
       .select('*')
       .eq('transportation_agreement', true)
-      .gte('start_date', dateRange.startDate)
-      .lte('start_date', dateRange.endDate);
+      .gte('start_date', startDate)
+      .lte('start_date', endDate);
     
     if (error) throw error;
 
@@ -208,14 +219,14 @@ export function useReports() {
     };
   }, []);
 
-  const generateFinanceReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
-    const { dateRange } = filters;
+  const generateFinanceReport = useCallback(async (params: FinanceReportParams): Promise<ReportData> => {
+    const { startDate, endDate } = params;
     
     const { data, error } = await supabase
       .from('assignments')
       .select('*')
-      .gte('start_date', dateRange.startDate)
-      .lte('start_date', dateRange.endDate);
+      .gte('start_date', startDate)
+      .lte('start_date', endDate);
     
     if (error) throw error;
 
@@ -242,7 +253,7 @@ export function useReports() {
     };
   }, []);
 
-  const generateHRReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
+  const generateHRReport = useCallback(async (params: HRReportParams): Promise<ReportData> => {
     const { data, error } = await supabase
       .from('external_staff')
       .select('*')
@@ -277,14 +288,14 @@ export function useReports() {
     };
   }, []);
 
-  const generateOperationsReport = useCallback(async (filters: ReportFilters): Promise<ReportData> => {
-    const { dateRange } = filters;
+  const generateOperationsReport = useCallback(async (params: OperationsReportParams): Promise<ReportData> => {
+    const { startDate, endDate } = params;
     
     const { data, error } = await supabase
       .from('job_orders')
       .select('*')
-      .gte('created_at', dateRange.startDate)
-      .lte('created_at', dateRange.endDate);
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
     
     if (error) throw error;
 
@@ -378,36 +389,83 @@ export function useReports() {
     }
   }, []);
 
-  const generateReport = useCallback(async (module: string, reportType: string, filters: ReportFilters) => {
+  // Backward compatibility: Support both old and new function signatures
+  const generateReport = useCallback(async (
+    moduleOrParams: string | ReportParams, 
+    reportType?: string, 
+    filters?: any
+  ) => {
     setIsGenerating(true);
     setError(null);
     
     try {
       let reportData: ReportData;
+      let params: ReportParams;
       
-      switch (module) {
-        case 'housing':
-          reportData = await generateHousingReport(filters);
-          break;
-        case 'transportation':
-          reportData = await generateTransportationReport(filters);
-          break;
-        case 'finance':
-          reportData = await generateFinanceReport(filters);
-          break;
-        case 'hr':
-          reportData = await generateHRReport(filters);
-          break;
-        case 'operations':
-          reportData = await generateOperationsReport(filters);
-          break;
-        default:
-          throw new Error(`Unsupported module: ${module}`);
+      // Handle backward compatibility with old signature
+      if (typeof moduleOrParams === 'string') {
+        // Old signature: generateReport(module, reportType, filters)
+        const module = moduleOrParams;
+        const actualReportType = reportType || 'comprehensive_housing';
+        
+        // Convert old filters to new params format
+        params = {
+          reportType: actualReportType as any,
+          startDate: filters?.dateRange?.startDate || '2024-01-01',
+          endDate: filters?.dateRange?.endDate || '2024-12-31',
+          exportFormat: filters?.exportFormat || 'excel',
+          status: filters?.status || [],
+          locations: filters?.location || []
+        } as ReportParams;
+        
+        // Call appropriate function based on module
+        switch (module) {
+          case 'housing':
+            reportData = await generateHousingReport(params as HousingReportParams);
+            break;
+          case 'transportation':
+            reportData = await generateTransportationReport(params as TransportationReportParams);
+            break;
+          case 'finance':
+            reportData = await generateFinanceReport(params as FinanceReportParams);
+            break;
+          case 'hr':
+            reportData = await generateHRReport(params as HRReportParams);
+            break;
+          case 'operations':
+            reportData = await generateOperationsReport(params as OperationsReportParams);
+            break;
+          default:
+            throw new Error(`Unsupported module: ${module}`);
+        }
+      } else {
+        // New signature: generateReport(params)
+        params = moduleOrParams;
+        
+        if ('reportType' in params && params.reportType) {
+          const reportType = params.reportType;
+          
+          if (['assignment_summary', 'occupancy_report', 'rent_collection', 'comprehensive_housing'].includes(reportType)) {
+            reportData = await generateHousingReport(params as HousingReportParams);
+          } else if (['fleet_summary', 'maintenance_schedule', 'route_efficiency', 'transport_billing'].includes(reportType)) {
+            reportData = await generateTransportationReport(params as TransportationReportParams);
+          } else if (['financial_summary', 'budget_variance', 'cash_flow', 'cost_analysis'].includes(reportType)) {
+            reportData = await generateFinanceReport(params as FinanceReportParams);
+          } else if (['staff_roster', 'benefits_enrollment', 'termination_summary', 'diversity_metrics'].includes(reportType)) {
+            reportData = await generateHRReport(params as HRReportParams);
+          } else if (['job_orders', 'performance_metrics', 'productivity_analysis'].includes(reportType)) {
+            reportData = await generateOperationsReport(params as OperationsReportParams);
+          } else {
+            throw new Error(`Unsupported report type: ${reportType}`);
+          }
+        } else {
+          throw new Error('Invalid report parameters: missing reportType');
+        }
       }
       
-      const filename = `${module}_${reportType}_${new Date().toISOString().split('T')[0]}`;
+      const filename = `${params.reportType}_${new Date().toISOString().split('T')[0]}`;
       
-      if (filters.exportFormat === 'excel') {
+      if (params.exportFormat === 'excel') {
         exportToExcel(reportData, filename);
       } else {
         exportToPDF(reportData, filename);
