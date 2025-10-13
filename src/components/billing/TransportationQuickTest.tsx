@@ -17,12 +17,12 @@ export function TransportationQuickTest() {
         .limit(10);
 
       // Test 2: Check transportation_agreement values
-      const transportValues = allAssignments?.map(a => ({
+      const transportValues = (allAssignments || []).map((a: any) => ({
         id: a.id,
         transportation_agreement: a.transportation_agreement,
         transport_amount: a.transport_amount,
         tenant_id: a.tenant_id
-      })) || [];
+      }));
 
       // Test 3: Try different queries
       const { data: booleanTrue } = await supabase
