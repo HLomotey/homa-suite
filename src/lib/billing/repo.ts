@@ -132,54 +132,244 @@ export async function getActiveStaffForDateRange(
 }
 
 export async function getActiveStaffForMonth(year: number, month: number) {
-  // Mock data - replace with actual query that joins assignments with external_staff
-  // Query should be:
-  // SELECT DISTINCT
-  //   a.tenant_id,
-  //   a.property_id,
-  //   a.property_name,
-  //   a.room_id,
-  //   a.room_name,
-  //   a.rent_amount,
-  //   a.start_date,
-  //   a.end_date,
-  //   es."HIRE DATE" as hire_date,
-  //   es."TERMINATION DATE" as termination_date,
-  //   es."POSITION STATUS" as position_status
-  // FROM assignments a
-  // INNER JOIN external_staff es ON es.id = a.tenant_id
-  // WHERE a.tenant_id IS NOT NULL
-  //   AND (es."POSITION STATUS" = 'Active' OR es."POSITION STATUS" IS NULL)
-  //   AND (es."TERMINATION DATE" IS NULL OR es."TERMINATION DATE" >= '${year}-${month.toString().padStart(2, '0')}-01')
-  
-  return [
-    {
-      tenant_id: "tenant-1",
-      property_id: "prop-1",
-      property_name: "Downtown Hotel",
-      room_id: "room-1",
-      room_name: "Room 101",
-      rent_amount: 1200.00,
-      start_date: "2025-08-01",
-      end_date: null,
-      hire_date: "2025-08-01",
-      termination_date: null,
-      position_status: "Active"
-    },
-    {
-      tenant_id: "tenant-2", 
-      property_id: "prop-2",
-      property_name: "Uptown Suites",
-      room_id: "room-2",
-      room_name: "Room 205",
-      rent_amount: 1500.00,
-      start_date: "2025-07-15",
-      end_date: "2025-09-10",
-      hire_date: "2025-07-15",
-      termination_date: "2025-09-10",
-      position_status: "Terminated"
+  try {
+    // Try to get assignments data, but handle case where table doesn't exist or has issues
+    let assignmentsData: any[] | null = null;
+    let assignmentsError: any = null;
+    
+    try {
+      const result = await supabase
+        .from('assignments')
+        .select(`
+          tenant_id,
+          property_id,
+          room_id,
+          rent_amount,
+          start_date,
+          end_date
+        `)
+        .not('tenant_id', 'is', null) as { data: any[] | null, error: any };
+      
+      assignmentsData = result.data;
+      assignmentsError = result.error;
+    } catch (error) {
+      console.warn('Assignments table query failed:', error);
+      assignmentsError = error;
     }
-  ];
+
+    // If assignments exist and query succeeded, use them
+    if (!assignmentsError && assignmentsData && assignmentsData.length > 0) {
+      console.log(`Found ${assignmentsData.length} assignments, fetching related data...`);
+      
+      // Get external staff data for the tenant IDs
+      const tenantIds = assignmentsData.map(a => a.tenant_id).filter(Boolean);
+      
+      const { data: staffData, error: staffError } = await supabase
+        .from('external_staff')
+        .select('id, "HIRE DATE", "TERMINATION DATE", "POSITION STATUS"')
+        .in('id', tenantIds) as { data: any[] | null, error: any };
+
+      // Get property names
+      const propertyIds = [...new Set(assignmentsData.map(a => a.property_id).filter(Boolean))];
+      const { data: propertiesData } = await supabase
+        .from('properties')
+        .select('id, title')
+        .in('id', propertyIds) as { data: any[] | null, error: any };
+
+      // Get room names
+      const roomIds = [...new Set(assignmentsData.map(a => a.room_id).filter(Boolean))];
+      const { data: roomsData } = await supabase
+        .from('rooms')
+        .select('id, name')
+        .in('id', roomIds) as { data: any[] | null, error: any };
+
+      if (!staffError && staffData) {
+        // Combine assignments with external staff data
+        const result = assignmentsData.map(assignment => {
+          const staff = staffData.find(s => s.id === assignment.tenant_id);
+          const property = propertiesData?.find(p => p.id === assignment.property_id);
+          const room = roomsData?.find(r => r.id === assignment.room_id);
+          
+          return {
+            tenant_id: assignment.tenant_id,
+            property_id: assignment.property_id,
+            property_name: property?.title || 'Unknown Property',
+            room_id: assignment.room_id,
+            room_name: room?.name || 'Unknown Room',
+            rent_amount: assignment.rent_amount || 0,
+            start_date: assignment.start_date,
+            end_date: assignment.end_date,
+            hire_date: staff?.["HIRE DATE"] || assignment.start_date,
+            termination_date: staff?.["TERMINATION DATE"] || assignment.end_date,
+            position_status: staff?.["POSITION STATUS"] || "Active"
+          };
+        });
+
+        console.log(`Found ${result.length} active staff from assignments for billing generation`);
+        return result;
+      }
+    }
+
+    // If no assignments exist or assignments query failed, return empty array
+    if (assignmentsError) {
+      console.warn('Assignments table query failed:', assignmentsError);
+      console.log('Cannot generate billing without valid assignments data');
+    } else {
+      console.warn('No assignments found in database');
+      console.log('No staff are currently assigned to properties for billing');
+    }
+    
+    return [];
+
+  } catch (error) {
+    console.error('Error fetching active staff:', error);
+    return [];
+  }
+}
+
+export async function getActiveStaffWithTransportationForMonth(year: number, month: number) {
+  try {
+    console.log(`🔍 Searching for transportation assignments for ${year}-${month}`);
+    
+    // First, let's check what assignments exist at all
+    const { data: allAssignments, error: allError } = await supabase
+      .from('assignments')
+      .select('*') as { data: any[] | null, error: any };
+    
+    console.log(`📊 Total assignments found: ${allAssignments?.length || 0}`);
+    if (allAssignments && allAssignments.length > 0) {
+      console.log('📋 Sample assignment structure:', Object.keys(allAssignments[0]));
+      console.log('🚌 Assignments with transportation_agreement = true (boolean):', 
+        allAssignments.filter(a => a.transportation_agreement === true).length);
+      console.log('🚌 Assignments with transportation_agreement = "true" (string):', 
+        allAssignments.filter(a => a.transportation_agreement === "true").length);
+      console.log('🚌 All transportation_agreement values:', 
+        [...new Set(allAssignments.map(a => a.transportation_agreement))]);
+      console.log('👤 Assignments with tenant_id:', 
+        allAssignments.filter(a => a.tenant_id).length);
+      console.log('💰 Assignments with transport_amount:', 
+        allAssignments.filter(a => a.transport_amount).length);
+      console.log('💰 All transport_amount values (first 5):', 
+        allAssignments.slice(0, 5).map(a => a.transport_amount));
+      console.log('✅ Assignments with BOTH transportation_agreement=true AND transport_amount:', 
+        allAssignments.filter(a => (a.transportation_agreement === true || a.transportation_agreement === "true") && a.transport_amount).length);
+      
+      // Show sample transportation assignment
+      const sampleTransport = allAssignments.find(a => a.transportation_agreement === true);
+      if (sampleTransport) {
+        console.log('🚌 Sample transportation assignment:', {
+          tenant_id: sampleTransport.tenant_id,
+          transportation_agreement: sampleTransport.transportation_agreement,
+          transport_amount: sampleTransport.transport_amount,
+          start_date: sampleTransport.start_date,
+          end_date: sampleTransport.end_date
+        });
+      }
+    }
+    
+    // Try to get assignments data with transportation agreement enabled
+    let assignmentsData: any[] | null = null;
+    let assignmentsError: any = null;
+    
+    try {
+      const result = await supabase
+        .from('assignments')
+        .select(`
+          tenant_id,
+          property_id,
+          room_id,
+          rent_amount,
+          transport_amount,
+          start_date,
+          end_date,
+          transportation_agreement
+        `)
+        .or('transportation_agreement.eq.true,transportation_agreement.eq."true"')
+        .not('tenant_id', 'is', null)
+        .not('transport_amount', 'is', null) as { data: any[] | null, error: any };
+      
+      assignmentsData = result.data;
+      assignmentsError = result.error;
+      
+      console.log(`🎯 Filtered transportation assignments query result: ${assignmentsData?.length || 0} records`);
+      if (assignmentsData && assignmentsData.length > 0) {
+        console.log('🚌 First transportation assignment:', assignmentsData[0]);
+      }
+    } catch (error) {
+      console.warn('Transportation assignments table query failed:', error);
+      assignmentsError = error;
+    }
+
+    // If assignments exist and query succeeded, use them
+    if (!assignmentsError && assignmentsData && assignmentsData.length > 0) {
+      console.log(`Found ${assignmentsData.length} transportation assignments, fetching related data...`);
+      
+      // Get external staff data for the tenant IDs
+      const tenantIds = assignmentsData.map(a => a.tenant_id).filter(Boolean);
+      
+      const { data: staffData, error: staffError } = await supabase
+        .from('external_staff')
+        .select('id, "HIRE DATE", "TERMINATION DATE", "POSITION STATUS"')
+        .in('id', tenantIds) as { data: any[] | null, error: any };
+
+      // Get property names
+      const propertyIds = [...new Set(assignmentsData.map(a => a.property_id).filter(Boolean))];
+      const { data: propertiesData } = await supabase
+        .from('properties')
+        .select('id, title')
+        .in('id', propertyIds) as { data: any[] | null, error: any };
+
+      // Get room names
+      const roomIds = [...new Set(assignmentsData.map(a => a.room_id).filter(Boolean))];
+      const { data: roomsData } = await supabase
+        .from('rooms')
+        .select('id, name')
+        .in('id', roomIds) as { data: any[] | null, error: any };
+
+      if (!staffError && staffData) {
+        // Combine assignments with external staff data
+        const result = assignmentsData.map(assignment => {
+          const staff = staffData.find(s => s.id === assignment.tenant_id);
+          const property = propertiesData?.find(p => p.id === assignment.property_id);
+          const room = roomsData?.find(r => r.id === assignment.room_id);
+          
+          return {
+            tenant_id: assignment.tenant_id,
+            property_id: assignment.property_id,
+            property_name: property?.title || 'Unknown Property',
+            room_id: assignment.room_id,
+            room_name: room?.name || 'Unknown Room',
+            rent_amount: assignment.rent_amount || 0,
+            transport_amount: assignment.transport_amount || 150.00, // Default transportation rate
+            start_date: assignment.start_date,
+            end_date: assignment.end_date,
+            hire_date: staff?.["HIRE DATE"] || assignment.start_date,
+            termination_date: staff?.["TERMINATION DATE"] || assignment.end_date,
+            position_status: staff?.["POSITION STATUS"] || "Active",
+            transportation_agreement: assignment.transportation_agreement
+          };
+        });
+
+        console.log(`Found ${result.length} active staff with transportation for billing generation`);
+        return result;
+      }
+    }
+
+    // If no transportation assignments exist or assignments query failed, return empty array
+    if (assignmentsError) {
+      console.warn('Transportation assignments table query failed:', assignmentsError);
+      console.log('Cannot generate transportation billing without valid assignments data');
+    } else {
+      console.warn('No transportation assignments found in database');
+      console.log('No staff are currently assigned transportation for billing');
+    }
+    
+    return [];
+
+  } catch (error) {
+    console.error('Error fetching active staff with transportation:', error);
+    return [];
+  }
 }
 
 export async function upsertBillingRow(billingData: {
@@ -199,8 +389,40 @@ export async function upsertBillingRow(billingData: {
     property_id: billingData.property_id,
     room_id: billingData.room_id,
     amount: billingData.rent_amount,
+    billing_type: billingData.billing_type,
     period: `${billingData.period_start} to ${billingData.period_end}`
   });
+
+  // Check if tenant_id exists in external_staff
+  const { data: staffCheck, error: staffCheckError } = await supabase
+    .from('external_staff')
+    .select('id')
+    .eq('id', billingData.tenant_id)
+    .single();
+
+  if (staffCheckError || !staffCheck) {
+    console.error(`❌ tenant_id ${billingData.tenant_id} does NOT exist in external_staff table`);
+    throw new Error(`Invalid tenant_id: ${billingData.tenant_id} not found in external_staff table`);
+  } else {
+    console.log(`✅ tenant_id ${billingData.tenant_id} exists in external_staff table`);
+  }
+
+  // Check if room_id exists in rooms table (if room_id is provided)
+  if (billingData.room_id) {
+    const { data: roomCheck, error: roomCheckError } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('id', billingData.room_id)
+      .single();
+
+    if (roomCheckError || !roomCheck) {
+      console.error(`❌ room_id ${billingData.room_id} does NOT exist in rooms table`);
+      console.log(`🔧 Setting room_id to null to avoid foreign key constraint`);
+      billingData.room_id = null; // Set to null instead of failing
+    } else {
+      console.log(`✅ room_id ${billingData.room_id} exists in rooms table`);
+    }
+  }
 
   try {
     const { data, error } = await (supabase

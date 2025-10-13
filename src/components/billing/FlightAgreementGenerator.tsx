@@ -30,7 +30,7 @@ export function FlightAgreementGenerator({ onAgreementCreated }: FlightAgreement
       const { data, error } = await supabase
         .from('flight_agreement_deductions')
         .select('*')
-        .eq('status', 'pending');
+        .eq('status', 'Pending');
       
       if (error) throw error;
       setFlightDeductions(data || []);

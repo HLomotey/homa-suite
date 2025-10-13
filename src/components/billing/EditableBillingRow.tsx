@@ -46,11 +46,19 @@ export function EditableBillingRow({ billingRow, onUpdate, onDelete }: EditableB
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this billing record?')) {
+    const confirmMessage = `Are you sure you want to delete this billing record?\n\nTenant: ${billingRow.tenantName}\nAmount: $${billingRow.rentAmount.toFixed(2)}\nType: ${billingRow.billingType}\nPeriod: ${format(new Date(billingRow.periodStart), "MMM dd")} → ${format(new Date(billingRow.periodEnd), "MMM dd, yyyy")}\n\nThis action cannot be undone.`;
+    
+    if (window.confirm(confirmMessage)) {
+      console.log('🗑️ User confirmed deletion of billing record:', billingRow.id);
       const success = await deleteBillingRecord(billingRow.id);
       if (success) {
+        console.log('✅ Delete successful, calling onDelete callback');
         onDelete();
+      } else {
+        console.log('❌ Delete failed');
       }
+    } else {
+      console.log('❌ User cancelled deletion');
     }
   };
 
