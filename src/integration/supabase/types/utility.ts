@@ -39,7 +39,7 @@ export interface UtilitySetup {
 }
 
 /**
- * BillingPeriod interface representing the billing_periods table in Supabase
+ * BillingPeriod interface representing the legacy billing_periods table in Supabase
  */
 export interface BillingPeriod {
   id: string;
@@ -48,6 +48,21 @@ export interface BillingPeriod {
   end_date: string;
   status: 'ACTIVE' | 'CLOSED' | 'ARCHIVED';
   created_by: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * StandardizedBillingPeriod interface representing the new standardized billing_periods table
+ */
+export interface StandardizedBillingPeriod {
+  id: string;
+  name: string;
+  description: string | null;
+  period_type: 'first_half' | 'second_half';
+  start_day: number;
+  end_day: number | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string | null;
 }
@@ -116,14 +131,36 @@ export interface FrontendUtilitySetup {
 }
 
 /**
- * Frontend billing period interface
+ * Frontend billing period interface (updated for flexible periods)
  */
 export interface FrontendBillingPeriod {
   id: string;
   name: string;
+  description?: string;
   startDate: string;
   endDate: string;
   status: 'ACTIVE' | 'CLOSED' | 'ARCHIVED';
+  isRecurring: boolean;
+  recurrenceType?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+  periodStatusRelative?: 'UPCOMING' | 'CURRENT' | 'PAST';
+  durationDays?: number;
+  daysElapsed?: number;
+  daysRemaining?: number;
+}
+
+/**
+ * Frontend standardized billing period interface
+ */
+export interface FrontendStandardizedBillingPeriod {
+  id: string;
+  name: string;
+  description: string | null;
+  periodType: 'first_half' | 'second_half';
+  startDay: number;
+  endDay: number | null;
+  isActive: boolean;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
 }
 
 /**
@@ -194,13 +231,35 @@ export const mapDatabaseUtilitySetupToFrontend = (dbUtilitySetup: UtilitySetup):
 /**
  * Maps a database billing period to the frontend format
  */
-export const mapDatabaseBillingPeriodToFrontend = (dbBillingPeriod: BillingPeriod): FrontendBillingPeriod => {
+export const mapDatabaseBillingPeriodToFrontend = (dbBillingPeriod: any): FrontendBillingPeriod => {
   return {
     id: dbBillingPeriod.id,
     name: dbBillingPeriod.name,
+    description: dbBillingPeriod.description,
     startDate: dbBillingPeriod.start_date,
     endDate: dbBillingPeriod.end_date,
-    status: dbBillingPeriod.status
+    status: dbBillingPeriod.status,
+    isRecurring: dbBillingPeriod.is_recurring || false,
+    recurrenceType: dbBillingPeriod.recurrence_type,
+    periodStatusRelative: dbBillingPeriod.period_status_relative,
+    durationDays: dbBillingPeriod.duration_days,
+    daysElapsed: dbBillingPeriod.days_elapsed,
+    daysRemaining: dbBillingPeriod.days_remaining,
+  };
+};
+
+/**
+ * Maps a database standardized billing period to the frontend format
+ */
+export const mapDatabaseStandardizedBillingPeriodToFrontend = (dbBillingPeriod: StandardizedBillingPeriod): FrontendStandardizedBillingPeriod => {
+  return {
+    id: dbBillingPeriod.id,
+    name: dbBillingPeriod.name,
+    description: dbBillingPeriod.description,
+    periodType: dbBillingPeriod.period_type,
+    startDay: dbBillingPeriod.start_day,
+    endDay: dbBillingPeriod.end_day,
+    isActive: dbBillingPeriod.is_active
   };
 };
 

@@ -97,6 +97,8 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [propertyFilter, setPropertyFilter] = useState("all");
+  const [billingPeriodFilter, setBillingPeriodFilter] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
   
   // Use the props for dialog state instead of local state
@@ -173,13 +175,15 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     setIsDeleteDialogOpen(true);
   };
 
-  // Filter bills based on search query and status filter
+  // Filter bills based on search query, status, property, and billing period filters
   const filteredBills = useMemo(() => {
     if (!utilityBills) return [];
     
     return utilityBills.filter(bill => {
+      const property = properties?.find(p => p.id === bill.propertyId);
+      const propertySearchText = property ? `${property.title} ${property.address} ${property.location?.state || ''}` : '';
       const matchesSearch = searchQuery === "" || (
-        properties?.find(p => p.id === bill.propertyId)?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        propertySearchText.toLowerCase().includes(searchQuery.toLowerCase()) ||
         utilityTypes?.find(t => t.id === bill.utilityTypeId)?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         bill.billingAmount?.toString().includes(searchQuery.toLowerCase()) ||
         bill.notes?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -190,9 +194,13 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
         statusFilter === "unpaid" && !bill.notes?.includes("PAID")
       );
       
-      return matchesSearch && matchesStatus;
+      const matchesProperty = propertyFilter === "all" || bill.propertyId === propertyFilter;
+      
+      const matchesBillingPeriod = billingPeriodFilter === "all" || bill.billingPeriodId === billingPeriodFilter;
+      
+      return matchesSearch && matchesStatus && matchesProperty && matchesBillingPeriod;
     });
-  }, [utilityBills, properties, utilityTypes, searchQuery, statusFilter]);
+  }, [utilityBills, properties, utilityTypes, billingPeriods, searchQuery, statusFilter, propertyFilter, billingPeriodFilter]);
 
   // Handle form submission for creating multiple bills
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -315,14 +323,15 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
     try {
       setIsExporting(true);
       
-      // Prepare data for export
+      // Prepare data for export with filter information
       const exportData = filteredBills.map(bill => {
-        const propertyName = properties?.find(p => p.id === bill.propertyId)?.title || "";
+        const property = properties?.find(p => p.id === bill.propertyId);
+        const propertyDisplay = property ? `${property.title} - ${property.address}${property.location?.state ? ', ' + property.location.state : ''}` : "";
         const utilityTypeName = utilityTypes?.find(ut => ut.id === bill.utilityTypeId)?.name || "";
         const billingPeriodName = billingPeriods?.find(bp => bp.id === bill.billingPeriodId)?.name || "";
         
         return {
-          'Property': propertyName,
+          'Property': propertyDisplay,
           'Utility Type': utilityTypeName,
           'Billing Period': billingPeriodName,
           'Billing Date': bill.billingDate ? format(new Date(bill.billingDate), "MMM dd, yyyy") : "",
@@ -332,8 +341,24 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
         };
       });
       
+      // Create filename with filter information
+      const filterSuffix = [];
+      if (propertyFilter !== "all") {
+        const propertyName = properties?.find(p => p.id === propertyFilter)?.title || "Unknown";
+        filterSuffix.push(`property_${propertyName.replace(/\s+/g, '_')}`);
+      }
+      if (billingPeriodFilter !== "all") {
+        const periodName = billingPeriods?.find(p => p.id === billingPeriodFilter)?.name || "Unknown";
+        filterSuffix.push(`period_${periodName.replace(/\s+/g, '_')}`);
+      }
+      if (statusFilter !== "all") {
+        filterSuffix.push(`status_${statusFilter}`);
+      }
+      
+      const filename = `utility_bills_export${filterSuffix.length > 0 ? '_' + filterSuffix.join('_') : ''}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
       // Generate and download Excel file
-      await downloadExcelFile(exportData, `utility_bills_export_${new Date().toISOString().split('T')[0]}.xlsx`, 'Utility Bills');
+      await downloadExcelFile(exportData, filename, 'Utility Bills');
       
       setIsExporting(false);
     } catch (error) {
@@ -367,7 +392,14 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
           <h2 className="text-3xl font-bold text-white mb-2">
             Utility Payments
           </h2>
-          <p className="text-white/60">Manage your utility bills</p>
+          <p className="text-white/60">
+            Manage your utility bills
+            {filteredBills.length !== utilityBills?.length && (
+              <span className="ml-2 text-blue-400">
+                (Showing {filteredBills.length} of {utilityBills?.length || 0} bills)
+              </span>
+            )}
+          </p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -392,30 +424,130 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search bills..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search bills..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <select
+              className="bg-background border border-input rounded-md px-3 py-2 text-sm min-w-[120px]"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="Filter bills by status"
+              title="Filter bills by status"
+            >
+              <option value="all">All Status</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <select
-            className="bg-background border border-input rounded-md px-3 py-2 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="Filter bills by status"
-            title="Filter bills by status"
-          >
-            <option value="all">All Status</option>
-            <option value="paid">Paid</option>
-            <option value="unpaid">Unpaid</option>
-          </select>
+        
+        {/* Additional Filters Row */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex items-center gap-2 flex-1">
+            <Home className="h-4 w-4 text-muted-foreground" />
+            <select
+              className="bg-background border border-input rounded-md px-3 py-2 text-sm flex-1"
+              value={propertyFilter}
+              onChange={(e) => setPropertyFilter(e.target.value)}
+              aria-label="Filter bills by property"
+              title="Filter bills by property"
+            >
+              <option value="all">All Properties</option>
+              {properties?.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title} - {property.address}{property.location?.state ? ', ' + property.location.state : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-2 flex-1">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <select
+              className="bg-background border border-input rounded-md px-3 py-2 text-sm flex-1"
+              value={billingPeriodFilter}
+              onChange={(e) => setBillingPeriodFilter(e.target.value)}
+              aria-label="Filter bills by billing period"
+              title="Filter bills by billing period"
+            >
+              <option value="all">All Billing Periods</option>
+              {billingPeriods?.map((period) => (
+                <option key={period.id} value={period.id}>
+                  {period.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        
+        {/* Active Filters Summary */}
+        {(propertyFilter !== "all" || billingPeriodFilter !== "all" || statusFilter !== "all") && (
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {propertyFilter !== "all" && (
+              <Badge variant="secondary" className="text-xs">
+                Property: {(() => {
+                  const property = properties?.find(p => p.id === propertyFilter);
+                  return property ? `${property.title} - ${property.address}${property.location?.state ? ', ' + property.location.state : ''}` : 'Unknown';
+                })()}
+                <button
+                  onClick={() => setPropertyFilter("all")}
+                  className="ml-1 hover:text-destructive"
+                  aria-label="Remove property filter"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {billingPeriodFilter !== "all" && (
+              <Badge variant="secondary" className="text-xs">
+                Period: {billingPeriods?.find(p => p.id === billingPeriodFilter)?.name}
+                <button
+                  onClick={() => setBillingPeriodFilter("all")}
+                  className="ml-1 hover:text-destructive"
+                  aria-label="Remove billing period filter"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {statusFilter !== "all" && (
+              <Badge variant="secondary" className="text-xs">
+                Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                <button
+                  onClick={() => setStatusFilter("all")}
+                  className="ml-1 hover:text-destructive"
+                  aria-label="Remove status filter"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPropertyFilter("all");
+                setBillingPeriodFilter("all");
+                setStatusFilter("all");
+                setSearchQuery("");
+              }}
+              className="text-xs h-6 px-2"
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Bills Table */}
@@ -435,14 +567,15 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
           <TableBody>
             {filteredBills.length > 0 ? (
               filteredBills.map((bill) => {
-                const propertyName = properties?.find(p => p.id === bill.propertyId)?.title || "Unknown Property";
+                const property = properties?.find(p => p.id === bill.propertyId);
+                const propertyDisplay = property ? `${property.title} - ${property.address}${property.location?.state ? ', ' + property.location.state : ''}` : "Unknown Property";
                 const utilityTypeName = utilityTypes?.find(ut => ut.id === bill.utilityTypeId)?.name || "Unknown Type";
                 const billingPeriodName = billingPeriods?.find(bp => bp.id === bill.billingPeriodId)?.name || "Unknown Period";
                 const isPaid = bill.notes?.startsWith("PAID:");
                 
                 return (
                   <TableRow key={bill.id} className="hover:bg-black/20">
-                    <TableCell className="font-medium">{propertyName}</TableCell>
+                    <TableCell className="font-medium">{propertyDisplay}</TableCell>
                     <TableCell>{utilityTypeName}</TableCell>
                     <TableCell>{billingPeriodName}</TableCell>
                     <TableCell>{formatDate(bill.billingDate)}</TableCell>
@@ -522,7 +655,7 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
               <option value="">Select a property</option>
               {properties?.map((property) => (
                 <option key={property.id} value={property.id}>
-                  {property.title}
+                  {property.title} - {property.address}{property.location?.state ? ', ' + property.location.state : ''}
                 </option>
               ))}
             </select>
@@ -708,7 +841,7 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
               <option value="">Select a property</option>
               {properties?.map((property) => (
                 <option key={property.id} value={property.id}>
-                  {property.title}
+                  {property.title} - {property.address}{property.location?.state ? ', ' + property.location.state : ''}
                 </option>
               ))}
             </select>
@@ -842,7 +975,10 @@ export function UtilityPaymentsList({ isDialogOpen, setIsDialogOpen }: UtilityPa
               <p className="text-sm text-red-200">
                 You are about to delete the utility bill for{" "}
                 <strong className="font-semibold text-red-100">
-                  {properties?.find(p => p.id === selectedBill.propertyId)?.title || "Unknown Property"}
+                  {(() => {
+                    const property = properties?.find(p => p.id === selectedBill.propertyId);
+                    return property ? `${property.title} - ${property.address}${property.location?.state ? ', ' + property.location.state : ''}` : "Unknown Property";
+                  })()}
                 </strong>
               </p>
               <p className="text-xs text-red-300 mt-2">
