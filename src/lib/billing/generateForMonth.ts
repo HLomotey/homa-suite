@@ -253,7 +253,7 @@ export async function generateSecurityDepositBillingForMonth(
           property_name: d.property_name || 'Security Deposit',
           room_id: d.room_id,
           room_name: d.room_name,
-          rent_amount: depositAmount, // Use bi-weekly deposit amount directly
+          rent_amount: depositAmount, // $125 per period (total ÷ 4)
           payment_status: "unpaid",
           billing_type: "security_deposit",
           period_start: w1.start.toISODate()!,
@@ -275,7 +275,7 @@ export async function generateSecurityDepositBillingForMonth(
           property_name: d.property_name || 'Security Deposit',
           room_id: d.room_id,
           room_name: d.room_name,
-          rent_amount: depositAmount, // Use bi-weekly deposit amount directly
+          rent_amount: depositAmount, // $125 per period (total ÷ 4)
           payment_status: "unpaid",
           billing_type: "security_deposit",
           period_start: w2.start.toISODate()!,

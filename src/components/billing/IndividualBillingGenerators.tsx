@@ -302,7 +302,7 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       const result = { count, timestamp: new Date().toLocaleString() };
       setLastResults(prev => ({ ...prev, security: result }));
       
-      toast.success(`Generated ${count} security deposit billing records for ${month}/${year} - Period(s): ${periodsGenerated} (using pending deduction amounts from deductions table)`);
+      toast.success(`Generated ${count} security deposit billing records for ${month}/${year} - Period(s): ${periodsGenerated} at $125 per period (total deposit ÷ 4 bi-weekly deductions)`);
       onBillingGenerated?.(count, 'Security Deposit');
     } catch (error) {
       console.error('Security deposit billing generation error:', error);
@@ -641,7 +641,7 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
 
           <Alert className="bg-purple-500/20 border-purple-500/30">
             <AlertDescription className="text-xs">
-              <strong>Bi-weekly periods:</strong> 1st-15th & 16th-end of month. Uses pending deduction amounts from billing_deductions table until exhausted. Processes existing security deposit deductions.
+              <strong>Bi-weekly periods:</strong> 1st-15th & 16th-end of month. Security deposits ($500) are divided into 4 bi-weekly deductions of $125 each. Processes pending security deposits from security_deposits table.
             </AlertDescription>
           </Alert>
         </CardContent>
