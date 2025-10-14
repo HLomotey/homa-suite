@@ -141,16 +141,19 @@ export function HRAnalytics() {
                   return (
                     <div key={index} className="flex flex-col items-center space-y-1">
                       <div className="flex items-end space-x-1 h-20">
+                        {/* eslint-disable-next-line react/forbid-dom-props */}
                         <div 
                           className="w-2 bg-green-500 rounded-t-sm" 
                           style={{ height: `${hireHeight}%` }}
                           title={`Hires: ${month.hires}`}
                         />
+                        {/* eslint-disable-next-line react/forbid-dom-props */}
                         <div 
                           className="w-2 bg-red-500 rounded-t-sm" 
                           style={{ height: `${termHeight}%` }}
                           title={`Terminations: ${month.terminations}`}
                         />
+                        {/* eslint-disable-next-line react/forbid-dom-props */}
                         <div 
                           className="w-2 bg-blue-500 rounded-t-sm" 
                           style={{ height: `${activeHeight}%` }}
