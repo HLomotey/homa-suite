@@ -24,18 +24,18 @@ import { Badge } from "@/components/ui/badge";
 
 export const PayrollDeductionsTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [companyCodeFilter, setCompanyCodeFilter] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const { data: deductions, isLoading, error } = usePayrollDeductions();
   const { data: summary } = usePayrollDeductionSummary();
 
-  // Get unique company codes for filter
-  const companyCodes = useMemo(() => {
+  // Get unique departments for filter
+  const departments = useMemo(() => {
     if (!deductions) return [];
-    const codes = new Set(deductions.map((d) => d.payroll_company_code).filter(Boolean));
-    return Array.from(codes).sort();
+    const depts = new Set(deductions.map((d) => d.home_department).filter(Boolean));
+    return Array.from(depts).sort();
   }, [deductions]);
 
   // Filter deductions
@@ -45,16 +45,16 @@ export const PayrollDeductionsTable = () => {
     return deductions.filter((deduction) => {
       const matchesSearch =
         searchQuery === "" ||
-        deduction.payroll_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        deduction.location_description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deduction.staff_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deduction.home_department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         deduction.position_id?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesCompanyCode =
-        companyCodeFilter === "all" || deduction.payroll_company_code === companyCodeFilter;
+      const matchesDepartment =
+        departmentFilter === "all" || deduction.home_department === departmentFilter;
 
-      return matchesSearch && matchesCompanyCode;
+      return matchesSearch && matchesDepartment;
     });
-  }, [deductions, searchQuery, companyCodeFilter]);
+  }, [deductions, searchQuery, departmentFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredDeductions.length / itemsPerPage);
@@ -65,7 +65,7 @@ export const PayrollDeductionsTable = () => {
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, companyCodeFilter]);
+  }, [searchQuery, departmentFilter]);
 
   if (isLoading) {
     return (
@@ -151,7 +151,7 @@ export const PayrollDeductionsTable = () => {
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, location, or position..."
+                  placeholder="Search by staff name, department, or position ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8"
@@ -159,15 +159,15 @@ export const PayrollDeductionsTable = () => {
               </div>
             </div>
 
-            <Select value={companyCodeFilter} onValueChange={setCompanyCodeFilter}>
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
               <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Company Code" />
+                <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Companies</SelectItem>
-                {companyCodes.map((code) => (
-                  <SelectItem key={code} value={code!}>
-                    {code}
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept!}>
+                    {dept}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -185,12 +185,11 @@ export const PayrollDeductionsTable = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Payroll Name</TableHead>
-                      <TableHead>Company Code</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead className="text-right">Advance Pay</TableHead>
+                      <TableHead>Staff Name</TableHead>
+                      <TableHead>Position ID</TableHead>
+                      <TableHead>Department</TableHead>
                       <TableHead className="text-right">Bus Card</TableHead>
-                      <TableHead className="text-right">Drug Dep</TableHead>
+                      <TableHead className="text-right">Hang Dep Ded</TableHead>
                       <TableHead className="text-right">Rent</TableHead>
                       <TableHead className="text-right">Transport</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -200,27 +199,23 @@ export const PayrollDeductionsTable = () => {
                   <TableBody>
                     {paginatedDeductions.map((deduction) => {
                       const total =
-                        (Number(deduction.adv_advance_pay_deduction) || 0) +
                         (Number(deduction.bcd_bus_card_deduction) || 0) +
-                        (Number(deduction.hdd_drug_dep_dtet_deduction) || 0) +
+                        (Number(deduction.hdd_hang_dep_ded_deduction) || 0) +
                         (Number(deduction.rnt_rent_deduction) || 0) +
                         (Number(deduction.trn_transport_subs_deduction) || 0);
 
                       return (
                         <TableRow key={deduction.id}>
-                          <TableCell className="font-medium">{deduction.payroll_name}</TableCell>
+                          <TableCell className="font-medium">{deduction.staff_name || "Unknown"}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{deduction.payroll_company_code || "N/A"}</Badge>
+                            <Badge variant="outline">{deduction.position_id}</Badge>
                           </TableCell>
-                          <TableCell>{deduction.location_description || "N/A"}</TableCell>
-                          <TableCell className="text-right">
-                            ${Number(deduction.adv_advance_pay_deduction || 0).toFixed(2)}
-                          </TableCell>
+                          <TableCell>{deduction.home_department || "Unknown"}</TableCell>
                           <TableCell className="text-right">
                             ${Number(deduction.bcd_bus_card_deduction || 0).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
-                            ${Number(deduction.hdd_drug_dep_dtet_deduction || 0).toFixed(2)}
+                            ${Number(deduction.hdd_hang_dep_ded_deduction || 0).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
                             ${Number(deduction.rnt_rent_deduction || 0).toFixed(2)}
