@@ -46,23 +46,22 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
   const [uploadResult, setUploadResult] = useState<PayrollProcessingResult | null>(null);
   const { toast } = useToast();
 
-  // Required columns
+  // Required columns for payroll deductions
   const requiredColumns = [
-    'Employee ID/File Number',
-    'Pay Date',
-    'Pay Period'
+    'Position ID',
+    'start_period',
+    'end_period'
   ];
 
-  // All available columns with descriptions
+  // All available columns with descriptions for payroll deductions
   const allColumns = [
-    { name: 'Employee ID/File Number', required: true, description: 'Unique employee identifier or file number' },
-    { name: 'Regular Hours Worked', required: false, description: 'Number of regular hours worked in the pay period' },
-    { name: 'Overtime Hours', required: false, description: 'Number of overtime hours worked in the pay period' },
-    { name: 'Rent', required: false, description: 'Rent deduction amount (numbers only)' },
-    { name: 'Transport', required: false, description: 'Transport allowance or deduction amount (numbers only)' },
-    { name: 'Penalties', required: false, description: 'Penalty deduction amount (numbers only)' },
-    { name: 'Pay Date', required: true, description: 'Date of payment (YYYY-MM-DD format)' },
-    { name: 'Pay Period', required: true, description: 'Pay period description (e.g., "January 2024", "Week 1-2 Jan 2024")' }
+    { name: 'Position ID', required: true, description: 'Unique position identifier' },
+    { name: 'BCD_Bus Card_Deduction', required: false, description: 'Bus card deduction amount (numbers only)' },
+    { name: 'Security_Deposit_Deduction', required: false, description: 'Security deposit deduction amount (numbers only)' },
+    { name: 'RNT_Rent_Deduction', required: false, description: 'Rent deduction amount (numbers only)' },
+    { name: 'TRN_Transport Subs_Deduction', required: false, description: 'Transport subsidy deduction amount (numbers only)' },
+    { name: 'start_period', required: true, description: 'Start date of deduction period (YYYY-MM-DD format)' },
+    { name: 'end_period', required: true, description: 'End date of deduction period (YYYY-MM-DD format)' }
   ];
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,17 +194,16 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
   };
 
   const downloadTemplate = () => {
-    // Generate CSV template with sample data
+    // Generate CSV template with sample data for payroll deductions
     const headers = allColumns.map(col => col.name);
     const sampleData = [
-      'EMP001', // Employee ID/File Number
-      '160', // Regular Hours Worked
-      '8', // Overtime Hours
-      '500', // Rent
-      '100', // Transport
-      '0', // Penalties
-      '2024-01-31', // Pay Date
-      'January 2024' // Pay Period
+      '04000255', // Position ID
+      '50.00', // BCD_Bus Card_Deduction
+      '50.00', // Security_Deposit_Deduction
+      '225.00', // RNT_Rent_Deduction
+      '225.00', // TRN_Transport Subs_Deduction
+      '2025-01-01', // start_period
+      '2025-12-31' // end_period
     ];
     
     const csvContent = headers.join(',') + '\n' + sampleData.join(',');
@@ -214,7 +212,7 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'payroll_upload_template.csv';
+    a.download = 'payroll_deductions_template.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -222,7 +220,7 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
     
     toast({
       title: "Template downloaded",
-      description: "Use this template to format your payroll data",
+      description: "Use this template to format your payroll deductions data",
     });
   };
 
@@ -234,8 +232,8 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
           <DollarSign className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold">Payroll Management</h2>
-          <p className="text-muted-foreground">Upload Excel files to process payroll data and deductions</p>
+          <h2 className="text-2xl font-bold">Payroll Deductions Management</h2>
+          <p className="text-muted-foreground">Upload Excel files to process employee payroll deductions data</p>
         </div>
       </div>
 
@@ -408,11 +406,12 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• File should be in Excel format (.xlsx or .xls)</li>
                   <li>• First row should contain column headers</li>
-                  <li>• Date format: YYYY-MM-DD</li>
-                  <li>• Hours should be numeric (decimal allowed)</li>
-                  <li>• Monetary amounts should be numeric (no currency symbols)</li>
-                  <li>• Employee ID must match existing staff records</li>
-                  <li>• Pay period should be descriptive (e.g., "January 2024")</li>
+                  <li>• Date format: YYYY-MM-DD for period dates</li>
+                  <li>• Deduction amounts should be numeric (decimal allowed, no currency symbols)</li>
+                  <li>• Position ID should match existing position records</li>
+                  <li>• start_period date should be before end_period date</li>
+                  <li>• Use 0.00 for deductions that don't apply to a position</li>
+                  <li>• Column names must match exactly (case sensitive)</li>
                 </ul>
               </div>
 
