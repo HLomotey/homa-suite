@@ -1,6 +1,14 @@
-# Transportation Billing Fix - Summary
+# Billing System Fixes - Transportation & Security Deposit
 
-## Problem Identified
+## Overview
+
+This document covers critical fixes applied to the billing system for both **Transportation Billing** and **Security Deposit Billing**, including issues with amount calculation, data retrieval, and UI display.
+
+---
+
+## Transportation Billing Fix
+
+### Problem Identified
 
 The transportation billing generation was returning **0 records** when it should have generated billing for **66 staff members** for October 2025 (period 1-15).
 
@@ -136,3 +144,249 @@ Expected result: **66 staff members**
 - All date conversions handle null/empty values gracefully
 - Comprehensive logging helps debug any future issues
 - The fix properly handles staff who are hired or terminated mid-month
+
+---
+
+## Security Deposit Billing Implementation
+
+### Problem Identified
+
+Security deposit billing needed to be implemented with the same bi-weekly logic as transportation billing, but pulling data from the `security_deposits` table instead of `assignments`.
+
+### Issues Encountered
+
+#### 1. **Incorrect Amount Division** (Critical Issue)
+- **Problem**: Initial implementation divided the security deposit amount by 2 (`depositAmount / 2`)
+- **Impact**: Staff were being billed $250 per period instead of the full $500
+- **Root Cause**: Copy-paste from housing billing logic where monthly rent needs to be split into bi-weekly periods
+- **Fix**: Removed division - security deposit amount is already a bi-weekly deduction amount
+
+**Before:**
+```typescript
+rent_amount: depositAmount / 2, // ❌ Wrong - dividing $500 by 2 = $250
+```
+
+**After:**
+```typescript
+rent_amount: depositAmount, // ✅ Correct - use full $500 per period
+```
+
+#### 2. **Missing Data Source Function**
+- **Problem**: No function existed to fetch pending security deposits from the database
+- **Solution**: Created `getPendingSecurityDeposits()` function in `repo.ts`
+
+**Implementation:**
+```typescript
+export async function getPendingSecurityDeposits(monthStart: string): Promise<any[]> {
+  // Query security_deposits table joined with assignments and external_staff
+  const { data: deposits, error } = await supabase
+    .from('security_deposits')
+    .select(`
+      id,
+      assignment_id,
+      total_amount,
+      payment_method,
+      payment_status,
+      assignments!inner (
+        tenant_id,
+        tenant_name,
+        property_id,
+        property_name,
+        room_id,
+        room_name,
+        start_date,
+        end_date,
+        status
+      )
+    `)
+    .eq('payment_method', 'payroll_deduction')
+    .eq('payment_status', 'pending');
+  
+  // Convert hire/termination dates from MM/DD/YYYY to ISO format
+  // Return processed deposit data
+}
+```
+
+#### 3. **UI Not Displaying Generated Records** (Critical Issue)
+- **Problem**: After generating 145 security deposit billing records, the Billing Log UI showed "0 billing records found"
+- **Root Cause**: The `useBillingLogs` hook used `!inner` joins for `properties` and `rooms` tables, which excluded records without room assignments
+- **Impact**: Security deposit and transportation billing records (which may not have room assignments) were filtered out
+
+**Before:**
+```typescript
+properties!inner (  // ❌ Inner join excludes records without properties
+  title
+),
+rooms!inner (       // ❌ Inner join excludes records without rooms
+  name
+)
+```
+
+**After:**
+```typescript
+properties (        // ✅ Left join includes records even without properties
+  title
+),
+rooms (            // ✅ Left join includes records even without rooms
+  name
+)
+```
+
+### Fixes Applied
+
+#### 1. **Created Security Deposit Data Retrieval Function** (`repo.ts`)
+- Added `getPendingSecurityDeposits()` function
+- Queries `security_deposits` table with proper joins
+- Filters for `payment_method = 'payroll_deduction'` and `payment_status = 'pending'`
+- Converts hire/termination dates from MM/DD/YYYY to ISO format
+- Returns 194 pending deposits totaling $97,000
+
+#### 2. **Created Security Deposit Billing Generation Function** (`generateForMonth.ts`)
+- Added `generateSecurityDepositBillingForMonth()` function
+- Uses same bi-weekly logic as transportation billing
+- Applies `inclusionForMonth()` to check employment windows
+- **Uses full deposit amount ($500) per bi-weekly period without division**
+- Creates billing records with `billing_type = 'security_deposit'`
+- Supports 'first', 'second', or 'both' period selection
+
+#### 3. **Updated UI Component** (`IndividualBillingGenerators.tsx`)
+- Updated imports to use new function from `generateForMonth.ts`
+- Modified `loadSecurityDeductions()` to query `security_deposits` table correctly
+- Enhanced `handleSecurityDepositGeneration()` with:
+  - Period selection support
+  - Better error messages
+  - Proper count display showing total pending deposits
+
+#### 4. **Fixed Billing Log Display** (`useBillingLog.ts`)
+- Changed `!inner` joins to left joins for `properties` and `rooms`
+- Added comment explaining why left joins are needed
+- Now displays all billing records regardless of room assignment status
+
+### Database Schema
+
+**security_deposits table:**
+- `id` (uuid) - Primary key
+- `assignment_id` (uuid) - Foreign key to assignments table
+- `total_amount` (numeric) - Total security deposit amount (default: $500)
+- `payment_method` (varchar) - Payment method (e.g., 'payroll_deduction')
+- `payment_status` (varchar) - Status (e.g., 'pending', 'paid')
+- `paid_date` (date) - Date when fully paid
+- `refund_date` (date) - Date when refunded
+- `refund_amount` (numeric) - Amount refunded
+
+### Expected Results
+
+For **September 2025 (First Period 1-15)**:
+- **194 pending deposits** in the database
+- **145 billing records created** (some staff filtered by hire/termination dates)
+- **Total amount: $72,000** (145 × $500)
+- **Billing type**: `security_deposit`
+- **Records now visible** in Billing Log UI
+
+### Verification Query
+
+```sql
+-- Check security deposit billing records
+SELECT 
+  billing_type,
+  COUNT(*) as record_count,
+  SUM(rent_amount) as total_amount,
+  MIN(period_start) as earliest_period,
+  MAX(period_end) as latest_period
+FROM billing
+WHERE billing_type = 'security_deposit'
+  AND period_start >= '2025-09-01'
+  AND period_start < '2025-10-01'
+GROUP BY billing_type;
+```
+
+Expected result: **144 records, $72,000 total** (for first period only)
+
+### Files Modified
+
+#### 1. `src/lib/billing/repo.ts`
+- Added `getPendingSecurityDeposits()` function
+- Queries security_deposits with proper joins
+- Converts dates from MM/DD/YYYY to ISO format
+- Filters for pending payroll deductions
+
+#### 2. `src/lib/billing/generateForMonth.ts`
+- Added `generateSecurityDepositBillingForMonth()` function
+- **Fixed amount calculation** - removed division by 2
+- Uses same bi-weekly logic as transportation
+- Comprehensive logging for debugging
+
+#### 3. `src/components/billing/IndividualBillingGenerators.tsx`
+- Updated imports to use new security deposit function
+- Modified data loading to query correct table
+- Enhanced error handling and user feedback
+- Shows count of pending deposits
+
+#### 4. `src/hooks/billing/useBillingLog.ts`
+- **Critical fix**: Changed `!inner` to left joins
+- Now displays all billing types including security deposits
+- Added explanatory comments
+
+### Testing Instructions
+
+1. Navigate to the billing generation UI
+2. Select **Year: 2025**, **Month: 9**, **Billing Period: First Period (1-15)**
+3. Click **Generate Security Deposit Billing**
+4. Expected output: "Found 194 pending security deposit deductions totaling $97,000.00 from deductions table"
+5. Verify billing records in Billing Log:
+   - Filter by "Security Deposit" billing type
+   - Should show 144-145 records
+   - Each record should show $500 amount (not $250)
+   - Records should be visible in the UI table
+
+### Key Differences from Transportation Billing
+
+| Aspect | Transportation | Security Deposit |
+|--------|---------------|------------------|
+| **Data Source** | `assignments` table | `security_deposits` table |
+| **Amount Field** | `transport_amount` | `total_amount` |
+| **Filter Criteria** | `transportation_agreement = true` | `payment_method = 'payroll_deduction'` AND `payment_status = 'pending'` |
+| **Amount Division** | No division (already bi-weekly) | No division (already bi-weekly) |
+| **Room Requirement** | Optional (may be null) | Optional (may be null) |
+
+---
+
+## Common Patterns Across Both Fixes
+
+### 1. **Date Conversion**
+Both transportation and security deposit billing use the same date conversion logic:
+```typescript
+function convertToISODate(dateText: string | null | undefined): string | null {
+  if (!dateText || dateText.trim() === '') return null;
+  const parts = dateText.split('/');
+  if (parts.length !== 3) return null;
+  const month = parts[0].padStart(2, '0');
+  const day = parts[1].padStart(2, '0');
+  const year = parts[2];
+  return `${year}-${month}-${day}`;
+}
+```
+
+### 2. **Bi-Weekly Logic**
+Both use `inclusionForMonth()` to determine which billing periods apply:
+- First period: 1st-15th of month
+- Second period: 16th-end of month
+- Checks hire date and termination date for eligibility
+
+### 3. **Amount Handling**
+- **Housing**: Monthly rent ÷ 2 = bi-weekly amount
+- **Transportation**: Use amount directly (already bi-weekly)
+- **Security Deposit**: Use amount directly (already bi-weekly)
+
+### 4. **UI Display**
+All billing types now display correctly in Billing Log thanks to left join fix
+
+---
+
+## Lessons Learned
+
+1. **Don't assume all billing amounts need division** - Check if the source amount is monthly or bi-weekly
+2. **Use left joins when optional relationships exist** - Not all billing records have room assignments
+3. **Date format consistency is critical** - Always convert external_staff dates to ISO format
+4. **Comprehensive logging is essential** - Helps identify issues quickly during testing
+5. **Test with actual data** - Database queries revealed the join issue that wouldn't be caught in unit tests

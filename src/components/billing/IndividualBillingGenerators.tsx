@@ -605,6 +605,9 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
             <Alert className="bg-purple-500/20 border-purple-500/30">
               <AlertDescription className="text-xs">
                 <strong>Found {securityDeductions.length} pending security deposit deductions</strong> totaling ${securityDeductions.reduce((sum: number, d: any) => sum + (d.total_amount || 0), 0).toFixed(2)} from deductions table.
+                <span className="block mt-1">
+                  Deduction per period: $125 (total amount divided over 4 bi-weekly periods)
+                </span>
               </AlertDescription>
             </Alert>
           )}

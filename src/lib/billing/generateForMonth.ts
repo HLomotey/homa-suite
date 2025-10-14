@@ -239,8 +239,10 @@ export async function generateSecurityDepositBillingForMonth(
     console.log(`📅 Billing periods for ${d.tenant_id}:`, include);
     
     // Use deposit amount from security_deposits table
-    // Note: deposit_amount is already a bi-weekly amount, no need to divide
-    const depositAmount = d.deposit_amount || 500.00;
+    // Security deposits are divided into 4 bi-weekly deductions
+    // Total deposit (e.g., $500) ÷ 4 periods = $125 per period
+    const totalDepositAmount = d.deposit_amount || 500.00;
+    const depositAmount = totalDepositAmount / 4;
     
     // Generate billing based on selected period
     if ((billingPeriod === 'first' || billingPeriod === 'both') && include.firstWindow) {
