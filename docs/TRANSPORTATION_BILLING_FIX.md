@@ -118,11 +118,17 @@ Expected result: **66 staff members**
 
 ## Files Modified
 
-- `src/lib/billing/generateTransportationBilling.ts`
+### 1. `src/lib/billing/generateTransportationBilling.ts`
   - Added `convertToISODate()` helper function
   - Updated `getActiveStaffWithTransportation()` to convert dates and add logging
   - Updated `generateTransportationBillingForMonth()` to use converted dates and actual transport amounts
   - Enhanced query to fetch `staff_id` and `transport_amount` fields
+
+### 2. `src/lib/billing/repo.ts` (Critical Fix)
+  - Added `convertToISODate()` helper function
+  - Updated `getActiveStaffForMonth()` to convert hire_date and termination_date from MM/DD/YYYY to ISO format
+  - Updated `getActiveStaffWithTransportationForMonth()` to convert dates with detailed logging
+  - **This was the main issue**: The repo was returning raw MM/DD/YYYY dates that were being passed to `inclusionForMonth()` in `generateForMonth.ts`, causing all date comparisons to fail
 
 ## Additional Notes
 

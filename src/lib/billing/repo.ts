@@ -9,6 +9,28 @@ export interface ActiveStaffAssignment {
   endDate?: string | null;
 }
 
+/**
+ * Helper function to convert MM/DD/YYYY text date to ISO YYYY-MM-DD format
+ */
+function convertToISODate(dateText: string | null | undefined): string | null {
+  if (!dateText || dateText.trim() === '') return null;
+  
+  try {
+    // Parse MM/DD/YYYY format
+    const parts = dateText.split('/');
+    if (parts.length !== 3) return null;
+    
+    const month = parts[0].padStart(2, '0');
+    const day = parts[1].padStart(2, '0');
+    const year = parts[2];
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error(`Failed to convert date: ${dateText}`, error);
+    return null;
+  }
+}
+
 // Repository functions for billing data
 export async function getActiveStaffForDateRange(
   startDate: string,
@@ -190,6 +212,10 @@ export async function getActiveStaffForMonth(year: number, month: number) {
           const property = propertiesData?.find(p => p.id === assignment.property_id);
           const room = roomsData?.find(r => r.id === assignment.room_id);
           
+          // Convert MM/DD/YYYY dates to ISO format
+          const hireDateISO = convertToISODate(staff?.["HIRE DATE"]);
+          const termDateISO = convertToISODate(staff?.["TERMINATION DATE"]);
+          
           return {
             tenant_id: assignment.tenant_id,
             property_id: assignment.property_id,
@@ -199,8 +225,8 @@ export async function getActiveStaffForMonth(year: number, month: number) {
             rent_amount: assignment.rent_amount || 0,
             start_date: assignment.start_date,
             end_date: assignment.end_date,
-            hire_date: staff?.["HIRE DATE"] || assignment.start_date,
-            termination_date: staff?.["TERMINATION DATE"] || assignment.end_date,
+            hire_date: hireDateISO || assignment.start_date,
+            termination_date: termDateISO || assignment.end_date,
             position_status: staff?.["POSITION STATUS"] || "Active"
           };
         });
@@ -333,6 +359,17 @@ export async function getActiveStaffWithTransportationForMonth(year: number, mon
           const property = propertiesData?.find(p => p.id === assignment.property_id);
           const room = roomsData?.find(r => r.id === assignment.room_id);
           
+          // Convert MM/DD/YYYY dates to ISO format
+          const hireDateISO = convertToISODate(staff?.["HIRE DATE"]);
+          const termDateISO = convertToISODate(staff?.["TERMINATION DATE"]);
+          
+          console.log(`📅 Converting dates for staff ${assignment.tenant_id}:`, {
+            hire_date_raw: staff?.["HIRE DATE"],
+            hire_date_iso: hireDateISO,
+            term_date_raw: staff?.["TERMINATION DATE"],
+            term_date_iso: termDateISO
+          });
+          
           return {
             tenant_id: assignment.tenant_id,
             property_id: assignment.property_id,
@@ -343,8 +380,8 @@ export async function getActiveStaffWithTransportationForMonth(year: number, mon
             transport_amount: assignment.transport_amount || 150.00, // Default transportation rate
             start_date: assignment.start_date,
             end_date: assignment.end_date,
-            hire_date: staff?.["HIRE DATE"] || assignment.start_date,
-            termination_date: staff?.["TERMINATION DATE"] || assignment.end_date,
+            hire_date: hireDateISO || assignment.start_date,
+            termination_date: termDateISO || assignment.end_date,
             position_status: staff?.["POSITION STATUS"] || "Active",
             transportation_agreement: assignment.transportation_agreement
           };
@@ -375,9 +412,9 @@ export async function getActiveStaffWithTransportationForMonth(year: number, mon
 export async function upsertBillingRow(billingData: {
   tenant_id: string;
   property_id: string;
-  property_name?: string;
+  property_name?: string; // Not stored in DB, just for logging
   room_id: string | null;
-  room_name?: string | null;
+  room_name?: string | null; // Not stored in DB, just for logging
   rent_amount: number;
   payment_status: string;
   billing_type: string;
@@ -389,7 +426,9 @@ export async function upsertBillingRow(billingData: {
   console.log('💾 Upserting billing row:', {
     tenant_id: billingData.tenant_id,
     property_id: billingData.property_id,
+    property_name: billingData.property_name,
     room_id: billingData.room_id,
+    room_name: billingData.room_name,
     amount: billingData.rent_amount,
     billing_type: billingData.billing_type,
     period: `${billingData.period_start} to ${billingData.period_end}`
@@ -451,9 +490,12 @@ export async function upsertBillingRow(billingData: {
   }
 
   try {
+    // Remove property_name and room_name as they don't exist in the billing table schema
+    const { property_name, room_name, ...dbBillingData } = billingData;
+    
     const { data, error } = await (supabase
       .from('billing') as any)
-      .upsert(billingData, {
+      .upsert(dbBillingData, {
         onConflict: 'tenant_id,period_start,period_end'
       })
       .select()
