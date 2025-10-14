@@ -16,6 +16,28 @@ export interface TransportationBillingData {
   end_date?: string | null;
 }
 
+/**
+ * Helper function to convert MM/DD/YYYY text date to ISO YYYY-MM-DD format
+ */
+function convertToISODate(dateText: string | null | undefined): string | null {
+  if (!dateText || dateText.trim() === '') return null;
+  
+  try {
+    // Parse MM/DD/YYYY format
+    const parts = dateText.split('/');
+    if (parts.length !== 3) return null;
+    
+    const month = parts[0].padStart(2, '0');
+    const day = parts[1].padStart(2, '0');
+    const year = parts[2];
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error(`Failed to convert date: ${dateText}`, error);
+    return null;
+  }
+}
+
 export async function getActiveStaffWithTransportation(year: number, month: number) {
   console.log(`🚌 Fetching staff with transportation agreements for ${year}-${month}`);
   
@@ -25,12 +47,14 @@ export async function getActiveStaffWithTransportation(year: number, month: numb
       .from('assignments') as any)
       .select(`
         tenant_id,
+        staff_id,
         property_id,
         room_id,
         rent_amount,
         start_date,
         end_date,
-        transportation_agreement
+        transportation_agreement,
+        transport_amount
       `)
       .eq('transportation_agreement', true)
       .not('tenant_id', 'is', null);
@@ -71,29 +95,53 @@ export async function getActiveStaffWithTransportation(year: number, month: numb
     // Filter based on employment status and date overlap
     const validAssignments = assignments.filter((assignment: any) => {
       const staff = staffMap.get(assignment.tenant_id);
-      if (!staff) return false;
+      if (!staff) {
+        console.log(`⚠️ No staff found for tenant_id: ${assignment.tenant_id}`);
+        return false;
+      }
 
-      // Check if staff is active
+      // Check if staff is active based on POSITION STATUS
       const positionStatus = staff["POSITION STATUS"];
       const isActive = positionStatus === 'Active' || positionStatus === 'A - Active' || !positionStatus;
       const isTerminated = positionStatus === 'Terminated' || positionStatus === 'T - Terminated';
       
       if (isTerminated || !isActive) {
+        console.log(`⚠️ Staff ${assignment.tenant_id} is not active (status: ${positionStatus})`);
         return false;
       }
 
-      // Check employment overlap with the month
+      // Convert dates from MM/DD/YYYY to ISO format for proper comparison
       const monthStart = `${year}-${month.toString().padStart(2, '0')}-01`;
       const monthEnd = DateTime.fromObject({ year, month }).endOf('month').toISODate();
       
-      const hireDate = staff["HIRE DATE"];
-      const termDate = staff["TERMINATION DATE"];
+      const hireDateText = staff["HIRE DATE"];
+      const termDateText = staff["TERMINATION DATE"];
       
-      if (hireDate && hireDate > monthEnd) return false;
-      if (termDate && termDate < monthStart) return false;
+      const hireDate = convertToISODate(hireDateText);
+      const termDate = convertToISODate(termDateText);
+      
+      console.log(`📅 Staff ${assignment.tenant_id} dates - Hire: ${hireDate}, Term: ${termDate}, Month: ${monthStart} to ${monthEnd}`);
+      
+      // Exclude if hired after the month ends
+      if (hireDate && hireDate > monthEnd!) {
+        console.log(`⚠️ Staff ${assignment.tenant_id} hired after month end: ${hireDate} > ${monthEnd}`);
+        return false;
+      }
+      
+      // Exclude if terminated before the month starts
+      if (termDate && termDate < monthStart) {
+        console.log(`⚠️ Staff ${assignment.tenant_id} terminated before month start: ${termDate} < ${monthStart}`);
+        return false;
+      }
 
-      // Add staff data to assignment for later use
-      assignment.external_staff = staff;
+      // Store converted dates for later use
+      assignment.external_staff = {
+        ...staff,
+        hire_date_iso: hireDate,
+        termination_date_iso: termDate
+      };
+      
+      console.log(`✅ Staff ${assignment.tenant_id} is valid for billing`);
       return true;
     });
 
@@ -168,17 +216,27 @@ export async function generateTransportationBillingForMonth(
   for (const s of staff) {
     // Use hire_date and termination_date from external_staff for billing logic
     const staffData = s.external_staff;
-    const hireDate = staffData["HIRE DATE"] || s.start_date;
-    const terminationDate = staffData["TERMINATION DATE"] || s.end_date;
+    
+    // Use the ISO-converted dates from external_staff, or fall back to assignment dates
+    const hireDate = staffData.hire_date_iso || s.start_date;
+    const terminationDate = staffData.termination_date_iso || s.end_date;
+    
+    // Use the transport_amount from assignment if available, otherwise use default transportRate
+    const transportAmount = s.transport_amount ? parseFloat(s.transport_amount) : transportRate;
+    
+    console.log(`🚌 Processing staff ${s.tenant_id} - Hire: ${hireDate}, Term: ${terminationDate}, Amount: $${transportAmount}`);
     
     const include = inclusionForMonth(now, hireDate, terminationDate);
     
+    console.log(`🚌 Inclusion result for ${s.tenant_id}: Window 1: ${include.firstWindow}, Window 2: ${include.secondWindow}`);
+    
     if (include.firstWindow) {
+      console.log(`✅ Creating billing for ${s.tenant_id} - Period 1 (${w1.start.toISODate()} to ${w1.end.toISODate()})`);
       await upsertTransportationBillingRow({
         tenant_id: s.tenant_id,
         property_id: s.property_id,
         room_id: s.room_id,
-        transport_amount: transportRate,
+        transport_amount: transportAmount,
         payment_status: "unpaid",
         billing_type: "transportation",
         period_start: w1.start.toISODate()!,
@@ -190,11 +248,12 @@ export async function generateTransportationBillingForMonth(
     }
     
     if (include.secondWindow) {
+      console.log(`✅ Creating billing for ${s.tenant_id} - Period 2 (${w2.start.toISODate()} to ${w2.end.toISODate()})`);
       await upsertTransportationBillingRow({
         tenant_id: s.tenant_id,
         property_id: s.property_id,
         room_id: s.room_id,
-        transport_amount: transportRate,
+        transport_amount: transportAmount,
         payment_status: "unpaid",
         billing_type: "transportation",
         period_start: w2.start.toISODate()!,
