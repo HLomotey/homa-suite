@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Download, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, DollarSign } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, Download, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, DollarSign, Receipt } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { PayrollDeductionsUpload } from "@/components/payroll/PayrollDeductionsUpload";
 
 interface PayrollRecord {
   employeeId: string;
@@ -232,12 +234,25 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
           <DollarSign className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold">Upload Payroll Data</h2>
-          <p className="text-muted-foreground">Upload Excel files to process payroll information</p>
+          <h2 className="text-2xl font-bold">Payroll Management</h2>
+          <p className="text-muted-foreground">Upload Excel files to process payroll data and deductions</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Tabs defaultValue="payroll-data" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="payroll-data" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Payroll Data
+          </TabsTrigger>
+          <TabsTrigger value="payroll-deductions" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Payroll Deductions
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="payroll-data" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upload Section */}
         <div className="lg:col-span-2">
           <Card>
@@ -441,6 +456,12 @@ export default function UploadPayroll({ onPayrollUploaded }: UploadPayrollProps)
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="payroll-deductions">
+          <PayrollDeductionsUpload />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
