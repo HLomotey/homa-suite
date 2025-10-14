@@ -78,7 +78,7 @@ export interface AuthUser {
  */
 export interface UserValidationResult {
   isValid: boolean;
-  userType: 'external_staff' | 'management' | 'auth_only';
+  userType: "external_staff" | "management" | "auth_only";
   details: string;
 }
 
@@ -116,6 +116,6 @@ export interface AuthProviderProps {
  * Authentication constants
  */
 export const AUTH_CONSTANTS = {
-  INACTIVITY_TIMEOUT: 5 * 60 * 1000, // 5 minutes in milliseconds
+  INACTIVITY_TIMEOUT: 15 * 60 * 1000, // 15 minutes in milliseconds
   GENERAL_STAFF_MODULES: ["properties", "complaints", "profile"],
 } as const;
