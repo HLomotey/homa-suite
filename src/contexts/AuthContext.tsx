@@ -28,6 +28,7 @@ import {
   signUp as authSignUp,
   signOut as authSignOut,
 } from "./auth/authOperations";
+import { setupAdminUser } from "@/utils/adminSetup";
 
 // Export types for external use
 export type { AuthUser, ExternalStaffMember } from "./auth/types";
@@ -168,6 +169,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log("Valid session found, building auth user");
               const authUser = await buildAuthUser(session.user, session);
               setCurrentUser(authUser);
+              
+              // Set up admin role for authorized user
+              await setupAdminUser();
             } else {
               console.log("Invalid session detected, signing out");
               await supabase.auth.signOut();
