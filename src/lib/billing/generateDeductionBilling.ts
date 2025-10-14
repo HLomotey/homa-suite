@@ -9,6 +9,28 @@ import {
   getDeductionCount 
 } from "./deductionScheduling";
 
+/**
+ * Convert MM/DD/YYYY date string to ISO format (YYYY-MM-DD)
+ */
+function convertToISODate(dateText: string | null | undefined): string | null {
+  if (!dateText || dateText.trim() === '') return null;
+  
+  try {
+    // Parse MM/DD/YYYY format
+    const parts = dateText.split('/');
+    if (parts.length !== 3) return null;
+    
+    const month = parts[0].padStart(2, '0');
+    const day = parts[1].padStart(2, '0');
+    const year = parts[2];
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error(`Failed to convert date: ${dateText}`, error);
+    return null;
+  }
+}
+
 export interface DeductionBillingData {
   tenant_id: string;
   property_id: string;
@@ -360,15 +382,26 @@ export async function generateBusCardBillingForMonth(
   for (const s of staff) {
     // Use hire_date and termination_date from external_staff for billing logic
     const staffData = s.external_staff;
-    const hireDate = staffData["HIRE DATE"] || s.start_date;
-    const terminationDate = staffData["TERMINATION DATE"] || s.end_date;
+    const rawHireDate = staffData["HIRE DATE"];
+    const rawTermDate = staffData["TERMINATION DATE"];
+    
+    // Convert dates from MM/DD/YYYY to ISO format
+    const hireDate = convertToISODate(rawHireDate) || s.start_date;
+    const terminationDate = convertToISODate(rawTermDate) || s.end_date;
+    
+    console.log(`🚌 Processing bus card for staff ${s.tenant_id}:`, {
+      rawHireDate,
+      rawTermDate,
+      convertedHireDate: hireDate,
+      convertedTermDate: terminationDate
+    });
     
     const include = inclusionForMonth(now, hireDate, terminationDate);
     
     // Use bus_card_amount from assignment table
     const busCardAmount = s.bus_card_amount || 50.00; // Default to $50 if not specified
     
-    console.log(`🚌 Processing bus card for staff ${s.tenant_id}: amount = $${busCardAmount}`);
+    console.log(`🚌 Bus card amount for staff ${s.tenant_id}: $${busCardAmount}, include:`, include);
     
     // Bus cards are typically charged once when staff starts
     // We'll use the first window for new staff
