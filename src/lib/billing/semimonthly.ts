@@ -34,10 +34,29 @@ export function overlapsEmploymentWindow(
 
   // Employment interval: [hire .. term] (or open-ended)
   const empStart = hire.startOf("day");
-  const empEnd = term ? term.endOf("day") : DateTime.fromMillis(Number.MAX_SAFE_INTEGER);
+  // Use a far future date instead of MAX_SAFE_INTEGER which creates invalid intervals
+  const empEnd = term ? term.endOf("day") : DateTime.fromObject({ year: 9999, month: 12, day: 31 });
 
   const ei = Interval.fromDateTimes(empStart, empEnd);
-  return wi.overlaps(ei);
+  const overlaps = wi.overlaps(ei);
+  
+  // Safe logging - avoid calling toISODate() on invalid dates
+  const empStartStr = ei.start ? (ei.start.toISODate() || 'invalid') : 'null';
+  const empEndStr = term ? (ei.end ? (ei.end.toISODate() || 'invalid') : 'null') : 'ongoing';
+  
+  console.log('🔍 overlapsEmploymentWindow:', {
+    window: `${win.start.toISODate()} to ${win.end.toISODate()}`,
+    hire: hire.toISODate() || 'invalid',
+    term: term?.toISODate() || 'ongoing',
+    windowInterval: `${wi.start ? (wi.start.toISODate() || 'invalid') : 'null'} to ${wi.end ? (wi.end.toISODate() || 'invalid') : 'null'}`,
+    employmentInterval: `${empStartStr} to ${empEndStr}`,
+    overlaps,
+    hireIsValid: hire.isValid,
+    termIsValid: term?.isValid ?? true,
+    intervalIsValid: ei.isValid
+  });
+  
+  return overlaps;
 }
 
 /**
@@ -59,19 +78,41 @@ export function inclusionForMonth(
   const endOfMonth = _w2.end;
 
   // Guard: start date must be provided
-  if (!startDate) return { firstWindow: false, secondWindow: false };
+  if (!startDate) {
+    console.log('⚠️ inclusionForMonth: No startDate provided');
+    return { firstWindow: false, secondWindow: false };
+  }
   
   const start = DateTime.fromISO(startDate).startOf("day");
   const end = endDate ? DateTime.fromISO(endDate).startOf("day") : null;
   
+  console.log('🔍 inclusionForMonth details:', {
+    startDate,
+    endDate,
+    parsedStart: start.toISODate(),
+    parsedEnd: end?.toISODate(),
+    startOfMonth: startOfMonth.toISODate(),
+    endOfMonth: endOfMonth.toISODate(),
+    startIsValid: start.isValid,
+    endIsValid: end?.isValid ?? true
+  });
+  
   // Only exclude if they start AFTER this billing month (future hires)
-  if (start > endOfMonth) return { firstWindow: false, secondWindow: false };
+  if (start > endOfMonth) {
+    console.log(`⚠️ Excluded: start ${start.toISODate()} > endOfMonth ${endOfMonth.toISODate()}`);
+    return { firstWindow: false, secondWindow: false };
+  }
   
   // Only exclude if they terminated BEFORE this billing month
-  if (end && end < startOfMonth) return { firstWindow: false, secondWindow: false };
+  if (end && end < startOfMonth) {
+    console.log(`⚠️ Excluded: end ${end.toISODate()} < startOfMonth ${startOfMonth.toISODate()}`);
+    return { firstWindow: false, secondWindow: false };
+  }
 
   const firstWindow = overlapsEmploymentWindow(startDate, endDate, _w1);
   const secondWindow = overlapsEmploymentWindow(startDate, endDate, _w2);
+
+  console.log('✅ Window overlap results:', { firstWindow, secondWindow });
 
   return { firstWindow, secondWindow };
 }

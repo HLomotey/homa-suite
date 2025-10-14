@@ -117,6 +117,16 @@ export async function generateTransportationBillingForMonth(
     const hireDate = s.hire_date || s.start_date;
     const terminationDate = s.termination_date || s.end_date;
     
+    console.log(`🔍 Calling inclusionForMonth with:`, {
+      monthStart: now.toISODate(),
+      hireDate,
+      terminationDate,
+      billingWindows: {
+        window1: `${w1.start.toISODate()} to ${w1.end.toISODate()}`,
+        window2: `${w2.start.toISODate()} to ${w2.end.toISODate()}`
+      }
+    });
+    
     const include = inclusionForMonth(now, hireDate, terminationDate);
     
     console.log(`📅 Billing periods for ${s.tenant_id}:`, include);
