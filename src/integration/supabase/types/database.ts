@@ -31,6 +31,7 @@ import {
   JobOrderNotification,
 } from '@/types/job-order'
 import { Bill, BillingStaff, BillingStats, Payroll } from './billing'
+import { PayrollDeduction, CreatePayrollDeduction, UpdatePayrollDeduction, PayrollDeductionSummary } from './payroll-deductions'
 import { ExternalStaff, UpdateExternalStaff, HistoryExternalStaff } from './external-staff'
 import { Attendance } from './attendance'
 import { Vehicle, TransportStaff, TransportStats } from './transport'
@@ -181,6 +182,11 @@ export type Database = {
         Row: BillingStaff
         Insert: Omit<BillingStaff, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<BillingStaff, 'id' | 'created_at'>>
+      }
+      payroll_deductions: {
+        Row: PayrollDeduction
+        Insert: Omit<PayrollDeduction, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<PayrollDeduction, 'id' | 'created_at'>>
       }
 
       // ---- External Staff (consolidated to one definition; kwame) ----
