@@ -1,8 +1,9 @@
 import React from "react";
 import { PayrollManagement } from "@/components/payroll/PayrollManagement";
 import { PayrollDashboard } from "@/components/payroll/PayrollDashboard";
+import { PayrollDeductionsTable } from "@/components/payroll/PayrollDeductionsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, BarChart3, FileText } from "lucide-react";
+import { DollarSign, BarChart3, FileText, Receipt } from "lucide-react";
 
 export const PayrollPage: React.FC = () => {
   return (
@@ -19,7 +20,7 @@ export const PayrollPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -27,6 +28,10 @@ export const PayrollPage: React.FC = () => {
           <TabsTrigger value="records" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Payroll Records
+          </TabsTrigger>
+          <TabsTrigger value="deductions" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Payroll Deductions
           </TabsTrigger>
         </TabsList>
 
@@ -36,6 +41,10 @@ export const PayrollPage: React.FC = () => {
 
         <TabsContent value="records" className="space-y-6 mt-6">
           <PayrollManagement />
+        </TabsContent>
+
+        <TabsContent value="deductions" className="space-y-6 mt-6">
+          <PayrollDeductionsTable />
         </TabsContent>
       </Tabs>
     </div>
