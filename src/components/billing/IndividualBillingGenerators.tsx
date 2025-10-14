@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Home, Bus, Shield, Plane, Play, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { generateBillingForMonth, generateTransportationBillingForMonth } from '@/lib/billing/generateForMonth';
-import { generateSecurityDepositBillingForMonth, generateBusCardBillingForMonth } from '@/lib/billing/generateDeductionBilling';
+import { generateBillingForMonth, generateTransportationBillingForMonth, generateSecurityDepositBillingForMonth } from '@/lib/billing/generateForMonth';
+import { generateBusCardBillingForMonth } from '@/lib/billing/generateDeductionBilling';
 import { getBillingWindowsForMonth } from '@/lib/billing/semimonthly';
 import { FlightAgreementGenerator } from './FlightAgreementGenerator';
 import { supabase } from '@/integration/supabase/client';
@@ -103,9 +103,17 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
   const loadSecurityDeductions = async (year: number, month: number) => {
     try {
       const { data, error } = await supabase
-        .from('security_deposit_deductions')
-        .select('*')
-        .eq('status', 'scheduled');
+        .from('security_deposits')
+        .select(`
+          *,
+          assignments!inner (
+            tenant_id,
+            tenant_name,
+            status
+          )
+        `)
+        .eq('payment_method', 'payroll_deduction')
+        .eq('payment_status', 'pending');
       
       if (error) throw error;
       setSecurityDeductions(data || []);
@@ -278,17 +286,38 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
       const period1 = `${w1.start.toFormat('MMM dd')} - ${w1.end.toFormat('MMM dd')}`;
       const period2 = `${w2.start.toFormat('MMM dd')} - ${w2.end.toFormat('MMM dd, yyyy')}`;
       
-      // Use pending deduction amounts from deductions table
-      const count = await generateSecurityDepositBillingForMonth(year, month);
+      // Use pending deposit amounts from security_deposits table
+      const count = await generateSecurityDepositBillingForMonth(year, month, securityPeriod as 'first' | 'second' | 'both');
+      
+      // Determine which periods were generated based on selection
+      let periodsGenerated = '';
+      if (securityPeriod === 'first') {
+        periodsGenerated = period1;
+      } else if (securityPeriod === 'second') {
+        periodsGenerated = period2;
+      } else {
+        periodsGenerated = `${period1} & ${period2}`;
+      }
       
       const result = { count, timestamp: new Date().toLocaleString() };
       setLastResults(prev => ({ ...prev, security: result }));
       
-      toast.success(`Generated ${count} security deposit billing records for ${month}/${year} - Periods: ${period1} & ${period2} (using pending deduction amounts)`);
+      toast.success(`Generated ${count} security deposit billing records for ${month}/${year} - Period(s): ${periodsGenerated} (using pending deduction amounts from deductions table)`);
       onBillingGenerated?.(count, 'Security Deposit');
     } catch (error) {
       console.error('Security deposit billing generation error:', error);
-      toast.error(`Failed to generate security deposit billing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        if (error.message.includes('No pending security deposits found')) {
+          errorMessage = 'No pending security deposits found. Please ensure staff have security deposits with payroll_deduction payment method and pending status in the security_deposits table.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(`Failed to generate security deposit billing: ${errorMessage}`);
     } finally {
       setIsGenerating(null);
     }
@@ -575,7 +604,7 @@ export function IndividualBillingGenerators({ onBillingGenerated }: IndividualBi
           {securityDeductions.length > 0 && (
             <Alert className="bg-purple-500/20 border-purple-500/30">
               <AlertDescription className="text-xs">
-                <strong>Found {securityDeductions.length} pending security deposit deductions</strong> totaling ${securityDeductions.reduce((sum: number, d: any) => sum + (d.scheduled_amount || 0), 0).toFixed(2)} from deductions table.
+                <strong>Found {securityDeductions.length} pending security deposit deductions</strong> totaling ${securityDeductions.reduce((sum: number, d: any) => sum + (d.total_amount || 0), 0).toFixed(2)} from deductions table.
               </AlertDescription>
             </Alert>
           )}

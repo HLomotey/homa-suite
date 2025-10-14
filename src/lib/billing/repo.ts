@@ -409,6 +409,118 @@ export async function getActiveStaffWithTransportationForMonth(year: number, mon
   }
 }
 
+/**
+ * Fetch pending security deposits for staff with payroll deduction
+ * Returns staff with pending security deposits that need to be billed
+ */
+export async function getPendingSecurityDeposits(
+  monthStart: string
+): Promise<any[]> {
+  try {
+    console.log(`🔍 Searching for pending security deposits for ${monthStart}`);
+    
+    // Query security_deposits joined with assignments and external_staff
+    const { data: deposits, error } = await supabase
+      .from('security_deposits')
+      .select(`
+        id,
+        assignment_id,
+        total_amount,
+        payment_method,
+        payment_status,
+        assignments!inner (
+          tenant_id,
+          tenant_name,
+          property_id,
+          property_name,
+          room_id,
+          room_name,
+          start_date,
+          end_date,
+          status
+        )
+      `)
+      .eq('payment_method', 'payroll_deduction')
+      .eq('payment_status', 'pending');
+
+    if (error) {
+      console.error('❌ Error fetching security deposits:', error);
+      return [];
+    }
+
+    if (!deposits || deposits.length === 0) {
+      console.log('No pending security deposits found');
+      return [];
+    }
+
+    console.log(`📊 Total pending deposits found: ${deposits.length}`);
+
+    // Fetch external staff data for hire/termination dates
+    const tenantIds = deposits
+      .map((d: any) => d.assignments?.tenant_id)
+      .filter(Boolean);
+
+    const { data: staffData, error: staffError } = await supabase
+      .from('external_staff')
+      .select('id, "HIRE DATE", "TERMINATION DATE"')
+      .in('id', tenantIds);
+
+    if (staffError) {
+      console.error('❌ Error fetching staff data:', staffError);
+      return [];
+    }
+
+    // Create a map of staff data by ID
+    const staffMap = new Map(
+      staffData?.map((s: any) => [s.id, s]) || []
+    );
+
+    // Process deposits and convert dates
+    const result = deposits
+      .filter((deposit: any) => {
+        const assignment = deposit.assignments;
+        return assignment && assignment.status === 'Active' && assignment.tenant_id;
+      })
+      .map((deposit: any) => {
+        const assignment = deposit.assignments;
+        const staff = staffMap.get(assignment.tenant_id);
+
+        // Convert hire and termination dates from MM/DD/YYYY to ISO format
+        const hireDateISO = convertToISODate(staff?.["HIRE DATE"]);
+        const termDateISO = convertToISODate(staff?.["TERMINATION DATE"]);
+
+        console.log(`📅 Converting dates for deposit ${deposit.id}:`, {
+          hire_date_raw: staff?.["HIRE DATE"],
+          hire_date_iso: hireDateISO,
+          term_date_raw: staff?.["TERMINATION DATE"],
+          term_date_iso: termDateISO
+        });
+
+        return {
+          deposit_id: deposit.id,
+          tenant_id: assignment.tenant_id,
+          tenant_name: assignment.tenant_name,
+          property_id: assignment.property_id,
+          property_name: assignment.property_name,
+          room_id: assignment.room_id,
+          room_name: assignment.room_name,
+          deposit_amount: deposit.total_amount || 500.00, // Default $500
+          start_date: assignment.start_date,
+          end_date: assignment.end_date,
+          hire_date: hireDateISO || assignment.start_date,
+          termination_date: termDateISO || assignment.end_date
+        };
+      });
+
+    console.log(`Found ${result.length} pending security deposits for billing generation`);
+    return result;
+
+  } catch (error) {
+    console.error('Error fetching pending security deposits:', error);
+    return [];
+  }
+}
+
 export async function upsertBillingRow(billingData: {
   tenant_id: string;
   property_id: string;

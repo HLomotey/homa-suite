@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { getBillingWindowsForMonth, inclusionForMonth } from "./semimonthly";
-import { upsertBillingRow, getActiveStaffForMonth, getActiveStaffWithTransportationForMonth } from "./repo"; 
+import { upsertBillingRow, getActiveStaffForMonth, getActiveStaffWithTransportationForMonth, getPendingSecurityDeposits } from "./repo"; 
 
 export async function generateBillingForMonth(
   year: number,
@@ -183,5 +183,112 @@ export async function generateTransportationBillingForMonth(
   }
 
   console.log(`Created ${billingRecordsCreated} transportation billing records`);
+  return billingRecordsCreated;
+}
+
+/**
+ * Generate security deposit billing for a specific month
+ * Creates bi-weekly billing records for staff with pending security deposits
+ */
+export async function generateSecurityDepositBillingForMonth(
+  year: number,
+  month: number,
+  billingPeriod: 'first' | 'second' | 'both' = 'both',
+  zone = "America/Los_Angeles"
+) {
+  const now = DateTime.fromObject({ year, month, day: 1 }, { zone });
+  const [w1, w2] = getBillingWindowsForMonth(year, month, zone);
+  const monthStart = now.toISODate()!;
+
+  // Fetch pending security deposits
+  const deposits = await getPendingSecurityDeposits(monthStart);
+
+  if (deposits.length === 0) {
+    console.warn(`No pending security deposits found for ${year}-${month}`);
+    throw new Error(`No pending security deposits found for ${year}-${month.toString().padStart(2, '0')}.`);
+  }
+
+  console.log(`Processing security deposit billing for ${deposits.length} staff members`);
+
+  let billingRecordsCreated = 0;
+
+  for (const d of deposits) {
+    const hireDate = d.hire_date || d.start_date;
+    const terminationDate = d.termination_date || d.end_date;
+
+    console.log(`👤 Processing deposit for staff ${d.tenant_id}:`, {
+      hire_date: hireDate,
+      start_date: d.start_date,
+      termination_date: terminationDate,
+      deposit_amount: d.deposit_amount,
+      hasDepositAmount: !!d.deposit_amount
+    });
+
+    console.log(`🔍 Calling inclusionForMonth with:`, {
+      monthStart,
+      hireDate,
+      terminationDate,
+      billingWindows: {
+        window1: `${w1.start.toISODate()} to ${w1.end.toISODate()}`,
+        window2: `${w2.start.toISODate()} to ${w2.end.toISODate()}`
+      }
+    });
+    
+    const include = inclusionForMonth(now, hireDate, terminationDate);
+    
+    console.log(`📅 Billing periods for ${d.tenant_id}:`, include);
+    
+    // Use deposit amount from security_deposits table
+    // Note: deposit_amount is already a bi-weekly amount, no need to divide
+    const depositAmount = d.deposit_amount || 500.00;
+    
+    // Generate billing based on selected period
+    if ((billingPeriod === 'first' || billingPeriod === 'both') && include.firstWindow) {
+      try {
+        await upsertBillingRow({
+          tenant_id: d.tenant_id,
+          property_id: d.property_id,
+          property_name: d.property_name || 'Security Deposit',
+          room_id: d.room_id,
+          room_name: d.room_name,
+          rent_amount: depositAmount, // Use bi-weekly deposit amount directly
+          payment_status: "unpaid",
+          billing_type: "security_deposit",
+          period_start: w1.start.toISODate()!,
+          period_end: w1.end.toISODate()!,
+          start_date: d.start_date,
+          end_date: d.end_date,
+        });
+        billingRecordsCreated++;
+      } catch (error) {
+        console.error(`❌ Failed to create first period billing for deposit ${d.deposit_id}:`, error);
+        // Continue processing other deposits
+      }
+    }
+    if ((billingPeriod === 'second' || billingPeriod === 'both') && include.secondWindow) {
+      try {
+        await upsertBillingRow({
+          tenant_id: d.tenant_id,
+          property_id: d.property_id,
+          property_name: d.property_name || 'Security Deposit',
+          room_id: d.room_id,
+          room_name: d.room_name,
+          rent_amount: depositAmount, // Use bi-weekly deposit amount directly
+          payment_status: "unpaid",
+          billing_type: "security_deposit",
+          period_start: w2.start.toISODate()!,
+          period_end: w2.end.toISODate()!,
+          start_date: d.start_date,
+          end_date: d.end_date,
+        });
+        billingRecordsCreated++;
+      } catch (error) {
+        console.error(`❌ Failed to create second period billing for deposit ${d.deposit_id}:`, error);
+        // Continue processing other deposits
+      }
+    }
+  }
+
+  console.log(`Created ${billingRecordsCreated} security deposit billing records`);
   return billingRecordsCreated;
 }
