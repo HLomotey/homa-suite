@@ -144,7 +144,7 @@ export function EthnicityBreakdown() {
               <div className="flex flex-col space-y-2 ml-4 max-h-[180px] overflow-y-auto">
                 {chartSegments.map((segment, index) => (
                   <div key={index} className="flex items-center">
-                    {/* eslint-disable-next-line react/forbid-dom-props -- Dynamic color indicator requires inline styles */}
+                    {/* eslint-disable-next-line react/forbid-dom-props */}
                     <div 
                       className="w-4 h-4 rounded-full" 
                       style={{ backgroundColor: segment.color }}
