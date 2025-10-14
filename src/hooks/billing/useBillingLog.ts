@@ -17,6 +17,8 @@ export function useBillingLogs({ staffId }: UseBillingLogsParams = {}) {
         setIsLoading(true);
         
         // Query billing table with external_staff, properties, and rooms data
+        // Use left joins for properties and rooms since some billing types (security deposit, transportation)
+        // may not have room assignments
         let query = supabase
           .from('billing')
           .select(`
@@ -37,10 +39,10 @@ export function useBillingLogs({ staffId }: UseBillingLogsParams = {}) {
               "PAYROLL FIRST NAME",
               "PAYROLL LAST NAME"
             ),
-            properties!inner (
+            properties (
               title
             ),
-            rooms!inner (
+            rooms (
               name
             )
           `)
