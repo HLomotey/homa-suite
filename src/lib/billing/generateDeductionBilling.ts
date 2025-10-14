@@ -8,6 +8,7 @@ import {
   requiresDeductionScheduling,
   getDeductionCount 
 } from "./deductionScheduling";
+import { upsertBillingRow } from "./repo";
 
 /**
  * Convert MM/DD/YYYY date string to ISO format (YYYY-MM-DD)
@@ -406,10 +407,12 @@ export async function generateBusCardBillingForMonth(
     // Bus cards are typically charged once when staff starts
     // We'll use the first window for new staff
     if (include.firstWindow) {
-      await upsertDeductionBillingRow({
+      await upsertBillingRow({
         tenant_id: s.tenant_id,
         property_id: s.property_id,
+        property_name: 'Bus Card',
         room_id: s.room_id,
+        room_name: null,
         rent_amount: busCardAmount,
         payment_status: "unpaid",
         billing_type: "bus_card",
@@ -417,8 +420,6 @@ export async function generateBusCardBillingForMonth(
         period_end: w1.end.toISODate()!,
         start_date: s.start_date,
         end_date: s.end_date,
-        total_deductions: getDeductionCount("bus_card"),
-        deduction_status: "Active",
       });
       generatedCount++;
     }
