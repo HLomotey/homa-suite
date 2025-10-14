@@ -78,6 +78,11 @@ export default function ExternalStaff() {
   const [terminationPeriodFilter, setTerminationPeriodFilter] = useState<string>("all");
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
+
+  // Reset pagination when filters change
+  React.useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [searchTerm, dateRangeFilter, terminationPeriodFilter, selectedDepartment, status]);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -176,8 +181,15 @@ export default function ExternalStaff() {
     return true;
   });
 
-  // Calculate pagination values
-  const pageCount = Math.ceil(totalCount / pagination.pageSize);
+  // Apply pagination to filtered results
+  const paginatedStaff = filteredStaff.slice(
+    pagination.pageIndex * pagination.pageSize,
+    (pagination.pageIndex + 1) * pagination.pageSize
+  );
+
+  // Calculate pagination values based on filtered data
+  const filteredCount = filteredStaff.length;
+  const pageCount = Math.ceil(filteredCount / pagination.pageSize);
 
   // Handle pagination changes
   const handlePageChange = (newPage: number) => {
@@ -243,13 +255,18 @@ export default function ExternalStaff() {
     }
   };
 
-  // Handle select all checkbox
+  // Check if all items on current page are selected
+  const currentPageIds = paginatedStaff.map(staff => staff.id);
+  const allCurrentPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedStaffIds.includes(id));
+
+  // Handle select all checkbox (for current page only)
   const handleSelectAll = (checked: boolean) => {
-    setIsSelectAllChecked(checked);
     if (checked) {
-      setSelectedStaffIds(filteredStaff.map(staff => staff.id));
+      // Select all staff on current page
+      setSelectedStaffIds(prev => [...new Set([...prev, ...currentPageIds])]);
     } else {
-      setSelectedStaffIds([]);
+      // Deselect all staff on current page
+      setSelectedStaffIds(prev => prev.filter(id => !currentPageIds.includes(id)));
     }
   };
 
@@ -400,7 +417,10 @@ export default function ExternalStaff() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <CardTitle>Staff Information ({filteredStaff.length})</CardTitle>
+                  <CardTitle>
+                    Staff Information ({filteredCount}
+                    {filteredCount !== totalCount && ` of ${totalCount}`})
+                  </CardTitle>
                   {selectedDepartment && (
                     <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                       Department: {selectedDepartment}
@@ -489,10 +509,10 @@ export default function ExternalStaff() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleSelectAll(!isSelectAllChecked)}
+                        onClick={() => handleSelectAll(!allCurrentPageSelected)}
                         className="p-0 h-6 w-6"
                       >
-                        {isSelectAllChecked ? (
+                        {allCurrentPageSelected ? (
                           <CheckSquare className="h-4 w-4" />
                         ) : (
                           <Square className="h-4 w-4" />
@@ -510,7 +530,7 @@ export default function ExternalStaff() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStaff.length === 0 ? (
+                  {paginatedStaff.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={9}
@@ -522,7 +542,7 @@ export default function ExternalStaff() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredStaff.map((staff) => (
+                    paginatedStaff.map((staff) => (
                       <TableRow key={staff.id}>
                         <TableCell>
                           <Button
@@ -638,12 +658,17 @@ export default function ExternalStaff() {
 
                 <div className="flex items-center">
                   <span className="text-sm text-muted-foreground mr-2">
-                    Showing {pagination.pageIndex * pagination.pageSize + 1} to{" "}
+                    Showing {filteredCount === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1} to{" "}
                     {Math.min(
                       (pagination.pageIndex + 1) * pagination.pageSize,
-                      totalCount
+                      filteredCount
                     )}{" "}
-                    of {totalCount}
+                    of {filteredCount}
+                    {filteredCount !== totalCount && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        (filtered from {totalCount} total)
+                      </span>
+                    )}
                   </span>
 
                   <Pagination>
