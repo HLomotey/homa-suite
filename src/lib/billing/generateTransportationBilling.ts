@@ -221,7 +221,7 @@ export async function generateAllBillingForMonth(
   
   // Generate housing billing (existing logic)
   const { generateBillingForMonth } = await import('./generateForMonth');
-  await generateBillingForMonth(year, month, zone);
+  await generateBillingForMonth(year, month, 'both', zone);
   
   // Generate transportation billing
   const transportCount = await generateTransportationBillingForMonth(year, month, transportRate, zone);
