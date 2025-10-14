@@ -34,6 +34,10 @@ export const BillingLog: React.FC<BillingLogProps> = ({
   const [filters, setFilters] = useState({ searchQuery: "", tenantName: "" });
   const [terminationPeriodFilter, setTerminationPeriodFilter] = useState<string>("all");
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  
   // State for billing generation
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -222,6 +226,17 @@ export const BillingLog: React.FC<BillingLogProps> = ({
   const totalAmount = useMemo(() => {
     return filteredBillingRows.reduce((sum, billingRow) => sum + billingRow.rentAmount, 0);
   }, [filteredBillingRows]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredBillingRows.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBillingRows = filteredBillingRows.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter, dateRange, billingPeriodFilter, billingTypeFilter, terminationPeriodFilter]);
 
   const handleExport = () => {
     const csvContent = [
@@ -508,7 +523,7 @@ export const BillingLog: React.FC<BillingLogProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBillingRows.map((billingRow) => (
+                  {paginatedBillingRows.map((billingRow) => (
                     <EditableBillingRow
                       key={billingRow.id}
                       billingRow={billingRow}
@@ -518,6 +533,74 @@ export const BillingLog: React.FC<BillingLogProps> = ({
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {filteredBillingRows.length > 0 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-white/60">Rows per page:</span>
+                <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-20 bg-white/5 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-white/60">
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredBillingRows.length)} of {filteredBillingRows.length}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                >
+                  First
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-white/60 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                >
+                  Next
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                >
+                  Last
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
