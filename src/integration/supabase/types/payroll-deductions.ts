@@ -17,6 +17,7 @@ export interface PayrollDeduction {
   // Mapped from external_staff
   staff_name?: string;
   home_department?: string;
+  location?: string;
 }
 
 export interface CreatePayrollDeduction {

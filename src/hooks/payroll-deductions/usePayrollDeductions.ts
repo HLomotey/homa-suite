@@ -31,7 +31,7 @@ export const usePayrollDeductions = () => {
       // Fetch staff information for these positions
       const { data: staffData, error: staffError } = await supabase
         .from("external_staff")
-        .select('"POSITION ID", "PAYROLL FIRST NAME", "PAYROLL LAST NAME", "HOME DEPARTMENT"')
+        .select('"POSITION ID", "PAYROLL FIRST NAME", "PAYROLL LAST NAME", "HOME DEPARTMENT", "LOCATION"')
         .in('"POSITION ID"', positionIds);
 
       if (staffError) {
@@ -44,7 +44,8 @@ export const usePayrollDeductions = () => {
       staffData?.forEach((staff: any) => {
         staffMap.set(staff["POSITION ID"], {
           staff_name: `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.trim(),
-          home_department: staff["HOME DEPARTMENT"]
+          home_department: staff["HOME DEPARTMENT"],
+          location: staff["LOCATION"]
         });
       });
 
@@ -52,7 +53,8 @@ export const usePayrollDeductions = () => {
       const enrichedDeductions = deductions.map((deduction: any) => ({
         ...deduction,
         staff_name: staffMap.get(deduction.position_id)?.staff_name || "Unknown",
-        home_department: staffMap.get(deduction.position_id)?.home_department || "Unknown"
+        home_department: staffMap.get(deduction.position_id)?.home_department || "Unknown",
+        location: staffMap.get(deduction.position_id)?.location || "Unknown"
       }));
 
       return enrichedDeductions;
@@ -106,7 +108,7 @@ export const useFilteredPayrollDeductions = (filters?: {
       // Fetch staff information for these positions
       const { data: staffData, error: staffError } = await supabase
         .from("external_staff")
-        .select('"POSITION ID", "PAYROLL FIRST NAME", "PAYROLL LAST NAME", "HOME DEPARTMENT"')
+        .select('"POSITION ID", "PAYROLL FIRST NAME", "PAYROLL LAST NAME", "HOME DEPARTMENT", "LOCATION"')
         .in('"POSITION ID"', positionIds);
 
       if (staffError) {
@@ -119,7 +121,8 @@ export const useFilteredPayrollDeductions = (filters?: {
       staffData?.forEach((staff: any) => {
         staffMap.set(staff["POSITION ID"], {
           staff_name: `${staff["PAYROLL FIRST NAME"] || ""} ${staff["PAYROLL LAST NAME"] || ""}`.trim(),
-          home_department: staff["HOME DEPARTMENT"]
+          home_department: staff["HOME DEPARTMENT"],
+          location: staff["LOCATION"]
         });
       });
 
@@ -127,7 +130,8 @@ export const useFilteredPayrollDeductions = (filters?: {
       const enrichedDeductions = deductions.map((deduction: any) => ({
         ...deduction,
         staff_name: staffMap.get(deduction.position_id)?.staff_name || "Unknown",
-        home_department: staffMap.get(deduction.position_id)?.home_department || "Unknown"
+        home_department: staffMap.get(deduction.position_id)?.home_department || "Unknown",
+        location: staffMap.get(deduction.position_id)?.location || "Unknown"
       }));
 
       return enrichedDeductions;
