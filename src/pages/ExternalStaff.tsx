@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { useDeletePermissions } from "@/utils/deletePermissions";
 import {
   Pagination,
   PaginationContent,
@@ -64,6 +65,7 @@ export default function ExternalStaff() {
     exportToExcel,
     exportData,
   } = useExternalStaff();
+  const { canDelete } = useDeletePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [showExcelUpload, setShowExcelUpload] = useState(false);
@@ -376,7 +378,7 @@ export default function ExternalStaff() {
               Advanced Export
             </Button>
           </div>
-          {selectedStaffIds.length > 0 && (
+          {selectedStaffIds.length > 0 && canDelete && (
             <Button
               variant="destructive"
               onClick={handleBulkDelete}
@@ -615,14 +617,16 @@ export default function ExternalStaff() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteStaff(staff.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteStaff(staff.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -398,6 +398,15 @@ export function useExternalStaff(): UseExternalStaffReturn {
 
   const deleteExternalStaff = useCallback(async (id: string): Promise<boolean> => {
     try {
+      // Check delete permissions
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email;
+      
+      if (userEmail !== 'nanasefa@gmail.com') {
+        toast.error("Delete operation not authorized. Only nanasefa@gmail.com can perform delete operations.");
+        return false;
+      }
+
       const { error } = await supabase
         .from(TABLE_NAME)
         .delete()
@@ -423,8 +432,17 @@ export function useExternalStaff(): UseExternalStaffReturn {
   // Bulk delete multiple external staff records in a single operation
   const bulkDeleteExternalStaff = useCallback(async (ids: string[]): Promise<boolean> => {
     try {
+      // Check delete permissions
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email;
+      
+      if (userEmail !== 'nanasefa@gmail.com') {
+        toast.error("Delete operation not authorized. Only nanasefa@gmail.com can perform delete operations.");
+        return false;
+      }
+
       if (!ids.length) {
-        console.warn("No IDs provided for bulk deletion");
+        toast.error("No external staff records selected for deletion");
         return false;
       }
 
