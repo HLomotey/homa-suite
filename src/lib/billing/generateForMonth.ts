@@ -132,6 +132,7 @@ export async function generateTransportationBillingForMonth(
     console.log(`📅 Billing periods for ${s.tenant_id}:`, include);
     
     // Use transportation amount from assignment or default rate
+    // Note: transport_amount is already a bi-weekly amount, no need to divide
     const transportAmount = s.transport_amount || transportationRate;
     
     // Generate billing based on selected period
@@ -143,7 +144,7 @@ export async function generateTransportationBillingForMonth(
           property_name: s.property_name || 'Transportation Service',
           room_id: s.room_id, // Can be null for transportation-only staff
           room_name: s.room_name, // Can be null for transportation-only staff
-          rent_amount: transportAmount / 2, // Convert monthly to bi-weekly
+          rent_amount: transportAmount, // Use bi-weekly amount directly
           payment_status: "unpaid",
           billing_type: "transportation",
           period_start: w1.start.toISODate()!,
@@ -165,7 +166,7 @@ export async function generateTransportationBillingForMonth(
           property_name: s.property_name || 'Transportation Service',
           room_id: s.room_id, // Can be null for transportation-only staff
           room_name: s.room_name, // Can be null for transportation-only staff
-          rent_amount: transportAmount / 2, // Convert monthly to bi-weekly
+          rent_amount: transportAmount, // Use bi-weekly amount directly
           payment_status: "unpaid",
           billing_type: "transportation",
           period_start: w2.start.toISODate()!,
