@@ -26,6 +26,7 @@ export const PayrollDeductionsTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [periodFilter, setPeriodFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
@@ -46,6 +47,23 @@ export const PayrollDeductionsTable = () => {
     return Array.from(locs).sort();
   }, [deductions]);
 
+  // Get unique periods for filter
+  const periods = useMemo(() => {
+    if (!deductions) return [];
+    const periodSet = new Set<string>();
+    
+    deductions.forEach((d) => {
+      if (d.start_period && d.end_period) {
+        const startDate = new Date(d.start_period);
+        const endDate = new Date(d.end_period);
+        const periodString = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+        periodSet.add(periodString);
+      }
+    });
+    
+    return Array.from(periodSet).sort();
+  }, [deductions]);
+
   // Filter deductions
   const filteredDeductions = useMemo(() => {
     if (!deductions) return [];
@@ -64,9 +82,20 @@ export const PayrollDeductionsTable = () => {
       const matchesLocation =
         locationFilter === "all" || deduction.location === locationFilter;
 
-      return matchesSearch && matchesDepartment && matchesLocation;
+      const matchesPeriod = (() => {
+        if (periodFilter === "all") return true;
+        if (!deduction.start_period || !deduction.end_period) return false;
+        
+        const startDate = new Date(deduction.start_period);
+        const endDate = new Date(deduction.end_period);
+        const deductionPeriod = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+        
+        return deductionPeriod === periodFilter;
+      })();
+
+      return matchesSearch && matchesDepartment && matchesLocation && matchesPeriod;
     });
-  }, [deductions, searchQuery, departmentFilter, locationFilter]);
+  }, [deductions, searchQuery, departmentFilter, locationFilter, periodFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredDeductions.length / itemsPerPage);
@@ -74,10 +103,47 @@ export const PayrollDeductionsTable = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedDeductions = filteredDeductions.slice(startIndex, endIndex);
 
+  // Calculate filtered summary statistics
+  const filteredSummary = useMemo(() => {
+    if (!filteredDeductions.length) {
+      return {
+        total_records: 0,
+        total_all_deductions: 0,
+        total_rent: 0,
+        total_transport: 0,
+        total_bus_card: 0,
+        total_security_deposit: 0
+      };
+    }
+
+    return filteredDeductions.reduce((acc, deduction) => {
+      const busCard = Number(deduction.bcd_bus_card_deduction) || 0;
+      const securityDeposit = Number(deduction.hdd_hang_dep_ded_deduction) || 0;
+      const rent = Number(deduction.rnt_rent_deduction) || 0;
+      const transport = Number(deduction.trn_transport_subs_deduction) || 0;
+      
+      return {
+        total_records: acc.total_records + 1,
+        total_all_deductions: acc.total_all_deductions + busCard + securityDeposit + rent + transport,
+        total_rent: acc.total_rent + rent,
+        total_transport: acc.total_transport + transport,
+        total_bus_card: acc.total_bus_card + busCard,
+        total_security_deposit: acc.total_security_deposit + securityDeposit
+      };
+    }, {
+      total_records: 0,
+      total_all_deductions: 0,
+      total_rent: 0,
+      total_transport: 0,
+      total_bus_card: 0,
+      total_security_deposit: 0
+    });
+  }, [filteredDeductions]);
+
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, departmentFilter, locationFilter]);
+  }, [searchQuery, departmentFilter, locationFilter, periodFilter]);
 
   if (isLoading) {
     return (
@@ -99,55 +165,65 @@ export const PayrollDeductionsTable = () => {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      {summary && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Records</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.total_records}</div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Filtered Records</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{filteredSummary.total_records}</div>
+            <p className="text-xs text-muted-foreground">
+              {deductions ? `of ${deductions.length} total` : ''}
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Deductions</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${summary.total_all_deductions.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Deductions</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${filteredSummary.total_all_deductions.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Filtered selection
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rent Deductions</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${summary.total_rent.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rent Deductions</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${filteredSummary.total_rent.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              From filtered data
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Transport Deductions</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${summary.total_transport.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Transport Deductions</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${filteredSummary.total_transport.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              From filtered data
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filters and Search */}
       <Card>
@@ -158,46 +234,64 @@ export const PayrollDeductionsTable = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by staff name, department, location, or position ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by staff name, department, location, or position ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
               </div>
             </div>
 
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((dept) => (
-                  <SelectItem key={dept} value={dept!}>
-                    {dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col md:flex-row gap-4">
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept!}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location} value={location!}>
-                    {location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location} value={location!}>
+                      {location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                <SelectTrigger className="w-full md:w-[250px]">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Periods</SelectItem>
+                  {periods.map((period) => (
+                    <SelectItem key={period} value={period}>
+                      {period}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Table */}
