@@ -81,8 +81,8 @@ export default function ExternalStaff() {
 
   // Reset pagination when filters change
   React.useEffect(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, [searchTerm, dateRangeFilter, terminationPeriodFilter, selectedDepartment, status]);
+    setPagination({ pageIndex: 0, pageSize: pagination.pageSize });
+  }, [searchTerm, dateRangeFilter, terminationPeriodFilter, selectedDepartment, status, pagination.pageSize]);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
