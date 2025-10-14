@@ -131,10 +131,12 @@ export async function getActiveStaffWithBusCard(year: number, month: number) {
         rent_amount,
         start_date,
         end_date,
-        bus_card_agreement
+        bus_card_agreement,
+        bus_card_amount
       `)
       .eq('bus_card_agreement', true)
-      .not('tenant_id', 'is', null);
+      .not('tenant_id', 'is', null)
+      .not('bus_card_amount', 'is', null);
 
     if (error) {
       console.error('Error fetching bus card assignments:', error);
@@ -337,11 +339,11 @@ export async function generateSecurityDepositBillingForMonth(
 
 /**
  * Generate bus card billing for a month
+ * Uses bus_card_amount from assignments table for each staff member
  */
 export async function generateBusCardBillingForMonth(
   year: number,
   month: number,
-  busCardAmount: number = 50, // Default $50 bus card
   zone = "America/Los_Angeles"
 ) {
   console.log(`🚌 Generating bus card billing for ${year}-${month}`);
@@ -362,6 +364,11 @@ export async function generateBusCardBillingForMonth(
     const terminationDate = staffData["TERMINATION DATE"] || s.end_date;
     
     const include = inclusionForMonth(now, hireDate, terminationDate);
+    
+    // Use bus_card_amount from assignment table
+    const busCardAmount = s.bus_card_amount || 50.00; // Default to $50 if not specified
+    
+    console.log(`🚌 Processing bus card for staff ${s.tenant_id}: amount = $${busCardAmount}`);
     
     // Bus cards are typically charged once when staff starts
     // We'll use the first window for new staff
@@ -418,8 +425,8 @@ export async function generateAllBillingTypesForMonth(
   // Generate security deposit billing
   const securityDepositCount = await generateSecurityDepositBillingForMonth(year, month, securityDepositAmount, zone);
   
-  // Generate bus card billing
-  const busCardCount = await generateBusCardBillingForMonth(year, month, busCardAmount, zone);
+  // Generate bus card billing (uses bus_card_amount from assignments table)
+  const busCardCount = await generateBusCardBillingForMonth(year, month, zone);
   
   const totalDeductionRecords = securityDepositCount + busCardCount;
   
