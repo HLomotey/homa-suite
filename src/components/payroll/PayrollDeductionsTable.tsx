@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { usePayrollDeductions } from "@/hooks/payroll-deductions/usePayrollDeductions";
+import { useEnhancedPayrollDeductions } from "@/hooks/payroll-deductions/useEnhancedPayrollDeductions";
 import { usePayrollDeductionSummary } from "@/hooks/payroll-deductions/usePayrollDeductionSummary";
 import {
   Table,
@@ -27,10 +27,11 @@ export const PayrollDeductionsTable = () => {
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  const { data: deductions, isLoading, error } = usePayrollDeductions();
+  const { data: deductions, isLoading, error } = useEnhancedPayrollDeductions();
   const { data: summary } = usePayrollDeductionSummary();
 
   // Get unique departments for filter
@@ -64,6 +65,13 @@ export const PayrollDeductionsTable = () => {
     return Array.from(periodSet).sort();
   }, [deductions]);
 
+  // Get unique properties for filter
+  const properties = useMemo(() => {
+    if (!deductions) return [];
+    const props = new Set(deductions.map((d) => d.property_name).filter(Boolean));
+    return Array.from(props).sort();
+  }, [deductions]);
+
   // Filter deductions
   const filteredDeductions = useMemo(() => {
     if (!deductions) return [];
@@ -74,6 +82,7 @@ export const PayrollDeductionsTable = () => {
         deduction.staff_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         deduction.home_department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         deduction.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deduction.property_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         deduction.position_id?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesDepartment =
@@ -81,6 +90,9 @@ export const PayrollDeductionsTable = () => {
 
       const matchesLocation =
         locationFilter === "all" || deduction.location === locationFilter;
+
+      const matchesProperty =
+        propertyFilter === "all" || deduction.property_name === propertyFilter;
 
       const matchesPeriod = (() => {
         if (periodFilter === "all") return true;
@@ -93,9 +105,9 @@ export const PayrollDeductionsTable = () => {
         return deductionPeriod === periodFilter;
       })();
 
-      return matchesSearch && matchesDepartment && matchesLocation && matchesPeriod;
+      return matchesSearch && matchesDepartment && matchesLocation && matchesProperty && matchesPeriod;
     });
-  }, [deductions, searchQuery, departmentFilter, locationFilter, periodFilter]);
+  }, [deductions, searchQuery, departmentFilter, locationFilter, propertyFilter, periodFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredDeductions.length / itemsPerPage);
@@ -143,7 +155,7 @@ export const PayrollDeductionsTable = () => {
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, departmentFilter, locationFilter, periodFilter]);
+  }, [searchQuery, departmentFilter, locationFilter, propertyFilter, periodFilter]);
 
   if (isLoading) {
     return (
@@ -249,9 +261,9 @@ export const PayrollDeductionsTable = () => {
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -265,7 +277,7 @@ export const PayrollDeductionsTable = () => {
               </Select>
 
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,8 +290,22 @@ export const PayrollDeductionsTable = () => {
                 </SelectContent>
               </Select>
 
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Property" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {properties.map((property) => (
+                    <SelectItem key={property} value={property!}>
+                      {property}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select value={periodFilter} onValueChange={setPeriodFilter}>
-                <SelectTrigger className="w-full md:w-[250px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Period" />
                 </SelectTrigger>
                 <SelectContent>
@@ -309,6 +335,7 @@ export const PayrollDeductionsTable = () => {
                       <TableHead>Position ID</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Location</TableHead>
+                      <TableHead>Property</TableHead>
                       <TableHead className="text-right">Bus Card</TableHead>
                       <TableHead className="text-right">Security Deposit</TableHead>
                       <TableHead className="text-right">Rent</TableHead>
@@ -333,6 +360,9 @@ export const PayrollDeductionsTable = () => {
                           </TableCell>
                           <TableCell>{deduction.home_department || "Unknown"}</TableCell>
                           <TableCell>{deduction.location || "Unknown"}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{deduction.property_name || "Not Assigned"}</Badge>
+                          </TableCell>
                           <TableCell className="text-right">
                             ${Number(deduction.bcd_bus_card_deduction || 0).toFixed(2)}
                           </TableCell>
